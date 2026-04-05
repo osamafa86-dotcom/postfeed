@@ -5,12 +5,4 @@
     RewriteRule ^includes/ - [F,L]
 </IfModule>
 
-<IfModule mod_autoindex.c>
-    Options -Indexes
-</IfModule>
-
 AddDefaultCharset UTF-8
-
-# PHP error handling
-php_flag display_errors Off
-php_flag log_errors On
