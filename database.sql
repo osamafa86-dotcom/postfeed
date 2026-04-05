@@ -283,7 +283,7 @@ CREATE TABLE IF NOT EXISTS `users` (
 
 -- كلمة المرور الافتراضية: admin123 (مشفرة بـ bcrypt)
 INSERT INTO `users` (`name`, `email`, `password`, `role`, `avatar_letter`, `plan`) VALUES
-('أسامة المعايضة', 'osama.fa.mayadmeh@gmail.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', 'أ', 'premium');
+('أسامة المعايضة', 'osama.fa.mayadmeh@gmail.com', '$2y$12$yav/VxjG9aR.FJv1AvqPtOfxDnFGgb7VwTPc1/OaAmgbjf/1wBrPW', 'admin', 'أ', 'premium');
 
 -- =============================================
 -- جدول إعدادات الموقع
