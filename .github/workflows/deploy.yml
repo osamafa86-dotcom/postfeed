@@ -9,24 +9,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install lftp
-        run: sudo apt-get install -y lftp
-
-      - name: Deploy via FTP
+      - name: Trigger deploy webhook
         run: |
-          lftp -u "${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }}" ${{ secrets.FTP_SERVER }} <<EOF
-          set ftp:ssl-allow yes
-          set ftp:ssl-force no
-          set ssl:verify-certificate no
-          set ftp:passive-mode yes
-          set net:timeout 60
-          set net:max-retries 10
-          set net:reconnect-interval-base 5
-          set net:reconnect-interval-multiplier 1
-          set mirror:parallel-transfer-count 1
-          mirror --reverse --only-newer --no-perms --exclude .git/ --exclude .github/ --exclude newsflow-v2.zip --exclude database.sql --exclude README_SETUP.txt ./ /
-          quit
-          EOF
+          curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-Hub-Signature-256: sha256=$(echo -n '{}' | openssl dgst -sha256 -hmac 'postfeed_deploy_2026' | awk '{print $2}')" \
+            -d '{}' \
+            http://postfeed.emdatra.org/deploy.php
