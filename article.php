@@ -68,80 +68,91 @@ if ($article['cat_slug']) {
     <meta property="og:type" content="article">
     <meta property="og:url" content="<?php echo SITE_URL; ?>/article.php?id=<?php echo $article['id']; ?>">
 
-    <link rel="stylesheet" href="assets/css/style.css">
-    <link rel="stylesheet" href="assets/css/article.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #2563eb;
-            --dark: #1e293b;
-            --light: #f1f5f9;
-            --gray: #64748b;
+            --primary: #1a73e8;
+            --primary-light: #eff6ff;
+            --dark: #1a1a2e;
+            --light: #f0f2f5;
+            --gray: #6b7280;
+            --border: #e0e3e8;
+            --card: #ffffff;
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Tajawal', 'Segoe UI', Tahoma, sans-serif;
             background: var(--light);
             color: var(--dark);
-            line-height: 1.6;
+            line-height: 1.7;
         }
 
+        a { text-decoration: none; color: inherit; }
+
         .header {
-            background: white;
-            border-bottom: 1px solid #e2e8f0;
-            padding: 1rem 0;
+            background: var(--dark);
+            padding: 0;
             position: sticky;
             top: 0;
             z-index: 100;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            height: 64px;
+            display: flex;
+            align-items: center;
         }
 
         .container {
-            max-width: 800px;
+            max-width: 820px;
             margin: 0 auto;
-            padding: 0 1rem;
+            padding: 0 1.25rem;
         }
 
-        .header-content {
+        .header .container {
+            max-width: 1200px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            width: 100%;
         }
 
         .logo {
             font-size: 1.5rem;
-            font-weight: bold;
-            color: var(--primary);
+            font-weight: 900;
+            color: #fff;
             text-decoration: none;
         }
+        .logo span { color: #60a5fa; }
 
         .back-btn {
-            color: var(--primary);
+            color: rgba(255,255,255,.6);
             text-decoration: none;
             display: flex;
             align-items: center;
             gap: 0.5rem;
             padding: 0.5rem 1rem;
-            border-radius: 6px;
-            transition: background 0.3s;
+            border-radius: 8px;
+            transition: all 0.2s;
+            font-weight: 500;
+            font-size: 0.9rem;
         }
 
         .back-btn:hover {
-            background: var(--light);
+            background: rgba(255,255,255,.08);
+            color: #fff;
         }
 
         .article-hero {
             width: 100%;
-            height: 400px;
+            height: 450px;
             object-fit: cover;
-            background: var(--gray);
-            border-radius: 12px;
+            background: #334155;
+            border-radius: 16px;
             margin: 2rem 0;
+            box-shadow: 0 8px 30px rgba(0,0,0,.12);
         }
 
         .article-header {
@@ -150,67 +161,77 @@ if ($article['cat_slug']) {
 
         .article-meta {
             display: flex;
-            gap: 1.5rem;
+            gap: 1.25rem;
             margin-bottom: 1rem;
             flex-wrap: wrap;
             font-size: 0.9rem;
             color: var(--gray);
+            align-items: center;
+            font-weight: 500;
         }
 
         .category-badge {
             display: inline-block;
-            padding: 0.4rem 0.8rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
+            padding: 0.35rem 0.9rem;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 700;
             color: white;
+            letter-spacing: .3px;
         }
 
-        .category-badge.سياسة { background: #ef4444; }
-        .category-badge.رياضة { background: #f59e0b; }
-        .category-badge.تكنولوجيا { background: #3b82f6; }
-        .category-badge.ترفيه { background: #8b5cf6; }
-        .category-badge.صحة { background: #10b981; }
+        .category-badge.cat-political { background: #dc2626; }
+        .category-badge.cat-sports { background: #1d4ed8; }
+        .category-badge.cat-economic { background: #15803d; }
+        .category-badge.cat-arts { background: #7c3aed; }
+        .category-badge.cat-tech { background: #0d9488; }
+        .category-badge.cat-health { background: #16a34a; }
+        .category-badge.cat-reports { background: #b45309; }
+        .category-badge.cat-media { background: #a21caf; }
 
         h1 {
-            font-size: 2.5rem;
-            line-height: 1.2;
+            font-size: 2.2rem;
+            line-height: 1.4;
             margin: 1rem 0;
             color: var(--dark);
+            font-weight: 900;
         }
 
         .article-excerpt {
-            font-size: 1.2rem;
+            font-size: 1.15rem;
             color: var(--gray);
             margin: 1rem 0;
             font-weight: 500;
+            line-height: 1.8;
         }
 
         .source-info {
             display: flex;
             align-items: center;
             gap: 1rem;
-            padding: 1rem;
-            background: white;
-            border-radius: 8px;
+            padding: 1.1rem 1.25rem;
+            background: var(--card);
+            border-radius: 12px;
             margin: 1.5rem 0;
+            border: 1px solid var(--border);
         }
 
         .source-logo {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: bold;
+            font-weight: 800;
             color: white;
-            font-size: 1.5rem;
+            font-size: 1.3rem;
         }
 
         .source-details h3 {
             font-size: 0.95rem;
-            margin-bottom: 0.3rem;
+            margin-bottom: 0.2rem;
+            font-weight: 700;
         }
 
         .source-time {
@@ -219,171 +240,135 @@ if ($article['cat_slug']) {
         }
 
         .article-content {
-            background: white;
-            padding: 2rem;
-            border-radius: 12px;
+            background: var(--card);
+            padding: 2.5rem;
+            border-radius: 16px;
             margin: 2rem 0;
-            line-height: 1.8;
+            line-height: 2;
             font-size: 1.1rem;
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 3px rgba(0,0,0,.04);
         }
 
-        .article-content p {
-            margin: 1.5rem 0;
-        }
-
-        .article-content h2 {
-            font-size: 1.8rem;
-            margin: 2rem 0 1rem;
-            color: var(--dark);
-        }
-
-        .article-content h3 {
-            font-size: 1.3rem;
-            margin: 1.5rem 0 0.8rem;
-            color: var(--dark);
-        }
-
-        .article-content strong {
-            color: var(--dark);
-        }
-
-        .article-content em {
-            color: var(--gray);
-            font-style: italic;
-        }
-
-        .article-content a {
-            color: var(--primary);
-            text-decoration: none;
-            border-bottom: 1px solid var(--primary);
-        }
-
-        .article-content a:hover {
-            background: #dbeafe;
-            padding: 0 2px;
-        }
+        .article-content p { margin: 1.5rem 0; }
+        .article-content h2 { font-size: 1.6rem; margin: 2rem 0 1rem; color: var(--dark); font-weight: 800; }
+        .article-content h3 { font-size: 1.25rem; margin: 1.5rem 0 0.8rem; color: var(--dark); font-weight: 700; }
+        .article-content strong { color: var(--dark); }
+        .article-content em { color: var(--gray); }
+        .article-content a { color: var(--primary); border-bottom: 1px solid rgba(26,115,232,.3); transition: all .2s; }
+        .article-content a:hover { background: var(--primary-light); }
+        .article-content blockquote { border-right: 4px solid var(--primary); padding: 1rem 1.5rem; margin: 1.5rem 0; background: var(--primary-light); border-radius: 0 8px 8px 0; }
 
         .article-footer {
-            background: white;
-            padding: 2rem;
-            border-radius: 12px;
+            background: var(--card);
+            padding: 2rem 2.5rem;
+            border-radius: 16px;
             margin: 2rem 0;
-            border-top: 2px solid var(--light);
+            border: 1px solid var(--border);
         }
 
         .sharing {
             display: flex;
-            gap: 1rem;
-            margin: 1.5rem 0;
+            gap: 0.75rem;
+            margin: 1rem 0;
         }
 
         .share-btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
             background: var(--light);
-            color: var(--primary);
+            color: var(--gray);
             text-decoration: none;
-            transition: all 0.3s;
-            font-size: 1.1rem;
+            transition: all 0.25s;
+            font-size: 1rem;
+            border: 1px solid var(--border);
+            font-weight: 700;
         }
 
         .share-btn:hover {
             background: var(--primary);
             color: white;
-            transform: scale(1.1);
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(26,115,232,.3);
         }
 
-        .related-articles {
-            margin: 3rem 0;
-        }
-
-        .related-articles h2 {
-            font-size: 1.8rem;
-            margin-bottom: 1.5rem;
-            color: var(--dark);
-        }
+        .related-articles { margin: 3rem 0; }
+        .related-articles h2 { font-size: 1.5rem; margin-bottom: 1.5rem; color: var(--dark); font-weight: 800; }
 
         .articles-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.25rem;
         }
 
         .article-card {
-            background: white;
+            background: var(--card);
             border-radius: 12px;
             overflow: hidden;
-            transition: transform 0.3s, box-shadow 0.3s;
+            transition: all 0.3s;
             text-decoration: none;
             color: inherit;
             display: flex;
             flex-direction: column;
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 3px rgba(0,0,0,.04);
         }
 
         .article-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border-color: rgba(26,115,232,.2);
         }
 
         .article-card-image {
             width: 100%;
-            height: 150px;
+            height: 160px;
             object-fit: cover;
-            background: var(--gray);
+            background: #e5e7eb;
         }
 
         .article-card-body {
-            padding: 1rem;
+            padding: 1.1rem;
             flex: 1;
             display: flex;
             flex-direction: column;
         }
 
         .article-card-title {
-            font-weight: 600;
+            font-weight: 700;
             margin-bottom: 0.5rem;
             font-size: 0.95rem;
-            line-height: 1.4;
+            line-height: 1.5;
         }
 
         .article-card-meta {
             font-size: 0.8rem;
             color: var(--gray);
+            font-weight: 500;
         }
 
         .footer {
             background: var(--dark);
-            color: white;
+            color: rgba(255,255,255,.5);
             padding: 2rem 0;
             margin-top: 3rem;
             text-align: center;
+            font-size: 0.9rem;
         }
 
-        .footer p {
-            margin: 0.5rem 0;
-        }
+        .footer p { margin: 0.3rem 0; }
 
         @media (max-width: 768px) {
-            h1 {
-                font-size: 1.8rem;
-            }
-
-            .article-content {
-                padding: 1rem;
-                font-size: 1rem;
-            }
-
-            .article-hero {
-                height: 250px;
-            }
-
-            .articles-grid {
-                grid-template-columns: 1fr;
-            }
+            h1 { font-size: 1.6rem; }
+            .article-content { padding: 1.25rem; font-size: 1rem; }
+            .article-hero { height: 250px; border-radius: 12px; }
+            .articles-grid { grid-template-columns: 1fr; }
+            .article-footer { padding: 1.5rem; }
         }
     </style>
 </head>
@@ -391,10 +376,8 @@ if ($article['cat_slug']) {
     <!-- Header -->
     <header class="header">
         <div class="container">
-            <div class="header-content">
-                <a href="index.php" class="logo"><?php echo SITE_NAME; ?></a>
-                <a href="index.php" class="back-btn">← العودة للرئيسية</a>
-            </div>
+            <a href="index.php" class="logo">نيوز<span>فلو</span></a>
+            <a href="index.php" class="back-btn">&larr; العودة للرئيسية</a>
         </div>
     </header>
 
@@ -409,7 +392,7 @@ if ($article['cat_slug']) {
         <article class="article-header">
             <div class="article-meta">
                 <?php if ($article['cat_name']): ?>
-                    <span class="category-badge <?php echo $article['cat_name']; ?>">
+                    <span class="category-badge <?php echo e($article['css_class'] ?? ''); ?>">
                         <?php echo e($article['cat_name']); ?>
                     </span>
                 <?php endif; ?>
