@@ -822,14 +822,14 @@ $reportsNews = getArticlesByCategory('reports', 3);
     <!-- HERO -->
     <div class="section-header">
       <div class="section-title"><div class="line"></div>أبرز الأخبار</div>
-      <a class="see-all" href="#">عرض الكل ›</a>
+      <a class="see-all" href="category.php?type=latest">عرض الكل ›</a>
     </div>
     <div class="hero-grid">
       <?php if (!empty($heroArticles)): ?>
         <?php $first = true; ?>
         <?php foreach ($heroArticles as $article): ?>
           <?php if ($first): ?>
-            <div class="hero-main">
+            <a class="hero-main" href="article.php?id=<?php echo (int)$article['id']; ?>">
               <div class="img-wrap">
                 <img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/news1/800/500'); ?>" alt="">
               </div>
@@ -844,10 +844,10 @@ $reportsNews = getArticlesByCategory('reports', 3);
                   <span>💬 <?php echo number_format($article['comments'] ?? 0); ?> تعليق</span>
                 </div>
               </div>
-            </div>
+            </a>
             <?php $first = false; ?>
           <?php else: ?>
-            <div class="hero-side">
+            <a class="hero-side" href="article.php?id=<?php echo (int)$article['id']; ?>">
               <div class="hero-side-img">
                 <img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/news' . rand(1,10) . '/400/200'); ?>" alt="" style="width:100%;height:100%;object-fit:cover;">
               </div>
@@ -856,7 +856,7 @@ $reportsNews = getArticlesByCategory('reports', 3);
                 <h3><?php echo e(substr($article['title'], 0, 60) . '...'); ?></h3>
                 <div class="meta" style="margin-top:6px"><span><?php echo timeAgo($article['published_at']); ?></span><span class="meta-dot"></span><span>👁 <?php echo formatViews($article['view_count']); ?></span></div>
               </div>
-            </div>
+            </a>
           <?php endif; ?>
         <?php endforeach; ?>
       <?php endif; ?>
@@ -865,29 +865,29 @@ $reportsNews = getArticlesByCategory('reports', 3);
     <!-- BREAKING NEWS -->
     <div id="breaking" class="section-header">
       <div class="section-title"><div class="line" style="background:var(--red)"></div>🔴 أخبار عاجلة</div>
-      <a class="see-all" href="#">عرض الكل ›</a>
+      <a class="see-all" href="category.php?type=breaking">عرض الكل ›</a>
     </div>
     <div class="news-list" style="margin-bottom:28px">
       <?php foreach ($breakingNews as $article): ?>
-        <div class="list-item">
+        <a class="list-item" href="article.php?id=<?php echo (int)$article['id']; ?>">
           <div class="list-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/brk' . rand(1,10) . '/200/150'); ?>" alt=""></div>
           <div class="list-body">
             <div class="card-cat cat-breaking">عاجل</div>
             <div class="list-title"><?php echo e($article['title']); ?></div>
             <div class="list-meta"><span>🌐 <?php echo e($article['source_name']); ?></span><span>·</span><span><?php echo timeAgo($article['published_at']); ?></span><span>·</span><span>👁 <?php echo formatViews($article['view_count']); ?></span></div>
           </div>
-        </div>
+        </a>
       <?php endforeach; ?>
     </div>
 
     <!-- LATEST NEWS -->
     <div id="latest" class="section-header">
       <div class="section-title blue"><div class="line"></div>⏱ آخر الأخبار</div>
-      <a class="see-all" href="#">عرض الكل ›</a>
+      <a class="see-all" href="category.php?type=latest">عرض الكل ›</a>
     </div>
     <div class="news-grid" style="margin-bottom:28px">
       <?php foreach ($latestArticles as $article): ?>
-        <div class="news-card">
+        <a class="news-card" href="article.php?id=<?php echo (int)$article['id']; ?>">
           <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/lat' . rand(1,10) . '/400/300'); ?>" alt=""></div>
           <div class="card-body">
             <span class="card-cat <?php echo $article['css_class'] ?? 'cat-political'; ?>"><?php echo e($article['cat_name']); ?></span>
@@ -897,18 +897,18 @@ $reportsNews = getArticlesByCategory('reports', 3);
               <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
             </div>
           </div>
-        </div>
+        </a>
       <?php endforeach; ?>
     </div>
 
     <!-- POLITICAL NEWS -->
     <div id="political" class="section-header">
       <div class="section-title"><div class="line" style="background:#b05a5a"></div>🏛 أخبار سياسية</div>
-      <a class="see-all" href="#">عرض الكل ›</a>
+      <a class="see-all" href="category.php?slug=political">عرض الكل ›</a>
     </div>
     <div class="news-grid news-grid-2col" style="margin-bottom:28px">
       <?php foreach ($politicalNews as $article): ?>
-        <div class="news-card">
+        <a class="news-card" href="article.php?id=<?php echo (int)$article['id']; ?>">
           <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/pol' . rand(1,10) . '/400/300'); ?>" alt=""></div>
           <div class="card-body">
             <span class="card-cat cat-political">سياسة</span>
@@ -918,18 +918,18 @@ $reportsNews = getArticlesByCategory('reports', 3);
               <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
             </div>
           </div>
-        </div>
+        </a>
       <?php endforeach; ?>
     </div>
 
     <!-- ECONOMY -->
     <div id="economy" class="section-header">
       <div class="section-title green"><div class="line"></div>💹 أخبار اقتصادية</div>
-      <a class="see-all" href="#">عرض الكل ›</a>
+      <a class="see-all" href="category.php?slug=economy">عرض الكل ›</a>
     </div>
     <div class="news-grid" style="margin-bottom:28px">
       <?php foreach ($economyNews as $article): ?>
-        <div class="news-card">
+        <a class="news-card" href="article.php?id=<?php echo (int)$article['id']; ?>">
           <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/eco' . rand(1,10) . '/400/300'); ?>" alt=""></div>
           <div class="card-body">
             <span class="card-cat cat-economic">اقتصاد</span>
@@ -939,18 +939,18 @@ $reportsNews = getArticlesByCategory('reports', 3);
               <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
             </div>
           </div>
-        </div>
+        </a>
       <?php endforeach; ?>
     </div>
 
     <!-- SPORTS -->
     <div id="sports" class="section-header">
       <div class="section-title"><div class="line" style="background:#5a85b0"></div>⚽ رياضة</div>
-      <a class="see-all" href="#">عرض الكل ›</a>
+      <a class="see-all" href="category.php?slug=sports">عرض الكل ›</a>
     </div>
     <div class="news-grid" style="margin-bottom:28px">
       <?php foreach ($sportsNews as $article): ?>
-        <div class="news-card">
+        <a class="news-card" href="article.php?id=<?php echo (int)$article['id']; ?>">
           <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/sp' . rand(1,10) . '/400/300'); ?>" alt=""></div>
           <div class="card-body">
             <span class="card-cat cat-sports">رياضة</span>
@@ -960,18 +960,18 @@ $reportsNews = getArticlesByCategory('reports', 3);
               <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
             </div>
           </div>
-        </div>
+        </a>
       <?php endforeach; ?>
     </div>
 
     <!-- ARTS -->
     <div id="arts" class="section-header">
       <div class="section-title"><div class="line" style="background:#7a5a9a"></div>🎨 فنون وثقافة</div>
-      <a class="see-all" href="#">عرض الكل ›</a>
+      <a class="see-all" href="category.php?slug=arts">عرض الكل ›</a>
     </div>
     <div class="news-grid news-grid-2col" style="margin-bottom:28px">
       <?php foreach ($artsNews as $article): ?>
-        <div class="news-card">
+        <a class="news-card" href="article.php?id=<?php echo (int)$article['id']; ?>">
           <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/art' . rand(1,10) . '/400/300'); ?>" alt=""></div>
           <div class="card-body">
             <span class="card-cat cat-arts">فنون</span>
@@ -981,14 +981,14 @@ $reportsNews = getArticlesByCategory('reports', 3);
               <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
             </div>
           </div>
-        </div>
+        </a>
       <?php endforeach; ?>
     </div>
 
     <!-- MEDIA SECTION -->
     <div id="media" class="section-header">
       <div class="section-title"><div class="line" style="background:#8a5a8a"></div>🎥 ميديا</div>
-      <a class="see-all" href="#">عرض الكل ›</a>
+      <a class="see-all" href="category.php?slug=media">عرض الكل ›</a>
     </div>
     <div class="media-grid" style="margin-bottom:28px">
       <?php foreach ($mediaItems as $media): ?>
@@ -1003,11 +1003,11 @@ $reportsNews = getArticlesByCategory('reports', 3);
     <!-- REPORTS -->
     <div id="reports" class="section-header">
       <div class="section-title gold"><div class="line"></div>📊 التقارير</div>
-      <a class="see-all" href="#">عرض الكل ›</a>
+      <a class="see-all" href="category.php?slug=reports">عرض الكل ›</a>
     </div>
     <div class="news-grid" style="margin-bottom:28px">
       <?php foreach ($reportsNews as $article): ?>
-        <div class="news-card">
+        <a class="news-card" href="article.php?id=<?php echo (int)$article['id']; ?>">
           <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/rep' . rand(1,10) . '/400/300'); ?>" alt=""></div>
           <div class="card-body">
             <span class="card-cat cat-reports">تقرير</span>
@@ -1017,7 +1017,7 @@ $reportsNews = getArticlesByCategory('reports', 3);
               <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
             </div>
           </div>
-        </div>
+        </a>
       <?php endforeach; ?>
     </div>
 
@@ -1109,13 +1109,13 @@ $reportsNews = getArticlesByCategory('reports', 3);
       <div class="widget-body" style="padding:8px 16px">
         <?php $rankNum = 1; ?>
         <?php foreach (array_slice($mostRead, 0, 3) as $article): ?>
-          <div class="list-item" style="padding:8px 0;background:none;border:none;<?php echo $rankNum < 3 ? 'border-bottom:1px solid var(--border);' : ''; ?>">
+          <a class="list-item" href="article.php?id=<?php echo (int)$article['id']; ?>" style="padding:8px 0;background:none;border:none;<?php echo $rankNum < 3 ? 'border-bottom:1px solid var(--border);' : ''; ?>">
             <div class="rank-num"><?php echo $rankNum; ?></div>
             <div class="list-body">
               <div class="list-title" style="font-size:12px"><?php echo e(substr($article['title'], 0, 40) . '...'); ?></div>
               <div class="list-meta"><span>👁 <?php echo formatViews($article['view_count']); ?></span></div>
             </div>
-          </div>
+          </a>
           <?php $rankNum++; ?>
         <?php endforeach; ?>
       </div>
