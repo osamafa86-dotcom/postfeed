@@ -118,7 +118,7 @@ function buildPageUrl($pageNum) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title><?php echo e($pageIcon . ' ' . $pageTitle); ?> — <?php echo SITE_NAME; ?></title>
+<title><?php echo e($pageIcon . ' ' . $pageTitle); ?> — <?php echo e(getSetting('site_name', SITE_NAME)); ?></title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
@@ -306,8 +306,8 @@ function buildPageUrl($pageNum) {
   <a class="logo" href="index.php">
     <div class="logo-icon">N</div>
     <div>
-      <div class="logo-text">نيوز<span>فلو</span></div>
-      <div class="logo-sub">مجمع المصادر الإخبارية</div>
+      <div class="logo-text"><?php echo e(getSetting('site_name', SITE_NAME)); ?></div>
+      <div class="logo-sub"><?php echo e(getSetting('site_tagline', SITE_TAGLINE)); ?></div>
     </div>
   </a>
 
@@ -415,14 +415,14 @@ function buildPageUrl($pageNum) {
 
 <!-- FOOTER -->
 <footer>
-  <div class="footer-logo">نيوز<span>فلو</span></div>
+  <div class="footer-logo"><?php echo e(getSetting('site_name', SITE_NAME)); ?></div>
   <div class="footer-links">
     <a href="#">من نحن</a>
     <a href="#">سياسة الخصوصية</a>
     <a href="#">الشروط والأحكام</a>
     <a href="#">اتصل بنا</a>
   </div>
-  <div class="footer-copy">&copy; <?php echo date('Y'); ?> نيوزفلو &mdash; جميع الحقوق محفوظة</div>
+  <div class="footer-copy">&copy; <?php echo date('Y'); ?> <?php echo e(getSetting('site_name', SITE_NAME)); ?> &mdash; جميع الحقوق محفوظة</div>
 </footer>
 
 </body>

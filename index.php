@@ -37,7 +37,7 @@ $reportsNews = getArticlesByCategory('reports', 3);
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>نيوزفلو - مجمع المصادر الإخبارية</title>
+<title><?php echo e(getSetting('site_name', SITE_NAME)); ?> - <?php echo e(getSetting('site_tagline', SITE_TAGLINE)); ?></title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
@@ -776,8 +776,8 @@ $reportsNews = getArticlesByCategory('reports', 3);
   <a class="logo" href="index.php">
     <div class="logo-icon">N</div>
     <div>
-      <div class="logo-text">نيوز<span>فلو</span></div>
-      <div class="logo-sub">مجمع المصادر الإخبارية</div>
+      <div class="logo-text"><?php echo e(getSetting('site_name', SITE_NAME)); ?></div>
+      <div class="logo-sub"><?php echo e(getSetting('site_tagline', SITE_TAGLINE)); ?></div>
     </div>
   </a>
 
@@ -1189,7 +1189,7 @@ $reportsNews = getArticlesByCategory('reports', 3);
 <footer>
   <div class="footer-inner">
     <div class="footer-brand">
-      <div class="footer-logo">نيوز<span>فلو</span></div>
+      <div class="footer-logo"><?php echo e(getSetting('site_name', SITE_NAME)); ?></div>
       <p class="footer-desc">منصتك الشاملة لتجميع الأخبار من مصادر متعددة وموثوقة. نوفر لك تجربة إخبارية متكاملة بأحدث التقنيات.</p>
     </div>
     <div class="footer-col">
@@ -1216,7 +1216,7 @@ $reportsNews = getArticlesByCategory('reports', 3);
     </div>
   </div>
   <div class="footer-bottom">
-    <div class="footer-copy">&copy; <?php echo date('Y'); ?> نيوزفلو &mdash; جميع الحقوق محفوظة</div>
+    <div class="footer-copy">&copy; <?php echo date('Y'); ?> <?php echo e(getSetting('site_name', SITE_NAME)); ?> &mdash; جميع الحقوق محفوظة</div>
     <div class="footer-social">
       <a href="#" title="Twitter">&#x1D54F;</a>
       <a href="#" title="Facebook">f</a>
