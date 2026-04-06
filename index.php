@@ -485,6 +485,73 @@ $reportsNews = getArticlesByCategory('reports', 3);
   }
   .weather-day .day { color:rgba(255,255,255,.5); margin-bottom:4px; font-size:11px; }
   .weather-day .temp { font-weight:700; }
+  .weather-cities { display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; }
+  .weather-city-btn {
+    background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.15);
+    color:rgba(255,255,255,.7); padding:4px 12px; border-radius:20px;
+    font-size:11px; cursor:pointer; transition:all .2s; font-family:inherit;
+  }
+  .weather-city-btn:hover, .weather-city-btn.active {
+    background:rgba(96,165,250,.3); border-color:rgba(96,165,250,.5); color:#fff;
+  }
+
+  /* CURRENCY WIDGET */
+  .currency-widget {
+    background:#fff; border:1px solid #f0f0f0;
+    border-radius:var(--radius-lg); padding:18px; margin-top:16px;
+    box-shadow:0 1px 4px rgba(0,0,0,.06); cursor:pointer; transition:all .2s;
+  }
+  .currency-widget:hover { box-shadow:0 4px 16px rgba(0,0,0,.1); }
+  .currency-row {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 0; border-bottom:1px solid #f5f5f5;
+  }
+  .currency-row:last-child { border-bottom:none; }
+  .currency-flag { font-size:20px; margin-left:8px; }
+  .currency-name { font-size:13px; color:#555; font-weight:500; }
+  .currency-rate { font-size:14px; font-weight:700; color:#1a1a2e; direction:ltr; }
+  .currency-change { font-size:11px; margin-right:6px; }
+  .currency-change.up { color:#16a34a; }
+  .currency-change.down { color:#dc2626; }
+
+  /* CURRENCY MODAL */
+  .modal-overlay {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.5);
+    z-index:9999; align-items:center; justify-content:center;
+    backdrop-filter:blur(3px);
+  }
+  .modal-overlay.show { display:flex; }
+  .modal-box {
+    background:#fff; border-radius:16px; width:90%; max-width:550px;
+    max-height:85vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,.25);
+    animation:modalIn .3s ease;
+  }
+  @keyframes modalIn { from { transform:scale(.9); opacity:0; } to { transform:scale(1); opacity:1; } }
+  .modal-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:20px 24px; border-bottom:1px solid #f0f0f0;
+  }
+  .modal-header h2 { font-size:18px; color:#1a1a2e; }
+  .modal-close {
+    width:32px; height:32px; border-radius:50%; border:none;
+    background:#f5f5f5; font-size:18px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    transition:background .2s; font-family:inherit;
+  }
+  .modal-close:hover { background:#e5e5e5; }
+  .modal-body { padding:16px 24px 24px; }
+  .modal-currency-row {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 0; border-bottom:1px solid #f5f5f5;
+  }
+  .modal-currency-row:last-child { border-bottom:none; }
+  .modal-currency-info { display:flex; align-items:center; gap:12px; }
+  .modal-currency-flag { font-size:28px; }
+  .modal-currency-name { font-size:14px; font-weight:600; color:#333; }
+  .modal-currency-code { font-size:11px; color:#999; }
+  .modal-currency-rates { text-align:left; direction:ltr; }
+  .modal-rate-buy, .modal-rate-sell { font-size:13px; color:#555; }
+  .modal-rate-buy span, .modal-rate-sell span { font-weight:700; color:#1a1a2e; }
 
   /* POLL WIDGET */
   .poll-option { margin-bottom:12px; }
@@ -801,7 +868,7 @@ $reportsNews = getArticlesByCategory('reports', 3);
     <span id="liveTime"><?php echo date('h:i A'); ?></span>
   </div>
   <div class="topbar-right">
-    <span class="weather-badge">☀ عمّان 22°</span>
+    <span class="weather-badge" id="topWeather">☀ القدس --°</span>
     <span>USD: 0.71 JD</span>
     <span>EUR: 0.78 JD</span>
   </div>
@@ -1129,20 +1196,46 @@ $reportsNews = getArticlesByCategory('reports', 3);
     <!-- WEATHER -->
     <div class="weather-widget">
       <div class="section-title" style="margin-bottom:14px;font-size:14px"><div class="line" style="background:var(--accent2)"></div>☀️ الطقس الآن</div>
+      <div class="weather-cities">
+        <button class="weather-city-btn active" data-city="Jerusalem" data-name="القدس">القدس</button>
+        <button class="weather-city-btn" data-city="Gaza" data-name="غزة">غزة</button>
+        <button class="weather-city-btn" data-city="Ramallah" data-name="رام الله">رام الله</button>
+        <button class="weather-city-btn" data-city="Nablus" data-name="نابلس">نابلس</button>
+        <button class="weather-city-btn" data-city="Hebron" data-name="الخليل">الخليل</button>
+        <button class="weather-city-btn" data-city="Jenin" data-name="جنين">جنين</button>
+      </div>
       <div class="weather-main">
         <div>
-          <div class="weather-temp">22°</div>
-          <div class="weather-city">عمّان، الأردن</div>
-          <div class="weather-desc">مشمس جزئياً</div>
+          <div class="weather-temp" id="wTemp">--°</div>
+          <div class="weather-city" id="wCity">القدس، فلسطين</div>
+          <div class="weather-desc" id="wDesc">جارٍ التحميل...</div>
         </div>
-        <div class="weather-icon">☀️</div>
+        <div class="weather-icon" id="wIcon">🌤</div>
       </div>
-      <div class="weather-days">
-        <div class="weather-day"><div class="day">الإث</div><div>⛅</div><div class="temp">20°</div></div>
-        <div class="weather-day"><div class="day">الثل</div><div>🌤</div><div class="temp">23°</div></div>
-        <div class="weather-day"><div class="day">الأر</div><div>🌧</div><div class="temp">17°</div></div>
-        <div class="weather-day"><div class="day">الخم</div><div>☀️</div><div class="temp">25°</div></div>
+      <div class="weather-days" id="wForecast">
+        <div class="weather-day"><div class="day">--</div><div>🌤</div><div class="temp">--°</div></div>
+        <div class="weather-day"><div class="day">--</div><div>🌤</div><div class="temp">--°</div></div>
+        <div class="weather-day"><div class="day">--</div><div>🌤</div><div class="temp">--°</div></div>
+        <div class="weather-day"><div class="day">--</div><div>🌤</div><div class="temp">--°</div></div>
       </div>
+    </div>
+
+    <!-- CURRENCY -->
+    <div class="currency-widget" onclick="openCurrencyModal()">
+      <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:#1a1a2e">💱 أسعار الصرف</div>
+      <div class="currency-row">
+        <div style="display:flex;align-items:center"><span class="currency-flag">🇺🇸</span><span class="currency-name">دولار أمريكي</span></div>
+        <div><span class="currency-rate" id="cUSD">--</span> <span class="currency-change" id="cUSDc"></span></div>
+      </div>
+      <div class="currency-row">
+        <div style="display:flex;align-items:center"><span class="currency-flag">🇮🇱</span><span class="currency-name">شيقل</span></div>
+        <div><span class="currency-rate" id="cILS">--</span> <span class="currency-change" id="cILSc"></span></div>
+      </div>
+      <div class="currency-row">
+        <div style="display:flex;align-items:center"><span class="currency-flag">🇯🇴</span><span class="currency-name">دينار أردني</span></div>
+        <div><span class="currency-rate" id="cJOD">--</span> <span class="currency-change" id="cJODc"></span></div>
+      </div>
+      <div style="text-align:center;font-size:11px;color:#aaa;margin-top:8px">اضغط لعرض التفاصيل</div>
     </div>
 
     <!-- TRENDING -->
@@ -1508,5 +1601,153 @@ $reportsNews = getArticlesByCategory('reports', 3);
     }
   }, 15000);
 </script>
+<!-- CURRENCY MODAL -->
+<div class="modal-overlay" id="currencyModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>💱 أسعار صرف العملات</h2>
+      <button class="modal-close" onclick="closeCurrencyModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="currencyModalBody">
+      <div style="text-align:center;padding:30px;color:#999">جارٍ تحميل الأسعار...</div>
+    </div>
+    <div style="padding:0 24px 16px;text-align:center;font-size:11px;color:#bbb">
+      الأسعار تقريبية وقد تختلف عن أسعار السوق الفعلية
+    </div>
+  </div>
+</div>
+
+<script>
+// WEATHER API (Open-Meteo - free, no key needed)
+const weatherCodes = {
+  0:'☀️', 1:'🌤', 2:'⛅', 3:'☁️', 45:'🌫', 48:'🌫',
+  51:'🌦', 53:'🌦', 55:'🌧', 61:'🌧', 63:'🌧', 65:'🌧',
+  71:'🌨', 73:'🌨', 75:'❄️', 80:'🌦', 81:'🌧', 82:'⛈', 95:'⛈', 96:'⛈', 99:'⛈'
+};
+const weatherDesc = {
+  0:'صافي', 1:'صافي غالباً', 2:'غائم جزئياً', 3:'غائم', 45:'ضبابي', 48:'ضبابي',
+  51:'رذاذ خفيف', 53:'رذاذ', 55:'رذاذ كثيف', 61:'مطر خفيف', 63:'مطر', 65:'مطر غزير',
+  71:'ثلوج خفيفة', 73:'ثلوج', 75:'ثلوج كثيفة', 80:'أمطار متفرقة', 81:'أمطار', 82:'أمطار غزيرة',
+  95:'عواصف رعدية', 96:'عواصف مع برد', 99:'عواصف شديدة'
+};
+const dayNames = ['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const dayShort = ['الأح','الإث','الثل','الأر','الخم','الجم','السب'];
+
+const cities = {
+  Jerusalem: { lat:31.7683, lon:35.2137, name:'القدس' },
+  Gaza: { lat:31.5017, lon:34.4668, name:'غزة' },
+  Ramallah: { lat:31.9038, lon:35.2034, name:'رام الله' },
+  Nablus: { lat:32.2211, lon:35.2544, name:'نابلس' },
+  Hebron: { lat:31.5326, lon:35.0998, name:'الخليل' },
+  Jenin: { lat:32.4607, lon:35.2953, name:'جنين' }
+};
+
+function fetchWeather(cityKey) {
+  const c = cities[cityKey];
+  if (!c) return;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lon}&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max&timezone=Asia/Jerusalem&forecast_days=5`;
+  fetch(url).then(r => r.json()).then(data => {
+    const cur = data.current;
+    const temp = Math.round(cur.temperature_2m);
+    const code = cur.weather_code;
+    document.getElementById('wTemp').textContent = temp + '°';
+    document.getElementById('wCity').textContent = c.name + '، فلسطين';
+    document.getElementById('wDesc').textContent = weatherDesc[code] || 'غير معروف';
+    document.getElementById('wIcon').textContent = weatherCodes[code] || '🌤';
+    document.getElementById('topWeather').textContent = (weatherCodes[code]||'☀') + ' ' + c.name + ' ' + temp + '°';
+
+    // Forecast
+    const daily = data.daily;
+    let forecastHTML = '';
+    for (let i = 1; i <= 4; i++) {
+      const d = new Date(daily.time[i]);
+      const dCode = daily.weather_code[i];
+      const dTemp = Math.round(daily.temperature_2m_max[i]);
+      forecastHTML += `<div class="weather-day"><div class="day">${dayShort[d.getDay()]}</div><div>${weatherCodes[dCode]||'🌤'}</div><div class="temp">${dTemp}°</div></div>`;
+    }
+    document.getElementById('wForecast').innerHTML = forecastHTML;
+  }).catch(() => {});
+}
+
+// City buttons
+document.querySelectorAll('.weather-city-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.weather-city-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    fetchWeather(this.dataset.city);
+  });
+});
+
+// Load default
+fetchWeather('Jerusalem');
+
+// CURRENCY (using exchangerate.host or frankfurter.app - free)
+const currencyData = [
+  { code:'USD', flag:'🇺🇸', name:'دولار أمريكي', nameEn:'US Dollar' },
+  { code:'ILS', flag:'🇮🇱', name:'شيقل إسرائيلي', nameEn:'Israeli Shekel' },
+  { code:'JOD', flag:'🇯🇴', name:'دينار أردني', nameEn:'Jordanian Dinar' },
+  { code:'EUR', flag:'🇪🇺', name:'يورو', nameEn:'Euro' },
+  { code:'GBP', flag:'🇬🇧', name:'جنيه إسترليني', nameEn:'British Pound' },
+  { code:'SAR', flag:'🇸🇦', name:'ريال سعودي', nameEn:'Saudi Riyal' },
+  { code:'EGP', flag:'🇪🇬', name:'جنيه مصري', nameEn:'Egyptian Pound' },
+  { code:'TRY', flag:'🇹🇷', name:'ليرة تركية', nameEn:'Turkish Lira' },
+  { code:'AED', flag:'🇦🇪', name:'درهم إماراتي', nameEn:'UAE Dirham' },
+  { code:'KWD', flag:'🇰🇼', name:'دينار كويتي', nameEn:'Kuwaiti Dinar' }
+];
+
+let exchangeRates = {};
+
+function fetchCurrency() {
+  fetch('https://api.frankfurter.app/latest?from=USD&to=ILS,JOD,EUR,GBP,SAR,EGP,TRY,AED,KWD')
+    .then(r => r.json())
+    .then(data => {
+      exchangeRates = data.rates;
+      exchangeRates['USD'] = 1;
+      // Update sidebar
+      document.getElementById('cUSD').textContent = '1.00 $';
+      document.getElementById('cILS').textContent = (exchangeRates['ILS'] || 3.65).toFixed(2) + ' ₪';
+      document.getElementById('cJOD').textContent = (exchangeRates['JOD'] || 0.71).toFixed(3) + ' د.أ';
+    }).catch(() => {
+      document.getElementById('cUSD').textContent = '1.00 $';
+      document.getElementById('cILS').textContent = '3.65 ₪';
+      document.getElementById('cJOD').textContent = '0.709 د.أ';
+    });
+}
+fetchCurrency();
+
+function openCurrencyModal() {
+  const modal = document.getElementById('currencyModal');
+  modal.classList.add('show');
+  let html = '';
+  const symbols = { USD:'$', ILS:'₪', JOD:'د.أ', EUR:'€', GBP:'£', SAR:'ر.س', EGP:'ج.م', TRY:'₺', AED:'د.إ', KWD:'د.ك' };
+  currencyData.forEach(c => {
+    const rate = c.code === 'USD' ? 1 : (exchangeRates[c.code] || '--');
+    const rateStr = typeof rate === 'number' ? rate.toFixed(c.code === 'JOD' || c.code === 'KWD' ? 3 : 2) : rate;
+    html += `
+      <div class="modal-currency-row">
+        <div class="modal-currency-info">
+          <span class="modal-currency-flag">${c.flag}</span>
+          <div>
+            <div class="modal-currency-name">${c.name}</div>
+            <div class="modal-currency-code">${c.code} - ${c.nameEn}</div>
+          </div>
+        </div>
+        <div class="modal-currency-rates">
+          <div class="modal-rate-buy"><span>${rateStr}</span> ${symbols[c.code] || ''}</div>
+        </div>
+      </div>`;
+  });
+  html += '<div style="text-align:center;font-size:11px;color:#bbb;margin-top:12px">سعر الصرف مقابل 1 دولار أمريكي</div>';
+  document.getElementById('currencyModalBody').innerHTML = html;
+}
+
+function closeCurrencyModal() {
+  document.getElementById('currencyModal').classList.remove('show');
+}
+document.getElementById('currencyModal').addEventListener('click', function(e) {
+  if (e.target === this) closeCurrencyModal();
+});
+</script>
+
 </body>
 </html>
