@@ -626,15 +626,15 @@ $reportsNews = getArticlesByCategory('reports', 3);
   </a>
 
   <nav>
-    <a href="index.php" class="breaking">🔴 عاجل</a>
+    <a href="category.php?type=breaking" class="breaking">🔴 عاجل</a>
     <a href="index.php" class="active">الرئيسية</a>
-    <a href="#latest" onclick="scrollToSection('latest')">آخر الأخبار</a>
-    <a href="#political" onclick="scrollToSection('political')">سياسة</a>
-    <a href="#economy" onclick="scrollToSection('economy')">اقتصاد</a>
-    <a href="#sports" onclick="scrollToSection('sports')">رياضة</a>
-    <a href="#arts" onclick="scrollToSection('arts')">فنون</a>
-    <a href="#media" onclick="scrollToSection('media')">ميديا</a>
-    <a href="#reports" onclick="scrollToSection('reports')">تقارير</a>
+    <a href="category.php?type=latest">آخر الأخبار</a>
+    <a href="category.php?slug=political">سياسة</a>
+    <a href="category.php?slug=economy">اقتصاد</a>
+    <a href="category.php?slug=sports">رياضة</a>
+    <a href="category.php?slug=arts">فنون</a>
+    <a href="category.php?slug=media">ميديا</a>
+    <a href="category.php?slug=reports">تقارير</a>
   </nav>
 
   <div class="header-actions">
