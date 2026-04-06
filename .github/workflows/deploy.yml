@@ -21,8 +21,12 @@ jobs:
           set ftp:ssl-allow yes
           set ftp:ssl-force no
           set ssl:verify-certificate no
-          set net:timeout 30
-          set net:max-retries 3
-          mirror --reverse --only-newer --exclude .git/ --exclude .github/ --exclude newsflow-v2.zip --exclude database.sql --exclude README_SETUP.txt ./ /
+          set ftp:passive-mode yes
+          set net:timeout 60
+          set net:max-retries 10
+          set net:reconnect-interval-base 5
+          set net:reconnect-interval-multiplier 1
+          set mirror:parallel-transfer-count 1
+          mirror --reverse --only-newer --no-perms --exclude .git/ --exclude .github/ --exclude newsflow-v2.zip --exclude database.sql --exclude README_SETUP.txt ./ /
           quit
           EOF
