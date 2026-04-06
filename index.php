@@ -210,20 +210,20 @@ $reportsNews = getArticlesByCategory('reports', 3);
   .see-all:hover { background:rgba(26,115,232,.12); border-color:rgba(26,115,232,.3); }
 
   /* HERO */
-  .hero-grid { display:grid; grid-template-columns:1.8fr 1fr; grid-template-rows:auto auto; gap:18px; margin-bottom:32px; }
+  .hero-grid { display:grid; grid-template-columns:1.6fr 1fr; grid-template-rows:1fr 1fr; gap:16px; margin-bottom:32px; height:480px; }
   .hero-main {
     grid-row:1/3; border-radius:var(--radius-lg); overflow:hidden;
-    position:relative; cursor:pointer; min-height:420px;
+    position:relative; cursor:pointer;
     background:linear-gradient(135deg,#1e293b,#334155);
+    text-decoration:none;
   }
-  .hero-main a { display:block; height:100%; }
   .hero-main img, .news-card img { width:100%; height:100%; object-fit:cover; }
   .hero-main .img-wrap { position:absolute; inset:0; }
   .hero-main .img-wrap img { transition:transform 6s ease; }
   .hero-main:hover .img-wrap img { transform:scale(1.05); }
   .hero-main .img-wrap::after {
     content:''; position:absolute; inset:0;
-    background:linear-gradient(to top,rgba(0,0,0,.85) 0%,rgba(0,0,0,.3) 40%,transparent 70%);
+    background:linear-gradient(to top,rgba(0,0,0,.88) 0%,rgba(0,0,0,.35) 40%,transparent 65%);
   }
   .hero-overlay { position:absolute; bottom:0; left:0; right:0; padding:28px; z-index:2; }
   .source-badge {
@@ -232,28 +232,33 @@ $reportsNews = getArticlesByCategory('reports', 3);
     font-size:11px; font-weight:700; margin-bottom:12px;
     backdrop-filter:blur(4px); letter-spacing:.3px;
   }
-  .hero-title { font-size:24px; font-weight:800; line-height:1.5; margin-bottom:12px; color:#fff; text-shadow:0 2px 8px rgba(0,0,0,.3); }
+  .hero-title { font-size:24px; font-weight:800; line-height:1.5; margin-bottom:8px; color:#fff; text-shadow:0 2px 8px rgba(0,0,0,.3); }
+  .hero-excerpt { font-size:14px; line-height:1.7; color:rgba(255,255,255,.6); margin-bottom:12px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
   .meta { display:flex; align-items:center; gap:12px; font-size:12px; color:rgba(255,255,255,.55); font-weight:500; }
   .meta-dot { width:3px; height:3px; border-radius:50%; background:rgba(255,255,255,.35); }
 
   .hero-side {
     border-radius:var(--radius-lg); overflow:hidden; position:relative;
-    cursor:pointer; min-height:195px;
-    background:var(--card);
-    border:1px solid var(--border);
+    cursor:pointer;
+    background:linear-gradient(135deg,#1e293b,#334155);
     transition:all .3s ease;
     box-shadow:var(--shadow-sm);
+    text-decoration:none; display:block;
   }
-  .hero-side:hover { transform:translateY(-4px); box-shadow:var(--shadow-lg); border-color:rgba(26,115,232,.2); }
-  .hero-side-img { height:130px; overflow:hidden; position:relative; }
-  .hero-side-img img { transition:transform .5s ease; }
-  .hero-side:hover .hero-side-img img { transform:scale(1.06); }
-  .hero-side-img::after {
+  .hero-side:hover { transform:translateY(-3px); box-shadow:var(--shadow-lg); }
+  .hero-side .img-wrap { position:absolute; inset:0; }
+  .hero-side .img-wrap img { width:100%; height:100%; object-fit:cover; transition:transform .5s ease; }
+  .hero-side:hover .img-wrap img { transform:scale(1.06); }
+  .hero-side .img-wrap::after {
     content:''; position:absolute; inset:0;
-    background:linear-gradient(to bottom,transparent 30%,rgba(0,0,0,.4));
+    background:linear-gradient(to top,rgba(0,0,0,.85) 0%,rgba(0,0,0,.25) 50%,transparent 70%);
   }
-  .hero-side-body { padding:14px 16px; }
-  .hero-side-body h3 { font-size:14px; font-weight:700; line-height:1.5; margin-bottom:6px; color:var(--text); }
+  .hero-side-overlay {
+    position:absolute; bottom:0; left:0; right:0; padding:18px; z-index:2;
+  }
+  .hero-side-overlay .card-cat { margin-bottom:8px; }
+  .hero-side-overlay h3 { font-size:15px; font-weight:700; line-height:1.5; color:#fff; margin-bottom:6px; text-shadow:0 1px 4px rgba(0,0,0,.3); }
+  .hero-side-overlay .meta { font-size:11px; }
 
   /* NEWS GRID */
   .news-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-bottom:32px; }
@@ -678,8 +683,9 @@ $reportsNews = getArticlesByCategory('reports', 3);
     .footer-inner { grid-template-columns:1fr 1fr; }
   }
   @media(max-width:900px) {
-    .hero-grid { grid-template-columns:1fr; }
-    .hero-main { min-height:280px; grid-row:auto; }
+    .hero-grid { grid-template-columns:1fr; height:auto; }
+    .hero-main { min-height:300px; grid-row:auto; }
+    .hero-side { min-height:200px; }
     .news-grid { grid-template-columns:repeat(2,1fr); }
     .media-grid { grid-template-columns:repeat(2,1fr); }
     nav { display:none; }
@@ -694,8 +700,10 @@ $reportsNews = getArticlesByCategory('reports', 3);
     .news-grid { grid-template-columns:1fr; }
     .news-grid-2col { grid-template-columns:1fr; }
     .media-grid { grid-template-columns:1fr 1fr; }
-    .hero-main { min-height:220px; }
+    .hero-main { min-height:240px; }
+    .hero-side { min-height:180px; }
     .hero-title { font-size:18px; }
+    .hero-excerpt { display:none; }
     .main-layout { padding:16px 12px; }
     .stats-bar { padding:12px 16px; }
     .user-panel { width:100%; }
@@ -838,27 +846,28 @@ $reportsNews = getArticlesByCategory('reports', 3);
                 <img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/news1/800/500'); ?>" alt="">
               </div>
               <div class="hero-overlay">
-                <div class="source-badge">🌐 <?php echo e($article['source_name']); ?></div>
+                <div class="source-badge"><?php echo e($article['source_name']); ?></div>
                 <div class="hero-title"><?php echo e($article['title']); ?></div>
+                <div class="hero-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 160)); ?></div>
                 <div class="meta">
                   <span><?php echo timeAgo($article['published_at']); ?></span>
                   <span class="meta-dot"></span>
-                  <span>👁 <?php echo formatViews($article['view_count']); ?></span>
+                  <span><?php echo formatViews($article['view_count']); ?> مشاهدة</span>
                   <span class="meta-dot"></span>
-                  <span>💬 <?php echo number_format($article['comments'] ?? 0); ?> تعليق</span>
+                  <span><?php echo number_format($article['comments'] ?? 0); ?> تعليق</span>
                 </div>
               </div>
             </a>
             <?php $first = false; ?>
           <?php else: ?>
             <a class="hero-side" href="article.php?id=<?php echo (int)$article['id']; ?>">
-              <div class="hero-side-img">
-                <img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/news' . rand(1,10) . '/400/200'); ?>" alt="" style="width:100%;height:100%;object-fit:cover;">
+              <div class="img-wrap">
+                <img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/news' . rand(1,10) . '/400/300'); ?>" alt="">
               </div>
-              <div class="hero-side-body">
-                <div class="card-cat <?php echo $article['css_class'] ?? 'cat-political'; ?>"><?php echo e($article['cat_name']); ?></div>
-                <h3><?php echo e(substr($article['title'], 0, 60) . '...'); ?></h3>
-                <div class="meta" style="margin-top:6px"><span><?php echo timeAgo($article['published_at']); ?></span><span class="meta-dot"></span><span>👁 <?php echo formatViews($article['view_count']); ?></span></div>
+              <div class="hero-side-overlay">
+                <span class="card-cat <?php echo $article['css_class'] ?? 'cat-political'; ?>"><?php echo e($article['cat_name']); ?></span>
+                <h3><?php echo e($article['title']); ?></h3>
+                <div class="meta"><span><?php echo e($article['source_name']); ?></span><span class="meta-dot"></span><span><?php echo timeAgo($article['published_at']); ?></span></div>
               </div>
             </a>
           <?php endif; ?>
