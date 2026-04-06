@@ -440,7 +440,11 @@ if ($article['cat_slug']) {
 
         <!-- Article Content -->
         <div class="article-content">
-            <?php echo $article['content']; ?>
+            <?php
+            // تنظيف المحتوى - السماح فقط بوسوم HTML آمنة
+            $allowedTags = '<p><br><strong><b><em><i><ul><ol><li><h2><h3><h4><blockquote><a><img>';
+            echo strip_tags($article['content'], $allowedTags);
+            ?>
         </div>
 
         <!-- Article Footer with Sharing -->

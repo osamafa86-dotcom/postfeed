@@ -17,7 +17,7 @@ define('DB_CHARSET', 'utf8mb4');
 // ============================================
 // إعدادات عامة
 // ============================================
-define('SITE_URL', 'http://postfeed.emdatra.org');
+define('SITE_URL', 'https://postfeed.emdatra.org');
 define('SITE_NAME', 'نيوزفلو');
 define('SITE_TAGLINE', 'مجمع المصادر الإخبارية');
 define('TIMEZONE', 'Asia/Amman');

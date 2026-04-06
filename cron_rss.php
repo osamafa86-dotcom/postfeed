@@ -32,7 +32,7 @@ foreach ($sources as $source) {
                 CURLOPT_TIMEOUT => 30,
                 CURLOPT_FOLLOWLOCATION => true,
                 CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; NewsFlow/1.0)',
-                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYPEER => true,
             ]);
             $rssContent = curl_exec($ch);
             curl_close($ch);

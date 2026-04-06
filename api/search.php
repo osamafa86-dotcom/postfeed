@@ -7,7 +7,7 @@
  */
 
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Origin: https://postfeed.emdatra.org');
 header('Access-Control-Allow-Methods: GET, OPTIONS');
 
 require_once __DIR__ . '/../includes/config.php';
@@ -31,9 +31,8 @@ try {
     // Limit search term length to prevent abuse
     $query = substr($query, 0, 100);
 
-    // Prepare search term with wildcards
-    $searchTerm = '%' . $db->quote(trim($query), PDO::PARAM_STR) . '%';
-    $searchTerm = str_replace("'", "", $searchTerm);
+    // Prepare search term with wildcards (safe parameter binding)
+    $searchTerm = '%' . trim($query) . '%';
 
     // Search articles
     $sql = "SELECT
