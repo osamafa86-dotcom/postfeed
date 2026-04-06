@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو - إدارة المصادر
+ * نيوزفلو - إدارة الأقسام
  */
 
 require_once __DIR__ . '/../includes/config.php';
@@ -11,18 +11,18 @@ $db = getDB();
 $action = $_GET['action'] ?? 'list';
 $error = '';
 $success = '';
-$source = null;
+$category = null;
 
 // معالجة الحذف
 if ($action === 'delete' && isset($_GET['id'])) {
     $id = (int)$_GET['id'];
     try {
-        $stmt = $db->prepare("DELETE FROM sources WHERE id = ?");
+        $stmt = $db->prepare("DELETE FROM categories WHERE id = ?");
         $stmt->execute([$id]);
-        $success = 'تم حذف المصدر بنجاح';
+        $success = 'تم حذف القسم بنجاح';
         $action = 'list';
     } catch (PDOException $e) {
-        $error = 'خطأ في حذف المصدر';
+        $error = 'خطأ في حذف القسم';
     }
 }
 
@@ -31,11 +31,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id = isset($_POST['id']) && $_POST['id'] ? (int)$_POST['id'] : null;
     $name = trim($_POST['name'] ?? '');
     $slug = trim($_POST['slug'] ?? '');
-    $logo_letter = trim($_POST['logo_letter'] ?? '');
-    $logo_color = trim($_POST['logo_color'] ?? '');
-    $logo_bg = trim($_POST['logo_bg'] ?? '');
-    $url = trim($_POST['url'] ?? '');
-    $rss_url = trim($_POST['rss_url'] ?? '');
+    $icon = trim($_POST['icon'] ?? '');
+    $css_class = trim($_POST['css_class'] ?? '');
+    $sort_order = (int)($_POST['sort_order'] ?? 0);
     $is_active = isset($_POST['is_active']) ? 1 : 0;
 
     if (empty($name) || empty($slug)) {
@@ -45,58 +43,80 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($id) {
                 // تحديث
                 $stmt = $db->prepare("
-                    UPDATE sources SET
-                    name = ?, slug = ?, logo_letter = ?, logo_color = ?,
-                    logo_bg = ?, url = ?, rss_url = ?, is_active = ?
+                    UPDATE categories SET
+                    name = ?, slug = ?, icon = ?, css_class = ?,
+                    sort_order = ?, is_active = ?
                     WHERE id = ?
                 ");
                 $stmt->execute([
-                    $name, $slug, $logo_letter, $logo_color,
-                    $logo_bg, $url, $rss_url, $is_active, $id
+                    $name, $slug, $icon, $css_class,
+                    $sort_order, $is_active, $id
                 ]);
-                $success = 'تم تحديث المصدر بنجاح';
+                $success = 'تم تحديث القسم بنجاح';
             } else {
                 // إضافة
                 $stmt = $db->prepare("
-                    INSERT INTO sources
-                    (name, slug, logo_letter, logo_color, logo_bg, url, rss_url, is_active, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                    INSERT INTO categories
+                    (name, slug, icon, css_class, sort_order, is_active)
+                    VALUES (?, ?, ?, ?, ?, ?)
                 ");
                 $stmt->execute([
-                    $name, $slug, $logo_letter, $logo_color,
-                    $logo_bg, $url, $rss_url, $is_active
+                    $name, $slug, $icon, $css_class,
+                    $sort_order, $is_active
                 ]);
-                $success = 'تم إضافة المصدر بنجاح';
+                $success = 'تم إضافة القسم بنجاح';
                 $id = $db->lastInsertId();
             }
             $action = 'list';
         } catch (PDOException $e) {
-            $error = 'خطأ في حفظ المصدر: ' . $e->getMessage();
+            $error = 'خطأ في حفظ القسم: ' . $e->getMessage();
         }
     }
 }
 
-// جلب المصدر للتعديل
+// جلب القسم للتعديل
 if (in_array($action, ['edit', 'delete']) && isset($_GET['id'])) {
     $id = (int)$_GET['id'];
-    $stmt = $db->prepare("SELECT * FROM sources WHERE id = ?");
+    $stmt = $db->prepare("SELECT * FROM categories WHERE id = ?");
     $stmt->execute([$id]);
-    $source = $stmt->fetch();
-    if (!$source && $action === 'edit') {
-        $error = 'المصدر غير موجود';
+    $category = $stmt->fetch();
+    if (!$category && $action === 'edit') {
+        $error = 'القسم غير موجود';
         $action = 'list';
     }
 }
 
-// جلب قائمة المصادر للعرض
-$sources = $db->query("SELECT * FROM sources ORDER BY name")->fetchAll();
+// جلب قائمة الأقسام للعرض
+$categories = $db->query("SELECT * FROM categories ORDER BY sort_order, name")->fetchAll();
+
+// خيارات التصنيف CSS
+$cssClassOptions = [
+    'cat-political' => 'سياسة',
+    'cat-economic' => 'اقتصاد',
+    'cat-sports' => 'رياضة',
+    'cat-arts' => 'فنون وثقافة',
+    'cat-reports' => 'تقارير',
+    'cat-media' => 'إعلام',
+    'cat-breaking' => 'عاجل',
+];
+
+// ألوان معاينة التصنيفات
+$cssClassColors = [
+    'cat-political' => '#e74c3c',
+    'cat-economic' => '#27ae60',
+    'cat-sports' => '#2980b9',
+    'cat-arts' => '#8e44ad',
+    'cat-reports' => '#f39c12',
+    'cat-media' => '#1abc9c',
+    'cat-breaking' => '#c0392b',
+];
 ?>
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $action === 'add' ? 'إضافة مصدر' : ($action === 'edit' ? 'تعديل مصدر' : 'إدارة المصادر'); ?> - نيوزفلو</title>
+    <title><?php echo $action === 'add' ? 'إضافة قسم' : ($action === 'edit' ? 'تعديل قسم' : 'إدارة الأقسام'); ?> - نيوزفلو</title>
     <style>
         * {
             margin: 0;
@@ -302,12 +322,6 @@ $sources = $db->query("SELECT * FROM sources ORDER BY name")->fetchAll();
             box-shadow: 0 0 0 3px rgba(90, 133, 176, 0.1);
         }
 
-        .color-input {
-            padding: 5px;
-            height: 45px;
-            cursor: pointer;
-        }
-
         .checkbox-item {
             display: flex;
             align-items: center;
@@ -384,16 +398,17 @@ $sources = $db->query("SELECT * FROM sources ORDER BY name")->fetchAll();
             background: #f9f9f9;
         }
 
-        .logo-preview {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 40px;
-            height: 40px;
-            border-radius: 6px;
-            font-weight: bold;
+        .icon-preview {
+            font-size: 24px;
+        }
+
+        .css-class-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
             color: white;
-            font-size: 18px;
         }
 
         .source-actions {
@@ -517,8 +532,8 @@ $sources = $db->query("SELECT * FROM sources ORDER BY name")->fetchAll();
             <ul class="nav-menu">
                 <li class="nav-item"><a href="index.php" class="nav-link">لوحة التحكم</a></li>
                 <li class="nav-item"><a href="articles.php" class="nav-link">الأخبار</a></li>
-                <li class="nav-item"><a href="categories.php" class="nav-link">الأقسام</a></li>
-                <li class="nav-item"><a href="sources.php" class="nav-link active">المصادر</a></li>
+                <li class="nav-item"><a href="categories.php" class="nav-link active">الأقسام</a></li>
+                <li class="nav-item"><a href="sources.php" class="nav-link">المصادر</a></li>
                 <li class="nav-item"><a href="ticker.php" class="nav-link">الشريط الإخباري</a></li>
                 <li class="nav-item"><a href="settings.php" class="nav-link">الإعدادات</a></li>
             </ul>
@@ -541,24 +556,24 @@ $sources = $db->query("SELECT * FROM sources ORDER BY name")->fetchAll();
             <?php if (in_array($action, ['add', 'edit'])): ?>
                 <!-- Form -->
                 <div class="page-header">
-                    <h1><?php echo $action === 'add' ? 'إضافة مصدر جديد' : 'تعديل المصدر'; ?></h1>
+                    <h1><?php echo $action === 'add' ? 'إضافة قسم جديد' : 'تعديل القسم'; ?></h1>
                 </div>
 
                 <div class="form-container">
                     <form method="POST">
-                        <?php if ($source): ?>
-                            <input type="hidden" name="id" value="<?php echo $source['id']; ?>">
+                        <?php if ($category): ?>
+                            <input type="hidden" name="id" value="<?php echo $category['id']; ?>">
                         <?php endif; ?>
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="name">اسم المصدر *</label>
+                                <label for="name">اسم القسم *</label>
                                 <input
                                     type="text"
                                     id="name"
                                     name="name"
                                     required
-                                    value="<?php echo $source ? e($source['name']) : ''; ?>"
+                                    value="<?php echo $category ? e($category['name']) : ''; ?>"
                                 >
                             </div>
                             <div class="form-group">
@@ -568,67 +583,44 @@ $sources = $db->query("SELECT * FROM sources ORDER BY name")->fetchAll();
                                     id="slug"
                                     name="slug"
                                     required
-                                    value="<?php echo $source ? e($source['slug']) : ''; ?>"
+                                    value="<?php echo $category ? e($category['slug']) : ''; ?>"
                                 >
                             </div>
                         </div>
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="logo_letter">حرف اللوجو</label>
+                                <label for="icon">الأيقونة (إيموجي)</label>
                                 <input
                                     type="text"
-                                    id="logo_letter"
-                                    name="logo_letter"
-                                    maxlength="2"
-                                    value="<?php echo $source ? e($source['logo_letter']) : ''; ?>"
+                                    id="icon"
+                                    name="icon"
+                                    maxlength="10"
+                                    value="<?php echo $category ? e($category['icon']) : ''; ?>"
                                 >
                             </div>
                             <div class="form-group">
-                                <label for="logo_color">لون النص</label>
-                                <input
-                                    type="color"
-                                    id="logo_color"
-                                    name="logo_color"
-                                    class="color-input"
-                                    value="<?php echo $source ? e($source['logo_color']) : '#ffffff'; ?>"
-                                >
+                                <label for="css_class">تصنيف CSS</label>
+                                <select id="css_class" name="css_class">
+                                    <option value="">-- اختر --</option>
+                                    <?php foreach ($cssClassOptions as $val => $label): ?>
+                                        <option value="<?php echo e($val); ?>" <?php echo ($category && $category['css_class'] === $val) ? 'selected' : ''; ?>>
+                                            <?php echo e($label); ?> (<?php echo e($val); ?>)
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
                             </div>
                         </div>
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="logo_bg">لون الخلفية</label>
+                                <label for="sort_order">ترتيب العرض</label>
                                 <input
-                                    type="color"
-                                    id="logo_bg"
-                                    name="logo_bg"
-                                    class="color-input"
-                                    value="<?php echo $source ? e($source['logo_bg']) : '#5a85b0'; ?>"
-                                >
-                            </div>
-                        </div>
-
-                        <div class="form-row full">
-                            <div class="form-group">
-                                <label for="url">رابط المصدر</label>
-                                <input
-                                    type="url"
-                                    id="url"
-                                    name="url"
-                                    value="<?php echo $source ? e($source['url']) : ''; ?>"
-                                >
-                            </div>
-                        </div>
-
-                        <div class="form-row full">
-                            <div class="form-group">
-                                <label for="rss_url">رابط RSS</label>
-                                <input
-                                    type="url"
-                                    id="rss_url"
-                                    name="rss_url"
-                                    value="<?php echo $source ? e($source['rss_url']) : ''; ?>"
+                                    type="number"
+                                    id="sort_order"
+                                    name="sort_order"
+                                    min="0"
+                                    value="<?php echo $category ? (int)$category['sort_order'] : 0; ?>"
                                 >
                             </div>
                         </div>
@@ -641,7 +633,7 @@ $sources = $db->query("SELECT * FROM sources ORDER BY name")->fetchAll();
                                         type="checkbox"
                                         id="is_active"
                                         name="is_active"
-                                        <?php echo !$source || $source['is_active'] ? 'checked' : ''; ?>
+                                        <?php echo !$category || $category['is_active'] ? 'checked' : ''; ?>
                                     >
                                     <label for="is_active">مفعل</label>
                                 </div>
@@ -650,7 +642,7 @@ $sources = $db->query("SELECT * FROM sources ORDER BY name")->fetchAll();
 
                         <div class="form-buttons">
                             <button type="submit" class="btn-primary">حفظ</button>
-                            <a href="sources.php" class="btn-cancel">إلغاء</a>
+                            <a href="categories.php" class="btn-cancel">إلغاء</a>
                         </div>
                     </form>
                 </div>
@@ -658,48 +650,56 @@ $sources = $db->query("SELECT * FROM sources ORDER BY name")->fetchAll();
             <?php else: ?>
                 <!-- List -->
                 <div class="page-header">
-                    <h1>إدارة المصادر</h1>
-                    <a href="sources.php?action=add" class="btn-primary">+ إضافة مصدر</a>
+                    <h1>إدارة الأقسام</h1>
+                    <a href="categories.php?action=add" class="btn-primary">+ إضافة قسم</a>
                 </div>
 
                 <div class="table-container">
                     <table class="sources-table">
                         <thead>
                             <tr>
-                                <th>اللوجو</th>
+                                <th>الأيقونة</th>
                                 <th>الاسم</th>
-                                <th>الرابط الودود</th>
+                                <th>التصنيف</th>
+                                <th>الترتيب</th>
                                 <th>الحالة</th>
                                 <th>الإجراءات</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php if (!empty($sources)): ?>
-                                <?php foreach ($sources as $src): ?>
+                            <?php if (!empty($categories)): ?>
+                                <?php foreach ($categories as $cat): ?>
                                     <tr>
                                         <td>
-                                            <div class="logo-preview" style="background-color: <?php echo e($src['logo_bg']); ?>; color: <?php echo e($src['logo_color']); ?>;">
-                                                <?php echo e($src['logo_letter']); ?>
-                                            </div>
+                                            <span class="icon-preview"><?php echo e($cat['icon']); ?></span>
                                         </td>
-                                        <td><?php echo e($src['name']); ?></td>
-                                        <td><?php echo e($src['slug']); ?></td>
+                                        <td><?php echo e($cat['name']); ?></td>
                                         <td>
-                                            <span class="status-badge status-<?php echo $src['is_active'] ? 'active' : 'inactive'; ?>">
-                                                <?php echo $src['is_active'] ? 'مفعل' : 'معطل'; ?>
+                                            <?php if (!empty($cat['css_class'])): ?>
+                                                <span class="css-class-badge" style="background-color: <?php echo $cssClassColors[$cat['css_class']] ?? '#999'; ?>;">
+                                                    <?php echo $cssClassOptions[$cat['css_class']] ?? e($cat['css_class']); ?>
+                                                </span>
+                                            <?php else: ?>
+                                                <span style="color: #999;">—</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td><?php echo (int)$cat['sort_order']; ?></td>
+                                        <td>
+                                            <span class="status-badge status-<?php echo $cat['is_active'] ? 'active' : 'inactive'; ?>">
+                                                <?php echo $cat['is_active'] ? 'مفعل' : 'معطل'; ?>
                                             </span>
                                         </td>
                                         <td>
                                             <div class="source-actions">
-                                                <a href="sources.php?action=edit&id=<?php echo $src['id']; ?>" class="btn-sm btn-edit">تعديل</a>
-                                                <a href="sources.php?action=delete&id=<?php echo $src['id']; ?>" class="btn-sm btn-delete" onclick="return confirm('هل تريد حذف هذا المصدر؟')">حذف</a>
+                                                <a href="categories.php?action=edit&id=<?php echo $cat['id']; ?>" class="btn-sm btn-edit">تعديل</a>
+                                                <a href="categories.php?action=delete&id=<?php echo $cat['id']; ?>" class="btn-sm btn-delete" onclick="return confirm('هل تريد حذف هذا القسم؟')">حذف</a>
                                             </div>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="5" style="text-align: center; color: #999;">لا توجد مصادر</td>
+                                    <td colspan="6" style="text-align: center; color: #999;">لا توجد أقسام</td>
                                 </tr>
                             <?php endif; ?>
                         </tbody>

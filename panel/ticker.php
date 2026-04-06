@@ -525,18 +525,12 @@ $tickers = $db->query("SELECT * FROM ticker_items ORDER BY sort_order, created_a
             </div>
 
             <ul class="nav-menu">
-                <li class="nav-item">
-                    <a href="index.php" class="nav-link">لوحة التحكم</a>
-                </li>
-                <li class="nav-item">
-                    <a href="articles.php" class="nav-link">الأخبار</a>
-                </li>
-                <li class="nav-item">
-                    <a href="sources.php" class="nav-link">المصادر</a>
-                </li>
-                <li class="nav-item">
-                    <a href="ticker.php" class="nav-link active">الشريط الإخباري</a>
-                </li>
+                <li class="nav-item"><a href="index.php" class="nav-link">لوحة التحكم</a></li>
+                <li class="nav-item"><a href="articles.php" class="nav-link">الأخبار</a></li>
+                <li class="nav-item"><a href="categories.php" class="nav-link">الأقسام</a></li>
+                <li class="nav-item"><a href="sources.php" class="nav-link">المصادر</a></li>
+                <li class="nav-item"><a href="ticker.php" class="nav-link active">الشريط الإخباري</a></li>
+                <li class="nav-item"><a href="settings.php" class="nav-link">الإعدادات</a></li>
             </ul>
 
             <div class="logout-section">
