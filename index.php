@@ -261,38 +261,77 @@ $reportsNews = getArticlesByCategory('reports', 3);
   .hero-side-overlay h3 { font-size:15px; font-weight:700; line-height:1.5; color:#fff; margin-bottom:6px; text-shadow:0 1px 4px rgba(0,0,0,.3); }
   .hero-side-overlay .meta { font-size:11px; }
 
-  /* PALESTINE NEWS GRID */
+  /* PALESTINE NEWS - HERO + GRID */
+  .ps-hero {
+    display:grid; grid-template-columns:1fr 1.2fr; gap:0;
+    background:#fff; border-radius:var(--radius-lg); overflow:hidden;
+    margin-bottom:22px; box-shadow:0 1px 6px rgba(0,0,0,.07);
+    border:1px solid #f0f0f0; text-decoration:none; cursor:pointer;
+    transition:all .3s ease;
+  }
+  .ps-hero:hover { box-shadow:0 8px 28px rgba(0,0,0,.1); transform:translateY(-2px); }
+  .ps-hero-img { overflow:hidden; min-height:340px; }
+  .ps-hero-img img { width:100%; height:100%; object-fit:cover; transition:transform .5s ease; }
+  .ps-hero:hover .ps-hero-img img { transform:scale(1.04); }
+  .ps-hero-text {
+    padding:32px 30px; display:flex; flex-direction:column; justify-content:center;
+  }
+  .ps-hero-text h3 {
+    font-size:22px; font-weight:800; line-height:1.7; color:#b33a3a;
+    margin-bottom:14px;
+  }
+  .ps-hero-text .ps-hero-excerpt {
+    font-size:14px; line-height:1.8; color:#6b7280; margin-bottom:18px;
+    display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden;
+  }
+  .ps-hero-meta {
+    display:flex; align-items:center; gap:14px; font-size:13px; color:#9ca3af;
+  }
+  .ps-hero-meta .source-icon {
+    width:32px; height:32px; border-radius:50%; background:#16a34a;
+    color:#fff; display:flex; align-items:center; justify-content:center;
+    font-size:13px; font-weight:700; flex-shrink:0;
+  }
+  .ps-hero-meta .meta-text { display:flex; align-items:center; gap:8px; }
+
   .palestine-grid {
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    gap:18px;
-    margin-bottom:32px;
+    display:grid; grid-template-columns:repeat(4,1fr);
+    gap:18px; margin-bottom:32px;
   }
   .ps-card {
     border-radius:var(--radius-lg); overflow:hidden;
     cursor:pointer; text-decoration:none; display:flex; flex-direction:column;
-    background:#fff;
-    transition:all .3s ease;
-    box-shadow:0 1px 4px rgba(0,0,0,.08);
+    background:#fff; transition:all .3s ease;
+    box-shadow:0 1px 4px rgba(0,0,0,.07);
     border:1px solid #f0f0f0;
   }
   .ps-card:hover { transform:translateY(-4px); box-shadow:0 8px 24px rgba(0,0,0,.12); }
   .ps-card .img-wrap { position:relative; height:190px; overflow:hidden; }
   .ps-card .img-wrap img { width:100%; height:100%; object-fit:cover; transition:transform .5s ease; }
   .ps-card:hover .img-wrap img { transform:scale(1.06); }
+  .ps-card .img-date {
+    position:absolute; bottom:10px; right:10px; z-index:2;
+    display:flex; align-items:center; gap:5px;
+    font-size:11px; color:#fff; background:rgba(0,0,0,.45);
+    padding:4px 10px; border-radius:20px; backdrop-filter:blur(4px);
+  }
   .ps-card-body {
-    padding:16px 18px 18px; flex:1; display:flex; flex-direction:column;
+    padding:14px 16px 16px; flex:1; display:flex; flex-direction:column;
   }
   .ps-card-body h3 {
     font-size:15px; font-weight:700; line-height:1.7; color:#b33a3a;
-    margin-bottom:8px;
-    display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
+    margin-bottom:10px;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
   }
-  .ps-card-body .ps-excerpt {
-    font-size:13px; line-height:1.7; color:#6b7280; margin-bottom:12px;
-    display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
+  .ps-card-footer {
+    display:flex; align-items:center; gap:8px; margin-top:auto;
+    font-size:12px; color:#9ca3af;
   }
-  .ps-card-body .meta { font-size:11px; margin-top:auto; }
+  .ps-card-footer .source-dot {
+    width:24px; height:24px; border-radius:50%; background:#16a34a;
+    color:#fff; display:flex; align-items:center; justify-content:center;
+    font-size:10px; font-weight:700; flex-shrink:0;
+  }
 
   /* NEWS GRID */
   .news-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-bottom:32px; }
@@ -720,7 +759,10 @@ $reportsNews = getArticlesByCategory('reports', 3);
     .hero-grid { grid-template-columns:1fr; height:auto; }
     .hero-main { min-height:300px; grid-row:auto; }
     .hero-side { min-height:200px; }
-    .palestine-grid { grid-template-columns:1fr 1fr; height:auto; }
+    .ps-hero { grid-template-columns:1fr; }
+    .ps-hero-img { min-height:250px; }
+    .ps-hero-text { padding:20px; }
+    .ps-hero-text h3 { font-size:18px; }
     .palestine-grid { grid-template-columns:repeat(2,1fr); }
     .news-grid { grid-template-columns:repeat(2,1fr); }
     .media-grid { grid-template-columns:repeat(2,1fr); }
@@ -740,8 +782,9 @@ $reportsNews = getArticlesByCategory('reports', 3);
     .hero-side { min-height:180px; }
     .hero-title { font-size:18px; }
     .hero-excerpt { display:none; }
-    .palestine-grid { grid-template-columns:1fr; }
+    .palestine-grid { grid-template-columns:1fr 1fr; }
     .ps-card .img-wrap { height:160px; }
+    .ps-hero-text h3 { font-size:17px; }
     .main-layout { padding:16px 12px; }
     .stats-bar { padding:12px 16px; }
     .user-panel { width:100%; }
@@ -874,20 +917,42 @@ $reportsNews = getArticlesByCategory('reports', 3);
       <div class="section-title"><div class="line" style="background:#16a34a"></div>🇵🇸 أحدث الأخبار الفلسطينية</div>
     </div>
     <?php if (!empty($palestineNews)): ?>
-    <div class="palestine-grid">
-      <?php foreach ($palestineNews as $pIdx => $article): ?>
-        <a class="ps-card" href="article.php?id=<?php echo (int)$article['id']; ?>">
-          <div class="img-wrap">
-            <img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/ps' . $pIdx . '/400/300'); ?>" alt="">
+      <?php $psFirst = $palestineNews[0]; ?>
+      <a class="ps-hero" href="article.php?id=<?php echo (int)$psFirst['id']; ?>">
+        <div class="ps-hero-text">
+          <h3><?php echo e($psFirst['title']); ?></h3>
+          <div class="ps-hero-excerpt"><?php echo e(mb_substr(strip_tags($psFirst['content'] ?? $psFirst['excerpt'] ?? ''), 0, 200)); ?></div>
+          <div class="ps-hero-meta">
+            <span class="source-icon"><?php echo e(mb_substr($psFirst['source_name'], 0, 1)); ?></span>
+            <div class="meta-text">
+              <span><?php echo e($psFirst['source_name']); ?></span>
+              <span class="meta-dot"></span>
+              <span><?php echo timeAgo($psFirst['published_at']); ?></span>
+            </div>
           </div>
-          <div class="ps-card-body">
-            <h3><?php echo e($article['title']); ?></h3>
-            <div class="ps-excerpt"><?php echo e(mb_substr(strip_tags($article['content'] ?? $article['excerpt'] ?? ''), 0, 120)); ?></div>
-            <div class="meta"><span><?php echo e($article['source_name']); ?></span><span class="meta-dot"></span><span><?php echo timeAgo($article['published_at']); ?></span></div>
-          </div>
-        </a>
-      <?php endforeach; ?>
-    </div>
+        </div>
+        <div class="ps-hero-img">
+          <img src="<?php echo e($psFirst['image_url'] ?? 'https://picsum.photos/seed/ps0/800/500'); ?>" alt="">
+        </div>
+      </a>
+
+      <div class="palestine-grid">
+        <?php for ($pIdx = 1; $pIdx < count($palestineNews); $pIdx++): $article = $palestineNews[$pIdx]; ?>
+          <a class="ps-card" href="article.php?id=<?php echo (int)$article['id']; ?>">
+            <div class="img-wrap">
+              <img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/ps' . $pIdx . '/400/300'); ?>" alt="">
+              <div class="img-date"><?php echo timeAgo($article['published_at']); ?></div>
+            </div>
+            <div class="ps-card-body">
+              <h3><?php echo e($article['title']); ?></h3>
+              <div class="ps-card-footer">
+                <span class="source-dot"><?php echo e(mb_substr($article['source_name'], 0, 1)); ?></span>
+                <span><?php echo e($article['source_name']); ?></span>
+              </div>
+            </div>
+          </a>
+        <?php endfor; ?>
+      </div>
     <?php endif; ?>
 
     <!-- BREAKING NEWS -->
