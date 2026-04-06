@@ -288,7 +288,11 @@ $reportsNews = getArticlesByCategory('reports', 3);
   .cat-reports { background:#fffbeb; color:#b45309; border:1px solid #fde68a; }
   .cat-media { background:#fdf4ff; color:#a21caf; border:1px solid #f0abfc; }
   .cat-breaking { background:#fef2f2; color:#dc2626; border:1px solid #fca5a5; }
-  .card-title { font-size:15px; font-weight:700; line-height:1.6; margin-bottom:10px; color:var(--text); }
+  .card-title { font-size:15px; font-weight:700; line-height:1.6; margin-bottom:8px; color:var(--text); }
+  .card-excerpt {
+    font-size:13px; line-height:1.7; color:var(--muted); margin-bottom:10px;
+    display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
+  }
   .card-meta { display:flex; align-items:center; justify-content:space-between; }
   .card-source { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); font-weight:500; }
   .source-dot { width:8px; height:8px; border-radius:50%; }
@@ -874,6 +878,7 @@ $reportsNews = getArticlesByCategory('reports', 3);
           <div class="list-body">
             <div class="card-cat cat-breaking">عاجل</div>
             <div class="list-title"><?php echo e($article['title']); ?></div>
+            <div class="card-excerpt" style="margin-bottom:6px"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 120)); ?></div>
             <div class="list-meta"><span>🌐 <?php echo e($article['source_name']); ?></span><span>·</span><span><?php echo timeAgo($article['published_at']); ?></span><span>·</span><span>👁 <?php echo formatViews($article['view_count']); ?></span></div>
           </div>
         </a>
@@ -891,7 +896,8 @@ $reportsNews = getArticlesByCategory('reports', 3);
           <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/lat' . rand(1,10) . '/400/300'); ?>" alt=""></div>
           <div class="card-body">
             <span class="card-cat <?php echo $article['css_class'] ?? 'cat-political'; ?>"><?php echo e($article['cat_name']); ?></span>
-            <div class="card-title"><?php echo e(substr($article['title'], 0, 50) . '...'); ?></div>
+            <div class="card-title"><?php echo e($article['title']); ?></div>
+            <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
             <div class="card-meta">
               <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#6b9fd4'); ?>"></span><?php echo e($article['source_name']); ?></div>
               <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
@@ -912,7 +918,8 @@ $reportsNews = getArticlesByCategory('reports', 3);
           <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/pol' . rand(1,10) . '/400/300'); ?>" alt=""></div>
           <div class="card-body">
             <span class="card-cat cat-political">سياسة</span>
-            <div class="card-title"><?php echo e(substr($article['title'], 0, 50) . '...'); ?></div>
+            <div class="card-title"><?php echo e($article['title']); ?></div>
+            <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
             <div class="card-meta">
               <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#6b9fd4'); ?>"></span><?php echo e($article['source_name']); ?></div>
               <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
@@ -933,7 +940,8 @@ $reportsNews = getArticlesByCategory('reports', 3);
           <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/eco' . rand(1,10) . '/400/300'); ?>" alt=""></div>
           <div class="card-body">
             <span class="card-cat cat-economic">اقتصاد</span>
-            <div class="card-title"><?php echo e(substr($article['title'], 0, 50) . '...'); ?></div>
+            <div class="card-title"><?php echo e($article['title']); ?></div>
+            <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
             <div class="card-meta">
               <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#85c1a3'); ?>"></span><?php echo e($article['source_name']); ?></div>
               <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
@@ -954,7 +962,8 @@ $reportsNews = getArticlesByCategory('reports', 3);
           <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/sp' . rand(1,10) . '/400/300'); ?>" alt=""></div>
           <div class="card-body">
             <span class="card-cat cat-sports">رياضة</span>
-            <div class="card-title"><?php echo e(substr($article['title'], 0, 50) . '...'); ?></div>
+            <div class="card-title"><?php echo e($article['title']); ?></div>
+            <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
             <div class="card-meta">
               <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#6b9fd4'); ?>"></span><?php echo e($article['source_name']); ?></div>
               <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
@@ -975,7 +984,8 @@ $reportsNews = getArticlesByCategory('reports', 3);
           <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/art' . rand(1,10) . '/400/300'); ?>" alt=""></div>
           <div class="card-body">
             <span class="card-cat cat-arts">فنون</span>
-            <div class="card-title"><?php echo e(substr($article['title'], 0, 50) . '...'); ?></div>
+            <div class="card-title"><?php echo e($article['title']); ?></div>
+            <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
             <div class="card-meta">
               <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#a08cc8'); ?>"></span><?php echo e($article['source_name']); ?></div>
               <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
@@ -1011,7 +1021,8 @@ $reportsNews = getArticlesByCategory('reports', 3);
           <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/rep' . rand(1,10) . '/400/300'); ?>" alt=""></div>
           <div class="card-body">
             <span class="card-cat cat-reports">تقرير</span>
-            <div class="card-title"><?php echo e(substr($article['title'], 0, 50) . '...'); ?></div>
+            <div class="card-title"><?php echo e($article['title']); ?></div>
+            <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
             <div class="card-meta">
               <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#c9ab6e'); ?>"></span><?php echo e($article['source_name']); ?></div>
               <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
