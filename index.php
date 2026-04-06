@@ -8,6 +8,7 @@ require_once __DIR__ . '/includes/functions.php';
 
 // جلب البيانات من قاعدة البيانات
 $heroArticles = getHeroArticles();
+$palestineNews = getPalestineNews(6);
 $breakingNews = getBreakingNews();
 $latestArticles = getLatestArticles(6);
 $categories = getCategories();
@@ -259,6 +260,44 @@ $reportsNews = getArticlesByCategory('reports', 3);
   .hero-side-overlay .card-cat { margin-bottom:8px; }
   .hero-side-overlay h3 { font-size:15px; font-weight:700; line-height:1.5; color:#fff; margin-bottom:6px; text-shadow:0 1px 4px rgba(0,0,0,.3); }
   .hero-side-overlay .meta { font-size:11px; }
+
+  /* PALESTINE NEWS GRID */
+  .palestine-grid {
+    display:grid;
+    grid-template-columns:1.5fr 1fr 1fr;
+    grid-template-rows:1fr 1fr;
+    gap:14px;
+    margin-bottom:32px;
+    height:520px;
+  }
+  .palestine-grid .hero-main {
+    grid-row:1/3; grid-column:1/2;
+    min-height:auto;
+  }
+  .ps-card {
+    border-radius:var(--radius-lg); overflow:hidden; position:relative;
+    cursor:pointer; text-decoration:none; display:block;
+    background:linear-gradient(135deg,#1e293b,#334155);
+    transition:all .3s ease;
+    box-shadow:var(--shadow-sm);
+  }
+  .ps-card:hover { transform:translateY(-3px); box-shadow:var(--shadow-lg); }
+  .ps-card .img-wrap { position:absolute; inset:0; }
+  .ps-card .img-wrap img { width:100%; height:100%; object-fit:cover; transition:transform .5s ease; }
+  .ps-card:hover .img-wrap img { transform:scale(1.06); }
+  .ps-card .img-wrap::after {
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(to top,rgba(0,0,0,.88) 0%,rgba(0,0,0,.2) 55%,transparent 75%);
+  }
+  .ps-card-overlay {
+    position:absolute; bottom:0; left:0; right:0; padding:16px; z-index:2;
+  }
+  .ps-card-overlay h3 {
+    font-size:14px; font-weight:700; line-height:1.5; color:#fff;
+    margin-bottom:6px; text-shadow:0 1px 4px rgba(0,0,0,.3);
+    display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
+  }
+  .ps-card-overlay .meta { font-size:11px; }
 
   /* NEWS GRID */
   .news-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-bottom:32px; }
@@ -686,6 +725,9 @@ $reportsNews = getArticlesByCategory('reports', 3);
     .hero-grid { grid-template-columns:1fr; height:auto; }
     .hero-main { min-height:300px; grid-row:auto; }
     .hero-side { min-height:200px; }
+    .palestine-grid { grid-template-columns:1fr 1fr; height:auto; }
+    .palestine-grid .hero-main { grid-row:auto; grid-column:1/3; min-height:300px; }
+    .ps-card { min-height:200px; }
     .news-grid { grid-template-columns:repeat(2,1fr); }
     .media-grid { grid-template-columns:repeat(2,1fr); }
     nav { display:none; }
@@ -704,6 +746,9 @@ $reportsNews = getArticlesByCategory('reports', 3);
     .hero-side { min-height:180px; }
     .hero-title { font-size:18px; }
     .hero-excerpt { display:none; }
+    .palestine-grid { grid-template-columns:1fr; }
+    .palestine-grid .hero-main { grid-column:auto; min-height:250px; }
+    .ps-card { min-height:180px; }
     .main-layout { padding:16px 12px; }
     .stats-bar { padding:12px 16px; }
     .user-panel { width:100%; }
@@ -831,49 +876,45 @@ $reportsNews = getArticlesByCategory('reports', 3);
 <div class="main-layout">
   <div class="main-col">
 
-    <!-- HERO -->
+    <!-- PALESTINE NEWS -->
     <div class="section-header">
-      <div class="section-title"><div class="line"></div>أبرز الأخبار</div>
-      <a class="see-all" href="category.php?type=latest">عرض الكل ›</a>
+      <div class="section-title"><div class="line" style="background:#16a34a"></div>🇵🇸 أحدث الأخبار الفلسطينية</div>
     </div>
-    <div class="hero-grid">
-      <?php if (!empty($heroArticles)): ?>
-        <?php $first = true; ?>
-        <?php foreach ($heroArticles as $article): ?>
-          <?php if ($first): ?>
-            <a class="hero-main" href="article.php?id=<?php echo (int)$article['id']; ?>">
-              <div class="img-wrap">
-                <img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/news1/800/500'); ?>" alt="">
+    <?php if (!empty($palestineNews)): ?>
+    <div class="palestine-grid">
+      <?php $pIndex = 0; ?>
+      <?php foreach ($palestineNews as $article): ?>
+        <?php if ($pIndex === 0): ?>
+          <a class="hero-main" href="article.php?id=<?php echo (int)$article['id']; ?>">
+            <div class="img-wrap">
+              <img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/ps1/800/500'); ?>" alt="">
+            </div>
+            <div class="hero-overlay">
+              <div class="source-badge" style="background:rgba(22,163,74,.85)"><?php echo e($article['source_name']); ?></div>
+              <div class="hero-title"><?php echo e($article['title']); ?></div>
+              <div class="hero-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 160)); ?></div>
+              <div class="meta">
+                <span><?php echo timeAgo($article['published_at']); ?></span>
+                <span class="meta-dot"></span>
+                <span><?php echo formatViews($article['view_count']); ?> مشاهدة</span>
               </div>
-              <div class="hero-overlay">
-                <div class="source-badge"><?php echo e($article['source_name']); ?></div>
-                <div class="hero-title"><?php echo e($article['title']); ?></div>
-                <div class="hero-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 160)); ?></div>
-                <div class="meta">
-                  <span><?php echo timeAgo($article['published_at']); ?></span>
-                  <span class="meta-dot"></span>
-                  <span><?php echo formatViews($article['view_count']); ?> مشاهدة</span>
-                  <span class="meta-dot"></span>
-                  <span><?php echo number_format($article['comments'] ?? 0); ?> تعليق</span>
-                </div>
-              </div>
-            </a>
-            <?php $first = false; ?>
-          <?php else: ?>
-            <a class="hero-side" href="article.php?id=<?php echo (int)$article['id']; ?>">
-              <div class="img-wrap">
-                <img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/news' . rand(1,10) . '/400/300'); ?>" alt="">
-              </div>
-              <div class="hero-side-overlay">
-                <span class="card-cat <?php echo $article['css_class'] ?? 'cat-political'; ?>"><?php echo e($article['cat_name']); ?></span>
-                <h3><?php echo e($article['title']); ?></h3>
-                <div class="meta"><span><?php echo e($article['source_name']); ?></span><span class="meta-dot"></span><span><?php echo timeAgo($article['published_at']); ?></span></div>
-              </div>
-            </a>
-          <?php endif; ?>
-        <?php endforeach; ?>
-      <?php endif; ?>
+            </div>
+          </a>
+        <?php else: ?>
+          <a class="ps-card" href="article.php?id=<?php echo (int)$article['id']; ?>">
+            <div class="img-wrap">
+              <img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/ps' . $pIndex . '/400/300'); ?>" alt="">
+            </div>
+            <div class="ps-card-overlay">
+              <h3><?php echo e($article['title']); ?></h3>
+              <div class="meta"><span><?php echo e($article['source_name']); ?></span><span class="meta-dot"></span><span><?php echo timeAgo($article['published_at']); ?></span></div>
+            </div>
+          </a>
+        <?php endif; ?>
+        <?php $pIndex++; ?>
+      <?php endforeach; ?>
     </div>
+    <?php endif; ?>
 
     <!-- BREAKING NEWS -->
     <div id="breaking" class="section-header">

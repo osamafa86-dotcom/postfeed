@@ -21,6 +21,28 @@ function getHeroArticles() {
     return $stmt->fetchAll();
 }
 
+function getPalestineNews($limit = 6) {
+    $db = getDB();
+    $keywords = ['فلسطين', 'غزة', 'الضفة', 'القدس', 'الاحتلال', 'الفلسطيني', 'حماس', 'المقاومة', 'الأقصى', 'رفح', 'خان يونس', 'جنين', 'نابلس', 'طوفان', 'الشهداء', 'شهيد'];
+    $conditions = [];
+    $params = [];
+    foreach ($keywords as $kw) {
+        $conditions[] = "a.title LIKE ?";
+        $params[] = '%' . $kw . '%';
+    }
+    $where = '(' . implode(' OR ', $conditions) . ')';
+    $params[] = $limit;
+    $stmt = $db->prepare("SELECT a.*, c.name as cat_name, c.slug as cat_slug, c.css_class,
+                           s.name as source_name, s.logo_color
+                           FROM articles a
+                           LEFT JOIN categories c ON a.category_id = c.id
+                           LEFT JOIN sources s ON a.source_id = s.id
+                           WHERE {$where} AND a.status = 'published'
+                           ORDER BY a.published_at DESC LIMIT ?");
+    $stmt->execute($params);
+    return $stmt->fetchAll();
+}
+
 function getBreakingNews() {
     $db = getDB();
     $stmt = $db->query("SELECT a.*, c.name as cat_name, c.css_class,
