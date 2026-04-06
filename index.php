@@ -8,7 +8,7 @@ require_once __DIR__ . '/includes/functions.php';
 
 // جلب البيانات من قاعدة البيانات
 $heroArticles = getHeroArticles();
-$palestineNews = getPalestineNews(6);
+$palestineNews = getPalestineNews(5);
 $breakingNews = getBreakingNews();
 $latestArticles = getLatestArticles(6);
 $categories = getCategories();
