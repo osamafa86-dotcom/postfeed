@@ -62,7 +62,7 @@ function getLatestArticles($limit = 6) {
 function getArticleById($id) {
     $db = getDB();
     $stmt = $db->prepare("SELECT a.*, c.name as cat_name, c.slug as cat_slug, c.css_class,
-                           s.name as source_name, s.logo_letter, s.logo_color, s.logo_bg
+                           s.name as source_name, s.logo_letter, s.logo_color, s.logo_bg, s.url as source_website
                            FROM articles a
                            LEFT JOIN categories c ON a.category_id = c.id
                            LEFT JOIN sources s ON a.source_id = s.id

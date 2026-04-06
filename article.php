@@ -433,13 +433,21 @@ if ($article['cat_slug']) {
         </div>
 
         <!-- Read Full Article from Source -->
-        <?php if (!empty($article['source_url'])): ?>
+        <?php
+        $readMoreUrl = '';
+        if (!empty($article['source_url'])) {
+            $readMoreUrl = $article['source_url'];
+        } elseif (!empty($article['source_website'])) {
+            $readMoreUrl = $article['source_website'];
+        }
+        ?>
+        <?php if (!empty($readMoreUrl)): ?>
             <div style="text-align:center; margin: 1.5rem 0;">
-                <a href="<?php echo e($article['source_url']); ?>" target="_blank" rel="noopener noreferrer"
+                <a href="<?php echo e($readMoreUrl); ?>" target="_blank" rel="noopener noreferrer"
                    style="display:inline-flex; align-items:center; gap:8px; padding:14px 32px; background:linear-gradient(135deg,#1a73e8,#4f46e5); color:#fff; border-radius:12px; font-size:15px; font-weight:700; text-decoration:none; transition:all .2s; box-shadow:0 4px 16px rgba(26,115,232,.3); font-family:inherit;"
                    onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(26,115,232,.4)'"
                    onmouseout="this.style.transform='';this.style.boxShadow='0 4px 16px rgba(26,115,232,.3)'">
-                    اقرأ الخبر كاملاً من المصدر &larr;
+                    اقرأ الخبر كاملاً من <?php echo e($article['source_name']); ?> &larr;
                 </a>
             </div>
         <?php endif; ?>
