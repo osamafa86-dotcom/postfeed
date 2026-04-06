@@ -20,9 +20,9 @@ jobs:
           lftp -u "${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }}" ${{ secrets.FTP_SERVER }} <<EOF
           set ftp:ssl-allow yes
           set ftp:ssl-force no
-          set ftp:ssl-protect-data yes
           set ssl:verify-certificate no
-          set mirror:use-pget-n 5
-          mirror --reverse --delete --verbose --exclude .git/ --exclude .github/ --exclude newsflow-v2.zip --exclude database.sql --exclude README_SETUP.txt ./ /
+          set net:timeout 30
+          set net:max-retries 3
+          mirror --reverse --only-newer --exclude .git/ --exclude .github/ --exclude newsflow-v2.zip --exclude database.sql --exclude README_SETUP.txt ./ /
           quit
           EOF
