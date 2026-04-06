@@ -122,17 +122,21 @@ foreach ($sources as $source) {
                 $publishedAt = date('Y-m-d H:i:s');
             }
 
+            // رابط الخبر الأصلي
+            $sourceUrl = trim($item['link']);
+
             // إدخال الخبر
             $stmt = $db->prepare("
-                INSERT INTO articles (title, slug, excerpt, content, image_url, category_id, source_id, status, published_at, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'published', ?, NOW())
+                INSERT INTO articles (title, slug, excerpt, content, image_url, source_url, category_id, source_id, status, published_at, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'published', ?, NOW())
             ");
             $stmt->execute([
                 $title,
                 $slug,
                 $excerpt,
-                '<p>' . nl2br(e($excerpt)) . '</p>',
+                '<p>' . nl2br($excerpt) . '</p>',
                 $imageUrl,
+                $sourceUrl,
                 $categoryId,
                 $source['id'],
                 $publishedAt,

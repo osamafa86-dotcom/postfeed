@@ -424,11 +424,25 @@ if ($article['cat_slug']) {
         <!-- Article Content -->
         <div class="article-content">
             <?php
-            // تنظيف المحتوى - السماح فقط بوسوم HTML آمنة
+            // تنظيف المحتوى - السماح فقط بوسوم HTML آمنة وفك ترميز الكيانات
             $allowedTags = '<p><br><strong><b><em><i><ul><ol><li><h2><h3><h4><blockquote><a><img>';
-            echo strip_tags($article['content'], $allowedTags);
+            $cleanContent = strip_tags($article['content'], $allowedTags);
+            $cleanContent = html_entity_decode($cleanContent, ENT_QUOTES, 'UTF-8');
+            echo $cleanContent;
             ?>
         </div>
+
+        <!-- Read Full Article from Source -->
+        <?php if (!empty($article['source_url'])): ?>
+            <div style="text-align:center; margin: 1.5rem 0;">
+                <a href="<?php echo e($article['source_url']); ?>" target="_blank" rel="noopener noreferrer"
+                   style="display:inline-flex; align-items:center; gap:8px; padding:14px 32px; background:linear-gradient(135deg,#1a73e8,#4f46e5); color:#fff; border-radius:12px; font-size:15px; font-weight:700; text-decoration:none; transition:all .2s; box-shadow:0 4px 16px rgba(26,115,232,.3); font-family:inherit;"
+                   onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(26,115,232,.4)'"
+                   onmouseout="this.style.transform='';this.style.boxShadow='0 4px 16px rgba(26,115,232,.3)'">
+                    اقرأ الخبر كاملاً من المصدر &larr;
+                </a>
+            </div>
+        <?php endif; ?>
 
         <!-- Article Footer with Sharing -->
         <div class="article-footer">

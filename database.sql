@@ -79,6 +79,7 @@ CREATE TABLE IF NOT EXISTS `articles` (
   `excerpt` text DEFAULT NULL,
   `content` longtext DEFAULT NULL,
   `image_url` varchar(500) DEFAULT NULL,
+  `source_url` varchar(1000) DEFAULT NULL,
   `category_id` int(11) DEFAULT NULL,
   `source_id` int(11) DEFAULT NULL,
   `is_featured` tinyint(1) DEFAULT 0,
