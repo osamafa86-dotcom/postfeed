@@ -317,12 +317,12 @@ function buildPageUrl($pageNum) {
     <a href="category.php?type=breaking" class="breaking<?php echo $type === 'breaking' ? ' active' : ''; ?>">🔴 عاجل</a>
     <a href="index.php">الرئيسية</a>
     <a href="category.php?type=latest"<?php echo $type === 'latest' ? ' class="active"' : ''; ?>>آخر الأخبار</a>
-    <a href="category.php?slug=political"<?php echo $slug === 'political' ? ' class="active"' : ''; ?>>سياسة</a>
-    <a href="category.php?slug=economy"<?php echo $slug === 'economy' ? ' class="active"' : ''; ?>>اقتصاد</a>
-    <a href="category.php?slug=sports"<?php echo $slug === 'sports' ? ' class="active"' : ''; ?>>رياضة</a>
-    <a href="category.php?slug=arts"<?php echo $slug === 'arts' ? ' class="active"' : ''; ?>>فنون</a>
-    <a href="category.php?slug=media"<?php echo $slug === 'media' ? ' class="active"' : ''; ?>>ميديا</a>
-    <a href="category.php?slug=reports"<?php echo $slug === 'reports' ? ' class="active"' : ''; ?>>تقارير</a>
+    <a href="category/political"<?php echo $slug === 'political' ? ' class="active"' : ''; ?>>سياسة</a>
+    <a href="category/economy"<?php echo $slug === 'economy' ? ' class="active"' : ''; ?>>اقتصاد</a>
+    <a href="category/sports"<?php echo $slug === 'sports' ? ' class="active"' : ''; ?>>رياضة</a>
+    <a href="category/arts"<?php echo $slug === 'arts' ? ' class="active"' : ''; ?>>فنون</a>
+    <a href="category/media"<?php echo $slug === 'media' ? ' class="active"' : ''; ?>>ميديا</a>
+    <a href="category/reports"<?php echo $slug === 'reports' ? ' class="active"' : ''; ?>>تقارير</a>
   </nav>
 </header>
 
@@ -352,7 +352,7 @@ function buildPageUrl($pageNum) {
     <!-- NEWS GRID -->
     <div class="news-grid">
       <?php foreach ($articles as $article): ?>
-        <a class="news-card" href="article.php?id=<?php echo (int) $article['id']; ?>">
+        <a class="news-card" href="<?php echo articleUrl($article); ?>">
           <div class="card-img">
             <img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/cat' . $article['id'] . '/400/300'); ?>" alt="<?php echo e($article['title']); ?>">
           </div>

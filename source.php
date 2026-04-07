@@ -166,7 +166,7 @@ $isFollowing = in_array((string)$source['id'], $followed, true);
       <p style="text-align:center;color:#999;padding:40px;">لا توجد أخبار من هذا المصدر بعد</p>
     <?php else: ?>
       <?php foreach ($articles as $a): ?>
-        <a class="article-item" href="article.php?id=<?php echo (int)$a['id']; ?>">
+        <a class="article-item" href="<?php echo articleUrl($a); ?>">
           <?php if (!empty($a['image_url'])): ?>
             <img src="<?php echo e($a['image_url']); ?>" alt="" loading="lazy">
           <?php endif; ?>

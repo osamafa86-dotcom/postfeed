@@ -110,12 +110,12 @@ try {
     <a href="category.php?type=breaking" class="breaking">🔴 عاجل</a>
     <a href="index.php" class="active">الرئيسية</a>
     <a href="category.php?type=latest">آخر الأخبار</a>
-    <a href="category.php?slug=political">سياسة</a>
-    <a href="category.php?slug=economy">اقتصاد</a>
-    <a href="category.php?slug=sports">رياضة</a>
-    <a href="category.php?slug=arts">فنون</a>
-    <a href="category.php?slug=media">ميديا</a>
-    <a href="category.php?slug=reports">تقارير</a>
+    <a href="category/political">سياسة</a>
+    <a href="category/economy">اقتصاد</a>
+    <a href="category/sports">رياضة</a>
+    <a href="category/arts">فنون</a>
+    <a href="category/media">ميديا</a>
+    <a href="category/reports">تقارير</a>
     <a href="reels.php">🎬 ريلز</a>
   </nav>
 
@@ -141,12 +141,12 @@ try {
   <a href="index.php" class="active">🏠 الرئيسية</a>
   <a href="category.php?type=breaking">🔴 عاجل</a>
   <a href="category.php?type=latest">⏱ آخر الأخبار</a>
-  <a href="category.php?slug=political">🏛 سياسة</a>
-  <a href="category.php?slug=economy">💹 اقتصاد</a>
-  <a href="category.php?slug=sports">⚽ رياضة</a>
-  <a href="category.php?slug=arts">🎨 فنون</a>
-  <a href="category.php?slug=media">🎥 ميديا</a>
-  <a href="category.php?slug=reports">📊 تقارير</a>
+  <a href="category/political">🏛 سياسة</a>
+  <a href="category/economy">💹 اقتصاد</a>
+  <a href="category/sports">⚽ رياضة</a>
+  <a href="category/arts">🎨 فنون</a>
+  <a href="category/media">🎥 ميديا</a>
+  <a href="category/reports">📊 تقارير</a>
   <a href="reels.php">🎬 ريلز</a>
 </nav>
 
@@ -225,14 +225,14 @@ try {
     </div>
     <?php if (!empty($palestineNews)): ?>
       <?php $psFirst = $palestineNews[0]; ?>
-      <a class="ps-hero" href="article.php?id=<?php echo (int)$psFirst['id']; ?>">
+      <a class="ps-hero" href="<?php echo articleUrl($psFirst); ?>">
         <div class="ps-hero-text">
           <h3><?php echo e($psFirst['title']); ?></h3>
           <div class="ps-hero-excerpt"><?php echo e(mb_substr(strip_tags($psFirst['content'] ?? $psFirst['excerpt'] ?? ''), 0, 200)); ?></div>
           <div class="ps-hero-meta">
             <span class="source-icon"><?php echo e(mb_substr($psFirst['source_name'], 0, 1)); ?></span>
             <div class="meta-text">
-              <span><a href="source.php?id=<?php echo (int)$psFirst['source_id']; ?>" onclick="event.stopPropagation()" style="color:inherit"><?php echo e($psFirst['source_name']); ?></a></span>
+              <span><a href="source/<?php echo (int)$psFirst['source_id']; ?>" onclick="event.stopPropagation()" style="color:inherit"><?php echo e($psFirst['source_name']); ?></a></span>
               <span class="meta-dot"></span>
               <span><?php echo timeAgo($psFirst['published_at']); ?></span>
             </div>
@@ -245,7 +245,7 @@ try {
 
       <div class="palestine-grid">
         <?php for ($pIdx = 1; $pIdx < count($palestineNews); $pIdx++): $article = $palestineNews[$pIdx]; ?>
-          <a class="ps-card" href="article.php?id=<?php echo (int)$article['id']; ?>">
+          <a class="ps-card" href="<?php echo articleUrl($article); ?>">
             <div class="img-wrap">
               <img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/ps' . $pIdx . '/400/300'); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy">
               <div class="img-date"><?php echo timeAgo($article['published_at']); ?></div>
@@ -254,7 +254,7 @@ try {
               <h3><?php echo e($article['title']); ?></h3>
               <div class="ps-card-footer">
                 <span class="source-dot"><?php echo e(mb_substr($article['source_name'], 0, 1)); ?></span>
-                <span><a href="source.php?id=<?php echo (int)$article['source_id']; ?>" onclick="event.stopPropagation()" style="color:inherit"><?php echo e($article['source_name']); ?></a></span>
+                <span><a href="source/<?php echo (int)$article['source_id']; ?>" onclick="event.stopPropagation()" style="color:inherit"><?php echo e($article['source_name']); ?></a></span>
               </div>
             </div>
           </a>
@@ -269,13 +269,13 @@ try {
     </div>
     <div class="news-list" style="margin-bottom:28px">
       <?php foreach ($breakingNews as $article): ?>
-        <a class="list-item" href="article.php?id=<?php echo (int)$article['id']; ?>">
+        <a class="list-item" href="<?php echo articleUrl($article); ?>">
           <div class="list-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/brk' . rand(1,10) . '/200/150'); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy"></div>
           <div class="list-body">
             <div class="card-cat cat-breaking">عاجل</div>
             <div class="list-title"><?php echo e($article['title']); ?></div>
             <div class="card-excerpt" style="margin-bottom:6px"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 120)); ?></div>
-            <div class="list-meta"><span>🌐 <a href="source.php?id=<?php echo (int)$article['source_id']; ?>" onclick="event.stopPropagation()" style="color:inherit"><?php echo e($article['source_name']); ?></a></span><span>·</span><span><?php echo timeAgo($article['published_at']); ?></span><span>·</span><span>👁 <?php echo formatViews($article['view_count']); ?></span></div>
+            <div class="list-meta"><span>🌐 <a href="source/<?php echo (int)$article['source_id']; ?>" onclick="event.stopPropagation()" style="color:inherit"><?php echo e($article['source_name']); ?></a></span><span>·</span><span><?php echo timeAgo($article['published_at']); ?></span><span>·</span><span>👁 <?php echo formatViews($article['view_count']); ?></span></div>
           </div>
         </a>
       <?php endforeach; ?>
@@ -316,14 +316,14 @@ try {
     </div>
     <div class="news-grid" style="margin-bottom:28px">
       <?php foreach ($latestArticles as $article): ?>
-        <a class="news-card" href="article.php?id=<?php echo (int)$article['id']; ?>">
+        <a class="news-card" href="<?php echo articleUrl($article); ?>">
           <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/lat' . rand(1,10) . '/400/300'); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy"></div>
           <div class="card-body">
             <span class="card-cat <?php echo $article['css_class'] ?? 'cat-political'; ?>"><?php echo e($article['cat_name']); ?></span>
             <div class="card-title"><?php echo e($article['title']); ?></div>
             <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
             <div class="card-meta">
-              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#6b9fd4'); ?>"></span><a href="source.php?id=<?php echo (int)$article['source_id']; ?>" onclick="event.stopPropagation()" style="color:inherit"><?php echo e($article['source_name']); ?></a></div>
+              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#6b9fd4'); ?>"></span><a href="source/<?php echo (int)$article['source_id']; ?>" onclick="event.stopPropagation()" style="color:inherit"><?php echo e($article['source_name']); ?></a></div>
               <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
             </div>
           </div>
@@ -334,18 +334,18 @@ try {
     <!-- POLITICAL NEWS -->
     <div id="political" class="section-header">
       <div class="section-title"><div class="line" style="background:#b05a5a"></div>🏛 أخبار سياسية</div>
-      <a class="see-all" href="category.php?slug=political">عرض الكل ›</a>
+      <a class="see-all" href="category/political">عرض الكل ›</a>
     </div>
     <div class="news-rows" style="margin-bottom:28px">
       <?php foreach ($politicalNews as $article): ?>
-        <a class="news-card" href="article.php?id=<?php echo (int)$article['id']; ?>">
+        <a class="news-card" href="<?php echo articleUrl($article); ?>">
           <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/pol' . rand(1,10) . '/400/300'); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy"></div>
           <div class="card-body">
             <span class="card-cat cat-political">سياسة</span>
             <div class="card-title"><?php echo e($article['title']); ?></div>
             <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
             <div class="card-meta">
-              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#6b9fd4'); ?>"></span><a href="source.php?id=<?php echo (int)$article['source_id']; ?>" onclick="event.stopPropagation()" style="color:inherit"><?php echo e($article['source_name']); ?></a></div>
+              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#6b9fd4'); ?>"></span><a href="source/<?php echo (int)$article['source_id']; ?>" onclick="event.stopPropagation()" style="color:inherit"><?php echo e($article['source_name']); ?></a></div>
               <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
             </div>
           </div>
@@ -356,18 +356,18 @@ try {
     <!-- ECONOMY -->
     <div id="economy" class="section-header">
       <div class="section-title green"><div class="line"></div>💹 أخبار اقتصادية</div>
-      <a class="see-all" href="category.php?slug=economy">عرض الكل ›</a>
+      <a class="see-all" href="category/economy">عرض الكل ›</a>
     </div>
     <div class="news-rows" style="margin-bottom:28px">
       <?php foreach ($economyNews as $article): ?>
-        <a class="news-card" href="article.php?id=<?php echo (int)$article['id']; ?>">
+        <a class="news-card" href="<?php echo articleUrl($article); ?>">
           <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/eco' . rand(1,10) . '/400/300'); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy"></div>
           <div class="card-body">
             <span class="card-cat cat-economic">اقتصاد</span>
             <div class="card-title"><?php echo e($article['title']); ?></div>
             <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
             <div class="card-meta">
-              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#85c1a3'); ?>"></span><a href="source.php?id=<?php echo (int)$article['source_id']; ?>" onclick="event.stopPropagation()" style="color:inherit"><?php echo e($article['source_name']); ?></a></div>
+              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#85c1a3'); ?>"></span><a href="source/<?php echo (int)$article['source_id']; ?>" onclick="event.stopPropagation()" style="color:inherit"><?php echo e($article['source_name']); ?></a></div>
               <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
             </div>
           </div>
@@ -378,18 +378,18 @@ try {
     <!-- SPORTS -->
     <div id="sports" class="section-header">
       <div class="section-title"><div class="line" style="background:#5a85b0"></div>⚽ رياضة</div>
-      <a class="see-all" href="category.php?slug=sports">عرض الكل ›</a>
+      <a class="see-all" href="category/sports">عرض الكل ›</a>
     </div>
     <div class="news-rows" style="margin-bottom:28px">
       <?php foreach ($sportsNews as $article): ?>
-        <a class="news-card" href="article.php?id=<?php echo (int)$article['id']; ?>">
+        <a class="news-card" href="<?php echo articleUrl($article); ?>">
           <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/sp' . rand(1,10) . '/400/300'); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy"></div>
           <div class="card-body">
             <span class="card-cat cat-sports">رياضة</span>
             <div class="card-title"><?php echo e($article['title']); ?></div>
             <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
             <div class="card-meta">
-              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#6b9fd4'); ?>"></span><a href="source.php?id=<?php echo (int)$article['source_id']; ?>" onclick="event.stopPropagation()" style="color:inherit"><?php echo e($article['source_name']); ?></a></div>
+              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#6b9fd4'); ?>"></span><a href="source/<?php echo (int)$article['source_id']; ?>" onclick="event.stopPropagation()" style="color:inherit"><?php echo e($article['source_name']); ?></a></div>
               <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
             </div>
           </div>
@@ -400,18 +400,18 @@ try {
     <!-- ARTS -->
     <div id="arts" class="section-header">
       <div class="section-title"><div class="line" style="background:#7a5a9a"></div>🎨 فنون وثقافة</div>
-      <a class="see-all" href="category.php?slug=arts">عرض الكل ›</a>
+      <a class="see-all" href="category/arts">عرض الكل ›</a>
     </div>
     <div class="news-rows" style="margin-bottom:28px">
       <?php foreach ($artsNews as $article): ?>
-        <a class="news-card" href="article.php?id=<?php echo (int)$article['id']; ?>">
+        <a class="news-card" href="<?php echo articleUrl($article); ?>">
           <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/art' . rand(1,10) . '/400/300'); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy"></div>
           <div class="card-body">
             <span class="card-cat cat-arts">فنون</span>
             <div class="card-title"><?php echo e($article['title']); ?></div>
             <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
             <div class="card-meta">
-              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#a08cc8'); ?>"></span><a href="source.php?id=<?php echo (int)$article['source_id']; ?>" onclick="event.stopPropagation()" style="color:inherit"><?php echo e($article['source_name']); ?></a></div>
+              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#a08cc8'); ?>"></span><a href="source/<?php echo (int)$article['source_id']; ?>" onclick="event.stopPropagation()" style="color:inherit"><?php echo e($article['source_name']); ?></a></div>
               <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
             </div>
           </div>
@@ -422,11 +422,11 @@ try {
     <!-- MEDIA SECTION (Video reels style) -->
     <div id="media" class="section-header">
       <div class="section-title"><div class="line" style="background:#1a73e8"></div>🎥 الأخبار بالفيديو</div>
-      <a class="see-all" href="category.php?slug=media">عرض الكل ›</a>
+      <a class="see-all" href="category/media">عرض الكل ›</a>
     </div>
     <div class="video-reels">
       <?php foreach ($mediaItems as $i => $media): ?>
-        <a class="vreel" href="article.php?id=<?php echo (int)($media['id'] ?? 0); ?>">
+        <a class="vreel" href="<?php echo articleUrl($media); ?>">
           <div class="vreel-thumb">
             <img src="<?php echo e($media['image_url'] ?? 'https://picsum.photos/seed/vid' . $i . '/400/600'); ?>" alt="<?php echo e($media['title'] ?? ''); ?>" loading="lazy">
             <div class="vreel-play">▶</div>
@@ -440,18 +440,18 @@ try {
     <!-- REPORTS -->
     <div id="reports" class="section-header">
       <div class="section-title gold"><div class="line"></div>📊 التقارير</div>
-      <a class="see-all" href="category.php?slug=reports">عرض الكل ›</a>
+      <a class="see-all" href="category/reports">عرض الكل ›</a>
     </div>
     <div class="news-rows" style="margin-bottom:28px">
       <?php foreach ($reportsNews as $article): ?>
-        <a class="news-card" href="article.php?id=<?php echo (int)$article['id']; ?>">
+        <a class="news-card" href="<?php echo articleUrl($article); ?>">
           <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/rep' . rand(1,10) . '/400/300'); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy"></div>
           <div class="card-body">
             <span class="card-cat cat-reports">تقرير</span>
             <div class="card-title"><?php echo e($article['title']); ?></div>
             <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
             <div class="card-meta">
-              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#c9ab6e'); ?>"></span><a href="source.php?id=<?php echo (int)$article['source_id']; ?>" onclick="event.stopPropagation()" style="color:inherit"><?php echo e($article['source_name']); ?></a></div>
+              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#c9ab6e'); ?>"></span><a href="source/<?php echo (int)$article['source_id']; ?>" onclick="event.stopPropagation()" style="color:inherit"><?php echo e($article['source_name']); ?></a></div>
               <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
             </div>
           </div>
@@ -590,7 +590,7 @@ try {
       <div class="widget-body" style="padding:8px 16px">
         <?php $rankNum = 1; ?>
         <?php foreach (array_slice($mostRead, 0, 3) as $article): ?>
-          <a class="list-item" href="article.php?id=<?php echo (int)$article['id']; ?>" style="padding:8px 0;background:none;border:none;<?php echo $rankNum < 3 ? 'border-bottom:1px solid var(--border);' : ''; ?>">
+          <a class="list-item" href="<?php echo articleUrl($article); ?>" style="padding:8px 0;background:none;border:none;<?php echo $rankNum < 3 ? 'border-bottom:1px solid var(--border);' : ''; ?>">
             <div class="rank-num"><?php echo $rankNum; ?></div>
             <div class="list-body">
               <div class="list-title" style="font-size:12px"><?php echo e(substr($article['title'], 0, 40) . '...'); ?></div>
@@ -614,16 +614,16 @@ try {
     </div>
     <div class="footer-col">
       <div class="footer-col-title">الأقسام</div>
-      <a href="category.php?slug=political">سياسة</a>
-      <a href="category.php?slug=economy">اقتصاد</a>
-      <a href="category.php?slug=sports">رياضة</a>
-      <a href="category.php?slug=arts">فنون وثقافة</a>
-      <a href="category.php?slug=tech">تكنولوجيا</a>
+      <a href="category/political">سياسة</a>
+      <a href="category/economy">اقتصاد</a>
+      <a href="category/sports">رياضة</a>
+      <a href="category/arts">فنون وثقافة</a>
+      <a href="category/tech">تكنولوجيا</a>
     </div>
     <div class="footer-col">
       <div class="footer-col-title">المزيد</div>
-      <a href="category.php?slug=reports">تقارير</a>
-      <a href="category.php?slug=media">ميديا</a>
+      <a href="category/reports">تقارير</a>
+      <a href="category/media">ميديا</a>
       <a href="category.php?type=breaking">أخبار عاجلة</a>
       <a href="category.php?type=latest">آخر الأخبار</a>
     </div>
