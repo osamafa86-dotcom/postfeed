@@ -3,13 +3,15 @@
  * نيوزفلو - خريطة الموقع XML للسيو
  */
 require_once __DIR__ . '/includes/config.php';
+require_once __DIR__ . '/includes/functions.php';
 header('Content-Type: application/xml; charset=utf-8');
 
 $db = getDB();
-$articles = $db->query("SELECT id, published_at, image_url, title
+$articles = $db->query("SELECT id, slug, published_at, image_url, title
                         FROM articles
                         WHERE status = 'published'
                         ORDER BY published_at DESC LIMIT 5000")->fetchAll();
+$cats = $db->query("SELECT slug FROM categories WHERE is_active = 1")->fetchAll();
 
 echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
 ?>
@@ -21,8 +23,15 @@ echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
     <changefreq>hourly</changefreq>
     <priority>1.0</priority>
   </url>
+<?php foreach ($cats as $c): ?>
+  <url>
+    <loc><?php echo SITE_URL . '/' . htmlspecialchars(categoryUrl($c['slug'])); ?></loc>
+    <changefreq>hourly</changefreq>
+    <priority>0.7</priority>
+  </url>
+<?php endforeach; ?>
 <?php foreach ($articles as $a):
-    $loc = SITE_URL . '/article.php?id=' . (int)$a['id'];
+    $loc = SITE_URL . '/' . articleUrl($a);
     $lastmod = !empty($a['published_at']) ? date('c', strtotime($a['published_at'])) : date('c');
 ?>
   <url>
