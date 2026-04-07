@@ -77,6 +77,7 @@ include __DIR__ . '/includes/panel_layout_head.php';
   <div class="form-card">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:14px;">⚙️ إعدادات API</h3>
     <form method="POST">
+                <?php echo csrf_field(); ?>
       <div class="form-group">
         <label>Anthropic API Key</label>
         <input type="password" name="api_key" class="form-control" value="<?php echo e($apiKey); ?>" placeholder="sk-ant-api03-...">

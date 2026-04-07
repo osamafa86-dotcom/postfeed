@@ -43,7 +43,8 @@ foreach ($sources as $i => $src) {
         CURLOPT_CONNECTTIMEOUT => 8,
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; NewsFlow/1.0)',
-        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_SSL_VERIFYHOST => 2,
         CURLOPT_ENCODING => '',
     ]);
     curl_multi_add_handle($multi, $ch);

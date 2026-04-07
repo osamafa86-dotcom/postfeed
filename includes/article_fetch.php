@@ -12,7 +12,8 @@ function fetchUrlHtml($url) {
         CURLOPT_TIMEOUT => 12,
         CURLOPT_CONNECTTIMEOUT => 6,
         CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; NewsFlow/1.0)',
-        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_SSL_VERIFYHOST => 2,
         CURLOPT_ENCODING => '',
     ]);
     $html = curl_exec($ch);

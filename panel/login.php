@@ -19,6 +19,10 @@ $error = '';
 
 // معالجة تسجيل الدخول
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!csrf_verify($_POST['_csrf'] ?? '')) {
+        $error = 'انتهت الجلسة، أعد المحاولة';
+        goto skip_login;
+    }
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
 
@@ -44,6 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'حدث خطأ في النظام';
         }
     }
+    skip_login:
 }
 ?>
 <!DOCTYPE html>
@@ -185,6 +190,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <form method="POST">
+                <?php echo csrf_field(); ?>
             <div class="form-group">
                 <label for="email">البريد الإلكتروني</label>
                 <input

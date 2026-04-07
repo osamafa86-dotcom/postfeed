@@ -82,6 +82,7 @@ include __DIR__ . '/includes/panel_layout_head.php';
     </div>
 
     <form method="POST">
+                <?php echo csrf_field(); ?>
         <?php foreach ($settingSections as $sectionKey => $section): ?>
             <div class="form-card">
                 <h3 style="font-size:15px; font-weight:700; color:var(--text-primary); margin-bottom:18px; padding-bottom:10px; border-bottom:1.5px solid var(--border);"><?php echo $section['title']; ?></h3>
