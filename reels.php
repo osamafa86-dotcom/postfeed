@@ -43,7 +43,7 @@ $siteName = getSetting('site_name', SITE_NAME);
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:'Tajawal',sans-serif; background:#f0f2f5; color:#1a1a2e; line-height:1.6; }
+  body { font-family:'Tajawal',sans-serif; background:#faf6ec; color:#1a1a2e; line-height:1.6; }
   a { text-decoration:none; color:inherit; }
 
   /* Header */

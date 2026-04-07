@@ -58,8 +58,8 @@ try {
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #f0f2f5;
-    --bg2: #f8f9fa;
+    --bg: #faf6ec;
+    --bg2: #fdfaf2;
     --bg3: #e4e6eb;
     --card: #ffffff;
     --border: #e0e3e8;

@@ -53,7 +53,7 @@ $isFollowing = in_array((string)$source['id'], $followed, true);
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:'Tajawal',sans-serif; background:#f0f2f5; color:#1a1a2e; line-height:1.6; }
+  body { font-family:'Tajawal',sans-serif; background:#faf6ec; color:#1a1a2e; line-height:1.6; }
   a { text-decoration:none; color:inherit; }
   .top-bar { background:#1a1a2e; color:#fff; padding:14px 20px; display:flex; justify-content:space-between; align-items:center; }
   .top-bar .back { color:#fff; background:rgba(255,255,255,.1); padding:8px 16px; border-radius:20px; font-size:13px; }
