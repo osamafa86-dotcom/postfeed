@@ -589,7 +589,7 @@ try {
     box-shadow:0 8px 24px rgba(0,0,0,.25); transition:transform .3s;
   }
   .reel-card:hover { transform:translateY(-4px); }
-  .reel-card iframe { width:100%; height:100%; border:0; pointer-events:none; }
+  .reel-card iframe { width:100%; height:100%; border:0; }
   .reel-card .reel-overlay {
     position:absolute; bottom:0; left:0; right:0; padding:12px;
     background:linear-gradient(to top, rgba(0,0,0,.85), transparent);
@@ -1244,19 +1244,9 @@ try {
       </div>
       <div class="reels-scroll">
         <?php foreach ($homeReels as $reel): ?>
-          <a class="reel-card" href="reels.php" title="<?php echo e($reel['caption'] ?? ''); ?>">
-            <iframe src="https://www.instagram.com/reel/<?php echo e($reel['shortcode']); ?>/embed/" scrolling="no" allowtransparency="true" allow="encrypted-media" loading="lazy"></iframe>
-            <div class="reel-overlay">
-              <?php if (!empty($reel['username'])): ?>
-              <div class="reel-source">
-                <?php if (!empty($reel['avatar_url'])): ?>
-                  <img src="<?php echo e($reel['avatar_url']); ?>" alt="">
-                <?php endif; ?>
-                <span>@<?php echo e($reel['username']); ?></span>
-              </div>
-              <?php endif; ?>
-            </div>
-          </a>
+          <div class="reel-card" title="<?php echo e($reel['caption'] ?? ''); ?>">
+            <iframe src="https://www.instagram.com/reel/<?php echo e($reel['shortcode']); ?>/embed/" scrolling="no" allowtransparency="true" allow="autoplay; encrypted-media" allowfullscreen loading="lazy"></iframe>
+          </div>
         <?php endforeach; ?>
       </div>
     </div>
