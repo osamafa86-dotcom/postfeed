@@ -395,6 +395,51 @@ try {
   .source-dot { width:8px; height:8px; border-radius:50%; }
   .card-time { font-size:11px; color:var(--muted2); font-weight:500; }
 
+  /* ROWS STYLE (Sky News–like) */
+  .news-rows { display:grid; grid-template-columns:repeat(2,1fr); gap:0; margin-bottom:32px;
+    border-top:1px solid var(--border); }
+  .news-rows .news-card {
+    display:flex; flex-direction:row-reverse; align-items:stretch;
+    gap:14px; padding:18px 16px;
+    background:transparent; border:0; border-bottom:1px solid var(--border);
+    border-radius:0; box-shadow:none; transform:none !important;
+  }
+  .news-rows .news-card:nth-child(odd) { border-left:1px solid var(--border); }
+  .news-rows .news-card:hover { background:#f8fafc; box-shadow:none; }
+  .news-rows .card-img {
+    flex:0 0 170px; width:170px; height:110px; border-radius:8px; overflow:hidden;
+  }
+  .news-rows .card-img::after { display:none; }
+  .news-rows .card-body { flex:1; padding:0; display:flex; flex-direction:column; justify-content:space-between; min-width:0; }
+  .news-rows .card-title {
+    font-size:16px; font-weight:800; line-height:1.7; margin:0 0 10px;
+    color:#111; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
+  }
+  .news-rows .news-card:hover .card-title { color:var(--primary); }
+  .news-rows .card-excerpt { display:none; }
+  .news-rows .card-cat {
+    order:2; align-self:flex-start; background:transparent !important;
+    border:0 !important; padding:0 14px 0 0; margin:0; position:relative;
+    font-size:12px; font-weight:700; color:#6b7280;
+  }
+  .news-rows .card-cat::before {
+    content:''; position:absolute; right:0; top:50%; transform:translateY(-50%);
+    width:8px; height:8px; background:var(--primary); border-radius:2px;
+  }
+  .news-rows .cat-political::before { background:#dc2626; }
+  .news-rows .cat-economic::before { background:#16a34a; }
+  .news-rows .cat-sports::before    { background:#1d4ed8; }
+  .news-rows .cat-arts::before      { background:#7c3aed; }
+  .news-rows .cat-reports::before   { background:#b45309; }
+  .news-rows .cat-media::before     { background:#a21caf; }
+  .news-rows .card-meta, .news-rows .card-source, .news-rows .card-time { display:none; }
+  @media (max-width:900px) {
+    .news-rows { grid-template-columns:1fr !important; }
+    .news-rows .news-card:nth-child(odd) { border-left:0; }
+    .news-rows .card-img { flex:0 0 120px; width:120px; height:90px; }
+    .news-rows .card-title { font-size:14px; }
+  }
+
   /* LIST NEWS */
   .news-list { display:flex; flex-direction:column; gap:12px; margin-bottom:32px; }
   .list-item {
@@ -762,6 +807,37 @@ try {
   }
   .media-card:hover .media-play { background:rgba(26,115,232,.8); border-color:rgba(26,115,232,.4); transform:translate(-50%,-50%) scale(1.1); }
   .media-caption { position:absolute; bottom:10px; left:10px; right:10px; font-size:12px; z-index:2; line-height:1.5; color:#fff; font-weight:600; }
+
+  /* VIDEO REELS ROW (Sky-style) */
+  .video-reels { display:flex; gap:14px; overflow-x:auto; padding:6px 2px 18px; margin-bottom:24px; scroll-snap-type:x mandatory; }
+  .video-reels::-webkit-scrollbar { height:8px; }
+  .video-reels::-webkit-scrollbar-thumb { background:rgba(0,0,0,.15); border-radius:4px; }
+  .vreel { flex:0 0 230px; width:230px; scroll-snap-align:start; cursor:pointer; }
+  .vreel-thumb {
+    position:relative; width:230px; height:340px; border-radius:10px; overflow:hidden;
+    background:#000; box-shadow:var(--shadow-sm);
+  }
+  .vreel-thumb img { width:100%; height:100%; object-fit:cover; transition:transform .4s ease; }
+  .vreel:hover .vreel-thumb img { transform:scale(1.05); }
+  .vreel-thumb::after {
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(180deg,transparent 55%,rgba(0,0,0,.55));
+  }
+  .vreel-play {
+    position:absolute; left:14px; bottom:14px; z-index:2;
+    width:38px; height:38px; background:rgba(255,255,255,.95);
+    display:flex; align-items:center; justify-content:center;
+    color:#111; font-size:14px; border-radius:3px;
+  }
+  .vreel-title {
+    margin-top:10px; font-size:14px; font-weight:800; line-height:1.7; color:#111;
+    display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
+  }
+  .vreel-meta { margin-top:6px; font-size:11px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+  @media (max-width:900px) {
+    .vreel { flex:0 0 180px; width:180px; }
+    .vreel-thumb { width:180px; height:266px; }
+  }
 
   /* ADD SOURCE */
   .add-source-card {
@@ -1256,7 +1332,7 @@ try {
       <div class="section-title"><div class="line" style="background:#b05a5a"></div>🏛 أخبار سياسية</div>
       <a class="see-all" href="category.php?slug=political">عرض الكل ›</a>
     </div>
-    <div class="news-grid news-grid-2col" style="margin-bottom:28px">
+    <div class="news-rows" style="margin-bottom:28px">
       <?php foreach ($politicalNews as $article): ?>
         <a class="news-card" href="article.php?id=<?php echo (int)$article['id']; ?>">
           <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/pol' . rand(1,10) . '/400/300'); ?>" alt=""></div>
@@ -1278,7 +1354,7 @@ try {
       <div class="section-title green"><div class="line"></div>💹 أخبار اقتصادية</div>
       <a class="see-all" href="category.php?slug=economy">عرض الكل ›</a>
     </div>
-    <div class="news-grid" style="margin-bottom:28px">
+    <div class="news-rows" style="margin-bottom:28px">
       <?php foreach ($economyNews as $article): ?>
         <a class="news-card" href="article.php?id=<?php echo (int)$article['id']; ?>">
           <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/eco' . rand(1,10) . '/400/300'); ?>" alt=""></div>
@@ -1300,7 +1376,7 @@ try {
       <div class="section-title"><div class="line" style="background:#5a85b0"></div>⚽ رياضة</div>
       <a class="see-all" href="category.php?slug=sports">عرض الكل ›</a>
     </div>
-    <div class="news-grid" style="margin-bottom:28px">
+    <div class="news-rows" style="margin-bottom:28px">
       <?php foreach ($sportsNews as $article): ?>
         <a class="news-card" href="article.php?id=<?php echo (int)$article['id']; ?>">
           <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/sp' . rand(1,10) . '/400/300'); ?>" alt=""></div>
@@ -1322,7 +1398,7 @@ try {
       <div class="section-title"><div class="line" style="background:#7a5a9a"></div>🎨 فنون وثقافة</div>
       <a class="see-all" href="category.php?slug=arts">عرض الكل ›</a>
     </div>
-    <div class="news-grid news-grid-2col" style="margin-bottom:28px">
+    <div class="news-rows" style="margin-bottom:28px">
       <?php foreach ($artsNews as $article): ?>
         <a class="news-card" href="article.php?id=<?php echo (int)$article['id']; ?>">
           <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/art' . rand(1,10) . '/400/300'); ?>" alt=""></div>
@@ -1339,18 +1415,21 @@ try {
       <?php endforeach; ?>
     </div>
 
-    <!-- MEDIA SECTION -->
+    <!-- MEDIA SECTION (Video reels style) -->
     <div id="media" class="section-header">
-      <div class="section-title"><div class="line" style="background:#8a5a8a"></div>🎥 ميديا</div>
+      <div class="section-title"><div class="line" style="background:#1a73e8"></div>🎥 الأخبار بالفيديو</div>
       <a class="see-all" href="category.php?slug=media">عرض الكل ›</a>
     </div>
-    <div class="media-grid" style="margin-bottom:28px">
-      <?php foreach ($mediaItems as $media): ?>
-        <div class="media-card">
-          <img src="<?php echo e($media['image_url'] ?? 'https://picsum.photos/seed/med' . rand(1,10) . '/400/225'); ?>" alt="">
-          <div class="media-play">▶</div>
-          <div class="media-caption"><?php echo e($media['title']); ?></div>
-        </div>
+    <div class="video-reels">
+      <?php foreach ($mediaItems as $i => $media): ?>
+        <a class="vreel" href="article.php?id=<?php echo (int)($media['id'] ?? 0); ?>">
+          <div class="vreel-thumb">
+            <img src="<?php echo e($media['image_url'] ?? 'https://picsum.photos/seed/vid' . $i . '/400/600'); ?>" alt="">
+            <div class="vreel-play">▶</div>
+          </div>
+          <div class="vreel-title"><?php echo e($media['title']); ?></div>
+          <div class="vreel-meta">▶ 1 دق</div>
+        </a>
       <?php endforeach; ?>
     </div>
 
@@ -1359,7 +1438,7 @@ try {
       <div class="section-title gold"><div class="line"></div>📊 التقارير</div>
       <a class="see-all" href="category.php?slug=reports">عرض الكل ›</a>
     </div>
-    <div class="news-grid" style="margin-bottom:28px">
+    <div class="news-rows" style="margin-bottom:28px">
       <?php foreach ($reportsNews as $article): ?>
         <a class="news-card" href="article.php?id=<?php echo (int)$article['id']; ?>">
           <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/rep' . rand(1,10) . '/400/300'); ?>" alt=""></div>
