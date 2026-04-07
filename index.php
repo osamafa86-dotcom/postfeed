@@ -1234,8 +1234,8 @@ try {
       </div>
       <div class="reels-scroll">
         <?php foreach ($homeReels as $reel): ?>
-          <div class="reel-card" title="<?php echo e($reel['caption'] ?? ''); ?>">
-            <iframe src="https://www.instagram.com/reel/<?php echo e($reel['shortcode']); ?>/embed/" scrolling="no" allowtransparency="true" allow="autoplay; encrypted-media" allowfullscreen loading="lazy"></iframe>
+          <div class="reel-card" style="width:300px!important;height:533px!important;overflow:hidden!important;position:relative!important;background:#000;border-radius:18px;flex:0 0 300px;" title="<?php echo e($reel['caption'] ?? ''); ?>">
+            <iframe style="position:absolute!important;top:-54px!important;left:0!important;width:300px!important;height:800px!important;border:0!important;" src="https://www.instagram.com/reel/<?php echo e($reel['shortcode']); ?>/embed/" scrolling="no" allowtransparency="true" allow="autoplay; encrypted-media" allowfullscreen loading="lazy"></iframe>
           </div>
         <?php endforeach; ?>
       </div>
