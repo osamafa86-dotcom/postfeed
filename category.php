@@ -121,6 +121,10 @@ function buildPageUrl($pageNum) {
 <title><?php echo e($pageIcon . ' ' . $pageTitle); ?> — <?php echo e(getSetting('site_name', SITE_NAME)); ?></title>
 <meta name="description" content="<?php echo e('أحدث الأخبار في قسم ' . $pageTitle . ' من ' . getSetting('site_name', SITE_NAME)); ?>">
 <link rel="canonical" href="<?php echo e(SITE_URL . '/category.php?slug=' . urlencode($_GET['slug'] ?? '')); ?>">
+<link rel="alternate" hreflang="ar" href="<?php echo e(SITE_URL . '/category.php?slug=' . urlencode($_GET['slug'] ?? '')); ?>">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1a73e8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">

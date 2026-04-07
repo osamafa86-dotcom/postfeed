@@ -11,6 +11,8 @@ $articles = $db->query("SELECT id, slug, published_at, image_url, title
                         FROM articles
                         WHERE status = 'published'
                         ORDER BY published_at DESC LIMIT 5000")->fetchAll();
+$newsCutoff = time() - 48 * 3600;
+$pubName = defined('SITE_NAME') ? SITE_NAME : 'NewsFlow';
 $cats = $db->query("SELECT slug FROM categories WHERE is_active = 1")->fetchAll();
 
 echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
@@ -44,6 +46,16 @@ echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
       <image:loc><?php echo htmlspecialchars($a['image_url']); ?></image:loc>
       <image:title><?php echo htmlspecialchars($a['title']); ?></image:title>
     </image:image>
+    <?php endif; ?>
+    <?php if (!empty($a['published_at']) && strtotime($a['published_at']) >= $newsCutoff): ?>
+    <news:news>
+      <news:publication>
+        <news:name><?php echo htmlspecialchars($pubName); ?></news:name>
+        <news:language>ar</news:language>
+      </news:publication>
+      <news:publication_date><?php echo $lastmod; ?></news:publication_date>
+      <news:title><?php echo htmlspecialchars($a['title']); ?></news:title>
+    </news:news>
     <?php endif; ?>
   </url>
 <?php endforeach; ?>

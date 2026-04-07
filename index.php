@@ -78,7 +78,34 @@ try {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
 <meta name="description" content="مجمع الأخبار العربية الأول - أحدث الأخبار من مصادر موثوقة في السياسة، الاقتصاد، الرياضة، والتكنولوجيا">
+<link rel="canonical" href="<?php echo SITE_URL; ?>/">
+<link rel="alternate" hreflang="ar" href="<?php echo SITE_URL; ?>/">
+<link rel="alternate" hreflang="x-default" href="<?php echo SITE_URL; ?>/">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1a73e8">
+<script type="application/ld+json">
+<?php echo json_encode([
+  '@context' => 'https://schema.org',
+  '@type' => 'WebSite',
+  'name' => getSetting('site_name', SITE_NAME),
+  'url' => SITE_URL . '/',
+  'inLanguage' => 'ar',
+  'potentialAction' => [
+    '@type' => 'SearchAction',
+    'target' => SITE_URL . '/api/search.php?q={search_term_string}',
+    'query-input' => 'required name=search_term_string',
+  ],
+], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>
+</script>
 <link rel="stylesheet" href="assets/css/home.css?v=1">
+<style>
+html[data-theme="dark"]{--light:#0f1419;--dark:#e7e9ec;--card:#1a1f2b;--border:#2a2f3b;--gray:#9aa3b2;--primary-light:#16223a;}
+html[data-theme="dark"] body{background:#0f1419;color:#e7e9ec;}
+html[data-theme="dark"] .news-card,html[data-theme="dark"] header,html[data-theme="dark"] .topbar{background:#1a1f2b;color:#e7e9ec;border-color:#2a2f3b;}
+html[data-theme="dark"] img{filter:brightness(.92);}
+.theme-toggle{position:fixed;bottom:18px;left:18px;z-index:9999;width:44px;height:44px;border-radius:50%;border:1px solid var(--border);background:var(--card);color:var(--dark);cursor:pointer;font-size:20px;box-shadow:0 4px 14px rgba(0,0,0,.15);}
+</style>
 </head>
 <body>
 
@@ -831,6 +858,26 @@ try {
   </div>
 </div>
 
+<button class="theme-toggle" id="themeToggle" aria-label="تبديل الوضع الليلي" title="الوضع الليلي">🌙</button>
+<script>
+(function(){
+  var root=document.documentElement;
+  var saved=localStorage.getItem('theme');
+  if(saved==='dark'||(!saved&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)){root.setAttribute('data-theme','dark');}
+  document.addEventListener('DOMContentLoaded',function(){
+    var btn=document.getElementById('themeToggle');
+    if(!btn)return;
+    var setIcon=function(){btn.textContent=root.getAttribute('data-theme')==='dark'?'☀':'🌙';};
+    setIcon();
+    btn.addEventListener('click',function(){
+      var d=root.getAttribute('data-theme')==='dark';
+      if(d){root.removeAttribute('data-theme');localStorage.setItem('theme','light');}
+      else{root.setAttribute('data-theme','dark');localStorage.setItem('theme','dark');}
+      setIcon();
+    });
+  });
+})();
+</script>
 <script src="assets/js/home.js?v=1" defer></script>
 
 </body>
