@@ -446,8 +446,8 @@ if ($article['cat_slug']) {
     <!-- Header -->
     <header class="header">
         <div class="container">
-            <a href="index.php" class="logo">نيوز<span>فلو</span></a>
-            <a href="index.php" class="back-btn">&larr; العودة للرئيسية</a>
+            <a href="/" class="logo">نيوز<span>فلو</span></a>
+            <a href="/" class="back-btn">&larr; العودة للرئيسية</a>
         </div>
     </header>
 
