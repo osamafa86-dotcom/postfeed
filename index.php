@@ -587,7 +587,7 @@ try {
   .reel-card iframe {
     position:absolute; left:50%; transform:translateX(-50%);
     width:110%; border:0;
-    top:-72px; height:calc(100% + 260px);
+    top:-72px; height:calc(100% + 480px);
   }
 
   /* POLL WIDGET */
