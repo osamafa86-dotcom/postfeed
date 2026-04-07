@@ -1145,7 +1145,7 @@ try {
           <div class="ps-hero-meta">
             <span class="source-icon"><?php echo e(mb_substr($psFirst['source_name'], 0, 1)); ?></span>
             <div class="meta-text">
-              <span><?php echo e($psFirst['source_name']); ?></span>
+              <span><span onclick="event.preventDefault();event.stopPropagation();window.location='source.php?id=<?php echo (int)$psFirst['source_id']; ?>'" style="cursor:pointer;"><?php echo e($psFirst['source_name']); ?></span></span>
               <span class="meta-dot"></span>
               <span><?php echo timeAgo($psFirst['published_at']); ?></span>
             </div>
@@ -1167,7 +1167,7 @@ try {
               <h3><?php echo e($article['title']); ?></h3>
               <div class="ps-card-footer">
                 <span class="source-dot"><?php echo e(mb_substr($article['source_name'], 0, 1)); ?></span>
-                <span><?php echo e($article['source_name']); ?></span>
+                <span><span onclick="event.preventDefault();event.stopPropagation();window.location='source.php?id=<?php echo (int)$article['source_id']; ?>'" style="cursor:pointer;"><?php echo e($article['source_name']); ?></span></span>
               </div>
             </div>
           </a>
@@ -1188,7 +1188,7 @@ try {
             <div class="card-cat cat-breaking">عاجل</div>
             <div class="list-title"><?php echo e($article['title']); ?></div>
             <div class="card-excerpt" style="margin-bottom:6px"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 120)); ?></div>
-            <div class="list-meta"><span>🌐 <?php echo e($article['source_name']); ?></span><span>·</span><span><?php echo timeAgo($article['published_at']); ?></span><span>·</span><span>👁 <?php echo formatViews($article['view_count']); ?></span></div>
+            <div class="list-meta"><span>🌐 <span onclick="event.preventDefault();event.stopPropagation();window.location='source.php?id=<?php echo (int)$article['source_id']; ?>'" style="cursor:pointer;"><?php echo e($article['source_name']); ?></span></span><span>·</span><span><?php echo timeAgo($article['published_at']); ?></span><span>·</span><span>👁 <?php echo formatViews($article['view_count']); ?></span></div>
           </div>
         </a>
       <?php endforeach; ?>
@@ -1243,7 +1243,7 @@ try {
             <div class="card-title"><?php echo e($article['title']); ?></div>
             <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
             <div class="card-meta">
-              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#6b9fd4'); ?>"></span><?php echo e($article['source_name']); ?></div>
+              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#6b9fd4'); ?>"></span><span onclick="event.preventDefault();event.stopPropagation();window.location='source.php?id=<?php echo (int)$article['source_id']; ?>'" style="cursor:pointer;"><?php echo e($article['source_name']); ?></span></div>
               <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
             </div>
           </div>
@@ -1265,7 +1265,7 @@ try {
             <div class="card-title"><?php echo e($article['title']); ?></div>
             <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
             <div class="card-meta">
-              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#6b9fd4'); ?>"></span><?php echo e($article['source_name']); ?></div>
+              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#6b9fd4'); ?>"></span><span onclick="event.preventDefault();event.stopPropagation();window.location='source.php?id=<?php echo (int)$article['source_id']; ?>'" style="cursor:pointer;"><?php echo e($article['source_name']); ?></span></div>
               <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
             </div>
           </div>
@@ -1287,7 +1287,7 @@ try {
             <div class="card-title"><?php echo e($article['title']); ?></div>
             <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
             <div class="card-meta">
-              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#85c1a3'); ?>"></span><?php echo e($article['source_name']); ?></div>
+              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#85c1a3'); ?>"></span><span onclick="event.preventDefault();event.stopPropagation();window.location='source.php?id=<?php echo (int)$article['source_id']; ?>'" style="cursor:pointer;"><?php echo e($article['source_name']); ?></span></div>
               <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
             </div>
           </div>
@@ -1309,7 +1309,7 @@ try {
             <div class="card-title"><?php echo e($article['title']); ?></div>
             <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
             <div class="card-meta">
-              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#6b9fd4'); ?>"></span><?php echo e($article['source_name']); ?></div>
+              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#6b9fd4'); ?>"></span><span onclick="event.preventDefault();event.stopPropagation();window.location='source.php?id=<?php echo (int)$article['source_id']; ?>'" style="cursor:pointer;"><?php echo e($article['source_name']); ?></span></div>
               <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
             </div>
           </div>
@@ -1331,7 +1331,7 @@ try {
             <div class="card-title"><?php echo e($article['title']); ?></div>
             <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
             <div class="card-meta">
-              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#a08cc8'); ?>"></span><?php echo e($article['source_name']); ?></div>
+              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#a08cc8'); ?>"></span><span onclick="event.preventDefault();event.stopPropagation();window.location='source.php?id=<?php echo (int)$article['source_id']; ?>'" style="cursor:pointer;"><?php echo e($article['source_name']); ?></span></div>
               <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
             </div>
           </div>
@@ -1368,7 +1368,7 @@ try {
             <div class="card-title"><?php echo e($article['title']); ?></div>
             <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
             <div class="card-meta">
-              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#c9ab6e'); ?>"></span><?php echo e($article['source_name']); ?></div>
+              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#c9ab6e'); ?>"></span><span onclick="event.preventDefault();event.stopPropagation();window.location='source.php?id=<?php echo (int)$article['source_id']; ?>'" style="cursor:pointer;"><?php echo e($article['source_name']); ?></span></div>
               <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
             </div>
           </div>
