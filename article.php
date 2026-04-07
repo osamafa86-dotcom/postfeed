@@ -64,7 +64,11 @@ if ($article['cat_slug']) {
         $seoKeywords = !empty($article['ai_keywords'])
             ? $article['ai_keywords']
             : ($article['cat_name'] . '، أخبار، نيوزفلو');
-        $canonical = SITE_URL . '/article.php?id=' . (int)$article['id'];
+        // Canonical points to original source to avoid duplicate-content penalty
+        $canonical = !empty($article['source_url'])
+            ? $article['source_url']
+            : SITE_URL . '/article.php?id=' . (int)$article['id'];
+        $selfUrl = SITE_URL . '/article.php?id=' . (int)$article['id'];
         $publishedISO = !empty($article['published_at']) ? date('c', strtotime($article['published_at'])) : date('c');
         $modifiedISO  = !empty($article['ai_processed_at']) ? date('c', strtotime($article['ai_processed_at'])) : $publishedISO;
     ?>
@@ -82,7 +86,7 @@ if ($article['cat_slug']) {
     <meta property="og:description" content="<?php echo e($seoDesc); ?>">
     <meta property="og:image" content="<?php echo e($article['image_url']); ?>">
     <meta property="og:type" content="article">
-    <meta property="og:url" content="<?php echo e($canonical); ?>">
+    <meta property="og:url" content="<?php echo e($selfUrl); ?>">
     <meta property="article:published_time" content="<?php echo e($publishedISO); ?>">
     <meta property="article:modified_time" content="<?php echo e($modifiedISO); ?>">
     <meta property="article:section" content="<?php echo e($article['cat_name']); ?>">
@@ -109,7 +113,7 @@ if ($article['cat_slug']) {
             'name' => SITE_NAME,
             'logo' => ['@type' => 'ImageObject', 'url' => SITE_URL . '/assets/logo.png']
         ],
-        'mainEntityOfPage' => ['@type' => 'WebPage', '@id' => $canonical],
+        'mainEntityOfPage' => ['@type' => 'WebPage', '@id' => $selfUrl],
         'articleSection' => $article['cat_name'],
         'keywords' => $seoKeywords,
         'inLanguage' => 'ar',
