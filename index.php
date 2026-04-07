@@ -453,7 +453,13 @@ try {
   .news-rows .cat-arts::before      { background:#7c3aed; }
   .news-rows .cat-reports::before   { background:#b45309; }
   .news-rows .cat-media::before     { background:#a21caf; }
-  .news-rows .card-meta, .news-rows .card-source, .news-rows .card-time { display:none; }
+  .news-rows .card-meta {
+    display:flex; align-items:center; gap:8px; margin-top:8px;
+    font-size:11px; color:#94a3b8; font-weight:600;
+  }
+  .news-rows .card-source { display:flex; align-items:center; gap:6px; }
+  .news-rows .source-dot { width:6px; height:6px; }
+  .news-rows .card-time { color:#94a3b8; }
   @media (max-width:900px) {
     .news-rows { grid-template-columns:1fr !important; }
     .news-rows .news-card:nth-child(odd) { border-left:0; }
@@ -2054,18 +2060,27 @@ document.querySelectorAll('.weather-city-btn').forEach(btn => {
 // Load default
 fetchWeather('Jerusalem');
 
-// Sync weather widget bottom to palestine hero card bottom
+// Sync weather widget height to palestine hero card
 function syncWeatherHeight() {
-  if (window.innerWidth < 1100) {
-    document.querySelectorAll('.weather-widget').forEach(w => w.style.minHeight = '');
-    return;
-  }
+  const w = document.querySelector('.weather-widget');
+  if (!w) return;
+  if (window.innerWidth < 1100) { w.style.height = ''; w.style.minHeight = ''; return; }
   const ps = document.querySelector('.ps-hero');
-  const w  = document.querySelector('.weather-widget');
-  if (ps && w) w.style.minHeight = ps.offsetHeight + 'px';
+  if (ps) { w.style.height = ps.offsetHeight + 'px'; w.style.minHeight = ps.offsetHeight + 'px'; }
 }
+syncWeatherHeight();
 window.addEventListener('load', syncWeatherHeight);
 window.addEventListener('resize', syncWeatherHeight);
+// Recalc whenever palestine hero images load
+document.querySelectorAll('.ps-hero img').forEach(img => {
+  if (img.complete) syncWeatherHeight();
+  else img.addEventListener('load', syncWeatherHeight);
+});
+// Observe size changes (handles fonts/late layout)
+if (window.ResizeObserver) {
+  const ps = document.querySelector('.ps-hero');
+  if (ps) new ResizeObserver(syncWeatherHeight).observe(ps);
+}
 
 // CURRENCY (using exchangerate.host or frankfurter.app - free)
 const currencyData = [
