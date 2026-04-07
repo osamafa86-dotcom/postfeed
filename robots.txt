@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /panel/
+Disallow: /includes/
+Disallow: /cron_rss.php
+Disallow: /cron_ai.php
+Disallow: /cron_telegram.php
+Disallow: /follow_source.php
+
+Sitemap: https://postfeed.emdatra.org/sitemap.php

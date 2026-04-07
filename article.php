@@ -57,16 +57,64 @@ if ($article['cat_slug']) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <?php
+        $seoDesc = !empty($article['ai_summary'])
+            ? mb_substr(trim(preg_replace('/\s+/', ' ', $article['ai_summary'])), 0, 160)
+            : mb_substr(trim(preg_replace('/\s+/', ' ', strip_tags($article['excerpt']))), 0, 160);
+        $seoKeywords = !empty($article['ai_keywords'])
+            ? $article['ai_keywords']
+            : ($article['cat_name'] . '، أخبار، نيوزفلو');
+        $canonical = SITE_URL . '/article.php?id=' . (int)$article['id'];
+        $publishedISO = !empty($article['published_at']) ? date('c', strtotime($article['published_at'])) : date('c');
+        $modifiedISO  = !empty($article['ai_processed_at']) ? date('c', strtotime($article['ai_processed_at'])) : $publishedISO;
+    ?>
     <title><?php echo e($article['title']); ?> - <?php echo SITE_NAME; ?></title>
-    <meta name="description" content="<?php echo e(substr($article['excerpt'], 0, 160)); ?>">
-    <meta name="keywords" content="<?php echo e($article['cat_name']); ?>, أخبار">
+    <meta name="description" content="<?php echo e($seoDesc); ?>">
+    <meta name="keywords" content="<?php echo e($seoKeywords); ?>">
+    <meta name="robots" content="index, follow, max-image-preview:large">
+    <meta name="author" content="<?php echo e($article['source_name'] ?? SITE_NAME); ?>">
+    <link rel="canonical" href="<?php echo e($canonical); ?>">
 
     <!-- OG Tags -->
+    <meta property="og:site_name" content="<?php echo e(SITE_NAME); ?>">
+    <meta property="og:locale" content="ar_AR">
     <meta property="og:title" content="<?php echo e($article['title']); ?>">
-    <meta property="og:description" content="<?php echo e($article['excerpt']); ?>">
+    <meta property="og:description" content="<?php echo e($seoDesc); ?>">
     <meta property="og:image" content="<?php echo e($article['image_url']); ?>">
     <meta property="og:type" content="article">
-    <meta property="og:url" content="<?php echo SITE_URL; ?>/article.php?id=<?php echo $article['id']; ?>">
+    <meta property="og:url" content="<?php echo e($canonical); ?>">
+    <meta property="article:published_time" content="<?php echo e($publishedISO); ?>">
+    <meta property="article:modified_time" content="<?php echo e($modifiedISO); ?>">
+    <meta property="article:section" content="<?php echo e($article['cat_name']); ?>">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="<?php echo e($article['title']); ?>">
+    <meta name="twitter:description" content="<?php echo e($seoDesc); ?>">
+    <meta name="twitter:image" content="<?php echo e($article['image_url']); ?>">
+
+    <!-- JSON-LD NewsArticle -->
+    <script type="application/ld+json">
+    <?php echo json_encode([
+        '@context' => 'https://schema.org',
+        '@type' => 'NewsArticle',
+        'headline' => $article['title'],
+        'description' => $seoDesc,
+        'image' => [$article['image_url']],
+        'datePublished' => $publishedISO,
+        'dateModified' => $modifiedISO,
+        'author' => ['@type' => 'Organization', 'name' => $article['source_name'] ?? SITE_NAME],
+        'publisher' => [
+            '@type' => 'Organization',
+            'name' => SITE_NAME,
+            'logo' => ['@type' => 'ImageObject', 'url' => SITE_URL . '/assets/logo.png']
+        ],
+        'mainEntityOfPage' => ['@type' => 'WebPage', '@id' => $canonical],
+        'articleSection' => $article['cat_name'],
+        'keywords' => $seoKeywords,
+        'inLanguage' => 'ar',
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>
+    </script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
