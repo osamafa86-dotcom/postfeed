@@ -558,7 +558,6 @@ try {
     color:#fff;
     box-shadow:0 18px 40px -18px rgba(14,116,144,.55), 0 4px 12px rgba(0,0,0,.06);
     display:flex; flex-direction:column;
-    min-height:480px;
   }
   .weather-widget::before {
     content:''; position:absolute; top:-60px; left:-40px;
@@ -1056,9 +1055,19 @@ try {
     header { height:56px; }
     .stats-bar { justify-content:flex-start; }
     .stat-item { padding:0 16px; }
-    .footer-inner { grid-template-columns:1fr; gap:24px; }
+    .footer-inner { grid-template-columns:1fr 1fr; gap:20px; }
+    .footer-brand { grid-column:1 / -1; }
+    .footer-col-title { font-size:12px; margin-bottom:10px; }
+    .footer-col a { font-size:12px; padding:4px 0; }
   }
   @media(max-width:560px) {
+    .footer-inner { grid-template-columns:1fr 1fr 1fr; gap:14px; }
+    .footer-brand { grid-column:1 / -1; }
+    .footer-desc { font-size:12px; }
+    .footer-col-title { font-size:11px; margin-bottom:8px; }
+    .footer-col a { font-size:11px; padding:3px 0; }
+  }
+  @media(max-width:480px) {
     .news-grid { grid-template-columns:1fr; }
     .news-grid-2col { grid-template-columns:1fr; }
     .media-grid { grid-template-columns:1fr 1fr; }
@@ -2044,6 +2053,19 @@ document.querySelectorAll('.weather-city-btn').forEach(btn => {
 
 // Load default
 fetchWeather('Jerusalem');
+
+// Sync weather widget bottom to palestine hero card bottom
+function syncWeatherHeight() {
+  if (window.innerWidth < 1100) {
+    document.querySelectorAll('.weather-widget').forEach(w => w.style.minHeight = '');
+    return;
+  }
+  const ps = document.querySelector('.ps-hero');
+  const w  = document.querySelector('.weather-widget');
+  if (ps && w) w.style.minHeight = ps.offsetHeight + 'px';
+}
+window.addEventListener('load', syncWeatherHeight);
+window.addEventListener('resize', syncWeatherHeight);
 
 // CURRENCY (using exchangerate.host or frankfurter.app - free)
 const currencyData = [
