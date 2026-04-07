@@ -572,6 +572,25 @@ try {
   .modal-rate-buy, .modal-rate-sell { font-size:13px; color:#555; }
   .modal-rate-buy span, .modal-rate-sell span { font-weight:700; color:#1a1a2e; }
 
+  /* TELEGRAM BREAKING */
+  .tg-breaking { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .tg-card {
+    display:flex; gap:12px; padding:14px; background:#fff;
+    border:1px solid var(--border); border-right:4px solid #229ED9;
+    border-radius:12px; text-decoration:none; color:var(--text);
+    transition:all .2s;
+  }
+  .tg-card:hover { box-shadow:0 6px 20px rgba(34,158,217,.15); transform:translateY(-2px); }
+  .tg-img { flex:0 0 90px; height:90px; border-radius:8px; overflow:hidden; background:var(--bg3); }
+  .tg-img img { width:100%; height:100%; object-fit:cover; }
+  .tg-body { flex:1; min-width:0; }
+  .tg-source { display:flex; align-items:center; gap:8px; font-size:12px; margin-bottom:6px; flex-wrap:wrap; }
+  .tg-badge { background:#229ED9; color:#fff; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:700; }
+  .tg-source strong { color:#229ED9; }
+  .tg-time { color:var(--text-muted); font-size:11px; }
+  .tg-text { font-size:13px; line-height:1.6; color:var(--text); display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden; }
+  @media(max-width:1100px) { .tg-breaking { grid-template-columns:1fr; } }
+
   /* REELS SECTION */
   .reels-wrap { margin-bottom:28px; }
   .reels-wrap .section-header { margin-bottom:16px; }
@@ -1174,6 +1193,33 @@ try {
         </a>
       <?php endforeach; ?>
     </div>
+
+    <?php
+    // Telegram breaking messages
+    $tgMsgs = [];
+    try {
+        $tgMsgs = getDB()->query("SELECT m.*, s.display_name, s.username, s.avatar_url FROM telegram_messages m JOIN telegram_sources s ON m.source_id = s.id WHERE m.is_active=1 AND s.is_active=1 ORDER BY m.posted_at DESC LIMIT 8")->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {}
+    ?>
+    <?php if (!empty($tgMsgs)): ?>
+    <div class="tg-breaking" style="margin-bottom:28px">
+      <?php foreach ($tgMsgs as $m): ?>
+        <a href="<?php echo e($m['post_url']); ?>" target="_blank" class="tg-card">
+          <?php if (!empty($m['image_url'])): ?>
+            <div class="tg-img"><img src="<?php echo e($m['image_url']); ?>" alt="" loading="lazy"></div>
+          <?php endif; ?>
+          <div class="tg-body">
+            <div class="tg-source">
+              <span class="tg-badge">📢 تيليغرام</span>
+              <strong>@<?php echo e($m['username']); ?></strong>
+              <span class="tg-time"><?php echo timeAgo($m['posted_at']); ?></span>
+            </div>
+            <div class="tg-text"><?php echo nl2br(e(mb_substr($m['text'], 0, 280))); ?><?php echo mb_strlen($m['text'])>280?'...':''; ?></div>
+          </div>
+        </a>
+      <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
 
     <!-- LATEST NEWS -->
     <div id="latest" class="section-header">

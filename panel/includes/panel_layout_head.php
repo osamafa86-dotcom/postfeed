@@ -374,6 +374,10 @@ $pageTitle  = $pageTitle  ?? 'نيوزفلو';
       <div class="nav-icon">🎬</div>
       <span class="label">الريلز</span>
     </a>
+    <a href="telegram.php" class="nav-item<?php echo $activePage==='telegram'?' active':''; ?>">
+      <div class="nav-icon">📢</div>
+      <span class="label">تيليغرام</span>
+    </a>
   </div>
 
   <div class="sidebar-section">
