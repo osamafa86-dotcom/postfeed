@@ -255,6 +255,26 @@ function e($str) {
     return htmlspecialchars($str, ENT_QUOTES, 'UTF-8');
 }
 
+function articleUrl($article) {
+    $id = (int)($article['id'] ?? 0);
+    $slug = $article['slug'] ?? '';
+    if ($slug) {
+        $slug = preg_replace('/[^a-zA-Z0-9\x{0600}-\x{06FF}-]+/u', '-', $slug);
+        $slug = trim($slug, '-');
+        $slug = mb_substr($slug, 0, 80);
+        return 'article/' . $id . '/' . rawurlencode($slug);
+    }
+    return 'article/' . $id;
+}
+
+function categoryUrl($slug) {
+    return 'category/' . rawurlencode($slug);
+}
+
+function sourceUrl($id) {
+    return 'source/' . (int)$id;
+}
+
 function isAdmin() {
     return isset($_SESSION[ADMIN_SESSION_NAME]) && $_SESSION[ADMIN_SESSION_NAME] === true;
 }
