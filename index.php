@@ -578,6 +578,7 @@ try {
   .reels-scroll {
     display:flex; gap:16px; overflow-x:auto; padding:8px 4px 16px;
     scroll-snap-type:x mandatory; scrollbar-width:thin;
+    align-items:flex-start;
   }
   .reels-scroll::-webkit-scrollbar { height:8px; }
   .reels-scroll::-webkit-scrollbar-thumb { background:rgba(0,0,0,.15); border-radius:4px; }
@@ -1330,7 +1331,7 @@ try {
       </div>
       <div class="reels-scroll">
         <?php foreach ($homeReels as $reel): ?>
-          <div class="reel-card" style="width:300px!important;height:533px!important;overflow:hidden!important;position:relative!important;background:#000;border-radius:18px;flex:0 0 300px;" title="<?php echo e($reel['caption'] ?? ''); ?>">
+          <div class="reel-card" style="width:300px!important;min-width:300px!important;max-width:300px!important;height:533px!important;min-height:533px!important;max-height:533px!important;overflow:hidden!important;position:relative!important;background:#000;border-radius:18px;flex:0 0 300px;align-self:flex-start;" title="<?php echo e($reel['caption'] ?? ''); ?>">
             <iframe style="position:absolute!important;top:-54px!important;left:0!important;width:300px!important;height:800px!important;border:0!important;" src="https://www.instagram.com/reel/<?php echo e($reel['shortcode']); ?>/embed/" scrolling="no" allowtransparency="true" allow="autoplay; encrypted-media" allowfullscreen loading="lazy"></iframe>
           </div>
         <?php endforeach; ?>
