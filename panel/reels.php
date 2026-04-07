@@ -182,6 +182,7 @@ include __DIR__ . '/includes/panel_layout_head.php';
       <div class="form-card">
         <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;"><?php echo $action === 'edit' ? '✏️ تعديل ريل' : '➕ إضافة ريل جديد'; ?></h3>
         <form method="POST">
+                <?php echo csrf_field(); ?>
           <input type="hidden" name="form_type" value="reel">
           <?php if ($editReel): ?><input type="hidden" name="id" value="<?php echo (int)$editReel['id']; ?>"><?php endif; ?>
 
@@ -282,6 +283,7 @@ include __DIR__ . '/includes/panel_layout_head.php';
       <div class="form-card">
         <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;"><?php echo $action === 'edit' ? '✏️ تعديل مصدر' : '➕ إضافة مصدر'; ?></h3>
         <form method="POST">
+                <?php echo csrf_field(); ?>
           <input type="hidden" name="form_type" value="source">
           <?php if ($editSource): ?><input type="hidden" name="id" value="<?php echo (int)$editSource['id']; ?>"><?php endif; ?>
 

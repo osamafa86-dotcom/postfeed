@@ -43,7 +43,8 @@ foreach ($sources as $i => $src) {
         CURLOPT_CONNECTTIMEOUT => 8,
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; NewsFlow/1.0)',
-        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_SSL_VERIFYHOST => 2,
         CURLOPT_ENCODING => '',
     ]);
     curl_multi_add_handle($multi, $ch);
@@ -186,7 +187,7 @@ echo "\nالمجموع: {$totalNew} خبر جديد | أخطاء: {$totalErr} | 
 if ($totalNew > 0) {
     require_once __DIR__ . '/includes/functions.php';
     require_once __DIR__ . '/includes/ai_helper.php';
-    $apiKey = getSetting('anthropic_api_key', '');
+    $apiKey = env('ANTHROPIC_API_KEY', '') ?: getSetting('anthropic_api_key', '');
     if (!empty($apiKey)) {
         try {
             $cols = $db->query("SHOW COLUMNS FROM articles LIKE 'ai_summary'")->fetch();
@@ -199,11 +200,14 @@ if ($totalNew > 0) {
             }
         } catch (Exception $e) {}
 
-        $aiLimit = min($totalNew, 15);
+        $aiLimit = (int) min($totalNew, 15);
         echo "\nبدء التلخيص لـ $aiLimit خبر...\n";
-        $pending = $db->query("SELECT id, title, content FROM articles
+        $stmtP = $db->prepare("SELECT id, title, content FROM articles
                                WHERE ai_summary IS NULL AND status = 'published'
-                               ORDER BY created_at DESC LIMIT $aiLimit")->fetchAll();
+                               ORDER BY created_at DESC LIMIT ?");
+        $stmtP->bindValue(1, $aiLimit, PDO::PARAM_INT);
+        $stmtP->execute();
+        $pending = $stmtP->fetchAll();
         $aiDone = 0; $aiFail = 0;
         foreach ($pending as $a) {
             $r = ai_summarize_article($a['title'], $a['content']);

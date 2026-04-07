@@ -35,8 +35,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['api_key'])) {
 // Bulk summarize
 if (($_GET['action'] ?? '') === 'bulk') {
     @set_time_limit(120);
-    $limit = (int)($_GET['limit'] ?? 5);
-    $articles = $db->query("SELECT id, title, content FROM articles WHERE ai_summary IS NULL ORDER BY created_at DESC LIMIT $limit")->fetchAll();
+    $limit = max(1, min(50, (int)($_GET['limit'] ?? 5)));
+    $stmt = $db->prepare("SELECT id, title, content FROM articles WHERE ai_summary IS NULL ORDER BY created_at DESC LIMIT ?");
+    $stmt->bindValue(1, $limit, PDO::PARAM_INT);
+    $stmt->execute();
+    $articles = $stmt->fetchAll();
     $done = 0; $fail = 0; $errors = [];
     foreach ($articles as $a) {
         $r = ai_summarize_article($a['title'], $a['content']);
@@ -74,6 +77,7 @@ include __DIR__ . '/includes/panel_layout_head.php';
   <div class="form-card">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:14px;">⚙️ إعدادات API</h3>
     <form method="POST">
+                <?php echo csrf_field(); ?>
       <div class="form-group">
         <label>Anthropic API Key</label>
         <input type="password" name="api_key" class="form-control" value="<?php echo e($apiKey); ?>" placeholder="sk-ant-api03-...">

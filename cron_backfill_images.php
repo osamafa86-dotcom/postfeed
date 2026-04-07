@@ -19,10 +19,13 @@ $db = getDB();
 $limit = (int)($_GET['limit'] ?? ($argv[1] ?? 50));
 if ($limit < 1 || $limit > 300) $limit = 50;
 
-$rows = $db->query("SELECT id, source_url FROM articles
+$stmt = $db->prepare("SELECT id, source_url FROM articles
                     WHERE (image_url IS NULL OR image_url = '')
                     AND source_url IS NOT NULL AND source_url != ''
-                    ORDER BY id DESC LIMIT $limit")->fetchAll();
+                    ORDER BY id DESC LIMIT ?");
+$stmt->bindValue(1, $limit, PDO::PARAM_INT);
+$stmt->execute();
+$rows = $stmt->fetchAll();
 
 $ok = 0; $skip = 0;
 foreach ($rows as $r) {

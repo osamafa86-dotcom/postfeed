@@ -260,9 +260,33 @@ function isAdmin() {
 }
 
 function requireAdmin() {
-    session_start();
+    if (session_status() === PHP_SESSION_NONE) session_start();
     if (!isAdmin()) {
         header('Location: login.php');
         exit;
     }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && !csrf_verify($_POST['_csrf'] ?? '')) {
+        http_response_code(403);
+        exit('CSRF token mismatch');
+    }
+}
+
+// ============================================
+// CSRF
+// ============================================
+function csrf_token() {
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    if (empty($_SESSION['_csrf'])) {
+        $_SESSION['_csrf'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['_csrf'];
+}
+
+function csrf_field() {
+    return '<input type="hidden" name="_csrf" value="' . csrf_token() . '">';
+}
+
+function csrf_verify($token) {
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    return !empty($_SESSION['_csrf']) && is_string($token) && hash_equals($_SESSION['_csrf'], $token);
 }

@@ -21,10 +21,13 @@ $db = getDB();
 $limit = (int)($_GET['limit'] ?? ($argv[1] ?? 30));
 if ($limit < 1 || $limit > 200) $limit = 30;
 
-$rows = $db->query("SELECT id, source_url, content FROM articles
+$stmt = $db->prepare("SELECT id, source_url, content FROM articles
                     WHERE source_url IS NOT NULL AND source_url != ''
                     AND CHAR_LENGTH(content) < 600
-                    ORDER BY id DESC LIMIT $limit")->fetchAll();
+                    ORDER BY id DESC LIMIT ?");
+$stmt->bindValue(1, $limit, PDO::PARAM_INT);
+$stmt->execute();
+$rows = $stmt->fetchAll();
 
 $ok = 0; $skip = 0;
 foreach ($rows as $r) {

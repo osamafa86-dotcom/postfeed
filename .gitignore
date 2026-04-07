@@ -1,0 +1,9 @@
+.env
+.env.local
+uploads/
+*.log
+*.tmp
+.DS_Store
+newsflow-v2.zip
+cron_log.txt
+deploy_log.txt

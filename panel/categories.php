@@ -119,6 +119,7 @@ include __DIR__ . '/includes/panel_layout_head.php';
 
         <div class="form-card">
             <form method="POST">
+                <?php echo csrf_field(); ?>
                 <?php if ($category): ?>
                     <input type="hidden" name="id" value="<?php echo $category['id']; ?>">
                 <?php endif; ?>

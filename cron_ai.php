@@ -34,15 +34,18 @@ try {
     }
 } catch (Exception $e) {}
 
-$apiKey = getSetting('anthropic_api_key', '');
+$apiKey = env('ANTHROPIC_API_KEY', '') ?: getSetting('anthropic_api_key', '');
 if (empty($apiKey)) {
     echo "API key not configured\n";
     exit;
 }
 
-$articles = $db->query("SELECT id, title, content FROM articles
+$stmt = $db->prepare("SELECT id, title, content FROM articles
                         WHERE ai_summary IS NULL AND status = 'published'
-                        ORDER BY created_at DESC LIMIT $limit")->fetchAll();
+                        ORDER BY created_at DESC LIMIT ?");
+$stmt->bindValue(1, $limit, PDO::PARAM_INT);
+$stmt->execute();
+$articles = $stmt->fetchAll();
 
 $done = 0; $fail = 0;
 $start = microtime(true);

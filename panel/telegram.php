@@ -118,6 +118,7 @@ include __DIR__ . '/includes/panel_layout_head.php';
     <div class="form-card">
       <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;"><?php echo $action === 'edit' ? '✏️ تعديل قناة' : '➕ إضافة قناة'; ?></h3>
       <form method="POST">
+                <?php echo csrf_field(); ?>
         <?php if ($editSource): ?><input type="hidden" name="id" value="<?php echo (int)$editSource['id']; ?>"><?php endif; ?>
         <div class="form-row">
           <div class="form-group">

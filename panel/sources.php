@@ -123,6 +123,7 @@ include __DIR__ . '/includes/panel_layout_head.php';
 
         <div class="form-card">
             <form method="POST">
+                <?php echo csrf_field(); ?>
                 <?php if ($source): ?>
                     <input type="hidden" name="id" value="<?php echo $source['id']; ?>">
                 <?php endif; ?>

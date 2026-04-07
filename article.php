@@ -472,10 +472,24 @@ if ($article['cat_slug']) {
         <!-- Article Content -->
         <div class="article-content">
             <?php
-            // تنظيف المحتوى - السماح فقط بوسوم HTML آمنة وفك ترميز الكيانات
+            // تنظيف المحتوى - السماح فقط بوسوم HTML آمنة + تعقيم href/src
             $allowedTags = '<p><br><strong><b><em><i><ul><ol><li><h2><h3><h4><blockquote><a><img>';
             $cleanContent = strip_tags($article['content'], $allowedTags);
-            $cleanContent = html_entity_decode($cleanContent, ENT_QUOTES, 'UTF-8');
+            // إزالة جميع event handlers (onclick, onerror, ...)
+            $cleanContent = preg_replace('#\s+on[a-z]+\s*=\s*"[^"]*"#i', '', $cleanContent);
+            $cleanContent = preg_replace("#\s+on[a-z]+\s*=\s*'[^']*'#i", '', $cleanContent);
+            // تعقيم روابط href: السماح فقط بـ http(s) و mailto
+            $cleanContent = preg_replace_callback('#<a\s+([^>]*?)href\s*=\s*"([^"]*)"([^>]*)>#i', function($m){
+                $u = trim($m[2]);
+                if (!preg_match('#^(https?:|mailto:|/|\#)#i', $u)) $u = '#';
+                return '<a ' . $m[1] . 'href="' . htmlspecialchars($u, ENT_QUOTES) . '" rel="noopener nofollow" target="_blank"' . $m[3] . '>';
+            }, $cleanContent);
+            // تعقيم src للصور
+            $cleanContent = preg_replace_callback('#<img\s+([^>]*?)src\s*=\s*"([^"]*)"([^>]*)>#i', function($m){
+                $u = trim($m[2]);
+                if (!preg_match('#^(https?:|/)#i', $u)) return '';
+                return '<img ' . $m[1] . 'src="' . htmlspecialchars($u, ENT_QUOTES) . '" loading="lazy"' . $m[3] . '>';
+            }, $cleanContent);
             echo $cleanContent;
             ?>
         </div>
