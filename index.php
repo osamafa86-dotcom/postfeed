@@ -2060,13 +2060,16 @@ document.querySelectorAll('.weather-city-btn').forEach(btn => {
 // Load default
 fetchWeather('Jerusalem');
 
-// Sync weather widget height to palestine hero card
+// Push weather widget down so its bottom aligns with palestine hero bottom
 function syncWeatherHeight() {
   const w = document.querySelector('.weather-widget');
   if (!w) return;
-  if (window.innerWidth < 1100) { w.style.height = ''; w.style.minHeight = ''; return; }
+  w.style.height = ''; w.style.minHeight = '';
+  if (window.innerWidth < 1100) { w.style.marginTop = ''; return; }
   const ps = document.querySelector('.ps-hero');
-  if (ps) { w.style.height = ps.offsetHeight + 'px'; w.style.minHeight = ps.offsetHeight + 'px'; }
+  if (!ps) return;
+  const diff = ps.offsetHeight - w.offsetHeight;
+  w.style.marginTop = (diff > 0 ? diff : 0) + 'px';
 }
 syncWeatherHeight();
 window.addEventListener('load', syncWeatherHeight);
