@@ -578,16 +578,15 @@ try {
   .reels-scroll::-webkit-scrollbar { height:8px; }
   .reels-scroll::-webkit-scrollbar-thumb { background:rgba(0,0,0,.15); border-radius:4px; }
   .reel-card {
-    flex:0 0 300px; scroll-snap-align:start;
+    flex:0 0 300px; width:300px; height:533px; scroll-snap-align:start;
     background:#000; border-radius:18px; overflow:hidden; position:relative;
-    aspect-ratio:9/16; cursor:pointer; isolation:isolate;
+    cursor:pointer; isolation:isolate;
     box-shadow:0 10px 30px rgba(0,0,0,.2); transition:transform .3s;
   }
   .reel-card:hover { transform:translateY(-4px); }
   .reel-card iframe {
-    position:absolute; left:50%; transform:translateX(-50%);
-    width:110%; border:0;
-    top:-72px; height:calc(100% + 480px);
+    position:absolute; left:0; width:300px; border:0;
+    top:-54px; height:800px;
   }
 
   /* POLL WIDGET */
