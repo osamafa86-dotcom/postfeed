@@ -10,7 +10,7 @@ require_once __DIR__ . '/includes/functions.php';
 $heroArticles = getHeroArticles();
 $palestineNews = getPalestineNews(5);
 $breakingNews = getBreakingNews();
-$latestArticles = getLatestArticles(6);
+$latestArticles = getLatestArticles(12);
 $categories = getCategories();
 $notifications = getNotifications(6);
 $unreadCount = getUnreadNotifCount();
@@ -25,12 +25,33 @@ $tickerItems = getTickerItems();
 $totalArticles = countArticles();
 $totalSources = count($sources);
 
-// جلب أخبار التصنيفات المختلفة
-$politicalNews = getArticlesByCategory('political', 4);
-$economyNews = getArticlesByCategory('economy', 3);
-$sportsNews = getArticlesByCategory('sports', 3);
-$artsNews = getArticlesByCategory('arts', 2);
-$reportsNews = getArticlesByCategory('reports', 3);
+// جلب أخبار التصنيفات (نطلب عدد أكبر لتعويض ما يتم حذفه عند منع التكرار)
+$politicalNews = getArticlesByCategory('political', 12);
+$economyNews   = getArticlesByCategory('economy', 12);
+$sportsNews    = getArticlesByCategory('sports', 12);
+$artsNews      = getArticlesByCategory('arts', 12);
+$reportsNews   = getArticlesByCategory('reports', 12);
+
+// منع تكرار الخبر عبر أكثر من قسم في الصفحة الرئيسية
+$usedIds = [];
+$dedup = function(array $list, int $keep) use (&$usedIds): array {
+    $out = [];
+    foreach ($list as $a) {
+        $id = (int)($a['id'] ?? 0);
+        if ($id && isset($usedIds[$id])) continue;
+        $usedIds[$id] = true;
+        $out[] = $a;
+        if (count($out) >= $keep) break;
+    }
+    return $out;
+};
+$breakingNews   = $dedup($breakingNews, 5);
+$latestArticles = $dedup($latestArticles, 6);
+$politicalNews  = $dedup($politicalNews, 4);
+$economyNews    = $dedup($economyNews, 3);
+$sportsNews     = $dedup($sportsNews, 3);
+$artsNews       = $dedup($artsNews, 2);
+$reportsNews    = $dedup($reportsNews, 3);
 
 // جلب الريلز للعرض في الصفحة الرئيسية
 $homeReels = [];
