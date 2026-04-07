@@ -1,14 +1,26 @@
 <?php
 /**
- * نيوزفلو - سحب أخبار RSS تلقائياً
- * يتم تشغيله كل 5 دقائق عبر Cron Job
+ * نيوزفلو - سحب أخبار RSS تلقائياً (متوازي)
+ * يتم تشغيله عبر Cron Job
  */
 
 require_once __DIR__ . '/includes/config.php';
 
 $db = getDB();
+$startTime = microtime(true);
 
-// جلب المصادر النشطة اللي عندها رابط RSS
+// Auto-migrate tracking columns
+try {
+    $cols = $db->query("SHOW COLUMNS FROM sources LIKE 'last_fetched_at'")->fetch();
+    if (!$cols) {
+        $db->exec("ALTER TABLE sources
+            ADD COLUMN last_fetched_at TIMESTAMP NULL DEFAULT NULL,
+            ADD COLUMN last_error VARCHAR(500) DEFAULT NULL,
+            ADD COLUMN last_new_count INT DEFAULT 0,
+            ADD COLUMN total_articles INT DEFAULT 0");
+    }
+} catch (Exception $e) {}
+
 $sources = $db->query("SELECT * FROM sources WHERE is_active = 1 AND rss_url IS NOT NULL AND rss_url != ''")->fetchAll();
 
 if (empty($sources)) {
@@ -16,45 +28,65 @@ if (empty($sources)) {
     exit;
 }
 
-$totalNew = 0;
+echo "بدء السحب المتوازي لـ " . count($sources) . " مصدر...\n";
 
-foreach ($sources as $source) {
-    echo "جاري سحب: {$source['name']} ({$source['rss_url']})\n";
+// ============ FETCH IN PARALLEL ============
+$multi = curl_multi_init();
+$handles = [];
+foreach ($sources as $i => $src) {
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL => $src['rss_url'],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 20,
+        CURLOPT_CONNECTTIMEOUT => 8,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; NewsFlow/1.0)',
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_ENCODING => '',
+    ]);
+    curl_multi_add_handle($multi, $ch);
+    $handles[$i] = $ch;
+}
+
+$active = null;
+do {
+    $status = curl_multi_exec($multi, $active);
+    if ($active) curl_multi_select($multi, 1.0);
+} while ($active && $status === CURLM_OK);
+
+$results = [];
+foreach ($handles as $i => $ch) {
+    $results[$i] = [
+        'body' => curl_multi_getcontent($ch),
+        'http' => curl_getinfo($ch, CURLINFO_HTTP_CODE),
+        'err'  => curl_error($ch),
+    ];
+    curl_multi_remove_handle($multi, $ch);
+    curl_close($ch);
+}
+curl_multi_close($multi);
+
+// ============ PARSE & INSERT ============
+$totalNew = 0;
+$totalErr = 0;
+
+foreach ($sources as $i => $source) {
+    $r = $results[$i];
+    $error = null;
+    $newCount = 0;
 
     try {
-        $rssContent = @file_get_contents($source['rss_url']);
-        if ($rssContent === false) {
-            // محاولة ثانية مع curl
-            $ch = curl_init();
-            curl_setopt_array($ch, [
-                CURLOPT_URL => $source['rss_url'],
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT => 30,
-                CURLOPT_FOLLOWLOCATION => true,
-                CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; NewsFlow/1.0)',
-                CURLOPT_SSL_VERIFYPEER => true,
-            ]);
-            $rssContent = curl_exec($ch);
-            curl_close($ch);
+        if ($r['http'] >= 400 || empty($r['body'])) {
+            throw new Exception("HTTP {$r['http']} " . ($r['err'] ?: 'empty body'));
         }
 
-        if (empty($rssContent)) {
-            echo "  ✗ فشل تحميل RSS\n";
-            continue;
-        }
-
-        // تحليل XML
         libxml_use_internal_errors(true);
-        $xml = simplexml_load_string($rssContent);
-        if ($xml === false) {
-            echo "  ✗ فشل تحليل XML\n";
-            continue;
-        }
+        $xml = simplexml_load_string($r['body']);
+        if ($xml === false) throw new Exception('XML parse failed');
 
-        // دعم RSS 2.0 و Atom
         $items = [];
         if (isset($xml->channel->item)) {
-            // RSS 2.0
             foreach ($xml->channel->item as $item) {
                 $items[] = [
                     'title' => (string) $item->title,
@@ -66,7 +98,6 @@ foreach ($sources as $source) {
                 ];
             }
         } elseif (isset($xml->entry)) {
-            // Atom
             foreach ($xml->entry as $entry) {
                 $link = '';
                 if (isset($entry->link)) {
@@ -87,82 +118,57 @@ foreach ($sources as $source) {
             }
         }
 
-        $newCount = 0;
         foreach ($items as $item) {
             if (empty($item['title'])) continue;
-
-            // تحقق إن الخبر مش موجود مسبقاً (بالعنوان والمصدر)
             $check = $db->prepare("SELECT COUNT(*) FROM articles WHERE title = ? AND source_id = ?");
             $check->execute([trim($item['title']), $source['id']]);
             if ($check->fetchColumn() > 0) continue;
 
-            // تنظيف النص
             $title = trim(strip_tags($item['title']));
-            $excerpt = trim(strip_tags($item['description']));
-            $excerpt = mb_substr($excerpt, 0, 500);
+            $excerpt = mb_substr(trim(strip_tags($item['description'])), 0, 500);
             $imageUrl = $item['image'];
-
-            // توليد slug
             $slug = preg_replace('/[^a-zA-Z0-9\x{0600}-\x{06FF}\s-]/u', '', $title);
             $slug = preg_replace('/[\s]+/', '-', trim($slug));
             $slug = mb_substr($slug, 0, 200) . '-' . time() . rand(100, 999);
-
-            // تحديد التصنيف من محتوى الخبر
             $categoryId = detectCategory($db, $title . ' ' . $excerpt, $item['category']);
 
-            // تاريخ النشر
             $publishedAt = null;
             if (!empty($item['pubDate'])) {
-                $timestamp = strtotime($item['pubDate']);
-                if ($timestamp) {
-                    $publishedAt = date('Y-m-d H:i:s', $timestamp);
-                }
+                $ts = strtotime($item['pubDate']);
+                if ($ts) $publishedAt = date('Y-m-d H:i:s', $ts);
             }
-            if (!$publishedAt) {
-                $publishedAt = date('Y-m-d H:i:s');
-            }
+            if (!$publishedAt) $publishedAt = date('Y-m-d H:i:s');
 
-            // رابط الخبر الأصلي
-            $sourceUrl = trim($item['link']);
-
-            // إدخال الخبر
-            $stmt = $db->prepare("
-                INSERT INTO articles (title, slug, excerpt, content, image_url, source_url, category_id, source_id, status, published_at, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'published', ?, NOW())
-            ");
-            $stmt->execute([
-                $title,
-                $slug,
-                $excerpt,
-                '<p>' . nl2br($excerpt) . '</p>',
-                $imageUrl,
-                $sourceUrl,
-                $categoryId,
-                $source['id'],
-                $publishedAt,
-            ]);
+            $stmt = $db->prepare("INSERT INTO articles (title, slug, excerpt, content, image_url, source_url, category_id, source_id, status, published_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'published', ?, NOW())");
+            $stmt->execute([$title, $slug, $excerpt, '<p>' . nl2br($excerpt) . '</p>', $imageUrl, trim($item['link']), $categoryId, $source['id'], $publishedAt]);
             $newCount++;
         }
 
-        $totalNew += $newCount;
-        echo "  ✓ تم إضافة {$newCount} خبر جديد\n";
-
+        echo "  ✓ {$source['name']}: {$newCount} جديد\n";
     } catch (Exception $ex) {
-        echo "  ✗ خطأ: {$ex->getMessage()}\n";
+        $error = mb_substr($ex->getMessage(), 0, 500);
+        $totalErr++;
+        echo "  ✗ {$source['name']}: {$error}\n";
     }
+
+    // Update tracking
+    try {
+        $totalArticles = $db->prepare("SELECT COUNT(*) FROM articles WHERE source_id = ?");
+        $totalArticles->execute([$source['id']]);
+        $tot = (int)$totalArticles->fetchColumn();
+
+        $db->prepare("UPDATE sources SET last_fetched_at = NOW(), last_error = ?, last_new_count = ?, total_articles = ? WHERE id = ?")
+           ->execute([$error, $newCount, $tot, $source['id']]);
+    } catch (Exception $e) {}
+
+    $totalNew += $newCount;
 }
 
-echo "\nالمجموع: {$totalNew} خبر جديد\n";
+$elapsed = round(microtime(true) - $startTime, 2);
+echo "\nالمجموع: {$totalNew} خبر جديد | أخطاء: {$totalErr} | الوقت: {$elapsed}s\n";
 
-// ============================================
-// دوال مساعدة
-// ============================================
-
-/**
- * استخراج صورة من عنصر RSS
- */
+// ============ HELPERS ============
 function extractImage($item) {
-    // media:content
     $namespaces = $item->getNamespaces(true);
     if (isset($namespaces['media'])) {
         $media = $item->children($namespaces['media']);
@@ -175,68 +181,36 @@ function extractImage($item) {
             if (!empty($url)) return $url;
         }
     }
-
-    // enclosure
     if (isset($item->enclosure)) {
         $type = (string) $item->enclosure['type'];
         if (strpos($type, 'image') !== false) {
             return (string) $item->enclosure['url'];
         }
     }
-
-    // استخراج من الوصف
     $desc = (string) $item->description;
-    if (preg_match('/<img[^>]+src=["\']([^"\']+)["\']/', $desc, $matches)) {
-        return $matches[1];
-    }
-
+    if (preg_match('/<img[^>]+src=["\']([^"\']+)["\']/', $desc, $m)) return $m[1];
     return '';
 }
 
-/**
- * تحديد التصنيف تلقائياً من المحتوى
- */
 function detectCategory($db, $text, $rssCategory = '') {
     $keywords = [
-        'political' => ['سياس', 'رئيس', 'وزير', 'حكوم', 'برلمان', 'انتخاب', 'حزب', 'دبلوماس', 'سفير', 'قمة', 'مجلس', 'أمم متحدة', 'حرب', 'عسكر', 'جيش', 'صراع', 'احتلال', 'مقاوم', 'فلسطين', 'غزة'],
-        'economy'   => ['اقتصاد', 'مال', 'بورصة', 'سوق', 'تجار', 'استثمار', 'بنك', 'دولار', 'نفط', 'أسعار', 'تضخم', 'ناتج', 'ميزانية', 'ضريب'],
-        'sports'    => ['رياض', 'كرة', 'ملعب', 'دوري', 'بطولة', 'منتخب', 'لاعب', 'مباراة', 'هدف', 'تدريب', 'فيفا', 'أولمب'],
-        'arts'      => ['فن', 'ثقاف', 'سينما', 'فيلم', 'مسلسل', 'موسيق', 'معرض', 'كتاب', 'رواية', 'مسرح', 'غناء', 'ألبوم'],
-        'media'     => ['إعلام', 'صحاف', 'تلفزيون', 'قناة', 'بث', 'بودكاست', 'يوتيوب', 'سوشيال'],
-        'reports'   => ['تقرير', 'دراسة', 'إحصا', 'بحث', 'تحليل', 'مؤشر', 'استطلاع'],
-        'tech'      => ['تكنولوج', 'تقن', 'ذكاء اصطناع', 'هاتف', 'تطبيق', 'إنترنت', 'برمج', 'آبل', 'جوجل', 'سامسونج'],
-        'health'    => ['صح', 'طب', 'مرض', 'علاج', 'مستشفى', 'وباء', 'لقاح', 'دواء', 'جراح'],
+        'political' => ['سياس','رئيس','وزير','حكوم','برلمان','انتخاب','حزب','دبلوماس','سفير','قمة','مجلس','أمم متحدة','حرب','عسكر','جيش','صراع','احتلال','مقاوم','فلسطين','غزة'],
+        'economy'   => ['اقتصاد','مال','بورصة','سوق','تجار','استثمار','بنك','دولار','نفط','أسعار','تضخم','ناتج','ميزانية','ضريب'],
+        'sports'    => ['رياض','كرة','ملعب','دوري','بطولة','منتخب','لاعب','مباراة','هدف','تدريب','فيفا','أولمب'],
+        'arts'      => ['فن','ثقاف','سينما','فيلم','مسلسل','موسيق','معرض','كتاب','رواية','مسرح','غناء','ألبوم'],
+        'media'     => ['إعلام','صحاف','تلفزيون','قناة','بث','بودكاست','يوتيوب','سوشيال'],
+        'reports'   => ['تقرير','دراسة','إحصا','بحث','تحليل','مؤشر','استطلاع'],
+        'tech'      => ['تكنولوج','تقن','ذكاء اصطناع','هاتف','تطبيق','إنترنت','برمج','آبل','جوجل','سامسونج'],
+        'health'    => ['صح','طب','مرض','علاج','مستشفى','وباء','لقاح','دواء','جراح'],
     ];
-
-    $bestMatch = null;
-    $bestScore = 0;
-
+    $best = null; $score = 0;
     foreach ($keywords as $slug => $words) {
-        $score = 0;
-        foreach ($words as $word) {
-            if (mb_strpos($text, $word) !== false) {
-                $score++;
-            }
-        }
-        if ($score > $bestScore) {
-            $bestScore = $score;
-            $bestMatch = $slug;
-        }
+        $s = 0;
+        foreach ($words as $w) if (mb_strpos($text, $w) !== false) $s++;
+        if ($s > $score) { $score = $s; $best = $slug; }
     }
-
-    // إذا ما لقينا تطابق، نحط سياسة كافتراضي
-    if ($bestScore === 0) {
-        $bestMatch = 'political';
-    }
-
-    // جلب ID التصنيف
+    if ($score === 0) $best = 'political';
     $stmt = $db->prepare("SELECT id FROM categories WHERE slug = ?");
-    $stmt->execute([$bestMatch]);
-    $catId = $stmt->fetchColumn();
-
-    return $catId ?: 1;
-}
-
-function e($str) {
-    return htmlspecialchars($str ?? '', ENT_QUOTES, 'UTF-8');
+    $stmt->execute([$best]);
+    return $stmt->fetchColumn() ?: 1;
 }
