@@ -13,6 +13,28 @@ $error = '';
 $success = '';
 $source = null;
 
+// Auto-migrate tracking columns
+try {
+    $cols = $db->query("SHOW COLUMNS FROM sources LIKE 'last_fetched_at'")->fetch();
+    if (!$cols) {
+        $db->exec("ALTER TABLE sources
+            ADD COLUMN last_fetched_at TIMESTAMP NULL DEFAULT NULL,
+            ADD COLUMN last_error VARCHAR(500) DEFAULT NULL,
+            ADD COLUMN last_new_count INT DEFAULT 0,
+            ADD COLUMN total_articles INT DEFAULT 0");
+    }
+} catch (Exception $e) {}
+
+// Manual fetch trigger
+if ($action === 'fetch') {
+    @set_time_limit(120);
+    ob_start();
+    require __DIR__ . '/../cron_rss.php';
+    $output = ob_get_clean();
+    $success = 'تم تشغيل سحب RSS:<br><pre style="font-size:11px;direction:ltr;text-align:left;background:#f8f9fa;padding:8px;border-radius:6px;max-height:200px;overflow:auto;">' . e($output) . '</pre>';
+    $action = 'list';
+}
+
 if ($action === 'delete' && isset($_GET['id'])) {
     $id = (int)$_GET['id'];
     try {
@@ -164,6 +186,7 @@ include __DIR__ . '/includes/panel_layout_head.php';
                 <p>مصادر الأخبار</p>
             </div>
             <div class="page-actions">
+                <a href="sources.php?action=fetch" class="btn-outline" onclick="this.innerHTML='⏳ جاري السحب...'">🔄 جلب RSS الآن</a>
                 <a href="sources.php?action=add" class="btn-primary">+ إضافة مصدر</a>
             </div>
         </div>
@@ -174,7 +197,8 @@ include __DIR__ . '/includes/panel_layout_head.php';
                     <tr>
                         <th>اللوجو</th>
                         <th>الاسم</th>
-                        <th>الرابط الودود</th>
+                        <th>المقالات</th>
+                        <th>آخر سحب</th>
                         <th>الحالة</th>
                         <th>الإجراءات</th>
                     </tr>
@@ -188,8 +212,21 @@ include __DIR__ . '/includes/panel_layout_head.php';
                                         <?php echo e($src['logo_letter']); ?>
                                     </div>
                                 </td>
-                                <td><?php echo e($src['name']); ?></td>
-                                <td><?php echo e($src['slug']); ?></td>
+                                <td>
+                                    <strong><?php echo e($src['name']); ?></strong>
+                                    <?php if (!empty($src['last_error'])): ?>
+                                        <div style="font-size:11px;color:#dc3545;margin-top:3px;" title="<?php echo e($src['last_error']); ?>">⚠ <?php echo e(mb_substr($src['last_error'], 0, 60)); ?></div>
+                                    <?php endif; ?>
+                                </td>
+                                <td><span class="badge badge-primary"><?php echo (int)($src['total_articles'] ?? 0); ?></span></td>
+                                <td style="font-size:12px;color:var(--text-muted);">
+                                    <?php if (!empty($src['last_fetched_at'])): ?>
+                                        <?php echo date('Y/m/d H:i', strtotime($src['last_fetched_at'])); ?>
+                                        <?php if (!empty($src['last_new_count'])): ?>
+                                            <div style="color:#16a34a;font-weight:600;">+<?php echo (int)$src['last_new_count']; ?> جديد</div>
+                                        <?php endif; ?>
+                                    <?php else: ?>—<?php endif; ?>
+                                </td>
                                 <td>
                                     <?php if ($src['is_active']): ?>
                                         <span class="badge badge-success">مفعل</span>
@@ -204,7 +241,7 @@ include __DIR__ . '/includes/panel_layout_head.php';
                             </tr>
                         <?php endforeach; ?>
                     <?php else: ?>
-                        <tr><td colspan="5" style="text-align:center; color:var(--text-muted);">لا توجد مصادر</td></tr>
+                        <tr><td colspan="6" style="text-align:center; color:var(--text-muted);">لا توجد مصادر</td></tr>
                     <?php endif; ?>
                 </tbody>
             </table>
