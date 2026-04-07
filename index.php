@@ -927,7 +927,10 @@ try {
     .logo-text { font-size:18px; }
     .search-box { display:none; }
     .header-actions { gap:8px; }
-    .main-layout { padding:14px 10px; gap:16px; }
+    .main-layout { padding:14px 10px; gap:16px; grid-template-columns:1fr !important; }
+    .news-grid, .news-grid-2col, .palestine-grid, .media-grid { grid-template-columns:1fr !important; }
+    .news-card, .ps-card, .hero-main, .hero-side { max-width:100%; min-width:0; }
+    .card-img { height:200px; }
     .sections-nav { padding:0 12px; }
     .sec-btn { padding:12px 14px; font-size:13px; white-space:nowrap; }
     .section-title { font-size:16px; }
