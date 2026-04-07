@@ -547,57 +547,112 @@ try {
   .trend-title { font-size:13px; font-weight:600; line-height:1.5; transition:color .2s; }
   .trend-heat { font-size:11px; color:var(--muted); margin-top:2px; }
 
-  /* WEATHER WIDGET */
+  /* WEATHER WIDGET — modern glass */
   .weather-widget {
-    background:linear-gradient(135deg,#1e3a5f,#1a2744);
-    border:none;
-    border-radius:var(--radius-lg); padding:20px;
+    position:relative; overflow:hidden;
+    background:
+      radial-gradient(circle at 20% 0%, rgba(255,255,255,.18), transparent 55%),
+      linear-gradient(160deg,#0ea5b7 0%,#0891b2 35%,#0e7490 70%,#155e75 100%);
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:20px; padding:22px;
     color:#fff;
-    box-shadow:var(--shadow-md);
+    box-shadow:0 18px 40px -18px rgba(14,116,144,.55), 0 4px 12px rgba(0,0,0,.06);
+    display:flex; flex-direction:column;
+    min-height:480px;
   }
-  .weather-widget .section-title { color:#fff; }
-  .weather-widget .section-title .line { background:#60a5fa; }
-  .weather-main { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
-  .weather-temp { font-size:48px; font-weight:300; letter-spacing:-2px; }
-  .weather-icon { font-size:52px; }
-  .weather-city { font-size:15px; font-weight:700; }
-  .weather-desc { font-size:12px; color:rgba(255,255,255,.55); margin-top:3px; }
-  .weather-days { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:12px; }
-  .weather-day {
-    background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.1);
-    border-radius:10px; padding:10px 4px; text-align:center; font-size:12px;
-    backdrop-filter:blur(4px);
+  .weather-widget::before {
+    content:''; position:absolute; top:-60px; left:-40px;
+    width:200px; height:200px; border-radius:50%;
+    background:radial-gradient(circle, rgba(255,255,255,.25), transparent 70%);
+    pointer-events:none;
   }
-  .weather-day .day { color:rgba(255,255,255,.5); margin-bottom:4px; font-size:11px; }
-  .weather-day .temp { font-weight:700; }
-  .weather-cities { display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; }
+  .weather-widget::after {
+    content:''; position:absolute; bottom:-80px; right:-50px;
+    width:240px; height:240px; border-radius:50%;
+    background:radial-gradient(circle, rgba(255,255,255,.12), transparent 70%);
+    pointer-events:none;
+  }
+  .weather-widget > * { position:relative; z-index:1; }
+  .weather-widget .section-title { color:#fff; font-weight:800; }
+  .weather-widget .section-title .line { background:#fde68a; }
+  .weather-cities { display:flex; gap:6px; margin-bottom:18px; flex-wrap:wrap; }
   .weather-city-btn {
-    background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.15);
-    color:rgba(255,255,255,.7); padding:4px 12px; border-radius:20px;
-    font-size:11px; cursor:pointer; transition:all .2s; font-family:inherit;
+    background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.22);
+    color:#fff; padding:5px 13px; border-radius:999px;
+    font-size:11px; font-weight:600; cursor:pointer; transition:all .25s;
+    font-family:inherit; backdrop-filter:blur(6px);
   }
-  .weather-city-btn:hover, .weather-city-btn.active {
-    background:rgba(96,165,250,.3); border-color:rgba(96,165,250,.5); color:#fff;
+  .weather-city-btn:hover { background:rgba(255,255,255,.25); transform:translateY(-1px); }
+  .weather-city-btn.active {
+    background:#fff; color:#0e7490; border-color:#fff;
+    box-shadow:0 4px 14px rgba(0,0,0,.18);
   }
+  .weather-main {
+    display:flex; align-items:center; justify-content:space-between;
+    margin:auto 0; padding:18px 0;
+  }
+  .weather-temp {
+    font-size:78px; font-weight:200; letter-spacing:-3px; line-height:1;
+    text-shadow:0 4px 18px rgba(0,0,0,.18);
+  }
+  .weather-icon { font-size:72px; filter:drop-shadow(0 6px 14px rgba(0,0,0,.25)); }
+  .weather-city { font-size:17px; font-weight:800; margin-top:10px; }
+  .weather-desc { font-size:13px; color:rgba(255,255,255,.78); margin-top:4px; }
+  .weather-days {
+    display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:auto;
+    padding-top:14px; border-top:1px solid rgba(255,255,255,.18);
+  }
+  .weather-day {
+    background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.18);
+    border-radius:14px; padding:12px 6px; text-align:center; font-size:12px;
+    backdrop-filter:blur(8px); transition:all .25s;
+  }
+  .weather-day:hover { background:rgba(255,255,255,.2); transform:translateY(-2px); }
+  .weather-day .day { color:rgba(255,255,255,.7); margin-bottom:6px; font-size:11px; font-weight:700; }
+  .weather-day .temp { font-weight:800; font-size:14px; }
 
-  /* CURRENCY WIDGET */
+  /* CURRENCY WIDGET — modern card */
   .currency-widget {
-    background:#fff; border:1px solid #f0f0f0;
-    border-radius:var(--radius-lg); padding:18px; margin-top:16px;
-    box-shadow:0 1px 4px rgba(0,0,0,.06); cursor:pointer; transition:all .2s;
+    position:relative; overflow:hidden;
+    background:#fff;
+    border:1px solid rgba(15,23,42,.06);
+    border-radius:18px; padding:20px; margin-top:18px;
+    box-shadow:0 10px 30px -15px rgba(2,8,23,.18);
+    cursor:pointer; transition:all .25s;
   }
-  .currency-widget:hover { box-shadow:0 4px 16px rgba(0,0,0,.1); }
+  .currency-widget::before {
+    content:''; position:absolute; top:0; right:0; left:0; height:4px;
+    background:linear-gradient(90deg,#16a34a,#0ea5b7,#6366f1);
+  }
+  .currency-widget:hover { transform:translateY(-3px); box-shadow:0 18px 40px -18px rgba(2,8,23,.28); }
+  .currency-widget h4 {
+    display:flex; align-items:center; gap:8px;
+    font-size:14px; font-weight:800; margin-bottom:14px; color:#0f172a;
+  }
   .currency-row {
     display:flex; align-items:center; justify-content:space-between;
-    padding:10px 0; border-bottom:1px solid #f5f5f5;
+    padding:13px 0; border-bottom:1px dashed #e5e7eb;
   }
   .currency-row:last-child { border-bottom:none; }
-  .currency-flag { font-size:20px; margin-left:8px; }
-  .currency-name { font-size:13px; color:#555; font-weight:500; }
-  .currency-rate { font-size:14px; font-weight:700; color:#1a1a2e; direction:ltr; }
-  .currency-change { font-size:11px; margin-right:6px; }
+  .currency-flag {
+    font-size:22px; margin-left:10px;
+    width:36px; height:36px; display:inline-flex; align-items:center; justify-content:center;
+    background:#f1f5f9; border-radius:10px;
+  }
+  .currency-name { font-size:13px; color:#334155; font-weight:600; }
+  .currency-rate {
+    font-size:15px; font-weight:800; color:#0f172a; direction:ltr;
+    background:linear-gradient(135deg,#0f172a,#334155);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  }
+  .currency-change { font-size:11px; margin-right:6px; font-weight:700; }
   .currency-change.up { color:#16a34a; }
   .currency-change.down { color:#dc2626; }
+  .currency-foot {
+    text-align:center; margin-top:12px; padding-top:12px;
+    border-top:1px solid #f1f5f9;
+    font-size:11px; color:#94a3b8; font-weight:600;
+  }
 
   /* CURRENCY MODAL */
   .modal-overlay {
@@ -1527,7 +1582,7 @@ try {
 
     <!-- CURRENCY -->
     <div class="currency-widget" onclick="openCurrencyModal()">
-      <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:#1a1a2e">💱 أسعار الصرف</div>
+      <h4>💱 أسعار الصرف</h4>
       <div class="currency-row">
         <div style="display:flex;align-items:center"><span class="currency-flag">🇺🇸</span><span class="currency-name">دولار أمريكي</span></div>
         <div><span class="currency-rate" id="cUSD">--</span> <span class="currency-change" id="cUSDc"></span></div>
@@ -1540,7 +1595,7 @@ try {
         <div style="display:flex;align-items:center"><span class="currency-flag">🇯🇴</span><span class="currency-name">دينار أردني</span></div>
         <div><span class="currency-rate" id="cJOD">--</span> <span class="currency-change" id="cJODc"></span></div>
       </div>
-      <div style="text-align:center;font-size:11px;color:#aaa;margin-top:8px">اضغط لعرض التفاصيل</div>
+      <div class="currency-foot">اضغط لعرض التفاصيل ›</div>
     </div>
 
     <!-- TRENDING -->
