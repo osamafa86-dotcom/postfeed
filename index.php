@@ -1055,7 +1055,7 @@ try {
     header { height:56px; }
     .stats-bar { justify-content:flex-start; }
     .stat-item { padding:0 16px; }
-    .footer-inner { grid-template-columns:1fr 1fr; gap:20px; }
+    .footer-inner { grid-template-columns:1fr 1fr 1fr; gap:20px; }
     .footer-brand { grid-column:1 / -1; }
     .footer-col-title { font-size:12px; margin-bottom:10px; }
     .footer-col a { font-size:12px; padding:4px 0; }
