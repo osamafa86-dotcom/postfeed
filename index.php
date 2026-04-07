@@ -417,16 +417,20 @@ try {
   .card-time { font-size:11px; color:var(--muted2); font-weight:500; }
 
   /* ROWS STYLE (Sky News–like) */
-  .news-rows { display:grid; grid-template-columns:repeat(2,1fr); gap:0; margin-bottom:32px;
-    border-top:1px solid var(--border); }
+  .news-rows { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:32px; }
   .news-rows .news-card {
     display:flex; flex-direction:row-reverse; align-items:stretch;
-    gap:14px; padding:18px 16px;
-    background:transparent; border:0; border-bottom:1px solid var(--border);
-    border-radius:0; box-shadow:none; transform:none !important;
+    gap:14px; padding:16px;
+    background:#fff; border:1px solid #eef0f3;
+    border-radius:14px;
+    box-shadow:0 1px 3px rgba(15,23,42,.04);
+    transition:all .25s ease;
   }
-  .news-rows .news-card:nth-child(odd) { border-left:1px solid var(--border); }
-  .news-rows .news-card:hover { background:#f8fafc; box-shadow:none; }
+  .news-rows .news-card:hover {
+    transform:translateY(-3px);
+    box-shadow:0 12px 28px -14px rgba(15,23,42,.18);
+    border-color:rgba(26,115,232,.2);
+  }
   .news-rows .card-img {
     flex:0 0 170px; width:170px; height:110px; border-radius:8px; overflow:hidden;
   }
