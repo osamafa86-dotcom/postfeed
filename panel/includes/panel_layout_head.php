@@ -378,6 +378,10 @@ $pageTitle  = $pageTitle  ?? 'نيوزفلو';
       <div class="nav-icon">📢</div>
       <span class="label">تيليغرام</span>
     </a>
+    <a href="ai.php" class="nav-item<?php echo $activePage==='ai'?' active':''; ?>">
+      <div class="nav-icon">🤖</div>
+      <span class="label">الذكاء الاصطناعي</span>
+    </a>
   </div>
 
   <div class="sidebar-section">
