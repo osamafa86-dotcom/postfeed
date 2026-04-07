@@ -894,6 +894,7 @@ $reportsNews = getArticlesByCategory('reports', 3);
     <a href="category.php?slug=arts">فنون</a>
     <a href="category.php?slug=media">ميديا</a>
     <a href="category.php?slug=reports">تقارير</a>
+    <a href="reels.php">🎬 ريلز</a>
   </nav>
 
   <div class="header-actions">
