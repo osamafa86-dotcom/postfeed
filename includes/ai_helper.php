@@ -5,7 +5,8 @@
  */
 
 function ai_summarize_article($title, $content, $maxTokens = 500) {
-    $apiKey = getSetting('anthropic_api_key', '');
+    $apiKey = env('ANTHROPIC_API_KEY', '');
+    if (empty($apiKey)) $apiKey = getSetting('anthropic_api_key', '');
     if (empty($apiKey)) {
         return ['ok' => false, 'error' => 'API key not configured'];
     }

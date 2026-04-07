@@ -35,8 +35,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['api_key'])) {
 // Bulk summarize
 if (($_GET['action'] ?? '') === 'bulk') {
     @set_time_limit(120);
-    $limit = (int)($_GET['limit'] ?? 5);
-    $articles = $db->query("SELECT id, title, content FROM articles WHERE ai_summary IS NULL ORDER BY created_at DESC LIMIT $limit")->fetchAll();
+    $limit = max(1, min(50, (int)($_GET['limit'] ?? 5)));
+    $stmt = $db->prepare("SELECT id, title, content FROM articles WHERE ai_summary IS NULL ORDER BY created_at DESC LIMIT ?");
+    $stmt->bindValue(1, $limit, PDO::PARAM_INT);
+    $stmt->execute();
+    $articles = $stmt->fetchAll();
     $done = 0; $fail = 0; $errors = [];
     foreach ($articles as $a) {
         $r = ai_summarize_article($a['title'], $a['content']);
