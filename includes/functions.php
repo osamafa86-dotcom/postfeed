@@ -45,12 +45,25 @@ function getPalestineNews($limit = 6) {
 
 function getBreakingNews() {
     $db = getDB();
+    // Prefer flagged breaking news from the last 24h
     $stmt = $db->query("SELECT a.*, c.name as cat_name, c.css_class,
                          s.name as source_name
                          FROM articles a
                          LEFT JOIN categories c ON a.category_id = c.id
                          LEFT JOIN sources s ON a.source_id = s.id
                          WHERE a.is_breaking = 1 AND a.status = 'published'
+                         AND a.published_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                         ORDER BY a.published_at DESC LIMIT 5");
+    $rows = $stmt->fetchAll();
+    if (count($rows) >= 3) return $rows;
+
+    // Fallback: latest 5 published articles so the section stays fresh
+    $stmt = $db->query("SELECT a.*, c.name as cat_name, c.css_class,
+                         s.name as source_name
+                         FROM articles a
+                         LEFT JOIN categories c ON a.category_id = c.id
+                         LEFT JOIN sources s ON a.source_id = s.id
+                         WHERE a.status = 'published'
                          ORDER BY a.published_at DESC LIMIT 5");
     return $stmt->fetchAll();
 }
