@@ -116,6 +116,19 @@ if ($article['cat_slug']) {
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>
     </script>
 
+    <!-- BreadcrumbList -->
+    <script type="application/ld+json">
+    <?php echo json_encode([
+        '@context' => 'https://schema.org',
+        '@type' => 'BreadcrumbList',
+        'itemListElement' => [
+            ['@type' => 'ListItem', 'position' => 1, 'name' => SITE_NAME, 'item' => SITE_URL],
+            ['@type' => 'ListItem', 'position' => 2, 'name' => $article['cat_name'] ?? '', 'item' => SITE_URL . '/category.php?slug=' . ($article['cat_slug'] ?? '')],
+            ['@type' => 'ListItem', 'position' => 3, 'name' => $article['title']],
+        ],
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">

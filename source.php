@@ -50,6 +50,8 @@ $isFollowing = in_array((string)$source['id'], $followed, true);
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?php echo e($source['name']); ?> - <?php echo e(getSetting('site_name', SITE_NAME)); ?></title>
+<meta name="description" content="<?php echo e('أحدث الأخبار من ' . $source['name'] . ' على ' . getSetting('site_name', SITE_NAME)); ?>">
+<link rel="canonical" href="<?php echo e(SITE_URL . '/source.php?id=' . (int)$source['id']); ?>">
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
