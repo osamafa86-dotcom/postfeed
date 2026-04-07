@@ -892,6 +892,73 @@ try {
     .stats-bar { padding:12px 16px; }
     .user-panel { width:100%; }
   }
+
+  /* MOBILE HAMBURGER MENU */
+  .menu-toggle { display:none; background:none; border:0; color:#fff; font-size:24px; cursor:pointer; padding:8px; }
+  .mobile-nav {
+    position:fixed; top:0; right:-100%; width:280px; max-width:85%; height:100vh;
+    background:#1a1a2e; z-index:9999; padding:60px 20px 20px; overflow-y:auto;
+    transition:right .3s; box-shadow:-4px 0 20px rgba(0,0,0,.3);
+  }
+  .mobile-nav.open { right:0; }
+  .mobile-nav a {
+    display:block; color:#fff; text-decoration:none; padding:14px 16px;
+    border-radius:8px; margin-bottom:4px; font-size:15px; font-weight:600;
+    border-right:3px solid transparent;
+  }
+  .mobile-nav a:hover, .mobile-nav a.active {
+    background:rgba(96,165,250,.12); border-right-color:#60a5fa;
+  }
+  .mobile-nav-close {
+    position:absolute; top:14px; left:14px; background:none; border:0;
+    color:#fff; font-size:28px; cursor:pointer;
+  }
+  .mobile-nav-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:9998;
+    opacity:0; pointer-events:none; transition:opacity .3s;
+  }
+  .mobile-nav-overlay.open { opacity:1; pointer-events:auto; }
+
+  @media(max-width:900px) {
+    .menu-toggle { display:block; }
+    header { padding:0 14px; }
+    .logo-text { font-size:18px; }
+    .search-box { display:none; }
+    .header-actions { gap:8px; }
+    .main-layout { padding:14px 10px; gap:16px; }
+    .sections-nav { padding:0 12px; }
+    .sec-btn { padding:12px 14px; font-size:13px; white-space:nowrap; }
+    .section-title { font-size:16px; }
+    .section-title .line { height:20px; }
+    .see-all { font-size:12px; }
+    .reel-card { flex:0 0 260px !important; width:260px !important; height:462px !important; }
+    .reel-card iframe { width:260px !important; }
+    .ticker-wrap { height:40px; }
+    .ticker-label { padding:0 12px; font-size:12px; }
+    .stats-bar { overflow-x:auto; white-space:nowrap; scrollbar-width:none; }
+    .stats-bar::-webkit-scrollbar { display:none; }
+    .weather-widget, .currency-widget, .poll-widget, .trends-widget,
+    .notif-widget, .mostread-widget, .media-widget, .sources-widget { padding:14px; }
+  }
+  @media(max-width:480px) {
+    .logo-icon { width:36px; height:36px; font-size:18px; }
+    .logo-text { font-size:16px; }
+    .logo-tagline { display:none; }
+    .icon-btn { width:36px; height:36px; font-size:16px; }
+    .avatar { width:36px; height:36px; font-size:14px; }
+    .main-layout { padding:12px 8px; }
+    .section-header { margin-bottom:12px; }
+    .news-card .card-body, .ps-card .card-body { padding:12px; }
+    .card-title { font-size:14px; line-height:1.5; }
+    .card-excerpt { font-size:12px; }
+    .card-meta { font-size:11px; }
+    .reel-card { flex:0 0 240px !important; width:240px !important; height:426px !important; }
+    .reel-card iframe { width:240px !important; }
+    .hero-main { min-height:200px; }
+    .hero-title { font-size:16px; }
+    footer { padding:24px 14px 14px; }
+    .footer-logo { font-size:22px; }
+  }
 </style>
 </head>
 <body>
@@ -934,6 +1001,7 @@ try {
   </nav>
 
   <div class="header-actions">
+    <button class="menu-toggle" onclick="toggleMobileNav()" aria-label="القائمة">☰</button>
     <div class="search-box">
       <span class="search-icon">&#x1F50D;</span>
       <input type="text" placeholder="ابحث عن خبر...">
@@ -946,6 +1014,22 @@ try {
     <div class="avatar" onclick="openUserPanel()">أ</div>
   </div>
 </header>
+
+<!-- MOBILE NAV -->
+<div class="mobile-nav-overlay" onclick="toggleMobileNav()"></div>
+<nav class="mobile-nav" id="mobileNav">
+  <button class="mobile-nav-close" onclick="toggleMobileNav()">×</button>
+  <a href="index.php" class="active">🏠 الرئيسية</a>
+  <a href="category.php?type=breaking">🔴 عاجل</a>
+  <a href="category.php?type=latest">⏱ آخر الأخبار</a>
+  <a href="category.php?slug=political">🏛 سياسة</a>
+  <a href="category.php?slug=economy">💹 اقتصاد</a>
+  <a href="category.php?slug=sports">⚽ رياضة</a>
+  <a href="category.php?slug=arts">🎨 فنون</a>
+  <a href="category.php?slug=media">🎥 ميديا</a>
+  <a href="category.php?slug=reports">📊 تقارير</a>
+  <a href="reels.php">🎬 ريلز</a>
+</nav>
 
 <!-- SECTIONS NAV -->
 <div class="sections-nav">
@@ -1549,6 +1633,10 @@ try {
 
 <script>
   // NOTIFICATION PANEL
+  function toggleMobileNav() {
+    document.getElementById('mobileNav').classList.toggle('open');
+    document.querySelector('.mobile-nav-overlay').classList.toggle('open');
+  }
   function toggleNotif() {
     const p = document.getElementById('notifPanel');
     const ov = document.getElementById('overlay');
