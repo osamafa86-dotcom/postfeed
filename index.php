@@ -100,11 +100,11 @@ try {
 </script>
 <link rel="stylesheet" href="assets/css/home.css?v=1">
 <style>
-html[data-theme="dark"]{--light:#0f1419;--dark:#e7e9ec;--card:#1a1f2b;--border:#2a2f3b;--gray:#9aa3b2;--primary-light:#16223a;}
-html[data-theme="dark"] body{background:#0f1419;color:#e7e9ec;}
-html[data-theme="dark"] .news-card,html[data-theme="dark"] header,html[data-theme="dark"] .topbar{background:#1a1f2b;color:#e7e9ec;border-color:#2a2f3b;}
-html[data-theme="dark"] img{filter:brightness(.92);}
-.theme-toggle{position:fixed;bottom:18px;left:18px;z-index:9999;width:44px;height:44px;border-radius:50%;border:1px solid var(--border);background:var(--card);color:var(--dark);cursor:pointer;font-size:20px;box-shadow:0 4px 14px rgba(0,0,0,.15);}
+html[data-theme="dark"] body{background:#0f1419!important;color:#e7e9ec!important;}
+html[data-theme="dark"] .news-card,html[data-theme="dark"] header,html[data-theme="dark"] .topbar,html[data-theme="dark"] aside,html[data-theme="dark"] section{background:#1a1f2b!important;color:#e7e9ec!important;border-color:#2a2f3b!important;}
+html[data-theme="dark"] a{color:#7ab4ff;}
+html[data-theme="dark"] img{filter:brightness(.9);}
+.theme-toggle{position:fixed;bottom:18px;left:18px;z-index:9999;width:44px;height:44px;border-radius:50%;border:1px solid #ddd;background:#fff;color:#222;cursor:pointer;font-size:20px;box-shadow:0 4px 14px rgba(0,0,0,.15);}
 </style>
 </head>
 <body>
@@ -862,8 +862,7 @@ html[data-theme="dark"] img{filter:brightness(.92);}
 <script>
 (function(){
   var root=document.documentElement;
-  var saved=localStorage.getItem('theme');
-  if(saved==='dark'||(!saved&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)){root.setAttribute('data-theme','dark');}
+  if(localStorage.getItem('theme')==='dark'){root.setAttribute('data-theme','dark');}
   document.addEventListener('DOMContentLoaded',function(){
     var btn=document.getElementById('themeToggle');
     if(!btn)return;
