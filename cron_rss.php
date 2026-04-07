@@ -140,8 +140,16 @@ foreach ($sources as $i => $source) {
             }
             if (!$publishedAt) $publishedAt = date('Y-m-d H:i:s');
 
-            // Fetch full article body (>=3 paragraphs) from source URL
-            $fullContent = fetchArticleBody(trim($item['link']));
+            // Fetch full article body + fallback image from source URL
+            $sourceUrl = trim($item['link']);
+            $pageHtml  = $sourceUrl ? fetchUrlHtml($sourceUrl) : '';
+            $fullContent = '';
+            if (!empty($pageHtml)) {
+                $fullContent = fetchArticleBodyFromHtml($pageHtml);
+                if (empty($imageUrl)) {
+                    $imageUrl = extractArticleImage($pageHtml, $sourceUrl);
+                }
+            }
             if (empty($fullContent)) {
                 $fullContent = '<p>' . nl2br($excerpt) . '</p>';
             }
