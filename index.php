@@ -82,6 +82,8 @@ try {
   }
   * { margin:0; padding:0; box-sizing:border-box; }
   html, body { max-width:100vw; overflow-x:hidden; }
+  .main-layout > * { min-width:0; }
+  .main-col { min-width:0; }
   body { font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
   img, video { max-width:100%; height:auto; }
   a { text-decoration:none; color:inherit; }
@@ -859,6 +861,11 @@ try {
   @media(max-width:1100px) {
     .main-layout { grid-template-columns:1fr; }
     .footer-inner { grid-template-columns:1fr 1fr; }
+    .menu-toggle { display:block; }
+    nav { display:none; }
+    .search-box { display:none; }
+    .topbar { display:none; }
+    .news-grid, .news-grid-2col, .palestine-grid, .media-grid { grid-template-columns:1fr !important; }
   }
   @media(max-width:900px) {
     .hero-grid { grid-template-columns:1fr; height:auto; }
