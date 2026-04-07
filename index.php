@@ -589,7 +589,11 @@ try {
     box-shadow:0 8px 24px rgba(0,0,0,.25); transition:transform .3s;
   }
   .reel-card:hover { transform:translateY(-4px); }
-  .reel-card iframe { width:100%; height:100%; border:0; }
+  .reel-card { isolation:isolate; }
+  .reel-card iframe {
+    position:absolute; left:0; width:100%; border:0;
+    top:-60px; height:calc(100% + 200px);
+  }
   .reel-card .reel-overlay {
     position:absolute; bottom:0; left:0; right:0; padding:12px;
     background:linear-gradient(to top, rgba(0,0,0,.85), transparent);
