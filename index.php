@@ -81,7 +81,9 @@ try {
     --radius-lg: 16px;
   }
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif; background:var(--bg); color:var(--text); overflow-x:hidden; line-height:1.6; }
+  html, body { max-width:100vw; overflow-x:hidden; }
+  body { font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
+  img, video { max-width:100%; height:auto; }
   a { text-decoration:none; color:inherit; }
 
   /* SCROLLBAR */
