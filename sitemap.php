@@ -3,17 +3,13 @@
  * نيوزفلو - خريطة الموقع XML للسيو
  */
 require_once __DIR__ . '/includes/config.php';
-require_once __DIR__ . '/includes/functions.php';
 header('Content-Type: application/xml; charset=utf-8');
 
 $db = getDB();
-$articles = $db->query("SELECT id, slug, published_at, image_url, title
+$articles = $db->query("SELECT id, published_at, image_url, title
                         FROM articles
                         WHERE status = 'published'
                         ORDER BY published_at DESC LIMIT 5000")->fetchAll();
-$newsCutoff = time() - 48 * 3600;
-$pubName = defined('SITE_NAME') ? SITE_NAME : 'NewsFlow';
-$cats = $db->query("SELECT slug FROM categories WHERE is_active = 1")->fetchAll();
 
 echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
 ?>
@@ -25,15 +21,8 @@ echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
     <changefreq>hourly</changefreq>
     <priority>1.0</priority>
   </url>
-<?php foreach ($cats as $c): ?>
-  <url>
-    <loc><?php echo SITE_URL . '/' . htmlspecialchars(categoryUrl($c['slug'])); ?></loc>
-    <changefreq>hourly</changefreq>
-    <priority>0.7</priority>
-  </url>
-<?php endforeach; ?>
 <?php foreach ($articles as $a):
-    $loc = SITE_URL . '/' . articleUrl($a);
+    $loc = SITE_URL . '/article.php?id=' . (int)$a['id'];
     $lastmod = !empty($a['published_at']) ? date('c', strtotime($a['published_at'])) : date('c');
 ?>
   <url>
@@ -46,16 +35,6 @@ echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
       <image:loc><?php echo htmlspecialchars($a['image_url']); ?></image:loc>
       <image:title><?php echo htmlspecialchars($a['title']); ?></image:title>
     </image:image>
-    <?php endif; ?>
-    <?php if (!empty($a['published_at']) && strtotime($a['published_at']) >= $newsCutoff): ?>
-    <news:news>
-      <news:publication>
-        <news:name><?php echo htmlspecialchars($pubName); ?></news:name>
-        <news:language>ar</news:language>
-      </news:publication>
-      <news:publication_date><?php echo $lastmod; ?></news:publication_date>
-      <news:title><?php echo htmlspecialchars($a['title']); ?></news:title>
-    </news:news>
     <?php endif; ?>
   </url>
 <?php endforeach; ?>
