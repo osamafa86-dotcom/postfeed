@@ -469,8 +469,19 @@ if ($article['cat_slug']) {
             <?php endif; ?>
         </article>
 
+        <!-- Article Content -->
+        <div class="article-content">
+            <?php
+            // تنظيف المحتوى - السماح فقط بوسوم HTML آمنة وفك ترميز الكيانات
+            $allowedTags = '<p><br><strong><b><em><i><ul><ol><li><h2><h3><h4><blockquote><a><img>';
+            $cleanContent = strip_tags($article['content'], $allowedTags);
+            $cleanContent = html_entity_decode($cleanContent, ENT_QUOTES, 'UTF-8');
+            echo $cleanContent;
+            ?>
+        </div>
+
         <?php if (!empty($article['ai_summary'])): ?>
-        <div style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border:1px solid #bae6fd;border-right:4px solid #0284c7;border-radius:14px;padding:20px;margin-bottom:24px;">
+        <div style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border:1px solid #bae6fd;border-right:4px solid #0284c7;border-radius:14px;padding:20px;margin:24px 0;">
           <div style="display:flex;align-items:center;gap:8px;font-weight:800;color:#0284c7;margin-bottom:12px;font-size:15px;">
             🤖 ملخص بالذكاء الاصطناعي
           </div>
@@ -485,17 +496,6 @@ if ($article['cat_slug']) {
           <?php endif; ?>
         </div>
         <?php endif; ?>
-
-        <!-- Article Content -->
-        <div class="article-content">
-            <?php
-            // تنظيف المحتوى - السماح فقط بوسوم HTML آمنة وفك ترميز الكيانات
-            $allowedTags = '<p><br><strong><b><em><i><ul><ol><li><h2><h3><h4><blockquote><a><img>';
-            $cleanContent = strip_tags($article['content'], $allowedTags);
-            $cleanContent = html_entity_decode($cleanContent, ENT_QUOTES, 'UTF-8');
-            echo $cleanContent;
-            ?>
-        </div>
 
         <!-- Read Full Article from Source -->
         <?php

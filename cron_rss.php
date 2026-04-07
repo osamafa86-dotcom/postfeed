@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/includes/config.php';
+require_once __DIR__ . '/includes/article_fetch.php';
 
 $db = getDB();
 $startTime = microtime(true);
@@ -139,8 +140,14 @@ foreach ($sources as $i => $source) {
             }
             if (!$publishedAt) $publishedAt = date('Y-m-d H:i:s');
 
+            // Fetch full article body (>=3 paragraphs) from source URL
+            $fullContent = fetchArticleBody(trim($item['link']));
+            if (empty($fullContent)) {
+                $fullContent = '<p>' . nl2br($excerpt) . '</p>';
+            }
+
             $stmt = $db->prepare("INSERT INTO articles (title, slug, excerpt, content, image_url, source_url, category_id, source_id, status, published_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'published', ?, NOW())");
-            $stmt->execute([$title, $slug, $excerpt, '<p>' . nl2br($excerpt) . '</p>', $imageUrl, trim($item['link']), $categoryId, $source['id'], $publishedAt]);
+            $stmt->execute([$title, $slug, $excerpt, $fullContent, $imageUrl, trim($item['link']), $categoryId, $source['id'], $publishedAt]);
             $newCount++;
         }
 
