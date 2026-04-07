@@ -48,10 +48,10 @@ $dedup = function(array $list, int $keep) use (&$usedIds): array {
 $breakingNews   = $dedup($breakingNews, 5);
 $latestArticles = $dedup($latestArticles, 6);
 $politicalNews  = $dedup($politicalNews, 4);
-$economyNews    = $dedup($economyNews, 3);
-$sportsNews     = $dedup($sportsNews, 3);
-$artsNews       = $dedup($artsNews, 2);
-$reportsNews    = $dedup($reportsNews, 3);
+$economyNews    = $dedup($economyNews, 4);
+$sportsNews     = $dedup($sportsNews, 4);
+$artsNews       = $dedup($artsNews, 4);
+$reportsNews    = $dedup($reportsNews, 4);
 
 // جلب الريلز للعرض في الصفحة الرئيسية
 $homeReels = [];
