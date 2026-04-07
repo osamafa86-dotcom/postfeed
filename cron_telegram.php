@@ -9,8 +9,8 @@ require_once __DIR__ . '/includes/telegram_fetch.php';
 
 // Optional security key (set TELEGRAM_CRON_KEY in config)
 if (php_sapi_name() !== 'cli') {
-    $key = defined('TELEGRAM_CRON_KEY') ? TELEGRAM_CRON_KEY : 'changeme';
-    if (($_GET['key'] ?? '') !== $key) {
+    $key = getSetting('cron_key', '');
+    if (!$key || ($_GET['key'] ?? '') !== $key) {
         http_response_code(403);
         die('forbidden');
     }

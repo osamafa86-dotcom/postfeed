@@ -1366,19 +1366,12 @@ try {
     </div>
 
     <?php
-    // Telegram breaking messages + auto-fetch every 10 min
+    // Telegram breaking messages — read only (sync moved to cron_telegram.php)
     $tgMsgs = [];
     try {
         $tgDb = getDB();
-        $lastSync = $tgDb->query("SELECT MAX(last_fetched_at) FROM telegram_sources")->fetchColumn();
-        $needSync = !$lastSync || (time() - strtotime($lastSync)) > 600;
-        if ($needSync) {
-            require_once __DIR__ . '/includes/telegram_fetch.php';
-            // Fire-and-forget: ignore errors so page never breaks
-            try { @tg_sync_all_sources(); } catch (Exception $e) {}
-        }
         $tgMsgs = $tgDb->query("SELECT m.*, s.display_name, s.username, s.avatar_url FROM telegram_messages m JOIN telegram_sources s ON m.source_id = s.id WHERE m.is_active=1 AND s.is_active=1 ORDER BY m.posted_at DESC LIMIT 8")->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Exception $e) {}
+    } catch (Exception $e) { error_log('tg read: ' . $e->getMessage()); }
     ?>
     <?php if (!empty($tgMsgs)): ?>
     <div class="tg-breaking" style="margin-bottom:28px">
