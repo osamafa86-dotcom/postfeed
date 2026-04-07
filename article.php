@@ -124,7 +124,7 @@ if ($article['cat_slug']) {
             --primary: #1a73e8;
             --primary-light: #eff6ff;
             --dark: #1a1a2e;
-            --light: #f0f2f5;
+            --light: #faf6ec;
             --gray: #6b7280;
             --border: #e0e3e8;
             --card: #ffffff;
