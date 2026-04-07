@@ -569,39 +569,26 @@ try {
   .modal-rate-buy span, .modal-rate-sell span { font-weight:700; color:#1a1a2e; }
 
   /* REELS SECTION */
-  .reels-section {
-    background: linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%);
-    border-radius: 16px; padding: 24px; margin-bottom: 28px; color:#fff;
-  }
-  .reels-section .section-title { color:#fff; }
-  .reels-section .section-title .line { background:#fff; }
-  .reels-section .see-all { color:#fff; background:rgba(255,255,255,.2); padding:6px 14px; border-radius:20px; font-size:13px; font-weight:600; }
+  .reels-wrap { margin-bottom:28px; }
+  .reels-wrap .section-header { margin-bottom:16px; }
   .reels-scroll {
-    display:flex; gap:14px; overflow-x:auto; padding-bottom:8px;
+    display:flex; gap:16px; overflow-x:auto; padding:8px 4px 16px;
     scroll-snap-type:x mandatory; scrollbar-width:thin;
   }
-  .reels-scroll::-webkit-scrollbar { height:6px; }
-  .reels-scroll::-webkit-scrollbar-thumb { background:rgba(255,255,255,.3); border-radius:3px; }
+  .reels-scroll::-webkit-scrollbar { height:8px; }
+  .reels-scroll::-webkit-scrollbar-thumb { background:rgba(0,0,0,.15); border-radius:4px; }
   .reel-card {
-    flex:0 0 220px; scroll-snap-align:start;
-    background:#000; border-radius:14px; overflow:hidden; position:relative;
-    aspect-ratio:9/16; cursor:pointer; text-decoration:none; color:#fff;
-    box-shadow:0 8px 24px rgba(0,0,0,.25); transition:transform .3s;
+    flex:0 0 300px; scroll-snap-align:start;
+    background:#000; border-radius:18px; overflow:hidden; position:relative;
+    aspect-ratio:9/16; cursor:pointer; isolation:isolate;
+    box-shadow:0 10px 30px rgba(0,0,0,.2); transition:transform .3s;
   }
   .reel-card:hover { transform:translateY(-4px); }
-  .reel-card { isolation:isolate; }
   .reel-card iframe {
-    position:absolute; left:0; width:100%; border:0;
-    top:-60px; height:calc(100% + 200px);
+    position:absolute; left:50%; transform:translateX(-50%);
+    width:110%; border:0;
+    top:-72px; height:calc(100% + 260px);
   }
-  .reel-card .reel-overlay {
-    position:absolute; bottom:0; left:0; right:0; padding:12px;
-    background:linear-gradient(to top, rgba(0,0,0,.85), transparent);
-    font-size:12px; font-weight:600;
-  }
-  .reel-card .reel-source { display:flex; align-items:center; gap:6px; margin-bottom:4px; }
-  .reel-card .reel-source img { width:22px; height:22px; border-radius:50%; border:1.5px solid #fff; }
-  .reel-empty { text-align:center; padding:30px; opacity:.85; }
 
   /* POLL WIDGET */
   .poll-option { margin-bottom:12px; }
@@ -1241,9 +1228,9 @@ try {
 
     <!-- REELS -->
     <?php if (!empty($homeReels)): ?>
-    <div id="reels" class="reels-section">
+    <div id="reels" class="reels-wrap">
       <div class="section-header">
-        <div class="section-title"><div class="line"></div>🎬 ريلز</div>
+        <div class="section-title"><div class="line" style="background:#fd1d1d"></div>🎬 ريلز</div>
         <a class="see-all" href="reels.php">عرض الكل ›</a>
       </div>
       <div class="reels-scroll">
