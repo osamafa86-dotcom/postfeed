@@ -421,6 +421,23 @@ if ($article['cat_slug']) {
             <?php endif; ?>
         </article>
 
+        <?php if (!empty($article['ai_summary'])): ?>
+        <div style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border:1px solid #bae6fd;border-right:4px solid #0284c7;border-radius:14px;padding:20px;margin-bottom:24px;">
+          <div style="display:flex;align-items:center;gap:8px;font-weight:800;color:#0284c7;margin-bottom:12px;font-size:15px;">
+            🤖 ملخص بالذكاء الاصطناعي
+          </div>
+          <p style="font-size:15px;line-height:1.9;color:#1e293b;margin:0 0 14px;"><?php echo nl2br(e($article['ai_summary'])); ?></p>
+          <?php
+          $keyPoints = !empty($article['ai_key_points']) ? json_decode($article['ai_key_points'], true) : [];
+          if (is_array($keyPoints) && !empty($keyPoints)): ?>
+            <div style="font-weight:700;color:#0284c7;font-size:13px;margin-bottom:6px;">📌 النقاط الرئيسية:</div>
+            <ul style="margin:0;padding-right:20px;font-size:13px;line-height:1.8;color:#334155;">
+              <?php foreach ($keyPoints as $kp): ?><li><?php echo e($kp); ?></li><?php endforeach; ?>
+            </ul>
+          <?php endif; ?>
+        </div>
+        <?php endif; ?>
+
         <!-- Article Content -->
         <div class="article-content">
             <?php
