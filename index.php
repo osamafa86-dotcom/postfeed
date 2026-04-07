@@ -32,6 +32,21 @@ $sportsNews = getArticlesByCategory('sports', 3);
 $artsNews = getArticlesByCategory('arts', 2);
 $reportsNews = getArticlesByCategory('reports', 3);
 
+// جلب الريلز للعرض في الصفحة الرئيسية
+$homeReels = [];
+try {
+    $pdo = getDB();
+    $stmt = $pdo->query("SELECT r.*, s.username, s.display_name, s.avatar_url
+                         FROM reels r
+                         LEFT JOIN reels_sources s ON r.source_id = s.id
+                         WHERE r.is_active = 1
+                         ORDER BY r.sort_order DESC, r.created_at DESC
+                         LIMIT 8");
+    $homeReels = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $ex) {
+    $homeReels = [];
+}
+
 ?><!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -552,6 +567,37 @@ $reportsNews = getArticlesByCategory('reports', 3);
   .modal-currency-rates { text-align:left; direction:ltr; }
   .modal-rate-buy, .modal-rate-sell { font-size:13px; color:#555; }
   .modal-rate-buy span, .modal-rate-sell span { font-weight:700; color:#1a1a2e; }
+
+  /* REELS SECTION */
+  .reels-section {
+    background: linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%);
+    border-radius: 16px; padding: 24px; margin-bottom: 28px; color:#fff;
+  }
+  .reels-section .section-title { color:#fff; }
+  .reels-section .section-title .line { background:#fff; }
+  .reels-section .see-all { color:#fff; background:rgba(255,255,255,.2); padding:6px 14px; border-radius:20px; font-size:13px; font-weight:600; }
+  .reels-scroll {
+    display:flex; gap:14px; overflow-x:auto; padding-bottom:8px;
+    scroll-snap-type:x mandatory; scrollbar-width:thin;
+  }
+  .reels-scroll::-webkit-scrollbar { height:6px; }
+  .reels-scroll::-webkit-scrollbar-thumb { background:rgba(255,255,255,.3); border-radius:3px; }
+  .reel-card {
+    flex:0 0 220px; scroll-snap-align:start;
+    background:#000; border-radius:14px; overflow:hidden; position:relative;
+    aspect-ratio:9/16; cursor:pointer; text-decoration:none; color:#fff;
+    box-shadow:0 8px 24px rgba(0,0,0,.25); transition:transform .3s;
+  }
+  .reel-card:hover { transform:translateY(-4px); }
+  .reel-card iframe { width:100%; height:100%; border:0; pointer-events:none; }
+  .reel-card .reel-overlay {
+    position:absolute; bottom:0; left:0; right:0; padding:12px;
+    background:linear-gradient(to top, rgba(0,0,0,.85), transparent);
+    font-size:12px; font-weight:600;
+  }
+  .reel-card .reel-source { display:flex; align-items:center; gap:6px; margin-bottom:4px; }
+  .reel-card .reel-source img { width:22px; height:22px; border-radius:50%; border:1.5px solid #fff; }
+  .reel-empty { text-align:center; padding:30px; opacity:.85; }
 
   /* POLL WIDGET */
   .poll-option { margin-bottom:12px; }
@@ -1188,6 +1234,33 @@ $reportsNews = getArticlesByCategory('reports', 3);
         </a>
       <?php endforeach; ?>
     </div>
+
+    <!-- REELS -->
+    <?php if (!empty($homeReels)): ?>
+    <div id="reels" class="reels-section">
+      <div class="section-header">
+        <div class="section-title"><div class="line"></div>🎬 ريلز</div>
+        <a class="see-all" href="reels.php">عرض الكل ›</a>
+      </div>
+      <div class="reels-scroll">
+        <?php foreach ($homeReels as $reel): ?>
+          <a class="reel-card" href="reels.php" title="<?php echo e($reel['caption'] ?? ''); ?>">
+            <iframe src="https://www.instagram.com/reel/<?php echo e($reel['shortcode']); ?>/embed/" scrolling="no" allowtransparency="true" allow="encrypted-media" loading="lazy"></iframe>
+            <div class="reel-overlay">
+              <?php if (!empty($reel['username'])): ?>
+              <div class="reel-source">
+                <?php if (!empty($reel['avatar_url'])): ?>
+                  <img src="<?php echo e($reel['avatar_url']); ?>" alt="">
+                <?php endif; ?>
+                <span>@<?php echo e($reel['username']); ?></span>
+              </div>
+              <?php endif; ?>
+            </div>
+          </a>
+        <?php endforeach; ?>
+      </div>
+    </div>
+    <?php endif; ?>
 
   </div><!-- /main-col -->
 
