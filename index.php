@@ -275,7 +275,7 @@ try {
             <div class="card-cat cat-breaking">عاجل</div>
             <div class="list-title"><?php echo e($article['title']); ?></div>
             <div class="card-excerpt" style="margin-bottom:6px"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 120)); ?></div>
-            <div class="list-meta"><span>🌐 <a href="source/<?php echo (int)$article['source_id']; ?>" onclick="event.stopPropagation()" style="color:inherit"><?php echo e($article['source_name']); ?></a></span><span>·</span><span><?php echo timeAgo($article['published_at']); ?></span><span>·</span><span>👁 <?php echo formatViews($article['view_count']); ?></span></div>
+            <div class="list-meta"><span>🌐 <?php echo e($article['source_name']); ?></span><span>·</span><span><?php echo timeAgo($article['published_at']); ?></span><span>·</span><span>👁 <?php echo formatViews($article['view_count']); ?></span></div>
           </div>
         </a>
       <?php endforeach; ?>
