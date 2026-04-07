@@ -26,11 +26,11 @@ $totalArticles = countArticles();
 $totalSources = count($sources);
 
 // جلب أخبار التصنيفات (نطلب عدد أكبر لتعويض ما يتم حذفه عند منع التكرار)
-$politicalNews = getArticlesByCategory('political', 12);
-$economyNews   = getArticlesByCategory('economy', 12);
-$sportsNews    = getArticlesByCategory('sports', 12);
-$artsNews      = getArticlesByCategory('arts', 12);
-$reportsNews   = getArticlesByCategory('reports', 12);
+$politicalNews = getArticlesByCategory('political', 40);
+$economyNews   = getArticlesByCategory('economy', 40);
+$sportsNews    = getArticlesByCategory('sports', 40);
+$artsNews      = getArticlesByCategory('arts', 40);
+$reportsNews   = getArticlesByCategory('reports', 40);
 
 // منع تكرار الخبر عبر أكثر من قسم في الصفحة الرئيسية
 $usedIds = [];
