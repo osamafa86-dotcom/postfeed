@@ -370,6 +370,10 @@ $pageTitle  = $pageTitle  ?? 'نيوزفلو';
       <span class="label">الشريط الإخباري</span>
       <?php if ($breakingCount > 0): ?><span class="nav-badge yellow"><?php echo (int)$breakingCount; ?></span><?php endif; ?>
     </a>
+    <a href="reels.php" class="nav-item<?php echo $activePage==='reels'?' active':''; ?>">
+      <div class="nav-icon">🎬</div>
+      <span class="label">الريلز</span>
+    </a>
   </div>
 
   <div class="sidebar-section">
