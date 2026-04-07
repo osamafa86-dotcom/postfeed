@@ -1,0 +1,15 @@
+{
+  "name": "نيوزفلو",
+  "short_name": "نيوزفلو",
+  "description": "مجمع الأخبار العربية الأول",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#faf6ec",
+  "theme_color": "#1a73e8",
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": [
+    { "src": "/assets/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
