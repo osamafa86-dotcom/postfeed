@@ -167,6 +167,39 @@ foreach ($sources as $i => $source) {
 $elapsed = round(microtime(true) - $startTime, 2);
 echo "\nالمجموع: {$totalNew} خبر جديد | أخطاء: {$totalErr} | الوقت: {$elapsed}s\n";
 
+// ============ AUTO-SUMMARIZE NEW ARTICLES ============
+if ($totalNew > 0) {
+    require_once __DIR__ . '/includes/functions.php';
+    require_once __DIR__ . '/includes/ai_helper.php';
+    $apiKey = getSetting('anthropic_api_key', '');
+    if (!empty($apiKey)) {
+        try {
+            $cols = $db->query("SHOW COLUMNS FROM articles LIKE 'ai_summary'")->fetch();
+            if (!$cols) {
+                $db->exec("ALTER TABLE articles
+                    ADD COLUMN ai_summary TEXT,
+                    ADD COLUMN ai_key_points TEXT,
+                    ADD COLUMN ai_keywords VARCHAR(500),
+                    ADD COLUMN ai_processed_at TIMESTAMP NULL");
+            }
+        } catch (Exception $e) {}
+
+        $aiLimit = min($totalNew, 15);
+        echo "\nبدء التلخيص لـ $aiLimit خبر...\n";
+        $pending = $db->query("SELECT id, title, content FROM articles
+                               WHERE ai_summary IS NULL AND status = 'published'
+                               ORDER BY created_at DESC LIMIT $aiLimit")->fetchAll();
+        $aiDone = 0; $aiFail = 0;
+        foreach ($pending as $a) {
+            $r = ai_summarize_article($a['title'], $a['content']);
+            if ($r['ok']) { ai_save_summary($a['id'], $r); $aiDone++; }
+            else { $aiFail++; }
+            usleep(200000);
+        }
+        echo "التلخيص: $aiDone نجح | $aiFail فشل\n";
+    }
+}
+
 // ============ HELPERS ============
 function extractImage($item) {
     $namespaces = $item->getNamespaces(true);
