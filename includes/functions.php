@@ -4,94 +4,108 @@
  */
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/cache.php';
+
+// Homepage cache TTL (seconds). Override in config.php if needed.
+if (!defined('HOMEPAGE_CACHE_TTL')) define('HOMEPAGE_CACHE_TTL', 120);
 
 // ============================================
 // دوال الأخبار
 // ============================================
 
 function getHeroArticles() {
-    $db = getDB();
-    $stmt = $db->query("SELECT a.*, c.name as cat_name, c.slug as cat_slug, c.css_class,
-                         s.name as source_name, s.logo_letter, s.logo_color, s.logo_bg
-                         FROM articles a
-                         LEFT JOIN categories c ON a.category_id = c.id
-                         LEFT JOIN sources s ON a.source_id = s.id
-                         WHERE a.is_hero = 1 AND a.status = 'published'
-                         ORDER BY a.published_at DESC LIMIT 3");
-    return $stmt->fetchAll();
+    return cache_remember('hero_articles', HOMEPAGE_CACHE_TTL, function() {
+        $db = getDB();
+        $stmt = $db->query("SELECT a.*, c.name as cat_name, c.slug as cat_slug, c.css_class,
+                             s.name as source_name, s.logo_letter, s.logo_color, s.logo_bg
+                             FROM articles a
+                             LEFT JOIN categories c ON a.category_id = c.id
+                             LEFT JOIN sources s ON a.source_id = s.id
+                             WHERE a.is_hero = 1 AND a.status = 'published'
+                             ORDER BY a.published_at DESC LIMIT 3");
+        return $stmt->fetchAll();
+    });
 }
 
 function getPalestineNews($limit = 6) {
-    $db = getDB();
-    $keywords = ['فلسطين', 'غزة', 'الضفة', 'القدس', 'الاحتلال', 'الفلسطيني', 'حماس', 'المقاومة', 'الأقصى', 'رفح', 'خان يونس', 'جنين', 'نابلس', 'طوفان', 'الشهداء', 'شهيد'];
-    $conditions = [];
-    $params = [];
-    foreach ($keywords as $kw) {
-        $conditions[] = "a.title LIKE ?";
-        $params[] = '%' . $kw . '%';
-    }
-    $where = '(' . implode(' OR ', $conditions) . ')';
-    $params[] = $limit;
-    $stmt = $db->prepare("SELECT a.*, c.name as cat_name, c.slug as cat_slug, c.css_class,
-                           s.name as source_name, s.logo_color
-                           FROM articles a
-                           LEFT JOIN categories c ON a.category_id = c.id
-                           LEFT JOIN sources s ON a.source_id = s.id
-                           WHERE {$where} AND a.status = 'published'
-                           ORDER BY a.published_at DESC LIMIT ?");
-    $stmt->execute($params);
-    return $stmt->fetchAll();
+    return cache_remember('palestine_news_' . (int)$limit, HOMEPAGE_CACHE_TTL, function() use ($limit) {
+        $db = getDB();
+        $keywords = ['فلسطين', 'غزة', 'الضفة', 'القدس', 'الاحتلال', 'الفلسطيني', 'حماس', 'المقاومة', 'الأقصى', 'رفح', 'خان يونس', 'جنين', 'نابلس', 'طوفان', 'الشهداء', 'شهيد'];
+        $conditions = [];
+        $params = [];
+        foreach ($keywords as $kw) {
+            $conditions[] = "a.title LIKE ?";
+            $params[] = '%' . $kw . '%';
+        }
+        $where = '(' . implode(' OR ', $conditions) . ')';
+        $params[] = $limit;
+        $stmt = $db->prepare("SELECT a.*, c.name as cat_name, c.slug as cat_slug, c.css_class,
+                               s.name as source_name, s.logo_color
+                               FROM articles a
+                               LEFT JOIN categories c ON a.category_id = c.id
+                               LEFT JOIN sources s ON a.source_id = s.id
+                               WHERE {$where} AND a.status = 'published'
+                               ORDER BY a.published_at DESC LIMIT ?");
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    });
 }
 
 function getBreakingNews() {
-    $db = getDB();
-    // Prefer flagged breaking news from the last 24h
-    $stmt = $db->query("SELECT a.*, c.name as cat_name, c.css_class,
-                         s.name as source_name
-                         FROM articles a
-                         LEFT JOIN categories c ON a.category_id = c.id
-                         LEFT JOIN sources s ON a.source_id = s.id
-                         WHERE a.is_breaking = 1 AND a.status = 'published'
-                         AND a.published_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
-                         ORDER BY a.published_at DESC LIMIT 5");
-    $rows = $stmt->fetchAll();
-    if (count($rows) >= 3) return $rows;
+    return cache_remember('breaking_news', HOMEPAGE_CACHE_TTL, function() {
+        $db = getDB();
+        // Prefer flagged breaking news from the last 24h
+        $stmt = $db->query("SELECT a.*, c.name as cat_name, c.css_class,
+                             s.name as source_name
+                             FROM articles a
+                             LEFT JOIN categories c ON a.category_id = c.id
+                             LEFT JOIN sources s ON a.source_id = s.id
+                             WHERE a.is_breaking = 1 AND a.status = 'published'
+                             AND a.published_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                             ORDER BY a.published_at DESC LIMIT 5");
+        $rows = $stmt->fetchAll();
+        if (count($rows) >= 3) return $rows;
 
-    // Fallback: latest 5 published articles so the section stays fresh
-    $stmt = $db->query("SELECT a.*, c.name as cat_name, c.css_class,
-                         s.name as source_name
-                         FROM articles a
-                         LEFT JOIN categories c ON a.category_id = c.id
-                         LEFT JOIN sources s ON a.source_id = s.id
-                         WHERE a.status = 'published'
-                         ORDER BY a.published_at DESC LIMIT 5");
-    return $stmt->fetchAll();
+        // Fallback: latest 5 published articles so the section stays fresh
+        $stmt = $db->query("SELECT a.*, c.name as cat_name, c.css_class,
+                             s.name as source_name
+                             FROM articles a
+                             LEFT JOIN categories c ON a.category_id = c.id
+                             LEFT JOIN sources s ON a.source_id = s.id
+                             WHERE a.status = 'published'
+                             ORDER BY a.published_at DESC LIMIT 5");
+        return $stmt->fetchAll();
+    });
 }
 
 function getArticlesByCategory($categorySlug, $limit = 4) {
-    $db = getDB();
-    $stmt = $db->prepare("SELECT a.*, c.name as cat_name, c.slug as cat_slug, c.css_class,
-                           s.name as source_name, s.logo_color
-                           FROM articles a
-                           LEFT JOIN categories c ON a.category_id = c.id
-                           LEFT JOIN sources s ON a.source_id = s.id
-                           WHERE c.slug = ? AND a.status = 'published' AND a.is_breaking = 0 AND a.is_hero = 0
-                           ORDER BY a.published_at DESC LIMIT ?");
-    $stmt->execute([$categorySlug, $limit]);
-    return $stmt->fetchAll();
+    return cache_remember('cat_' . $categorySlug . '_' . (int)$limit, HOMEPAGE_CACHE_TTL, function() use ($categorySlug, $limit) {
+        $db = getDB();
+        $stmt = $db->prepare("SELECT a.*, c.name as cat_name, c.slug as cat_slug, c.css_class,
+                               s.name as source_name, s.logo_color
+                               FROM articles a
+                               LEFT JOIN categories c ON a.category_id = c.id
+                               LEFT JOIN sources s ON a.source_id = s.id
+                               WHERE c.slug = ? AND a.status = 'published' AND a.is_breaking = 0 AND a.is_hero = 0
+                               ORDER BY a.published_at DESC LIMIT ?");
+        $stmt->execute([$categorySlug, $limit]);
+        return $stmt->fetchAll();
+    });
 }
 
 function getLatestArticles($limit = 6) {
-    $db = getDB();
-    $stmt = $db->prepare("SELECT a.*, c.name as cat_name, c.slug as cat_slug, c.css_class,
-                           s.name as source_name, s.logo_color
-                           FROM articles a
-                           LEFT JOIN categories c ON a.category_id = c.id
-                           LEFT JOIN sources s ON a.source_id = s.id
-                           WHERE a.status = 'published' AND a.is_breaking = 0 AND a.is_hero = 0
-                           ORDER BY a.published_at DESC LIMIT ?");
-    $stmt->execute([$limit]);
-    return $stmt->fetchAll();
+    return cache_remember('latest_articles_' . (int)$limit, HOMEPAGE_CACHE_TTL, function() use ($limit) {
+        $db = getDB();
+        $stmt = $db->prepare("SELECT a.*, c.name as cat_name, c.slug as cat_slug, c.css_class,
+                               s.name as source_name, s.logo_color
+                               FROM articles a
+                               LEFT JOIN categories c ON a.category_id = c.id
+                               LEFT JOIN sources s ON a.source_id = s.id
+                               WHERE a.status = 'published' AND a.is_breaking = 0 AND a.is_hero = 0
+                               ORDER BY a.published_at DESC LIMIT ?");
+        $stmt->execute([$limit]);
+        return $stmt->fetchAll();
+    });
 }
 
 function getArticleById($id) {

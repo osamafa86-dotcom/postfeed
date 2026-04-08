@@ -6,6 +6,7 @@
 
 require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/article_fetch.php';
+require_once __DIR__ . '/includes/cache.php';
 
 $db = getDB();
 $startTime = microtime(true);
@@ -217,6 +218,11 @@ foreach ($sources as $source) {
         $db->prepare("UPDATE sources SET last_fetched_at = NOW(), last_error = ?, last_new_count = ?, total_articles = ? WHERE id = ?")
            ->execute([$error, $newCount, $tot, $sid]);
     } catch (Exception $e) {}
+}
+
+// Flush homepage cache so new articles appear immediately
+if ($totalNew > 0) {
+    cache_flush();
 }
 
 $elapsed = round(microtime(true) - $startTime, 2);
