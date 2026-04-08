@@ -223,16 +223,21 @@
 
   /* PALESTINE NEWS - HERO + GRID */
   .ps-hero {
-    display:grid; grid-template-columns:1fr 1.2fr; gap:0;
     background:#fff; border-radius:var(--radius-lg); overflow:hidden;
     margin-bottom:22px; box-shadow:0 1px 6px rgba(0,0,0,.07);
-    border:1px solid #f0f0f0; text-decoration:none; cursor:pointer;
+    border:1px solid #f0f0f0;
     transition:all .3s ease;
+    display:flex; flex-direction:column;
+  }
+  .ps-hero-link {
+    display:grid; grid-template-columns:1fr 1.2fr; gap:0;
+    text-decoration:none; color:inherit; cursor:pointer;
   }
   .ps-hero:hover { box-shadow:0 8px 28px rgba(0,0,0,.1); transform:translateY(-2px); }
   .ps-hero-img { overflow:hidden; min-height:340px; }
   .ps-hero-img img { width:100%; height:100%; object-fit:cover; transition:transform .5s ease; }
   .ps-hero:hover .ps-hero-img img { transform:scale(1.04); }
+  .ps-hero > .nf-action-bar { padding:8px 20px; border-top:1px solid #f1f3f7; }
   .ps-hero-text {
     padding:32px 30px; display:flex; flex-direction:column; justify-content:center;
   }
@@ -260,12 +265,17 @@
   }
   .ps-card {
     border-radius:var(--radius-lg); overflow:hidden;
-    cursor:pointer; text-decoration:none; display:flex; flex-direction:column;
+    display:flex; flex-direction:column;
     background:#fff; transition:all .3s ease;
     box-shadow:0 1px 4px rgba(0,0,0,.07);
     border:1px solid #f0f0f0;
   }
+  .ps-card-link {
+    text-decoration:none; color:inherit; cursor:pointer;
+    display:flex; flex-direction:column; flex:1; min-height:0;
+  }
   .ps-card:hover { transform:translateY(-4px); box-shadow:0 8px 24px rgba(0,0,0,.12); }
+  .ps-card > .nf-action-bar { padding:6px 12px; border-top:1px solid #f1f3f7; }
   .ps-card .img-wrap { position:relative; height:190px; overflow:hidden; }
   .ps-card .img-wrap img { width:100%; height:100%; object-fit:cover; transition:transform .5s ease; }
   .ps-card:hover .img-wrap img { transform:scale(1.06); }
@@ -298,9 +308,14 @@
   .news-grid-2col { grid-template-columns:repeat(2,1fr); }
   .news-card {
     background:var(--card); border:1px solid var(--border);
-    border-radius:var(--radius); overflow:hidden; cursor:pointer;
+    border-radius:var(--radius); overflow:hidden;
     transition:all .3s ease;
     box-shadow:var(--shadow-sm);
+    display:flex; flex-direction:column;
+  }
+  .news-card-link {
+    text-decoration:none; color:inherit; cursor:pointer;
+    display:flex; flex-direction:column; flex:1; min-width:0;
   }
   .news-card:hover {
     transform:translateY(-5px);
@@ -339,17 +354,27 @@
   /* ROWS STYLE (Sky News–like) */
   .news-rows { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:32px; }
   .news-rows .news-card {
-    display:flex; flex-direction:row-reverse; align-items:stretch;
-    gap:14px; padding:16px;
     background:#fff; border:1px solid #eef0f3;
     border-radius:14px;
     box-shadow:0 1px 3px rgba(15,23,42,.04);
     transition:all .25s ease;
+    display:flex; flex-direction:column;
+    overflow:hidden;
+  }
+  .news-rows .news-card-link {
+    display:flex; flex-direction:row-reverse; align-items:stretch;
+    gap:14px; padding:16px;
+    text-decoration:none; color:inherit; cursor:pointer;
+    flex:1; min-width:0;
   }
   .news-rows .news-card:hover {
     transform:translateY(-3px);
     box-shadow:0 12px 28px -14px rgba(15,23,42,.18);
     border-color:rgba(26,115,232,.2);
+  }
+  .news-rows .news-card > .nf-action-bar {
+    padding:6px 14px 10px;
+    border-top:1px solid #f1f3f7;
   }
   .news-rows .card-img {
     flex:0 0 170px; width:170px; height:110px; border-radius:8px; overflow:hidden;
@@ -972,7 +997,7 @@
     .hero-grid { grid-template-columns:1fr; height:auto; }
     .hero-main { min-height:300px; grid-row:auto; }
     .hero-side { min-height:200px; }
-    .ps-hero { grid-template-columns:1fr; }
+    .ps-hero-link { grid-template-columns:1fr; }
     .ps-hero-img { min-height:250px; }
     .ps-hero-text { padding:20px; }
     .ps-hero-text h3 { font-size:18px; }
