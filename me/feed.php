@@ -27,7 +27,7 @@ $bookmarkedIds = array_flip(user_bookmark_ids_for($userId, array_column($article
       $imgUrl = $a['image_url'] ?? ('https://picsum.photos/seed/user' . (int)$a['id'] . '/400/300');
     ?>
       <a class="u-card news-card" href="../<?= e(articleUrl($a)) ?>" data-article-id="<?= (int)$a['id'] ?>">
-        <button type="button" class="save-btn <?= $isSaved ? 'saved' : '' ?>" title="<?= $isSaved ? 'إزالة من المحفوظات' : 'حفظ' ?>" data-save-id="<?= (int)$a['id'] ?>" onclick="event.preventDefault(); event.stopPropagation(); NF.toggleSave(this)">🔖</button>
+        <button type="button" class="nf-bookmark-btn <?= $isSaved ? 'saved' : '' ?>" title="<?= $isSaved ? 'إزالة من المحفوظات' : 'حفظ' ?>" data-save-id="<?= (int)$a['id'] ?>" onclick="event.preventDefault(); event.stopPropagation(); NF.toggleSave(this)">🔖</button>
         <div class="u-img"><img src="<?= e($imgUrl) ?>" alt="<?= e($a['title']) ?>" loading="lazy" decoding="async"></div>
         <div class="u-body">
           <span class="u-cat"><?= e($a['cat_name'] ?? '') ?></span>

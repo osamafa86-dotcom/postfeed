@@ -339,8 +339,8 @@ img { max-width:100%; height:auto; }
 .reorder-list .drag-handle { color:var(--muted); font-size:16px; }
 .reorder-list .cat-icon { font-size:18px; }
 
-/* ================= SAVE BUTTON ON CARDS ================= */
-.save-btn {
+/* ================= BOOKMARK BUTTON ON CARDS ================= */
+.nf-bookmark-btn {
   position:absolute;
   inset-inline-end:10px; top:10px;
   width:36px; height:36px;
@@ -354,10 +354,10 @@ img { max-width:100%; height:auto; }
   z-index:3;
   color:#1a1a2e;
 }
-.save-btn:hover { transform:scale(1.08); }
-.save-btn.saved { background:var(--gold); color:#fff; }
-[data-theme="dark"] .save-btn { background:rgba(20,24,40,.92); color:#e6e8f0; }
-[data-theme="dark"] .save-btn.saved { background:var(--gold); color:#fff; }
+.nf-bookmark-btn:hover { transform:scale(1.08); }
+.nf-bookmark-btn.saved { background:var(--gold); color:#fff; }
+[data-theme="dark"] .nf-bookmark-btn { background:rgba(20,24,40,.92); color:#e6e8f0; }
+[data-theme="dark"] .nf-bookmark-btn.saved { background:var(--gold); color:#fff; }
 .news-card { position:relative; }
 
 /* ================= COMMENTS ================= */
