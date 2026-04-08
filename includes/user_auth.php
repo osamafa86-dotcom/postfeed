@@ -8,6 +8,11 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/user_migrate.php';
 
+// Ensure migrations run on every request. The function short-circuits
+// via a flag file, so it's effectively a single is_file() check after
+// the first run.
+user_dashboard_migrate();
+
 if (!defined('USER_SESSION_KEY')) define('USER_SESSION_KEY', 'newsflow_user_id');
 
 function user_session_start(): void {
