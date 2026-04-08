@@ -5,6 +5,7 @@
 
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/audit.php';
 requireAdmin();
 
 $db = getDB();
@@ -38,8 +39,12 @@ if ($action === 'fetch') {
 if ($action === 'delete' && isset($_GET['id'])) {
     $id = (int)$_GET['id'];
     try {
+        $t = $db->prepare("SELECT name FROM sources WHERE id = ?");
+        $t->execute([$id]);
+        $delName = (string)$t->fetchColumn();
         $stmt = $db->prepare("DELETE FROM sources WHERE id = ?");
         $stmt->execute([$id]);
+        audit_log('source.delete', 'source', $id, ['name' => $delName]);
         $success = 'تم حذف المصدر بنجاح';
         $action = 'list';
     } catch (PDOException $e) {
@@ -70,6 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     WHERE id = ?
                 ");
                 $stmt->execute([$name, $slug, $logo_letter, $logo_color, $logo_bg, $url, $rss_url, $is_active, $id]);
+                audit_log('source.update', 'source', $id, ['name' => $name]);
                 $success = 'تم تحديث المصدر بنجاح';
             } else {
                 $stmt = $db->prepare("
@@ -78,8 +84,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
                 ");
                 $stmt->execute([$name, $slug, $logo_letter, $logo_color, $logo_bg, $url, $rss_url, $is_active]);
-                $success = 'تم إضافة المصدر بنجاح';
                 $id = $db->lastInsertId();
+                audit_log('source.create', 'source', $id, ['name' => $name]);
+                $success = 'تم إضافة المصدر بنجاح';
             }
             $action = 'list';
         } catch (PDOException $e) {

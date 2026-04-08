@@ -390,6 +390,10 @@ $pageTitle  = $pageTitle  ?? 'نيوزفلو';
       <div class="nav-icon">⚙️</div>
       <span class="label">الإعدادات</span>
     </a>
+    <a href="audit.php" class="nav-item<?php echo $activePage==='audit'?' active':''; ?>">
+      <div class="nav-icon">📋</div>
+      <span class="label">سجل التدقيق</span>
+    </a>
     <a href="logout.php" class="nav-item">
       <div class="nav-icon">🚪</div>
       <span class="label">تسجيل الخروج</span>

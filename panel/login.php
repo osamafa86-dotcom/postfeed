@@ -9,6 +9,7 @@ session_start();
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/rate_limit.php';
+require_once __DIR__ . '/../includes/audit.php';
 
 // إذا كان المستخدم مسجل دخول بالفعل
 if (isset($_SESSION[ADMIN_SESSION_NAME]) && $_SESSION[ADMIN_SESSION_NAME] === true) {
@@ -45,9 +46,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION[ADMIN_SESSION_NAME] = true;
                 $_SESSION['admin_id'] = $user['id'];
                 $_SESSION['admin_name'] = $user['name'];
+                audit_log('auth.login.success', 'user', $user['id'], ['email' => $email]);
                 header('Location: index.php');
                 exit;
             } else {
+                audit_log('auth.login.fail', 'user', null, ['email' => $email]);
                 $error = 'بيانات دخول غير صحيحة';
             }
         } catch (PDOException $e) {
