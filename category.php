@@ -358,7 +358,7 @@ function buildPageUrl($pageNum) {
       <?php foreach ($articles as $article): ?>
         <a class="news-card" href="<?php echo articleUrl($article); ?>">
           <div class="card-img">
-            <img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/cat' . $article['id'] . '/400/300'); ?>" alt="<?php echo e($article['title']); ?>">
+            <img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/cat' . $article['id'] . '/400/300'); ?>" alt="<?php echo e($article['title']); ?>" loading="lazy" decoding="async">
           </div>
           <div class="card-body">
             <span class="card-cat <?php echo e($article['css_class'] ?? $pageCss); ?>"><?php echo e($article['cat_name'] ?? $pageTitle); ?></span>
