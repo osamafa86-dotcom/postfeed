@@ -316,7 +316,7 @@ if ($viewerId && !empty($articles)) {
     .footer-links { flex-wrap:wrap; justify-content:center; }
   }
 </style>
-<link rel="stylesheet" href="assets/css/user.css?v=1">
+<link rel="stylesheet" href="assets/css/user.css?v=2">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>
@@ -446,6 +446,6 @@ if ($viewerId && !empty($articles)) {
 </footer>
 
 <div class="nf-toast" id="nfToast"></div>
-<script src="assets/js/user.js?v=1" defer></script>
+<script src="assets/js/user.js?v=2" defer></script>
 </body>
 </html>

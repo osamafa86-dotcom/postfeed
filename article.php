@@ -451,7 +451,7 @@ if ($article['cat_slug']) {
             .article-footer { padding: 1.5rem; }
         }
     </style>
-    <link rel="stylesheet" href="assets/css/user.css?v=1">
+    <link rel="stylesheet" href="assets/css/user.css?v=2">
     <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>
@@ -648,7 +648,7 @@ if ($article['cat_slug']) {
         </div>
     </footer>
     <div class="nf-toast" id="nfToast"></div>
-    <script src="assets/js/user.js?v=1"></script>
+    <script src="assets/js/user.js?v=2"></script>
     <?php if ($viewerId): ?>
     <script>
       // Log this read after 5 seconds (so page views count only as "read")
