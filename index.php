@@ -182,8 +182,8 @@ try {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
 <meta name="description" content="مجمع الأخبار العربية الأول - أحدث الأخبار من مصادر موثوقة في السياسة، الاقتصاد، الرياضة، والتكنولوجيا">
-<link rel="stylesheet" href="assets/css/home.css?v=1">
-<link rel="stylesheet" href="assets/css/user.css?v=6">
+<link rel="stylesheet" href="assets/css/home.css?v=7">
+<link rel="stylesheet" href="assets/css/user.css?v=7">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>
@@ -349,18 +349,20 @@ $__featRest  = array_slice($latestArticles, 7);
       <?php endforeach; ?>
     </div>
     <!-- Center featured -->
-    <a class="nf-feature-main" href="<?php echo articleUrl($__featMain); ?>">
-      <div class="nf-feature-main-img" style="background-image:url('<?php echo e($__featMain['image_url'] ?? 'https://picsum.photos/seed/feat/1200/800'); ?>');"></div>
-      <div class="nf-feature-main-body">
-        <h3 class="nf-feature-main-title"><?php echo e($__featMain['title']); ?></h3>
-        <div class="nf-feature-main-meta">
-          <span><?php echo timeAgo($__featMain['published_at']); ?></span>
-          <span class="sep">|</span>
-          <span><?php echo e($__featMain['cat_name'] ?? ''); ?></span>
+    <div class="nf-feature-main">
+      <a class="nf-feature-main-link" href="<?php echo articleUrl($__featMain); ?>">
+        <div class="nf-feature-main-img" style="background-image:url('<?php echo e($__featMain['image_url'] ?? 'https://picsum.photos/seed/feat/1200/800'); ?>');"></div>
+        <div class="nf-feature-main-body">
+          <h3 class="nf-feature-main-title"><?php echo e($__featMain['title']); ?></h3>
+          <div class="nf-feature-main-meta">
+            <span><?php echo timeAgo($__featMain['published_at']); ?></span>
+            <span class="sep">|</span>
+            <span><?php echo e($__featMain['cat_name'] ?? ''); ?></span>
+          </div>
         </div>
-        <?php $article = $__featMain; include __DIR__ . '/includes/components/action_bar.php'; ?>
-      </div>
-    </a>
+      </a>
+      <?php $article = $__featMain; include __DIR__ . '/includes/components/action_bar.php'; ?>
+    </div>
     <!-- Right column (side cards) -->
     <div class="nf-feature-side">
       <?php foreach ($__featRight as $article): ?>
@@ -381,39 +383,45 @@ $__featRest  = array_slice($latestArticles, 7);
     </div>
     <?php if (!empty($palestineNews)): ?>
       <?php $psFirst = $palestineNews[0]; ?>
-      <a class="ps-hero" href="<?php echo articleUrl($psFirst); ?>">
-        <div class="ps-hero-text">
-          <h3><?php echo e($psFirst['title']); ?></h3>
-          <div class="ps-hero-excerpt"><?php echo e(mb_substr(strip_tags($psFirst['content'] ?? $psFirst['excerpt'] ?? ''), 0, 200)); ?></div>
-          <div class="ps-hero-meta">
-            <span class="source-icon"><?php echo e(mb_substr($psFirst['source_name'], 0, 1)); ?></span>
-            <div class="meta-text">
-              <span><?php echo e($psFirst['source_name']); ?></span>
-              <span class="meta-dot"></span>
-              <span><?php echo timeAgo($psFirst['published_at']); ?></span>
+      <div class="ps-hero">
+        <a class="ps-hero-link" href="<?php echo articleUrl($psFirst); ?>">
+          <div class="ps-hero-text">
+            <h3><?php echo e($psFirst['title']); ?></h3>
+            <div class="ps-hero-excerpt"><?php echo e(mb_substr(strip_tags($psFirst['content'] ?? $psFirst['excerpt'] ?? ''), 0, 200)); ?></div>
+            <div class="ps-hero-meta">
+              <span class="source-icon"><?php echo e(mb_substr($psFirst['source_name'], 0, 1)); ?></span>
+              <div class="meta-text">
+                <span><?php echo e($psFirst['source_name']); ?></span>
+                <span class="meta-dot"></span>
+                <span><?php echo timeAgo($psFirst['published_at']); ?></span>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="ps-hero-img">
-          <img src="<?php echo e($psFirst['image_url'] ?? 'https://picsum.photos/seed/ps0/800/500'); ?>" alt="<?php echo e($psFirst['title'] ?? ''); ?>" loading="lazy" decoding="async">
-        </div>
-      </a>
+          <div class="ps-hero-img">
+            <img src="<?php echo e($psFirst['image_url'] ?? 'https://picsum.photos/seed/ps0/800/500'); ?>" alt="<?php echo e($psFirst['title'] ?? ''); ?>" loading="lazy" decoding="async">
+          </div>
+        </a>
+        <?php $article = $psFirst; include __DIR__ . '/includes/components/action_bar.php'; ?>
+      </div>
 
       <div class="palestine-grid">
         <?php for ($pIdx = 1; $pIdx < count($palestineNews); $pIdx++): $article = $palestineNews[$pIdx]; ?>
-          <a class="ps-card" href="<?php echo articleUrl($article); ?>">
-            <div class="img-wrap">
-              <img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/ps' . $pIdx . '/400/300'); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async">
-              <div class="img-date"><?php echo timeAgo($article['published_at']); ?></div>
-            </div>
-            <div class="ps-card-body">
-              <h3><?php echo e($article['title']); ?></h3>
-              <div class="ps-card-footer">
-                <span class="source-dot"><?php echo e(mb_substr($article['source_name'], 0, 1)); ?></span>
-                <span><?php echo e($article['source_name']); ?></span>
+          <div class="ps-card">
+            <a class="ps-card-link" href="<?php echo articleUrl($article); ?>">
+              <div class="img-wrap">
+                <img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/ps' . $pIdx . '/400/300'); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async">
+                <div class="img-date"><?php echo timeAgo($article['published_at']); ?></div>
               </div>
-            </div>
-          </a>
+              <div class="ps-card-body">
+                <h3><?php echo e($article['title']); ?></h3>
+                <div class="ps-card-footer">
+                  <span class="source-dot"><?php echo e(mb_substr($article['source_name'], 0, 1)); ?></span>
+                  <span><?php echo e($article['source_name']); ?></span>
+                </div>
+              </div>
+            </a>
+            <?php include __DIR__ . '/includes/components/action_bar.php'; ?>
+          </div>
         <?php endfor; ?>
       </div>
     <?php endif; ?>
@@ -472,20 +480,21 @@ $__featRest  = array_slice($latestArticles, 7);
     </div>
     <div class="news-rows" style="margin-bottom:28px">
       <?php foreach ($politicalNews as $article): ?>
-        <?php $__sid = (int)($article['id'] ?? 0); $__ss = !empty($GLOBALS['__nf_saved_ids']) && isset($GLOBALS['__nf_saved_ids'][$__sid]); ?>
-        <a class="news-card" href="<?php echo articleUrl($article); ?>">
-          <button type="button" class="nf-bookmark-btn <?php echo $__ss ? 'saved' : ''; ?>" title="<?php echo $__ss ? 'إزالة من المحفوظات' : 'حفظ'; ?>" data-save-id="<?php echo $__sid; ?>" onclick="event.preventDefault(); event.stopPropagation(); NF.toggleSave(this)">🔖</button>
-          <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/pol' . rand(1,10) . '/400/300'); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
-          <div class="card-body">
-            <span class="card-cat cat-political">سياسة</span>
-            <div class="card-title"><?php echo e($article['title']); ?></div>
-            <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
-            <div class="card-meta">
-              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#6b9fd4'); ?>"></span><?php echo e($article['source_name']); ?></div>
-              <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
+        <div class="news-card">
+          <a class="news-card-link" href="<?php echo articleUrl($article); ?>">
+            <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/pol' . rand(1,10) . '/400/300'); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
+            <div class="card-body">
+              <span class="card-cat cat-political">سياسة</span>
+              <div class="card-title"><?php echo e($article['title']); ?></div>
+              <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
+              <div class="card-meta">
+                <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#6b9fd4'); ?>"></span><?php echo e($article['source_name']); ?></div>
+                <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
+              </div>
             </div>
-          </div>
-        </a>
+          </a>
+          <?php include __DIR__ . '/includes/components/action_bar.php'; ?>
+        </div>
       <?php endforeach; ?>
     </div>
 
@@ -496,20 +505,21 @@ $__featRest  = array_slice($latestArticles, 7);
     </div>
     <div class="news-rows" style="margin-bottom:28px">
       <?php foreach ($economyNews as $article): ?>
-        <?php $__sid = (int)($article['id'] ?? 0); $__ss = !empty($GLOBALS['__nf_saved_ids']) && isset($GLOBALS['__nf_saved_ids'][$__sid]); ?>
-        <a class="news-card" href="<?php echo articleUrl($article); ?>">
-          <button type="button" class="nf-bookmark-btn <?php echo $__ss ? 'saved' : ''; ?>" title="<?php echo $__ss ? 'إزالة من المحفوظات' : 'حفظ'; ?>" data-save-id="<?php echo $__sid; ?>" onclick="event.preventDefault(); event.stopPropagation(); NF.toggleSave(this)">🔖</button>
-          <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/eco' . rand(1,10) . '/400/300'); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
-          <div class="card-body">
-            <span class="card-cat cat-economic">اقتصاد</span>
-            <div class="card-title"><?php echo e($article['title']); ?></div>
-            <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
-            <div class="card-meta">
-              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#85c1a3'); ?>"></span><?php echo e($article['source_name']); ?></div>
-              <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
+        <div class="news-card">
+          <a class="news-card-link" href="<?php echo articleUrl($article); ?>">
+            <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/eco' . rand(1,10) . '/400/300'); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
+            <div class="card-body">
+              <span class="card-cat cat-economic">اقتصاد</span>
+              <div class="card-title"><?php echo e($article['title']); ?></div>
+              <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
+              <div class="card-meta">
+                <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#85c1a3'); ?>"></span><?php echo e($article['source_name']); ?></div>
+                <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
+              </div>
             </div>
-          </div>
-        </a>
+          </a>
+          <?php include __DIR__ . '/includes/components/action_bar.php'; ?>
+        </div>
       <?php endforeach; ?>
     </div>
 
@@ -520,20 +530,21 @@ $__featRest  = array_slice($latestArticles, 7);
     </div>
     <div class="news-rows" style="margin-bottom:28px">
       <?php foreach ($sportsNews as $article): ?>
-        <?php $__sid = (int)($article['id'] ?? 0); $__ss = !empty($GLOBALS['__nf_saved_ids']) && isset($GLOBALS['__nf_saved_ids'][$__sid]); ?>
-        <a class="news-card" href="<?php echo articleUrl($article); ?>">
-          <button type="button" class="nf-bookmark-btn <?php echo $__ss ? 'saved' : ''; ?>" title="<?php echo $__ss ? 'إزالة من المحفوظات' : 'حفظ'; ?>" data-save-id="<?php echo $__sid; ?>" onclick="event.preventDefault(); event.stopPropagation(); NF.toggleSave(this)">🔖</button>
-          <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/sp' . rand(1,10) . '/400/300'); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
-          <div class="card-body">
-            <span class="card-cat cat-sports">رياضة</span>
-            <div class="card-title"><?php echo e($article['title']); ?></div>
-            <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
-            <div class="card-meta">
-              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#6b9fd4'); ?>"></span><?php echo e($article['source_name']); ?></div>
-              <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
+        <div class="news-card">
+          <a class="news-card-link" href="<?php echo articleUrl($article); ?>">
+            <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/sp' . rand(1,10) . '/400/300'); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
+            <div class="card-body">
+              <span class="card-cat cat-sports">رياضة</span>
+              <div class="card-title"><?php echo e($article['title']); ?></div>
+              <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
+              <div class="card-meta">
+                <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#6b9fd4'); ?>"></span><?php echo e($article['source_name']); ?></div>
+                <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
+              </div>
             </div>
-          </div>
-        </a>
+          </a>
+          <?php include __DIR__ . '/includes/components/action_bar.php'; ?>
+        </div>
       <?php endforeach; ?>
     </div>
 
@@ -544,20 +555,21 @@ $__featRest  = array_slice($latestArticles, 7);
     </div>
     <div class="news-rows" style="margin-bottom:28px">
       <?php foreach ($artsNews as $article): ?>
-        <?php $__sid = (int)($article['id'] ?? 0); $__ss = !empty($GLOBALS['__nf_saved_ids']) && isset($GLOBALS['__nf_saved_ids'][$__sid]); ?>
-        <a class="news-card" href="<?php echo articleUrl($article); ?>">
-          <button type="button" class="nf-bookmark-btn <?php echo $__ss ? 'saved' : ''; ?>" title="<?php echo $__ss ? 'إزالة من المحفوظات' : 'حفظ'; ?>" data-save-id="<?php echo $__sid; ?>" onclick="event.preventDefault(); event.stopPropagation(); NF.toggleSave(this)">🔖</button>
-          <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/art' . rand(1,10) . '/400/300'); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
-          <div class="card-body">
-            <span class="card-cat cat-arts">فنون</span>
-            <div class="card-title"><?php echo e($article['title']); ?></div>
-            <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
-            <div class="card-meta">
-              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#a08cc8'); ?>"></span><?php echo e($article['source_name']); ?></div>
-              <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
+        <div class="news-card">
+          <a class="news-card-link" href="<?php echo articleUrl($article); ?>">
+            <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/art' . rand(1,10) . '/400/300'); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
+            <div class="card-body">
+              <span class="card-cat cat-arts">فنون</span>
+              <div class="card-title"><?php echo e($article['title']); ?></div>
+              <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
+              <div class="card-meta">
+                <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#a08cc8'); ?>"></span><?php echo e($article['source_name']); ?></div>
+                <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
+              </div>
             </div>
-          </div>
-        </a>
+          </a>
+          <?php include __DIR__ . '/includes/components/action_bar.php'; ?>
+        </div>
       <?php endforeach; ?>
     </div>
 
@@ -586,20 +598,21 @@ $__featRest  = array_slice($latestArticles, 7);
     </div>
     <div class="news-rows" style="margin-bottom:28px">
       <?php foreach ($reportsNews as $article): ?>
-        <?php $__sid = (int)($article['id'] ?? 0); $__ss = !empty($GLOBALS['__nf_saved_ids']) && isset($GLOBALS['__nf_saved_ids'][$__sid]); ?>
-        <a class="news-card" href="<?php echo articleUrl($article); ?>">
-          <button type="button" class="nf-bookmark-btn <?php echo $__ss ? 'saved' : ''; ?>" title="<?php echo $__ss ? 'إزالة من المحفوظات' : 'حفظ'; ?>" data-save-id="<?php echo $__sid; ?>" onclick="event.preventDefault(); event.stopPropagation(); NF.toggleSave(this)">🔖</button>
-          <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/rep' . rand(1,10) . '/400/300'); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
-          <div class="card-body">
-            <span class="card-cat cat-reports">تقرير</span>
-            <div class="card-title"><?php echo e($article['title']); ?></div>
-            <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
-            <div class="card-meta">
-              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#c9ab6e'); ?>"></span><?php echo e($article['source_name']); ?></div>
-              <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
+        <div class="news-card">
+          <a class="news-card-link" href="<?php echo articleUrl($article); ?>">
+            <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/rep' . rand(1,10) . '/400/300'); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
+            <div class="card-body">
+              <span class="card-cat cat-reports">تقرير</span>
+              <div class="card-title"><?php echo e($article['title']); ?></div>
+              <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
+              <div class="card-meta">
+                <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#c9ab6e'); ?>"></span><?php echo e($article['source_name']); ?></div>
+                <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
+              </div>
             </div>
-          </div>
-        </a>
+          </a>
+          <?php include __DIR__ . '/includes/components/action_bar.php'; ?>
+        </div>
       <?php endforeach; ?>
     </div>
 

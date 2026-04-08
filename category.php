@@ -316,7 +316,7 @@ if ($viewerId && !empty($articles)) {
     .footer-links { flex-wrap:wrap; justify-content:center; }
   }
 </style>
-<link rel="stylesheet" href="assets/css/user.css?v=6">
+<link rel="stylesheet" href="assets/css/user.css?v=7">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>
