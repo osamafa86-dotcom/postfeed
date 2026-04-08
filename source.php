@@ -141,7 +141,7 @@ if ($viewerId && !empty($articles)) {
     .article-item img { width:100px; height:70px; }
   }
 </style>
-<link rel="stylesheet" href="assets/css/user.css?v=4">
+<link rel="stylesheet" href="assets/css/user.css?v=5">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>

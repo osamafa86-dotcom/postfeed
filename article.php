@@ -451,7 +451,7 @@ if ($article['cat_slug']) {
             .article-footer { padding: 1.5rem; }
         }
     </style>
-    <link rel="stylesheet" href="assets/css/user.css?v=4">
+    <link rel="stylesheet" href="assets/css/user.css?v=5">
     <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>
