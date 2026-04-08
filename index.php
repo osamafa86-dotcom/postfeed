@@ -105,7 +105,7 @@ try {
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
 <meta name="description" content="مجمع الأخبار العربية الأول - أحدث الأخبار من مصادر موثوقة في السياسة، الاقتصاد، الرياضة، والتكنولوجيا">
 <link rel="stylesheet" href="assets/css/home.css?v=1">
-<link rel="stylesheet" href="assets/css/user.css?v=4">
+<link rel="stylesheet" href="assets/css/user.css?v=5">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>

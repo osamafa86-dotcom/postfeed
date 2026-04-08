@@ -12,7 +12,7 @@ $__imgUrl = $article['image_url'] ?? ('https://picsum.photos/seed/side' . (int)(
     </div>
     <div class="nf-side-card-body">
       <div class="nf-side-card-meta">
-        <span><?php echo date('Y-m-d H:i', strtotime($article['published_at'] ?? 'now')); ?></span>
+        <span><?php echo e(timeAgo($article['published_at'] ?? 'now')); ?></span>
         <span class="sep">|</span>
         <span class="cat"><?php echo e($article['cat_name'] ?? ''); ?></span>
       </div>
