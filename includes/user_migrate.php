@@ -12,7 +12,7 @@ function user_dashboard_migrate(): void {
     if ($done) return;
 
     $flagDir  = __DIR__ . '/../storage/cache';
-    $flagFile = $flagDir . '/user_dashboard_migrated_v2.flag';
+    $flagFile = $flagDir . '/user_dashboard_migrated_v3.flag';
     if (is_file($flagFile)) { $done = true; return; }
 
     try {
