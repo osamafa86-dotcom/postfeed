@@ -3,6 +3,12 @@
  * Public source profile page
  */
 require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/user_auth.php';
+require_once __DIR__ . '/includes/user_functions.php';
+
+$viewer = current_user();
+$viewerId = $viewer ? (int)$viewer['id'] : 0;
+$pageTheme = current_theme();
 
 $db = getDB();
 
@@ -41,11 +47,22 @@ $totalArticles = $db->prepare("SELECT COUNT(*) FROM articles WHERE source_id = ?
 $totalArticles->execute([$source['id']]);
 $totalArticles = (int)$totalArticles->fetchColumn();
 
-// Following state via cookie
-$followed = isset($_COOKIE['followed_sources']) ? explode(',', $_COOKIE['followed_sources']) : [];
-$isFollowing = in_array((string)$source['id'], $followed, true);
+// Following state: prefer logged-in user's follow list, fall back to cookie for anonymous visitors
+if ($viewerId) {
+    $isFollowing = in_array((int)$source['id'], user_followed_source_ids($viewerId), true);
+} else {
+    $followed = isset($_COOKIE['followed_sources']) ? explode(',', $_COOKIE['followed_sources']) : [];
+    $isFollowing = in_array((string)$source['id'], $followed, true);
+}
+
+// Pre-fetch saved bookmarks for this page's articles
+$GLOBALS['__nf_saved_ids'] = [];
+if ($viewerId && !empty($articles)) {
+    $__ids = array_map(fn($a) => (int)$a['id'], $articles);
+    $GLOBALS['__nf_saved_ids'] = array_flip(user_bookmark_ids_for($viewerId, $__ids));
+}
 ?><!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" data-theme="<?php echo e($pageTheme); ?>">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -117,6 +134,8 @@ $isFollowing = in_array((string)$source['id'], $followed, true);
     .article-item img { width:100px; height:70px; }
   }
 </style>
+<link rel="stylesheet" href="assets/css/user.css?v=1">
+<meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>
 
@@ -201,5 +220,7 @@ async function toggleFollow(sourceId) {
 }
 </script>
 
+<div class="nf-toast" id="nfToast"></div>
+<script src="assets/js/user.js?v=1" defer></script>
 </body>
 </html>

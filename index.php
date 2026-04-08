@@ -5,6 +5,14 @@
  */
 
 require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/user_auth.php';
+require_once __DIR__ . '/includes/user_functions.php';
+
+// Viewer context for save buttons / theme / user menu
+$viewer = current_user();
+$viewerId = $viewer ? (int)$viewer['id'] : 0;
+$pageTheme = current_theme();
+$userUnread = $viewerId ? user_unread_notifications_count($viewerId) : 0;
 
 // جلب البيانات من قاعدة البيانات
 $heroArticles = getHeroArticles();
@@ -53,6 +61,18 @@ $sportsNews     = $dedup($sportsNews, 4);
 $artsNews       = $dedup($artsNews, 4);
 $reportsNews    = $dedup($reportsNews, 4);
 
+// Pre-fetch which of the articles on this page are already bookmarked for the viewer
+$GLOBALS['__nf_saved_ids'] = [];
+if ($viewerId) {
+    $__allIds = [];
+    foreach ([$heroArticles, $palestineNews, $breakingNews, $latestArticles,
+              $politicalNews, $economyNews, $sportsNews, $artsNews, $reportsNews] as $__list) {
+        foreach ($__list as $__a) { $__allIds[] = (int)($__a['id'] ?? 0); }
+    }
+    $__saved = user_bookmark_ids_for($viewerId, $__allIds);
+    $GLOBALS['__nf_saved_ids'] = array_flip($__saved);
+}
+
 // جلب الريلز للعرض في الصفحة الرئيسية
 $homeReels = [];
 try {
@@ -69,7 +89,7 @@ try {
 }
 
 ?><!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" data-theme="<?php echo e($pageTheme); ?>">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -79,6 +99,8 @@ try {
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
 <meta name="description" content="مجمع الأخبار العربية الأول - أحدث الأخبار من مصادر موثوقة في السياسة، الاقتصاد، الرياضة، والتكنولوجيا">
 <link rel="stylesheet" href="assets/css/home.css?v=1">
+<link rel="stylesheet" href="assets/css/user.css?v=1">
+<meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>
 
@@ -125,12 +147,17 @@ try {
       <span class="search-icon">&#x1F50D;</span>
       <input type="text" placeholder="ابحث عن خبر...">
     </div>
-    <div class="icon-btn" onclick="toggleNotif()">
-      🔔
-      <span class="notif-badge"><?php echo e($unreadCount); ?></span>
-    </div>
-    <div class="icon-btn" onclick="openAddSource()">➕</div>
-    <div class="avatar" onclick="openUserPanel()">أ</div>
+    <div class="icon-btn" onclick="NF.cycleTheme()" title="تبديل الثيم">🌓</div>
+    <?php if ($viewerId): ?>
+      <div class="icon-btn" data-nf-notif-btn onclick="NF.toggleNotifDropdown(this)" title="الإشعارات">
+        🔔
+        <?php if ($userUnread > 0): ?><span class="notif-badge" data-notif-badge><?php echo (int)$userUnread; ?></span><?php endif; ?>
+      </div>
+      <a href="me/" class="avatar" title="لوحتي"><?php echo e(mb_substr($viewer['name'] ?? '?', 0, 1)); ?></a>
+    <?php else: ?>
+      <a href="account/login.php" class="icon-btn" title="دخول" style="text-decoration:none">🔑</a>
+      <a href="account/register.php" style="padding:8px 14px;border-radius:10px;background:linear-gradient(135deg,#1a73e8,#4f46e5);color:#fff;font-size:13px;font-weight:700;text-decoration:none;">انضم مجاناً</a>
+    <?php endif; ?>
   </div>
 </header>
 
@@ -909,7 +936,9 @@ try {
   </div>
 </div>
 
+<div class="nf-toast" id="nfToast"></div>
 <script src="assets/js/home.js?v=1" defer></script>
+<script src="assets/js/user.js?v=1" defer></script>
 
 </body>
 </html>

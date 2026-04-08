@@ -7,6 +7,8 @@
 
 session_start();
 require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/user_auth.php';
+require_once __DIR__ . '/includes/user_functions.php';
 
 // Get article ID
 $articleId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -34,6 +36,14 @@ try {
     // Silent fail on view count increment
 }
 
+// Fetch user context (for save button, comments, theme)
+$viewer = current_user();
+$viewerId = $viewer ? (int)$viewer['id'] : 0;
+$isSaved = $viewerId && in_array($articleId, user_bookmark_ids_for($viewerId, [$articleId]), true);
+$comments = article_comments($articleId, $viewerId ?: null);
+$commentsCount = count($comments);
+$pageTheme = current_theme();
+
 // Get related articles (same category)
 $relatedArticles = [];
 if ($article['cat_slug']) {
@@ -52,7 +62,7 @@ if ($article['cat_slug']) {
 
 ?>
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" data-theme="<?php echo e($pageTheme); ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -441,6 +451,8 @@ if ($article['cat_slug']) {
             .article-footer { padding: 1.5rem; }
         }
     </style>
+    <link rel="stylesheet" href="assets/css/user.css?v=1">
+    <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>
     <!-- Header -->
@@ -471,6 +483,10 @@ if ($article['cat_slug']) {
                 <?php endif; ?>
                 <span>📅 <?php echo date('d/m/Y H:i', strtotime($article['published_at'])); ?></span>
                 <span>👁️ <?php echo formatViews($article['view_count']); ?> مشاهدة</span>
+                <span>💬 <?php echo (int)$commentsCount; ?> تعليق</span>
+                <button type="button" class="article-save-btn <?php echo $isSaved ? 'saved' : ''; ?>" data-save-id="<?php echo (int)$articleId; ?>" onclick="NF.toggleSave(this)" style="margin-inline-start:auto;background:none;border:1px solid var(--border,#e0e3e8);border-radius:999px;padding:6px 14px;font-family:inherit;font-size:13px;cursor:pointer;color:inherit;display:inline-flex;align-items:center;gap:6px;">
+                  🔖 <span><?php echo $isSaved ? 'محفوظ' : 'حفظ'; ?></span>
+                </button>
             </div>
 
             <h1><?php echo e($article['title']); ?></h1>
@@ -564,6 +580,43 @@ if ($article['cat_slug']) {
             </div>
         </div>
 
+        <!-- Comments -->
+        <section class="comments-wrap">
+          <h2>💬 التعليقات (<?php echo (int)$commentsCount; ?>)</h2>
+          <?php if ($viewerId): ?>
+            <form class="comment-form" data-article-id="<?php echo (int)$articleId; ?>" onsubmit="event.preventDefault(); NF.submitComment(this);">
+              <textarea placeholder="شاركنا رأيك..." maxlength="2000" required></textarea>
+              <div class="cf-bottom">
+                <button type="submit" class="btn primary">إرسال</button>
+              </div>
+            </form>
+          <?php else: ?>
+            <div class="comment-login-cta">
+              <a href="account/login.php?return=<?php echo urlencode('article/' . (int)$articleId); ?>">سجّل الدخول</a>
+              للتعليق ومشاركة رأيك
+            </div>
+          <?php endif; ?>
+          <div id="commentsList">
+            <?php foreach ($comments as $c): ?>
+              <div class="comment">
+                <div class="avatar"><?php echo e($c['avatar_letter'] ?: mb_substr($c['user_name'] ?? '?', 0, 1)); ?></div>
+                <div class="c-body">
+                  <div>
+                    <span class="c-name"><?php echo e($c['user_name'] ?? 'مجهول'); ?></span>
+                    <span class="c-time"><?php echo timeAgo($c['created_at']); ?></span>
+                  </div>
+                  <div class="c-text"><?php echo e($c['body']); ?></div>
+                  <div class="c-actions">
+                    <button type="button" class="<?php echo !empty($c['viewer_liked']) ? 'liked' : ''; ?>" onclick="NF.likeComment(this, <?php echo (int)$c['id']; ?>)">
+                      <?php echo !empty($c['viewer_liked']) ? '♥' : '♡'; ?> <?php echo (int)$c['likes']; ?>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            <?php endforeach; ?>
+          </div>
+        </section>
+
         <!-- Related Articles -->
         <?php if (!empty($relatedArticles)): ?>
             <section class="related-articles">
@@ -594,5 +647,13 @@ if ($article['cat_slug']) {
             <p>جميع الحقوق محفوظة</p>
         </div>
     </footer>
+    <div class="nf-toast" id="nfToast"></div>
+    <script src="assets/js/user.js?v=1"></script>
+    <?php if ($viewerId): ?>
+    <script>
+      // Log this read after 5 seconds (so page views count only as "read")
+      setTimeout(function(){ NF.logRead(<?php echo (int)$articleId; ?>); }, 5000);
+    </script>
+    <?php endif; ?>
 </body>
 </html>

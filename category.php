@@ -5,6 +5,12 @@
  */
 
 require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/user_auth.php';
+require_once __DIR__ . '/includes/user_functions.php';
+
+$viewer = current_user();
+$viewerId = $viewer ? (int)$viewer['id'] : 0;
+$pageTheme = current_theme();
 
 // معالجة المعاملات
 $slug = isset($_GET['slug']) ? trim($_GET['slug']) : '';
@@ -113,8 +119,14 @@ function buildPageUrl($pageNum) {
     return 'category.php?' . http_build_query($params);
 }
 
+// Pre-fetch saved bookmarks for this page's articles
+$GLOBALS['__nf_saved_ids'] = [];
+if ($viewerId && !empty($articles)) {
+    $__ids = array_map(fn($a) => (int)$a['id'], $articles);
+    $GLOBALS['__nf_saved_ids'] = array_flip(user_bookmark_ids_for($viewerId, $__ids));
+}
 ?><!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" data-theme="<?php echo e($pageTheme); ?>">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -304,6 +316,8 @@ function buildPageUrl($pageNum) {
     .footer-links { flex-wrap:wrap; justify-content:center; }
   }
 </style>
+<link rel="stylesheet" href="assets/css/user.css?v=1">
+<meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>
 
@@ -431,5 +445,7 @@ function buildPageUrl($pageNum) {
   <div class="footer-copy">&copy; <?php echo date('Y'); ?> <?php echo e(getSetting('site_name', SITE_NAME)); ?> &mdash; جميع الحقوق محفوظة</div>
 </footer>
 
+<div class="nf-toast" id="nfToast"></div>
+<script src="assets/js/user.js?v=1" defer></script>
 </body>
 </html>
