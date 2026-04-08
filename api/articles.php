@@ -12,6 +12,10 @@ header('Access-Control-Allow-Methods: GET, OPTIONS');
 header('Cache-Control: public, max-age=300'); // 5 minute cache
 
 require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/rate_limit.php';
+
+// Limit: 120 requests per minute per IP
+rate_limit_enforce_api('articles:' . client_ip(), 120, 60);
 
 try {
     $db = getDB();
