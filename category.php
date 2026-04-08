@@ -316,7 +316,7 @@ if ($viewerId && !empty($articles)) {
     .footer-links { flex-wrap:wrap; justify-content:center; }
   }
 </style>
-<link rel="stylesheet" href="assets/css/user.css?v=2">
+<link rel="stylesheet" href="assets/css/user.css?v=3">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>
@@ -370,7 +370,9 @@ if ($viewerId && !empty($articles)) {
     <!-- NEWS GRID -->
     <div class="news-grid">
       <?php foreach ($articles as $article): ?>
+        <?php $__sid = (int)($article['id'] ?? 0); $__ss = !empty($GLOBALS['__nf_saved_ids']) && isset($GLOBALS['__nf_saved_ids'][$__sid]); ?>
         <a class="news-card" href="<?php echo articleUrl($article); ?>">
+          <button type="button" class="nf-bookmark-btn <?php echo $__ss ? 'saved' : ''; ?>" title="<?php echo $__ss ? 'إزالة من المحفوظات' : 'حفظ'; ?>" data-save-id="<?php echo $__sid; ?>" onclick="event.preventDefault(); event.stopPropagation(); NF.toggleSave(this)">🔖</button>
           <div class="card-img">
             <img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/cat' . $article['id'] . '/400/300'); ?>" alt="<?php echo e($article['title']); ?>" loading="lazy" decoding="async">
           </div>
@@ -446,6 +448,6 @@ if ($viewerId && !empty($articles)) {
 </footer>
 
 <div class="nf-toast" id="nfToast"></div>
-<script src="assets/js/user.js?v=2" defer></script>
+<script src="assets/js/user.js?v=3" defer></script>
 </body>
 </html>

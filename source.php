@@ -43,6 +43,13 @@ $articles = $db->prepare("SELECT a.*, c.name as cat_name, c.slug as cat_slug FRO
 $articles->execute([$source['id']]);
 $articles = $articles->fetchAll(PDO::FETCH_ASSOC);
 
+// Pre-fetch saved bookmarks for this page's articles
+$GLOBALS['__nf_saved_ids'] = [];
+if ($viewerId && !empty($articles)) {
+    $__ids = array_map(fn($a) => (int)$a['id'], $articles);
+    $GLOBALS['__nf_saved_ids'] = array_flip(user_bookmark_ids_for($viewerId, $__ids));
+}
+
 $totalArticles = $db->prepare("SELECT COUNT(*) FROM articles WHERE source_id = ?");
 $totalArticles->execute([$source['id']]);
 $totalArticles = (int)$totalArticles->fetchColumn();
@@ -134,7 +141,7 @@ if ($viewerId && !empty($articles)) {
     .article-item img { width:100px; height:70px; }
   }
 </style>
-<link rel="stylesheet" href="assets/css/user.css?v=2">
+<link rel="stylesheet" href="assets/css/user.css?v=3">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>
@@ -185,7 +192,9 @@ if ($viewerId && !empty($articles)) {
       <p style="text-align:center;color:#999;padding:40px;">لا توجد أخبار من هذا المصدر بعد</p>
     <?php else: ?>
       <?php foreach ($articles as $a): ?>
-        <a class="article-item" href="<?php echo articleUrl($a); ?>">
+        <?php $__sid = (int)($a['id'] ?? 0); $__ss = !empty($GLOBALS['__nf_saved_ids']) && isset($GLOBALS['__nf_saved_ids'][$__sid]); ?>
+        <a class="article-item" href="<?php echo articleUrl($a); ?>" style="position:relative;">
+          <button type="button" class="nf-bookmark-btn <?php echo $__ss ? 'saved' : ''; ?>" title="<?php echo $__ss ? 'إزالة من المحفوظات' : 'حفظ'; ?>" data-save-id="<?php echo $__sid; ?>" onclick="event.preventDefault(); event.stopPropagation(); NF.toggleSave(this)">🔖</button>
           <?php if (!empty($a['image_url'])): ?>
             <img src="<?php echo e($a['image_url']); ?>" alt="" loading="lazy" decoding="async">
           <?php endif; ?>
@@ -221,6 +230,6 @@ async function toggleFollow(sourceId) {
 </script>
 
 <div class="nf-toast" id="nfToast"></div>
-<script src="assets/js/user.js?v=2" defer></script>
+<script src="assets/js/user.js?v=3" defer></script>
 </body>
 </html>
