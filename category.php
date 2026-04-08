@@ -316,7 +316,7 @@ if ($viewerId && !empty($articles)) {
     .footer-links { flex-wrap:wrap; justify-content:center; }
   }
 </style>
-<link rel="stylesheet" href="assets/css/user.css?v=7">
+<link rel="stylesheet" href="assets/css/user.css?v=8">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>
@@ -374,7 +374,7 @@ if ($viewerId && !empty($articles)) {
         <a class="news-card" href="<?php echo articleUrl($article); ?>">
           <button type="button" class="nf-bookmark-btn <?php echo $__ss ? 'saved' : ''; ?>" title="<?php echo $__ss ? 'إزالة من المحفوظات' : 'حفظ'; ?>" data-save-id="<?php echo $__sid; ?>" onclick="event.preventDefault(); event.stopPropagation(); NF.toggleSave(this)">🔖</button>
           <div class="card-img">
-            <img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/cat' . $article['id'] . '/400/300'); ?>" alt="<?php echo e($article['title']); ?>" loading="lazy" decoding="async">
+            <img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title']); ?>" loading="lazy" decoding="async">
           </div>
           <div class="card-body">
             <span class="card-cat <?php echo e($article['css_class'] ?? $pageCss); ?>"><?php echo e($article['cat_name'] ?? $pageTitle); ?></span>

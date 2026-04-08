@@ -76,6 +76,8 @@ if ($viewerId && !empty($articles)) {
 <title><?php echo e($source['name']); ?> - <?php echo e(getSetting('site_name', SITE_NAME)); ?></title>
 <meta name="description" content="<?php echo e('أحدث الأخبار من ' . $source['name'] . ' على ' . getSetting('site_name', SITE_NAME)); ?>">
 <link rel="canonical" href="<?php echo e(SITE_URL . '/source.php?id=' . (int)$source['id']); ?>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
@@ -141,7 +143,7 @@ if ($viewerId && !empty($articles)) {
     .article-item img { width:100px; height:70px; }
   }
 </style>
-<link rel="stylesheet" href="assets/css/user.css?v=7">
+<link rel="stylesheet" href="assets/css/user.css?v=8">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>

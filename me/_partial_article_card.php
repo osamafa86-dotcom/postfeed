@@ -1,6 +1,6 @@
 <?php
 /** Expects $a (article row from ArticleRepository/functions) */
-$imgUrl = $a['image_url'] ?? ('https://picsum.photos/seed/user' . (int)$a['id'] . '/400/300');
+$imgUrl = $a['image_url'] ?? placeholderImage(400, 300);
 $catName = $a['cat_name'] ?? '';
 ?>
 <a class="u-card news-card" href="../<?= e(articleUrl($a)) ?>" data-article-id="<?= (int)$a['id'] ?>">

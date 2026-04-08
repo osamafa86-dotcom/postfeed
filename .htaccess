@@ -28,27 +28,39 @@ AddDefaultCharset UTF-8
 
 # Compression
 <IfModule mod_deflate.c>
-    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json application/xml image/svg+xml
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json application/xml image/svg+xml application/rss+xml application/atom+xml application/xhtml+xml font/ttf font/otf
 </IfModule>
 
 # Browser caching for static assets
 <IfModule mod_expires.c>
     ExpiresActive On
+    ExpiresDefault "access plus 1 day"
     ExpiresByType text/css "access plus 30 days"
     ExpiresByType application/javascript "access plus 30 days"
+    ExpiresByType text/javascript "access plus 30 days"
     ExpiresByType image/jpeg "access plus 30 days"
     ExpiresByType image/png "access plus 30 days"
     ExpiresByType image/webp "access plus 30 days"
+    ExpiresByType image/gif "access plus 30 days"
     ExpiresByType image/svg+xml "access plus 30 days"
     ExpiresByType image/x-icon "access plus 1 year"
     ExpiresByType font/woff2 "access plus 1 year"
+    ExpiresByType font/woff "access plus 1 year"
+    ExpiresByType font/ttf "access plus 1 year"
+    ExpiresByType application/font-woff2 "access plus 1 year"
 </IfModule>
 
 <IfModule mod_headers.c>
-    <FilesMatch "\.(css|js|jpg|jpeg|png|webp|svg|ico|woff2)$">
+    <FilesMatch "\.(css|js|jpg|jpeg|png|webp|gif|svg|ico|woff2|woff|ttf|otf)$">
         Header set Cache-Control "public, max-age=2592000, immutable"
+        Header unset ETag
     </FilesMatch>
+    # Let proxies know responses vary by encoding
+    Header append Vary Accept-Encoding
 </IfModule>
+
+# Disable ETag (rely on Cache-Control + Expires for caching)
+FileETag None
 
 # Friendly article URLs: /article/123 or /article/123/slug → article.php?id=123
 <IfModule mod_rewrite.c>
