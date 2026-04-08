@@ -455,7 +455,7 @@ if ($article['cat_slug']) {
     <main class="container">
         <!-- Article Hero Image -->
         <?php if ($article['image_url']): ?>
-            <img src="<?php echo e($article['image_url']); ?>" alt="<?php echo e($article['title']); ?>" class="article-hero">
+            <img src="<?php echo e($article['image_url']); ?>" alt="<?php echo e($article['title']); ?>" class="article-hero" decoding="async" fetchpriority="high">
         <?php endif; ?>
 
         <!-- Article Header -->
@@ -510,7 +510,7 @@ if ($article['cat_slug']) {
             $cleanContent = preg_replace_callback('#<img\s+([^>]*?)src\s*=\s*"([^"]*)"([^>]*)>#i', function($m){
                 $u = trim($m[2]);
                 if (!preg_match('#^(https?:|/)#i', $u)) return '';
-                return '<img ' . $m[1] . 'src="' . htmlspecialchars($u, ENT_QUOTES) . '" loading="lazy"' . $m[3] . '>';
+                return '<img ' . $m[1] . 'src="' . htmlspecialchars($u, ENT_QUOTES) . '" loading="lazy" decoding="async"' . $m[3] . '>';
             }, $cleanContent);
             echo $cleanContent;
             ?>
@@ -572,7 +572,7 @@ if ($article['cat_slug']) {
                     <?php foreach ($relatedArticles as $related): ?>
                         <a href="article.php?id=<?php echo $related['id']; ?>" class="article-card">
                             <?php if ($related['image_url']): ?>
-                                <img src="<?php echo e($related['image_url']); ?>" alt="<?php echo e($related['title']); ?>" class="article-card-image">
+                                <img src="<?php echo e($related['image_url']); ?>" alt="<?php echo e($related['title']); ?>" class="article-card-image" loading="lazy" decoding="async">
                             <?php endif; ?>
                             <div class="article-card-body">
                                 <h3 class="article-card-title"><?php echo e($related['title']); ?></h3>

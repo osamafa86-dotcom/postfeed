@@ -9,6 +9,19 @@ session_start();
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/rate_limit.php';
+require_once __DIR__ . '/../includes/audit.php';
+require_once __DIR__ . '/../includes/totp.php';
+
+// Auto-migrate 2FA columns
+try {
+    $db = getDB();
+    $col = $db->query("SHOW COLUMNS FROM users LIKE 'totp_secret'")->fetch();
+    if (!$col) {
+        $db->exec("ALTER TABLE users
+            ADD COLUMN totp_secret VARCHAR(64) DEFAULT NULL,
+            ADD COLUMN totp_enabled TINYINT(1) NOT NULL DEFAULT 0");
+    }
+} catch (Exception $e) {}
 
 // إذا كان المستخدم مسجل دخول بالفعل
 if (isset($_SESSION[ADMIN_SESSION_NAME]) && $_SESSION[ADMIN_SESSION_NAME] === true) {
@@ -17,6 +30,12 @@ if (isset($_SESSION[ADMIN_SESSION_NAME]) && $_SESSION[ADMIN_SESSION_NAME] === tr
 }
 
 $error = '';
+$stage = 'password'; // password | totp
+
+// If we're in pending-2FA state from previous step
+if (!empty($_SESSION['2fa_pending_user_id'])) {
+    $stage = 'totp';
+}
 
 // معالجة تسجيل الدخول
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -29,6 +48,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'انتهت الجلسة، أعد المحاولة';
         goto skip_login;
     }
+
+    // Stage 2: verify TOTP
+    if (!empty($_POST['totp_code']) && !empty($_SESSION['2fa_pending_user_id'])) {
+        $stage = 'totp';
+        try {
+            $db = getDB();
+            $stmt = $db->prepare("SELECT id, name, totp_secret FROM users WHERE id = ?");
+            $stmt->execute([(int)$_SESSION['2fa_pending_user_id']]);
+            $user = $stmt->fetch();
+            if ($user && $user['totp_secret'] && totp_verify($user['totp_secret'], $_POST['totp_code'])) {
+                $_SESSION[ADMIN_SESSION_NAME] = true;
+                $_SESSION['admin_id'] = $user['id'];
+                $_SESSION['admin_name'] = $user['name'];
+                unset($_SESSION['2fa_pending_user_id']);
+                audit_log('auth.login.success', 'user', $user['id'], ['method' => '2fa']);
+                header('Location: index.php');
+                exit;
+            } else {
+                audit_log('auth.2fa.fail', 'user', $_SESSION['2fa_pending_user_id']);
+                $error = 'رمز التحقق غير صحيح';
+            }
+        } catch (PDOException $e) {
+            $error = 'حدث خطأ في النظام';
+        }
+        goto skip_login;
+    }
+
+    // Stage 1: email + password
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
 
@@ -37,17 +84,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         try {
             $db = getDB();
-            $stmt = $db->prepare("SELECT id, name, password FROM users WHERE email = ? AND role = 'admin'");
+            $stmt = $db->prepare("SELECT id, name, password, totp_enabled, totp_secret FROM users WHERE email = ? AND role = 'admin'");
             $stmt->execute([$email]);
             $user = $stmt->fetch();
 
             if ($user && password_verify($password, $user['password'])) {
-                $_SESSION[ADMIN_SESSION_NAME] = true;
-                $_SESSION['admin_id'] = $user['id'];
-                $_SESSION['admin_name'] = $user['name'];
-                header('Location: index.php');
-                exit;
+                if (!empty($user['totp_enabled']) && !empty($user['totp_secret'])) {
+                    // Require second factor
+                    $_SESSION['2fa_pending_user_id'] = (int)$user['id'];
+                    $stage = 'totp';
+                    audit_log('auth.login.pw_ok', 'user', $user['id'], ['email' => $email]);
+                } else {
+                    $_SESSION[ADMIN_SESSION_NAME] = true;
+                    $_SESSION['admin_id'] = $user['id'];
+                    $_SESSION['admin_name'] = $user['name'];
+                    audit_log('auth.login.success', 'user', $user['id'], ['email' => $email]);
+                    header('Location: index.php');
+                    exit;
+                }
             } else {
+                audit_log('auth.login.fail', 'user', null, ['email' => $email]);
                 $error = 'بيانات دخول غير صحيحة';
             }
         } catch (PDOException $e) {
@@ -195,6 +251,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="error-message"><?php echo e($error); ?></div>
         <?php endif; ?>
 
+        <?php if ($stage === 'totp'): ?>
+        <form method="POST">
+            <?php echo csrf_field(); ?>
+            <p style="text-align:center;color:#666;font-size:13px;margin-bottom:16px;">
+                أدخل الرمز المكوّن من 6 أرقام من تطبيق المصادقة
+            </p>
+            <div class="form-group">
+                <label for="totp_code">رمز التحقق</label>
+                <input
+                    type="text"
+                    id="totp_code"
+                    name="totp_code"
+                    required
+                    autofocus
+                    inputmode="numeric"
+                    pattern="[0-9]{6}"
+                    maxlength="6"
+                    autocomplete="one-time-code"
+                    style="text-align:center;font-size:22px;letter-spacing:6px;"
+                >
+            </div>
+            <button type="submit" class="btn-login">تأكيد</button>
+            <div style="text-align:center;margin-top:12px;">
+                <a href="login.php?cancel=1" style="font-size:12px;color:#888;">إلغاء</a>
+            </div>
+        </form>
+        <?php
+            if (isset($_GET['cancel'])) {
+                unset($_SESSION['2fa_pending_user_id']);
+                header('Location: login.php'); exit;
+            }
+        ?>
+        <?php else: ?>
         <form method="POST">
                 <?php echo csrf_field(); ?>
             <div class="form-group">
@@ -221,6 +310,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <button type="submit" class="btn-login">تسجيل الدخول</button>
         </form>
+        <?php endif; ?>
 
         <div class="login-footer">
             نيوزفلو &copy; 2026

@@ -5,6 +5,7 @@
 
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/audit.php';
 requireAdmin();
 
 $db = getDB();
@@ -17,8 +18,13 @@ $article = null;
 if ($action === 'delete' && isset($_GET['id'])) {
     $id = (int)$_GET['id'];
     try {
+        // fetch title for audit
+        $t = $db->prepare("SELECT title FROM articles WHERE id = ?");
+        $t->execute([$id]);
+        $delTitle = (string)$t->fetchColumn();
         $stmt = $db->prepare("DELETE FROM articles WHERE id = ?");
         $stmt->execute([$id]);
+        audit_log('article.delete', 'article', $id, ['title' => $delTitle]);
         $success = 'تم حذف الخبر بنجاح';
         $action = 'list';
     } catch (PDOException $e) {
@@ -57,6 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $category_id, $source_id, $is_featured,
                     $is_breaking, $is_hero, $status, $id
                 ]);
+                audit_log('article.update', 'article', $id, ['title' => $title, 'status' => $status]);
                 $success = 'تم تحديث الخبر بنجاح';
             } else {
                 $slug = preg_replace('/[^a-zA-Z0-9\x{0600}-\x{06FF}\s-]/u', '', $title);
@@ -73,8 +80,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $category_id, $source_id, $is_featured,
                     $is_breaking, $is_hero, $status
                 ]);
-                $success = 'تم إضافة الخبر بنجاح';
                 $id = $db->lastInsertId();
+                audit_log('article.create', 'article', $id, ['title' => $title, 'status' => $status]);
+                $success = 'تم إضافة الخبر بنجاح';
             }
             $action = 'list';
         } catch (PDOException $e) {

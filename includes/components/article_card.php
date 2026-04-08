@@ -10,7 +10,7 @@ $seed     = $seed     ?? 'card';
 $imgUrl   = $article['image_url'] ?? ('https://picsum.photos/seed/' . $seed . rand(1,10) . '/400/300');
 ?>
 <a class="news-card" href="<?php echo articleUrl($article); ?>">
-  <div class="card-img"><img src="<?php echo e($imgUrl); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy"></div>
+  <div class="card-img"><img src="<?php echo e($imgUrl); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
   <div class="card-body">
     <span class="card-cat <?php echo e($catClass); ?>"><?php echo e($catLabel); ?></span>
     <div class="card-title"><?php echo e($article['title'] ?? ''); ?></div>
