@@ -160,6 +160,15 @@ if ($article['cat_slug']) {
             --gray: #6b7280;
             --border: #e0e3e8;
             --card: #ffffff;
+            --read-font: 1.1rem;
+        }
+        [data-theme="dark"] {
+            --dark: #e5e7eb;
+            --light: #0f172a;
+            --card: #1e293b;
+            --gray: #94a3b8;
+            --border: #334155;
+            --primary-light: #1e293b;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -443,18 +452,405 @@ if ($article['cat_slug']) {
 
         .footer p { margin: 0.3rem 0; }
 
+        /* === Reading progress bar === */
+        .read-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: transparent;
+            z-index: 200;
+            pointer-events: none;
+        }
+        .read-progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #1a73e8, #4f46e5);
+            transition: width .1s linear;
+            box-shadow: 0 0 8px rgba(26,115,232,.5);
+        }
+
+        /* === Top source card (above title) === */
+        .source-top {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 18px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            margin: 2rem 0 1.25rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,.04);
+        }
+        .source-top .source-logo { width:52px; height:52px; font-size:1.4rem; flex-shrink:0; }
+        .source-top-info { flex: 1; min-width: 0; }
+        .source-top-info h3 {
+            font-size: 1rem;
+            font-weight: 800;
+            margin: 0 0 2px;
+            color: var(--dark);
+        }
+        .source-top-meta {
+            font-size: .8rem;
+            color: var(--gray);
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .source-top-meta .dot { width:3px;height:3px;border-radius:50%;background:var(--gray);opacity:.5; }
+        .source-top-visit {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: var(--primary-light);
+            color: var(--primary);
+            border-radius: 10px;
+            font-size: .8rem;
+            font-weight: 700;
+            border: 1px solid rgba(26,115,232,.2);
+            transition: all .2s;
+            white-space: nowrap;
+        }
+        .source-top-visit:hover {
+            background: var(--primary);
+            color: #fff;
+            transform: translateY(-1px);
+        }
+
+        /* === Article toolbar (TTS, font, share, save, print) === */
+        .article-toolbar {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            padding: 10px 14px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            margin: 1.25rem 0;
+            flex-wrap: wrap;
+            box-shadow: 0 1px 3px rgba(0,0,0,.04);
+        }
+        .tool-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--dark);
+            font-family: inherit;
+            font-size: .85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .2s;
+        }
+        .tool-btn:hover {
+            background: var(--primary-light);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        .tool-btn.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+        .tool-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+        .tool-group {
+            display: inline-flex;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .tool-group .tool-btn {
+            border: none;
+            border-radius: 0;
+            padding: 8px 10px;
+        }
+        .tool-group .tool-btn + .tool-btn {
+            border-right: 1px solid var(--border);
+        }
+        .tool-divider {
+            width: 1px;
+            height: 24px;
+            background: var(--border);
+            margin: 0 4px;
+        }
+        .tool-spacer { flex: 1; }
+
+        /* Live reading time badge */
+        .read-time-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: var(--primary-light);
+            color: var(--primary);
+            border-radius: 999px;
+            font-size: .78rem;
+            font-weight: 700;
+            border: 1px solid rgba(26,115,232,.2);
+        }
+
+        /* Article content responds to font-size CSS var */
+        .article-content { font-size: var(--read-font); }
+
+        /* === AI summary (prominent) === */
+        .ai-summary-card {
+            background: linear-gradient(135deg, #eff6ff, #ede9fe);
+            border: 1px solid #bae6fd;
+            border-right: 5px solid #1a73e8;
+            border-radius: 16px;
+            padding: 24px 28px;
+            margin: 1.5rem 0;
+            box-shadow: 0 4px 20px rgba(26,115,232,.08);
+        }
+        [data-theme="dark"] .ai-summary-card {
+            background: linear-gradient(135deg, #172033, #1e1b4b);
+            border-color: #334155;
+            border-right-color: #60a5fa;
+        }
+        .ai-summary-card .ai-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .ai-summary-card .ai-icon {
+            width: 36px;
+            height: 36px;
+            background: #1a73e8;
+            color: #fff;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            box-shadow: 0 4px 12px rgba(26,115,232,.3);
+        }
+        .ai-summary-card .ai-title {
+            font-size: 1rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+        [data-theme="dark"] .ai-summary-card .ai-title { color: #e5e7eb; }
+        .ai-summary-card .ai-subtitle {
+            font-size: .75rem;
+            color: #64748b;
+            margin-top: 1px;
+        }
+        .ai-summary-body {
+            font-size: 1.02rem;
+            line-height: 1.9;
+            color: #1e293b;
+            margin-bottom: 16px;
+        }
+        [data-theme="dark"] .ai-summary-body { color: #cbd5e1; }
+        .key-points-title {
+            font-weight: 800;
+            color: #0369a1;
+            font-size: .85rem;
+            margin: 16px 0 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        [data-theme="dark"] .key-points-title { color: #60a5fa; }
+        .key-points {
+            display: grid;
+            gap: 10px;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .key-points li {
+            background: rgba(255,255,255,.6);
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: .92rem;
+            line-height: 1.7;
+            color: #334155;
+            border: 1px solid rgba(186,230,253,.5);
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+        [data-theme="dark"] .key-points li {
+            background: rgba(15,23,42,.4);
+            color: #cbd5e1;
+            border-color: rgba(96,165,250,.2);
+        }
+        .key-points li::before {
+            content: "◆";
+            color: #1a73e8;
+            font-size: .8rem;
+            flex-shrink: 0;
+            margin-top: 3px;
+        }
+
+        /* === Source CTA (read full article) === */
+        .source-cta {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 20px 24px;
+            background: linear-gradient(135deg, #1a73e8, #4f46e5);
+            color: #fff;
+            border-radius: 16px;
+            margin: 2rem 0;
+            box-shadow: 0 8px 24px rgba(26,115,232,.25);
+            text-decoration: none;
+            transition: all .25s;
+        }
+        .source-cta:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(26,115,232,.35);
+        }
+        .source-cta-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(255,255,255,.15);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+            backdrop-filter: blur(8px);
+        }
+        .source-cta-text { flex: 1; min-width: 0; }
+        .source-cta-label {
+            font-size: .78rem;
+            opacity: .85;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+        .source-cta-title {
+            font-size: 1rem;
+            font-weight: 800;
+        }
+        .source-cta-arrow {
+            font-size: 1.3rem;
+            opacity: .9;
+            flex-shrink: 0;
+        }
+
+        /* === TTS player === */
+        .tts-player {
+            display: none;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 18px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin: 1rem 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,.04);
+        }
+        .tts-player.active { display: flex; }
+        .tts-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--primary-light);
+            color: var(--primary);
+            border-radius: 999px;
+            font-size: .75rem;
+            font-weight: 700;
+        }
+        .tts-ctrl {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            border: none;
+            background: var(--primary);
+            color: #fff;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            transition: all .2s;
+        }
+        .tts-ctrl:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(26,115,232,.3); }
+        .tts-ctrl.secondary {
+            background: transparent;
+            color: var(--gray);
+            border: 1px solid var(--border);
+            width: 34px;
+            height: 34px;
+        }
+        .tts-speed {
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-family: inherit;
+            font-size: .8rem;
+            font-weight: 600;
+            color: var(--dark);
+            cursor: pointer;
+        }
+        .tts-status {
+            font-size: .85rem;
+            color: var(--gray);
+            font-weight: 500;
+            flex: 1;
+        }
+
+        /* Dark theme fixes for article content */
+        [data-theme="dark"] .article-content,
+        [data-theme="dark"] .article-footer,
+        [data-theme="dark"] .article-card {
+            background: var(--card);
+            color: var(--dark);
+        }
+        [data-theme="dark"] .article-hero { background: #1e293b; }
+        [data-theme="dark"] h1 { color: var(--dark); }
+
+        /* Print-friendly */
+        @media print {
+            .header, .footer, .article-toolbar, .tts-player, .source-cta,
+            .source-top-visit, .article-save-btn, .share-btn, .sharing,
+            .comments-wrap, .related-articles, .read-progress { display: none !important; }
+            body { background: #fff !important; color: #000 !important; }
+            .article-content, .article-header, .source-top, .ai-summary-card {
+                border: none !important; box-shadow: none !important; background: #fff !important;
+            }
+            .article-hero { max-height: 300px; }
+        }
+
         @media (max-width: 768px) {
             h1 { font-size: 1.6rem; }
             .article-content { padding: 1.25rem; font-size: 1rem; }
             .article-hero { height: 250px; border-radius: 12px; }
             .articles-grid { grid-template-columns: 1fr; }
             .article-footer { padding: 1.5rem; }
+            .source-top { flex-wrap: wrap; padding: 12px 14px; }
+            .source-top-visit { width: 100%; justify-content: center; }
+            .article-toolbar { padding: 8px 10px; gap: 6px; }
+            .tool-btn { padding: 7px 10px; font-size: .8rem; }
+            .tool-btn span { display: none; }
+            .tool-spacer { display: none; }
+            .ai-summary-card { padding: 18px; }
+            .source-cta { flex-direction: column; text-align: center; padding: 18px; }
         }
     </style>
     <link rel="stylesheet" href="assets/css/user.css?v=8">
     <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>
+    <!-- Reading progress bar -->
+    <div class="read-progress" aria-hidden="true"><div class="read-progress-bar" id="readProgressBar"></div></div>
+
     <!-- Header -->
     <header class="header">
         <div class="container">
@@ -463,8 +859,50 @@ if ($article['cat_slug']) {
         </div>
     </header>
 
+    <?php
+        // Estimate read time: ~180 Arabic words/min
+        $wordCount = str_word_count(strip_tags(($article['content'] ?? '') . ' ' . ($article['ai_summary'] ?? '')));
+        if ($wordCount < 50) $wordCount = mb_strlen(strip_tags($article['content'] ?? '')) / 6;
+        $readMinutes = max(1, (int)ceil($wordCount / 180));
+        // Pre-compute source URL for CTA/top visit
+        $readMoreUrl = '';
+        if (!empty($article['source_url']))       { $readMoreUrl = $article['source_url']; }
+        elseif (!empty($article['source_website'])) { $readMoreUrl = $article['source_website']; }
+    ?>
+
     <!-- Main Content -->
     <main class="container">
+
+        <!-- === SOURCE AT TOP (above title) === -->
+        <?php if ($article['source_name']): ?>
+            <div class="source-top">
+                <div class="source-logo" style="background: <?php echo e($article['logo_bg'] ?: '#3b82f6'); ?>; color: <?php echo e($article['logo_color'] ?: 'white'); ?>;">
+                    <?php echo e(strtoupper(mb_substr($article['source_name'], 0, 1))); ?>
+                </div>
+                <div class="source-top-info">
+                    <h3><?php echo e($article['source_name']); ?></h3>
+                    <div class="source-top-meta">
+                        <?php if ($article['cat_name']): ?>
+                            <span class="category-badge <?php echo e($article['css_class'] ?? ''); ?>"><?php echo e($article['cat_name']); ?></span>
+                        <?php endif; ?>
+                        <?php if ($article['is_breaking']): ?>
+                            <span class="category-badge" style="background:#dc2626;">عاجل</span>
+                        <?php endif; ?>
+                        <span><?php echo timeAgo($article['published_at']); ?></span>
+                        <span class="dot"></span>
+                        <span>👁 <?php echo formatViews($article['view_count']); ?></span>
+                        <span class="dot"></span>
+                        <span class="read-time-badge">⏱ <?php echo (int)$readMinutes; ?> د قراءة</span>
+                    </div>
+                </div>
+                <?php if ($readMoreUrl): ?>
+                    <a class="source-top-visit" href="<?php echo e($readMoreUrl); ?>" target="_blank" rel="noopener noreferrer">
+                        زيارة المصدر &larr;
+                    </a>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+
         <!-- Article Hero Image -->
         <?php if ($article['image_url']): ?>
             <img src="<?php echo e($article['image_url']); ?>" alt="<?php echo e($article['title']); ?>" class="article-hero" decoding="async" fetchpriority="high">
@@ -472,101 +910,121 @@ if ($article['cat_slug']) {
 
         <!-- Article Header -->
         <article class="article-header">
-            <div class="article-meta">
-                <?php if ($article['cat_name']): ?>
-                    <span class="category-badge <?php echo e($article['css_class'] ?? ''); ?>">
-                        <?php echo e($article['cat_name']); ?>
-                    </span>
-                <?php endif; ?>
-                <?php if ($article['is_breaking']): ?>
-                    <span class="category-badge" style="background: #dc2626;">عاجل</span>
-                <?php endif; ?>
-                <span>📅 <?php echo date('d/m/Y H:i', strtotime($article['published_at'])); ?></span>
-                <span>👁️ <?php echo formatViews($article['view_count']); ?> مشاهدة</span>
-                <span>💬 <?php echo (int)$commentsCount; ?> تعليق</span>
-                <button type="button" class="article-save-btn <?php echo $isSaved ? 'saved' : ''; ?>" data-save-id="<?php echo (int)$articleId; ?>" onclick="NF.toggleSave(this)" style="margin-inline-start:auto;background:none;border:1px solid var(--border,#e0e3e8);border-radius:999px;padding:6px 14px;font-family:inherit;font-size:13px;cursor:pointer;color:inherit;display:inline-flex;align-items:center;gap:6px;">
-                  🔖 <span><?php echo $isSaved ? 'محفوظ' : 'حفظ'; ?></span>
+            <h1 id="articleTitle"><?php echo e($article['title']); ?></h1>
+
+            <?php if (!empty($article['excerpt'])): ?>
+                <p class="article-excerpt"><?php echo e($article['excerpt']); ?></p>
+            <?php endif; ?>
+
+            <!-- === TOOLBAR === -->
+            <div class="article-toolbar" role="toolbar" aria-label="أدوات المقالة">
+                <button type="button" class="tool-btn" id="ttsToggle" title="استمع إلى المقالة">
+                    <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+                    <span>استماع</span>
+                </button>
+
+                <div class="tool-group" title="حجم الخط">
+                    <button type="button" class="tool-btn" id="fontDec" title="تصغير الخط" aria-label="تصغير الخط">A-</button>
+                    <button type="button" class="tool-btn" id="fontReset" title="إعادة" aria-label="حجم الخط الافتراضي">A</button>
+                    <button type="button" class="tool-btn" id="fontInc" title="تكبير الخط" aria-label="تكبير الخط">A+</button>
+                </div>
+
+                <button type="button" class="tool-btn" id="copyLinkBtn" title="نسخ الرابط">
+                    <svg viewBox="0 0 24 24"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7a5 5 0 1 0 0 10h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4a5 5 0 1 0 0-10z"/></svg>
+                    <span>نسخ الرابط</span>
+                </button>
+
+                <button type="button" class="tool-btn" onclick="window.print()" title="طباعة">
+                    <svg viewBox="0 0 24 24"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg>
+                    <span>طباعة</span>
+                </button>
+
+                <div class="tool-spacer"></div>
+
+                <button type="button" class="tool-btn article-save-btn <?php echo $isSaved ? 'active' : ''; ?>" data-save-id="<?php echo (int)$articleId; ?>" onclick="NF.toggleSave(this)">
+                    <svg viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
+                    <span><?php echo $isSaved ? 'محفوظ' : 'حفظ'; ?></span>
                 </button>
             </div>
 
-            <h1><?php echo e($article['title']); ?></h1>
-
-            <p class="article-excerpt"><?php echo e($article['excerpt']); ?></p>
-
-            <!-- Source Info -->
-            <?php if ($article['source_name']): ?>
-                <div class="source-info">
-                    <div class="source-logo" style="background: <?php echo e($article['logo_bg'] ?: '#3b82f6'); ?>; color: <?php echo e($article['logo_color'] ?: 'white'); ?>;">
-                        <?php echo e(strtoupper(substr($article['source_name'], 0, 1))); ?>
-                    </div>
-                    <div class="source-details">
-                        <h3><?php echo e($article['source_name']); ?></h3>
-                        <p class="source-time"><?php echo timeAgo($article['published_at']); ?></p>
-                    </div>
-                </div>
-            <?php endif; ?>
+            <!-- TTS Player (hidden until play pressed) -->
+            <div class="tts-player" id="ttsPlayer" aria-hidden="true">
+                <span class="tts-pill">🔊 وضع الاستماع</span>
+                <button type="button" class="tts-ctrl" id="ttsPlayBtn" aria-label="تشغيل">▶</button>
+                <button type="button" class="tts-ctrl secondary" id="ttsStopBtn" aria-label="إيقاف">■</button>
+                <select class="tts-speed" id="ttsSpeed" aria-label="سرعة القراءة">
+                    <option value="0.75">0.75x</option>
+                    <option value="1" selected>1x</option>
+                    <option value="1.25">1.25x</option>
+                    <option value="1.5">1.5x</option>
+                    <option value="2">2x</option>
+                </select>
+                <span class="tts-status" id="ttsStatus">جاهز للقراءة</span>
+            </div>
         </article>
 
-        <!-- Article Content -->
-        <div class="article-content">
-            <?php
-            // تنظيف المحتوى - السماح فقط بوسوم HTML آمنة + تعقيم href/src
-            $allowedTags = '<p><br><strong><b><em><i><ul><ol><li><h2><h3><h4><blockquote><a><img>';
-            $cleanContent = strip_tags($article['content'], $allowedTags);
-            // إزالة جميع event handlers (onclick, onerror, ...)
-            $cleanContent = preg_replace('#\s+on[a-z]+\s*=\s*"[^"]*"#i', '', $cleanContent);
-            $cleanContent = preg_replace("#\s+on[a-z]+\s*=\s*'[^']*'#i", '', $cleanContent);
-            // تعقيم روابط href: السماح فقط بـ http(s) و mailto
-            $cleanContent = preg_replace_callback('#<a\s+([^>]*?)href\s*=\s*"([^"]*)"([^>]*)>#i', function($m){
-                $u = trim($m[2]);
-                if (!preg_match('#^(https?:|mailto:|/|\#)#i', $u)) $u = '#';
-                return '<a ' . $m[1] . 'href="' . htmlspecialchars($u, ENT_QUOTES) . '" rel="noopener nofollow" target="_blank"' . $m[3] . '>';
-            }, $cleanContent);
-            // تعقيم src للصور
-            $cleanContent = preg_replace_callback('#<img\s+([^>]*?)src\s*=\s*"([^"]*)"([^>]*)>#i', function($m){
-                $u = trim($m[2]);
-                if (!preg_match('#^(https?:|/)#i', $u)) return '';
-                return '<img ' . $m[1] . 'src="' . htmlspecialchars($u, ENT_QUOTES) . '" loading="lazy" decoding="async"' . $m[3] . '>';
-            }, $cleanContent);
-            echo $cleanContent;
-            ?>
-        </div>
-
+        <!-- === AI Summary (moved above content, prominent) === -->
         <?php if (!empty($article['ai_summary'])): ?>
-        <div style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border:1px solid #bae6fd;border-right:4px solid #0284c7;border-radius:14px;padding:20px;margin:24px 0;">
-          <div style="display:flex;align-items:center;gap:8px;font-weight:800;color:#0284c7;margin-bottom:12px;font-size:15px;">
-            🤖 ملخص بالذكاء الاصطناعي
-          </div>
-          <p style="font-size:15px;line-height:1.9;color:#1e293b;margin:0 0 14px;"><?php echo nl2br(e($article['ai_summary'])); ?></p>
-          <?php
-          $keyPoints = !empty($article['ai_key_points']) ? json_decode($article['ai_key_points'], true) : [];
-          if (is_array($keyPoints) && !empty($keyPoints)): ?>
-            <div style="font-weight:700;color:#0284c7;font-size:13px;margin-bottom:6px;">📌 النقاط الرئيسية:</div>
-            <ul style="margin:0;padding-right:20px;font-size:13px;line-height:1.8;color:#334155;">
-              <?php foreach ($keyPoints as $kp): ?><li><?php echo e($kp); ?></li><?php endforeach; ?>
-            </ul>
-          <?php endif; ?>
-        </div>
+            <div class="ai-summary-card">
+                <div class="ai-head">
+                    <div class="ai-icon">🤖</div>
+                    <div>
+                        <div class="ai-title">ملخص ذكي بالذكاء الاصطناعي</div>
+                        <div class="ai-subtitle">مُلخَّص تلقائياً من الخبر الأصلي</div>
+                    </div>
+                </div>
+                <div class="ai-summary-body" id="aiSummaryBody"><?php echo nl2br(e($article['ai_summary'])); ?></div>
+                <?php
+                $keyPoints = !empty($article['ai_key_points']) ? json_decode($article['ai_key_points'], true) : [];
+                if (is_array($keyPoints) && !empty($keyPoints)): ?>
+                    <div class="key-points-title">📌 أبرز النقاط</div>
+                    <ul class="key-points">
+                        <?php foreach ($keyPoints as $kp): ?>
+                            <li><?php echo e($kp); ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+
+        <!-- Article Content -->
+        <?php
+        // تنظيف المحتوى - السماح فقط بوسوم HTML آمنة + تعقيم href/src
+        $allowedTags = '<p><br><strong><b><em><i><ul><ol><li><h2><h3><h4><blockquote><a><img>';
+        $cleanContent = strip_tags($article['content'], $allowedTags);
+        $cleanContent = preg_replace('#\s+on[a-z]+\s*=\s*"[^"]*"#i', '', $cleanContent);
+        $cleanContent = preg_replace("#\s+on[a-z]+\s*=\s*'[^']*'#i", '', $cleanContent);
+        $cleanContent = preg_replace_callback('#<a\s+([^>]*?)href\s*=\s*"([^"]*)"([^>]*)>#i', function($m){
+            $u = trim($m[2]);
+            if (!preg_match('#^(https?:|mailto:|/|\#)#i', $u)) $u = '#';
+            return '<a ' . $m[1] . 'href="' . htmlspecialchars($u, ENT_QUOTES) . '" rel="noopener nofollow" target="_blank"' . $m[3] . '>';
+        }, $cleanContent);
+        $cleanContent = preg_replace_callback('#<img\s+([^>]*?)src\s*=\s*"([^"]*)"([^>]*)>#i', function($m){
+            $u = trim($m[2]);
+            if (!preg_match('#^(https?:|/)#i', $u)) return '';
+            return '<img ' . $m[1] . 'src="' . htmlspecialchars($u, ENT_QUOTES) . '" loading="lazy" decoding="async"' . $m[3] . '>';
+        }, $cleanContent);
+        // Only show content block if there's actual text (skip if it's a duplicate of excerpt)
+        $plainContent = trim(strip_tags($cleanContent));
+        $plainExcerpt = trim($article['excerpt'] ?? '');
+        $hasMeaningfulContent = ($plainContent !== '' && $plainContent !== $plainExcerpt);
+        ?>
+        <?php if ($hasMeaningfulContent): ?>
+            <div class="article-content" id="articleContent">
+                <?php echo $cleanContent; ?>
+            </div>
         <?php endif; ?>
 
         <!-- Read Full Article from Source -->
-        <?php
-        $readMoreUrl = '';
-        if (!empty($article['source_url'])) {
-            $readMoreUrl = $article['source_url'];
-        } elseif (!empty($article['source_website'])) {
-            $readMoreUrl = $article['source_website'];
-        }
-        ?>
         <?php if (!empty($readMoreUrl)): ?>
-            <div style="text-align:center; margin: 1.5rem 0;">
-                <a href="<?php echo e($readMoreUrl); ?>" target="_blank" rel="noopener noreferrer"
-                   style="display:inline-flex; align-items:center; gap:8px; padding:14px 32px; background:linear-gradient(135deg,#1a73e8,#4f46e5); color:#fff; border-radius:12px; font-size:15px; font-weight:700; text-decoration:none; transition:all .2s; box-shadow:0 4px 16px rgba(26,115,232,.3); font-family:inherit;"
-                   onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(26,115,232,.4)'"
-                   onmouseout="this.style.transform='';this.style.boxShadow='0 4px 16px rgba(26,115,232,.3)'">
-                    اقرأ الخبر كاملاً من <?php echo e($article['source_name']); ?> &larr;
-                </a>
-            </div>
+            <a class="source-cta" href="<?php echo e($readMoreUrl); ?>" target="_blank" rel="noopener noreferrer">
+                <div class="source-cta-icon">📰</div>
+                <div class="source-cta-text">
+                    <div class="source-cta-label">المقال الكامل متوفر على موقع المصدر</div>
+                    <div class="source-cta-title">اقرأ الخبر كاملاً من <?php echo e($article['source_name'] ?? 'المصدر'); ?></div>
+                </div>
+                <div class="source-cta-arrow">&larr;</div>
+            </a>
         <?php endif; ?>
 
         <!-- Article Footer with Sharing -->
@@ -649,6 +1107,159 @@ if ($article['cat_slug']) {
     </footer>
     <div class="nf-toast" id="nfToast"></div>
     <script src="assets/js/user.js?v=4"></script>
+    <script>
+    (function(){
+        // ====== Reading progress bar ======
+        const bar = document.getElementById('readProgressBar');
+        if (bar) {
+            const update = () => {
+                const h = document.documentElement;
+                const scrolled = h.scrollTop;
+                const max = h.scrollHeight - h.clientHeight;
+                bar.style.width = (max > 0 ? Math.min(100, (scrolled / max) * 100) : 0) + '%';
+            };
+            update();
+            window.addEventListener('scroll', update, { passive: true });
+            window.addEventListener('resize', update);
+        }
+
+        // ====== Font size controls ======
+        const root = document.documentElement;
+        const STORAGE_KEY = 'nf_article_font';
+        const SIZES = [0.9, 1, 1.1, 1.2, 1.35, 1.5, 1.7];
+        let fontIdx = parseInt(localStorage.getItem(STORAGE_KEY) || '2', 10);
+        if (isNaN(fontIdx) || fontIdx < 0 || fontIdx >= SIZES.length) fontIdx = 2;
+        const applyFont = () => {
+            root.style.setProperty('--read-font', SIZES[fontIdx] + 'rem');
+            localStorage.setItem(STORAGE_KEY, String(fontIdx));
+        };
+        applyFont();
+        document.getElementById('fontInc')?.addEventListener('click', () => {
+            if (fontIdx < SIZES.length - 1) { fontIdx++; applyFont(); }
+        });
+        document.getElementById('fontDec')?.addEventListener('click', () => {
+            if (fontIdx > 0) { fontIdx--; applyFont(); }
+        });
+        document.getElementById('fontReset')?.addEventListener('click', () => {
+            fontIdx = 2; applyFont();
+        });
+
+        // ====== Copy link ======
+        document.getElementById('copyLinkBtn')?.addEventListener('click', async function(){
+            try {
+                await navigator.clipboard.writeText(window.location.href);
+                if (window.NF && NF.toast) NF.toast('تم نسخ الرابط ✓'); else this.textContent = '✓';
+            } catch(e) {
+                const ta = document.createElement('textarea');
+                ta.value = window.location.href;
+                document.body.appendChild(ta);
+                ta.select();
+                try { document.execCommand('copy'); } catch(_){}
+                document.body.removeChild(ta);
+                if (window.NF && NF.toast) NF.toast('تم نسخ الرابط ✓');
+            }
+        });
+
+        // ====== Text-to-speech using Web Speech API ======
+        const ttsToggle = document.getElementById('ttsToggle');
+        const ttsPlayer = document.getElementById('ttsPlayer');
+        const ttsPlayBtn = document.getElementById('ttsPlayBtn');
+        const ttsStopBtn = document.getElementById('ttsStopBtn');
+        const ttsSpeed = document.getElementById('ttsSpeed');
+        const ttsStatus = document.getElementById('ttsStatus');
+        const synth = window.speechSynthesis;
+
+        const getReadableText = () => {
+            const parts = [];
+            const title = document.getElementById('articleTitle');
+            if (title) parts.push(title.textContent.trim());
+            const excerpt = document.querySelector('.article-excerpt');
+            if (excerpt) parts.push(excerpt.textContent.trim());
+            const summary = document.getElementById('aiSummaryBody');
+            if (summary) parts.push(summary.textContent.trim());
+            const content = document.getElementById('articleContent');
+            if (content) parts.push(content.textContent.trim().replace(/\s+/g, ' '));
+            return parts.filter(Boolean).join('. ');
+        };
+
+        let utter = null;
+        let isPaused = false;
+
+        const pickArabicVoice = () => {
+            const voices = synth.getVoices();
+            return voices.find(v => /^ar/i.test(v.lang)) || voices.find(v => v.default) || voices[0];
+        };
+
+        const startSpeaking = () => {
+            if (!synth) {
+                ttsStatus.textContent = 'المتصفح لا يدعم القراءة الصوتية';
+                return;
+            }
+            synth.cancel();
+            const text = getReadableText();
+            if (!text) { ttsStatus.textContent = 'لا يوجد نص للقراءة'; return; }
+            utter = new SpeechSynthesisUtterance(text);
+            utter.lang = 'ar-SA';
+            utter.rate = parseFloat(ttsSpeed.value) || 1;
+            const v = pickArabicVoice();
+            if (v) utter.voice = v;
+            utter.onstart = () => { ttsStatus.textContent = '⏵ يقرأ الآن...'; ttsPlayBtn.textContent = '❚❚'; isPaused = false; };
+            utter.onend = () => { ttsStatus.textContent = '✓ انتهت القراءة'; ttsPlayBtn.textContent = '▶'; isPaused = false; };
+            utter.onerror = () => { ttsStatus.textContent = 'حدث خطأ أثناء القراءة'; ttsPlayBtn.textContent = '▶'; };
+            synth.speak(utter);
+        };
+
+        ttsToggle?.addEventListener('click', () => {
+            if (!synth) { alert('المتصفح لا يدعم ميزة القراءة الصوتية'); return; }
+            const isOpen = ttsPlayer.classList.toggle('active');
+            ttsToggle.classList.toggle('active', isOpen);
+            ttsPlayer.setAttribute('aria-hidden', String(!isOpen));
+            if (isOpen) {
+                // Load voices (some browsers need a kick)
+                if (synth.getVoices().length === 0) {
+                    synth.onvoiceschanged = () => {};
+                }
+                startSpeaking();
+            } else {
+                synth.cancel();
+                ttsPlayBtn.textContent = '▶';
+            }
+        });
+
+        ttsPlayBtn?.addEventListener('click', () => {
+            if (!synth) return;
+            if (synth.speaking && !isPaused) {
+                synth.pause();
+                isPaused = true;
+                ttsPlayBtn.textContent = '▶';
+                ttsStatus.textContent = '⏸ موقوف مؤقتاً';
+            } else if (isPaused) {
+                synth.resume();
+                isPaused = false;
+                ttsPlayBtn.textContent = '❚❚';
+                ttsStatus.textContent = '⏵ يقرأ الآن...';
+            } else {
+                startSpeaking();
+            }
+        });
+
+        ttsStopBtn?.addEventListener('click', () => {
+            if (synth) synth.cancel();
+            ttsPlayBtn.textContent = '▶';
+            isPaused = false;
+            ttsStatus.textContent = 'جاهز للقراءة';
+        });
+
+        ttsSpeed?.addEventListener('change', () => {
+            if (synth && synth.speaking) {
+                startSpeaking();
+            }
+        });
+
+        // Stop TTS when leaving the page
+        window.addEventListener('beforeunload', () => { if (synth) synth.cancel(); });
+    })();
+    </script>
     <?php if ($viewerId): ?>
     <script>
       // Log this read after 5 seconds (so page views count only as "read")
