@@ -147,8 +147,10 @@
   .ticker-item {
     white-space:nowrap; padding:0 32px; font-size:13px;
     display:flex; align-items:center; gap:10px; color:rgba(255,255,255,.8);
-    font-weight:500;
+    font-weight:500; text-decoration:none;
+    transition:color .2s;
   }
+  .ticker-item:hover { color:#fff; }
   .ticker-item::before { content:''; width:4px; height:4px; border-radius:50%; background:rgba(255,255,255,.3); flex-shrink:0; }
 
   /* LAYOUT */

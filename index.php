@@ -28,7 +28,9 @@ $trends = getTrends();
 $sources = getActiveSources();
 $mostRead = getMostRead();
 $mediaItems = getMediaItems(4);
-$tickerItems = getTickerItems();
+// Ticker pulls from the latest Palestine news stream so the "عاجل" strip
+// mirrors the Palestine section headlines.
+$tickerItems = array_slice($palestineNews, 0, 10);
 
 // إحصائيات
 $totalArticles = countArticles();
@@ -182,8 +184,8 @@ try {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
 <meta name="description" content="مجمع الأخبار العربية الأول - أحدث الأخبار من مصادر موثوقة في السياسة، الاقتصاد، الرياضة، والتكنولوجيا">
-<link rel="stylesheet" href="assets/css/home.css?v=7">
-<link rel="stylesheet" href="assets/css/user.css?v=7">
+<link rel="stylesheet" href="assets/css/home.css?v=8">
+<link rel="stylesheet" href="assets/css/user.css?v=8">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>
@@ -279,10 +281,10 @@ try {
   <div class="ticker-label">عاجل</div>
   <div class="ticker-content">
     <?php foreach ($tickerItems as $item): ?>
-      <div class="ticker-item"><?php echo e($item['text']); ?></div>
+      <a class="ticker-item" href="<?php echo articleUrl($item); ?>"><?php echo e($item['title']); ?></a>
     <?php endforeach; ?>
     <?php foreach ($tickerItems as $item): ?>
-      <div class="ticker-item"><?php echo e($item['text']); ?></div>
+      <a class="ticker-item" href="<?php echo articleUrl($item); ?>"><?php echo e($item['title']); ?></a>
     <?php endforeach; ?>
   </div>
 </div>
