@@ -22,6 +22,77 @@ function fetchUrlHtml($url) {
 }
 
 /**
+ * Fetch many URLs in parallel with a concurrency cap.
+ * Returns [url => html] map (empty string on failure).
+ */
+function fetchUrlsHtmlMulti(array $urls, $concurrency = 10) {
+    $urls = array_values(array_unique(array_filter($urls)));
+    $results = [];
+    if (empty($urls)) return $results;
+
+    $total = count($urls);
+    $concurrency = max(1, min($concurrency, $total));
+    $multi = curl_multi_init();
+    $handles = [];
+    $urlOf = [];
+    $idx = 0;
+
+    $addHandle = function($url) use (&$handles, &$urlOf, $multi) {
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_TIMEOUT => 12,
+            CURLOPT_CONNECTTIMEOUT => 6,
+            CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; NewsFlow/1.0)',
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_ENCODING => '',
+        ]);
+        $key = (int) $ch;
+        $handles[$key] = $ch;
+        $urlOf[$key] = $url;
+        curl_multi_add_handle($multi, $ch);
+    };
+
+    // Seed initial batch
+    while ($idx < $concurrency && $idx < $total) {
+        $addHandle($urls[$idx++]);
+    }
+
+    $active = null;
+    do {
+        do {
+            $status = curl_multi_exec($multi, $active);
+        } while ($status === CURLM_CALL_MULTI_PERFORM);
+
+        if ($active) curl_multi_select($multi, 1.0);
+
+        while ($info = curl_multi_info_read($multi)) {
+            $ch = $info['handle'];
+            $key = (int) $ch;
+            $url = $urlOf[$key] ?? '';
+            $body = curl_multi_getcontent($ch);
+            $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $results[$url] = ($http >= 200 && $http < 400 && $body) ? $body : '';
+
+            curl_multi_remove_handle($multi, $ch);
+            curl_close($ch);
+            unset($handles[$key], $urlOf[$key]);
+
+            if ($idx < $total) {
+                $addHandle($urls[$idx++]);
+                $active = 1;
+            }
+        }
+    } while ($active && $status === CURLM_OK);
+
+    curl_multi_close($multi);
+    return $results;
+}
+
+/**
  * Extract a representative image from article HTML.
  * Tries og:image, twitter:image, link rel=image_src, then first sizable <img>.
  */
