@@ -11,6 +11,10 @@ header('Access-Control-Allow-Origin: https://postfeed.emdatra.org');
 header('Access-Control-Allow-Methods: GET, OPTIONS');
 
 require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/rate_limit.php';
+
+// Limit: 30 searches per minute per IP
+rate_limit_enforce_api('search:' . client_ip(), 30, 60);
 
 try {
     $db = getDB();

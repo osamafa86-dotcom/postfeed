@@ -8,6 +8,7 @@ error_reporting(E_ALL);
 session_start();
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/rate_limit.php';
 
 // إذا كان المستخدم مسجل دخول بالفعل
 if (isset($_SESSION[ADMIN_SESSION_NAME]) && $_SESSION[ADMIN_SESSION_NAME] === true) {
@@ -19,6 +20,11 @@ $error = '';
 
 // معالجة تسجيل الدخول
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Rate limit: 5 login attempts per 5 minutes per IP
+    if (!rate_limit_check('login:' . client_ip(), 5, 300)) {
+        $error = 'محاولات كثيرة، يرجى المحاولة بعد 5 دقائق';
+        goto skip_login;
+    }
     if (!csrf_verify($_POST['_csrf'] ?? '')) {
         $error = 'انتهت الجلسة، أعد المحاولة';
         goto skip_login;
