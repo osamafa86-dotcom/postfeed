@@ -16,9 +16,10 @@ $userUnread = $viewerId ? user_unread_notifications_count($viewerId) : 0;
 
 // جلب البيانات من قاعدة البيانات
 $heroArticles = getHeroArticles();
-$palestineNews = getPalestineNews(5);
+// Fetch generous pools so dedup (by id + fuzzy title) still leaves enough visible items.
+$palestineNews = getPalestineNews(20);
 $breakingNews = getBreakingNews();
-$latestArticles = getLatestArticles(12);
+$latestArticles = getLatestArticles(40);
 $categories = getCategories();
 $notifications = getNotifications(6);
 $unreadCount = getUnreadNotifCount();
@@ -40,19 +41,96 @@ $sportsNews    = getArticlesByCategory('sports', 40);
 $artsNews      = getArticlesByCategory('arts', 40);
 $reportsNews   = getArticlesByCategory('reports', 40);
 
+// ============================================================
 // منع تكرار الخبر عبر أكثر من قسم في الصفحة الرئيسية
+// Dedup by article ID *and* by fuzzy title match, so the same
+// story republished by several sources only appears once.
+// ============================================================
+$nf_title_tokens = function(string $title): array {
+    // Strip Arabic diacritics (harakat + tatweel).
+    $t = preg_replace('/[\x{0610}-\x{061A}\x{064B}-\x{065F}\x{0670}\x{06D6}-\x{06ED}\x{0640}]/u', '', $title);
+    // Normalize Arabic letter variants.
+    $t = strtr($t, [
+        'أ' => 'ا', 'إ' => 'ا', 'آ' => 'ا', 'ٱ' => 'ا',
+        'ة' => 'ه',
+        'ى' => 'ي', 'ئ' => 'ي',
+        'ؤ' => 'و',
+    ]);
+    // Replace punctuation / symbols with spaces.
+    $t = preg_replace('/[\p{P}\p{S}«»"\'"""‚„]/u', ' ', $t);
+    $t = preg_replace('/\s+/u', ' ', trim($t));
+    $t = mb_strtolower($t);
+    $tokens = preg_split('/\s+/u', $t) ?: [];
+    // Arabic stop words (articles, prepositions, common fillers).
+    $stop = ['في','من','على','الى','إلى','عن','مع','بعد','قبل','هذا','هذه','ذلك','تلك','التي','الذي','بين','كل','او','أو','ما','ان','أن','إن','قد','هو','هي','هم','لم','لن','لا','وقد','الف','هذي'];
+    $out = [];
+    // Multi-char prefixes first (longest match wins), then single-letter
+    // conjunctions/prepositions. Keeps a floor of 3 chars after stripping.
+    $multi  = ['وال','فال','بال','كال','لل'];
+    $single = ['و','ف','ب','ل','ك','س'];
+    foreach ($tokens as $tok) {
+        if (mb_strlen($tok) < 3) continue;
+        if (in_array($tok, $stop, true)) continue;
+        foreach ($multi as $p) {
+            $pl = mb_strlen($p);
+            if (mb_strlen($tok) >= $pl + 3 && mb_substr($tok, 0, $pl) === $p) {
+                $tok = mb_substr($tok, $pl);
+                break;
+            }
+        }
+        if (mb_strlen($tok) >= 5 && mb_substr($tok, 0, 2) === 'ال') {
+            $tok = mb_substr($tok, 2);
+        }
+        if (mb_strlen($tok) >= 5) {
+            $first = mb_substr($tok, 0, 1);
+            if (in_array($first, $single, true)) {
+                $tok = mb_substr($tok, 1);
+            }
+        }
+        if (mb_strlen($tok) < 3) continue;
+        $out[$tok] = true;
+    }
+    return array_keys($out);
+};
 $usedIds = [];
-$dedup = function(array $list, int $keep) use (&$usedIds): array {
+$usedTitleTokens = []; // array of token-arrays for already-used articles
+// Pre-seed with hero articles so hero stories never reappear below.
+foreach ($heroArticles as $h) {
+    if (!empty($h['id'])) $usedIds[(int)$h['id']] = true;
+    if (!empty($h['title'])) $usedTitleTokens[] = $nf_title_tokens($h['title']);
+}
+$dedup = function(array $list, int $keep) use (&$usedIds, &$usedTitleTokens, $nf_title_tokens): array {
     $out = [];
     foreach ($list as $a) {
         $id = (int)($a['id'] ?? 0);
         if ($id && isset($usedIds[$id])) continue;
-        $usedIds[$id] = true;
+        $tokens = $nf_title_tokens((string)($a['title'] ?? ''));
+        // Jaccard similarity vs every already-used title. Threshold 0.55
+        // catches "حشد تدين اغتيال الصحفي وشاح" vs "حشد تدين اغتيال
+        // الصحفي محمد وشاح في غزة" while still allowing genuinely
+        // different stories that happen to share a couple of words.
+        $isDup = false;
+        if ($tokens) {
+            foreach ($usedTitleTokens as $used) {
+                if (!$used) continue;
+                $inter = array_intersect($used, $tokens);
+                if (!$inter) continue;
+                $union = array_unique(array_merge($used, $tokens));
+                if (!$union) continue;
+                if (count($inter) / count($union) >= 0.55) { $isDup = true; break; }
+            }
+        }
+        if ($isDup) continue;
+        if ($id) $usedIds[$id] = true;
+        $usedTitleTokens[] = $tokens;
         $out[] = $a;
         if (count($out) >= $keep) break;
     }
     return $out;
 };
+// Order matters: palestine first so it keeps its featured stories; latest
+// then fills in around them without repeating palestine items.
+$palestineNews  = $dedup($palestineNews, 5);
 $breakingNews   = $dedup($breakingNews, 5);
 $latestArticles = $dedup($latestArticles, 12);
 $politicalNews  = $dedup($politicalNews, 4);
