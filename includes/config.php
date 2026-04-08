@@ -6,6 +6,19 @@
  */
 
 // ============================================
+// PSR-4 autoloader for NewsFlow\ namespace (no Composer needed in prod)
+// ============================================
+spl_autoload_register(function ($class) {
+    $prefix = 'NewsFlow\\';
+    $baseDir = __DIR__ . '/../src/';
+    $len = strlen($prefix);
+    if (strncmp($prefix, $class, $len) !== 0) return;
+    $relative = substr($class, $len);
+    $file = $baseDir . str_replace('\\', '/', $relative) . '.php';
+    if (is_readable($file)) require $file;
+});
+
+// ============================================
 // تحميل متغيرات البيئة من .env (إن وجد)
 // ============================================
 (function() {
