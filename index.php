@@ -99,7 +99,7 @@ try {
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
 <meta name="description" content="مجمع الأخبار العربية الأول - أحدث الأخبار من مصادر موثوقة في السياسة، الاقتصاد، الرياضة، والتكنولوجيا">
 <link rel="stylesheet" href="assets/css/home.css?v=1">
-<link rel="stylesheet" href="assets/css/user.css?v=2">
+<link rel="stylesheet" href="assets/css/user.css?v=3">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>
@@ -950,7 +950,7 @@ try {
 
 <div class="nf-toast" id="nfToast"></div>
 <script src="assets/js/home.js?v=1" defer></script>
-<script src="assets/js/user.js?v=2" defer></script>
+<script src="assets/js/user.js?v=3" defer></script>
 
 </body>
 </html>
