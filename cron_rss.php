@@ -69,14 +69,16 @@ foreach ($handles as $i => $ch) {
 }
 curl_multi_close($multi);
 
-// ============ PARSE & INSERT ============
+// ============ PARSE FEEDS → COLLECT NEW ITEMS ============
 $totalNew = 0;
 $totalErr = 0;
+$pendingInserts = []; // items to insert after parallel page fetch
+$sourceErrors  = []; // source_id => error string
+$sourceCounts  = []; // source_id => new count
 
 foreach ($sources as $i => $source) {
     $r = $results[$i];
-    $error = null;
-    $newCount = 0;
+    $sourceCounts[$source['id']] = 0;
 
     try {
         if ($r['http'] >= 400 || empty($r['body'])) {
@@ -141,43 +143,80 @@ foreach ($sources as $i => $source) {
             }
             if (!$publishedAt) $publishedAt = date('Y-m-d H:i:s');
 
-            // Fetch full article body + fallback image from source URL
-            $sourceUrl = trim($item['link']);
-            $pageHtml  = $sourceUrl ? fetchUrlHtml($sourceUrl) : '';
-            $fullContent = '';
-            if (!empty($pageHtml)) {
-                $fullContent = fetchArticleBodyFromHtml($pageHtml);
-                if (empty($imageUrl)) {
-                    $imageUrl = extractArticleImage($pageHtml, $sourceUrl);
-                }
-            }
-            if (empty($fullContent)) {
-                $fullContent = '<p>' . nl2br($excerpt) . '</p>';
-            }
-
-            $stmt = $db->prepare("INSERT INTO articles (title, slug, excerpt, content, image_url, source_url, category_id, source_id, status, published_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'published', ?, NOW())");
-            $stmt->execute([$title, $slug, $excerpt, $fullContent, $imageUrl, trim($item['link']), $categoryId, $source['id'], $publishedAt]);
-            $newCount++;
+            $pendingInserts[] = [
+                'source_id'   => $source['id'],
+                'title'       => $title,
+                'slug'        => $slug,
+                'excerpt'     => $excerpt,
+                'image_url'   => $imageUrl,
+                'source_url'  => trim($item['link']),
+                'category_id' => $categoryId,
+                'published_at'=> $publishedAt,
+            ];
+            $sourceCounts[$source['id']]++;
         }
-
-        echo "  ✓ {$source['name']}: {$newCount} جديد\n";
     } catch (Exception $ex) {
-        $error = mb_substr($ex->getMessage(), 0, 500);
+        $sourceErrors[$source['id']] = mb_substr($ex->getMessage(), 0, 500);
         $totalErr++;
-        echo "  ✗ {$source['name']}: {$error}\n";
+        echo "  ✗ {$source['name']}: {$sourceErrors[$source['id']]}\n";
+    }
+}
+
+// ============ FETCH ARTICLE PAGES IN PARALLEL ============
+$pageUrls = array_filter(array_column($pendingInserts, 'source_url'));
+$pageHtmls = [];
+if (!empty($pageUrls)) {
+    echo "\nجلب " . count($pageUrls) . " صفحة مقال بالتوازي...\n";
+    $pageStart = microtime(true);
+    $pageHtmls = fetchUrlsHtmlMulti($pageUrls, 12);
+    echo "تم الجلب في " . round(microtime(true) - $pageStart, 2) . "s\n";
+}
+
+// ============ INSERT ============
+$insertStmt = $db->prepare("INSERT INTO articles (title, slug, excerpt, content, image_url, source_url, category_id, source_id, status, published_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'published', ?, NOW())");
+
+foreach ($pendingInserts as $it) {
+    $pageHtml = $pageHtmls[$it['source_url']] ?? '';
+    $fullContent = '';
+    $imageUrl = $it['image_url'];
+    if (!empty($pageHtml)) {
+        $fullContent = fetchArticleBodyFromHtml($pageHtml);
+        if (empty($imageUrl)) {
+            $imageUrl = extractArticleImage($pageHtml, $it['source_url']);
+        }
+    }
+    if (empty($fullContent)) {
+        $fullContent = '<p>' . nl2br($it['excerpt']) . '</p>';
     }
 
-    // Update tracking
+    try {
+        $insertStmt->execute([
+            $it['title'], $it['slug'], $it['excerpt'], $fullContent,
+            $imageUrl, $it['source_url'], $it['category_id'],
+            $it['source_id'], $it['published_at'],
+        ]);
+        $totalNew++;
+    } catch (Exception $e) {
+        error_log('insert fail: ' . $e->getMessage());
+    }
+}
+
+// ============ UPDATE SOURCE TRACKING ============
+foreach ($sources as $source) {
+    $sid = $source['id'];
+    $error = $sourceErrors[$sid] ?? null;
+    $newCount = $sourceCounts[$sid] ?? 0;
+    if (!isset($sourceErrors[$sid])) {
+        echo "  ✓ {$source['name']}: {$newCount} جديد\n";
+    }
     try {
         $totalArticles = $db->prepare("SELECT COUNT(*) FROM articles WHERE source_id = ?");
-        $totalArticles->execute([$source['id']]);
+        $totalArticles->execute([$sid]);
         $tot = (int)$totalArticles->fetchColumn();
 
         $db->prepare("UPDATE sources SET last_fetched_at = NOW(), last_error = ?, last_new_count = ?, total_articles = ? WHERE id = ?")
-           ->execute([$error, $newCount, $tot, $source['id']]);
+           ->execute([$error, $newCount, $tot, $sid]);
     } catch (Exception $e) {}
-
-    $totalNew += $newCount;
 }
 
 $elapsed = round(microtime(true) - $startTime, 2);
