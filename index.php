@@ -61,16 +61,22 @@ $sportsNews     = $dedup($sportsNews, 4);
 $artsNews       = $dedup($artsNews, 4);
 $reportsNews    = $dedup($reportsNews, 4);
 
-// Pre-fetch which of the articles on this page are already bookmarked for the viewer
-$GLOBALS['__nf_saved_ids'] = [];
-if ($viewerId) {
-    $__allIds = [];
-    foreach ([$heroArticles, $palestineNews, $breakingNews, $latestArticles,
-              $politicalNews, $economyNews, $sportsNews, $artsNews, $reportsNews] as $__list) {
-        foreach ($__list as $__a) { $__allIds[] = (int)($__a['id'] ?? 0); }
+// Pre-fetch which of the articles on this page are already bookmarked for the viewer,
+// plus reaction counts and the viewer's own reactions.
+$GLOBALS['__nf_saved_ids']       = [];
+$GLOBALS['__nf_reaction_counts'] = [];
+$GLOBALS['__nf_user_reactions']  = [];
+$__allIds = [];
+foreach ([$heroArticles, $palestineNews, $breakingNews, $latestArticles,
+          $politicalNews, $economyNews, $sportsNews, $artsNews, $reportsNews] as $__list) {
+    foreach ($__list as $__a) { $__allIds[] = (int)($__a['id'] ?? 0); }
+}
+if ($__allIds) {
+    $GLOBALS['__nf_reaction_counts'] = article_reactions_counts_for($__allIds);
+    if ($viewerId) {
+        $GLOBALS['__nf_saved_ids'] = array_flip(user_bookmark_ids_for($viewerId, $__allIds));
+        $GLOBALS['__nf_user_reactions'] = user_article_reactions_for($viewerId, $__allIds);
     }
-    $__saved = user_bookmark_ids_for($viewerId, $__allIds);
-    $GLOBALS['__nf_saved_ids'] = array_flip($__saved);
 }
 
 // جلب الريلز للعرض في الصفحة الرئيسية
@@ -99,7 +105,7 @@ try {
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
 <meta name="description" content="مجمع الأخبار العربية الأول - أحدث الأخبار من مصادر موثوقة في السياسة، الاقتصاد، الرياضة، والتكنولوجيا">
 <link rel="stylesheet" href="assets/css/home.css?v=1">
-<link rel="stylesheet" href="assets/css/user.css?v=3">
+<link rel="stylesheet" href="assets/css/user.css?v=4">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>
@@ -336,13 +342,51 @@ try {
     </div>
     <?php endif; ?>
 
-    <!-- LATEST NEWS -->
+    <!-- LATEST NEWS (Featured 3-column layout) -->
     <div id="latest" class="section-header">
       <div class="section-title blue"><div class="line"></div>⏱ آخر الأخبار</div>
       <a class="see-all" href="category.php?type=latest">عرض الكل ›</a>
     </div>
+    <?php
+    // Split: center featured + 3 left + 3 right (7 items total)
+    $__featMain = $latestArticles[0] ?? null;
+    $__featSide = array_slice($latestArticles, 1, 6);
+    $__featLeft = array_slice($__featSide, 0, 3);
+    $__featRight = array_slice($__featSide, 3, 3);
+    $__featRest = array_slice($latestArticles, 7);
+    ?>
+    <?php if ($__featMain): ?>
+    <div class="nf-feature-wrap">
+      <!-- Left column (side cards) -->
+      <div class="nf-feature-side">
+        <?php foreach ($__featLeft as $article): ?>
+          <?php include __DIR__ . '/includes/components/home_feature_side.php'; ?>
+        <?php endforeach; ?>
+      </div>
+      <!-- Center featured -->
+      <a class="nf-feature-main" href="<?php echo articleUrl($__featMain); ?>">
+        <div class="nf-feature-main-img" style="background-image:url('<?php echo e($__featMain['image_url'] ?? 'https://picsum.photos/seed/feat/1200/800'); ?>');"></div>
+        <div class="nf-feature-main-body">
+          <h3 class="nf-feature-main-title"><?php echo e($__featMain['title']); ?></h3>
+          <div class="nf-feature-main-meta">
+            <span><?php echo timeAgo($__featMain['published_at']); ?></span>
+            <span class="sep">|</span>
+            <span><?php echo e($__featMain['cat_name'] ?? ''); ?></span>
+          </div>
+          <?php $article = $__featMain; include __DIR__ . '/includes/components/action_bar.php'; ?>
+        </div>
+      </a>
+      <!-- Right column (side cards) -->
+      <div class="nf-feature-side">
+        <?php foreach ($__featRight as $article): ?>
+          <?php include __DIR__ . '/includes/components/home_feature_side.php'; ?>
+        <?php endforeach; ?>
+      </div>
+    </div>
+    <?php endif; ?>
+    <?php if ($__featRest): ?>
     <div class="news-grid" style="margin-bottom:28px">
-      <?php foreach ($latestArticles as $article): ?>
+      <?php foreach ($__featRest as $article): ?>
         <?php $__sid = (int)($article['id'] ?? 0); $__ss = !empty($GLOBALS['__nf_saved_ids']) && isset($GLOBALS['__nf_saved_ids'][$__sid]); ?>
         <a class="news-card" href="<?php echo articleUrl($article); ?>">
           <button type="button" class="nf-bookmark-btn <?php echo $__ss ? 'saved' : ''; ?>" title="<?php echo $__ss ? 'إزالة من المحفوظات' : 'حفظ'; ?>" data-save-id="<?php echo $__sid; ?>" onclick="event.preventDefault(); event.stopPropagation(); NF.toggleSave(this)">🔖</button>
@@ -359,6 +403,7 @@ try {
         </a>
       <?php endforeach; ?>
     </div>
+    <?php endif; ?>
 
     <!-- POLITICAL NEWS -->
     <div id="political" class="section-header">
@@ -950,7 +995,7 @@ try {
 
 <div class="nf-toast" id="nfToast"></div>
 <script src="assets/js/home.js?v=1" defer></script>
-<script src="assets/js/user.js?v=3" defer></script>
+<script src="assets/js/user.js?v=4" defer></script>
 
 </body>
 </html>

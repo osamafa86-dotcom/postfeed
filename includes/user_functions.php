@@ -403,3 +403,106 @@ function toggle_comment_like(int $userId, int $commentId): array {
         return ['liked' => $liked, 'likes' => (int)$stmt->fetchColumn()];
     } catch (Throwable $e) { return ['liked' => false, 'likes' => 0]; }
 }
+
+// ============================================
+// Article reactions (like / dislike) + share count
+// ============================================
+
+/**
+ * Get reaction counts for a set of articles.
+ * Returns: [ article_id => ['like' => N, 'dislike' => N, 'share' => N] ]
+ */
+function article_reactions_counts_for(array $articleIds): array {
+    $out = [];
+    if (!$articleIds) return $out;
+    $ids = array_values(array_unique(array_map('intval', $articleIds)));
+    if (!$ids) return $out;
+    foreach ($ids as $id) { $out[$id] = ['like' => 0, 'dislike' => 0, 'share' => 0]; }
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    try {
+        $db = getDB();
+        $stmt = $db->prepare("SELECT article_id, reaction, COUNT(*) c FROM article_reactions WHERE article_id IN ($placeholders) GROUP BY article_id, reaction");
+        $stmt->execute($ids);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $aid = (int)$r['article_id'];
+            $out[$aid][$r['reaction']] = (int)$r['c'];
+        }
+        $stmt = $db->prepare("SELECT article_id, count FROM article_share_counts WHERE article_id IN ($placeholders)");
+        $stmt->execute($ids);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $out[(int)$r['article_id']]['share'] = (int)$r['count'];
+        }
+    } catch (Throwable $e) {}
+    return $out;
+}
+
+/**
+ * Get current user's reactions for a set of articles.
+ * Returns: [ article_id => 'like' | 'dislike' ]
+ */
+function user_article_reactions_for(int $userId, array $articleIds): array {
+    if (!$userId || !$articleIds) return [];
+    $ids = array_values(array_unique(array_map('intval', $articleIds)));
+    if (!$ids) return [];
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    try {
+        $db = getDB();
+        $stmt = $db->prepare("SELECT article_id, reaction FROM article_reactions WHERE user_id = ? AND article_id IN ($placeholders)");
+        $stmt->execute(array_merge([$userId], $ids));
+        $out = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $out[(int)$r['article_id']] = $r['reaction'];
+        }
+        return $out;
+    } catch (Throwable $e) { return []; }
+}
+
+/**
+ * Toggle a reaction. If the user already has the same reaction, remove it.
+ * If they have the opposite reaction, replace it. Otherwise insert.
+ * Returns the new state: ['reaction' => 'like'|'dislike'|null, 'like' => N, 'dislike' => N]
+ */
+function toggle_article_reaction(int $userId, int $articleId, string $reaction): array {
+    if (!in_array($reaction, ['like', 'dislike'], true)) {
+        return ['reaction' => null, 'like' => 0, 'dislike' => 0];
+    }
+    try {
+        $db = getDB();
+        $stmt = $db->prepare("SELECT reaction FROM article_reactions WHERE user_id = ? AND article_id = ?");
+        $stmt->execute([$userId, $articleId]);
+        $existing = $stmt->fetchColumn();
+        if ($existing === $reaction) {
+            $db->prepare("DELETE FROM article_reactions WHERE user_id = ? AND article_id = ?")->execute([$userId, $articleId]);
+            $new = null;
+        } elseif ($existing) {
+            $db->prepare("UPDATE article_reactions SET reaction = ?, created_at = NOW() WHERE user_id = ? AND article_id = ?")->execute([$reaction, $userId, $articleId]);
+            $new = $reaction;
+        } else {
+            $db->prepare("INSERT INTO article_reactions (user_id, article_id, reaction) VALUES (?, ?, ?)")->execute([$userId, $articleId, $reaction]);
+            $new = $reaction;
+        }
+        $stmt = $db->prepare("SELECT reaction, COUNT(*) c FROM article_reactions WHERE article_id = ? GROUP BY reaction");
+        $stmt->execute([$articleId]);
+        $counts = ['like' => 0, 'dislike' => 0];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $counts[$r['reaction']] = (int)$r['c'];
+        }
+        return ['reaction' => $new, 'like' => $counts['like'], 'dislike' => $counts['dislike']];
+    } catch (Throwable $e) {
+        return ['reaction' => null, 'like' => 0, 'dislike' => 0];
+    }
+}
+
+/**
+ * Increment share count for an article. Returns new count.
+ */
+function bump_article_share_count(int $articleId): int {
+    try {
+        $db = getDB();
+        $db->prepare("INSERT INTO article_share_counts (article_id, count) VALUES (?, 1)
+                      ON DUPLICATE KEY UPDATE count = count + 1")->execute([$articleId]);
+        $stmt = $db->prepare("SELECT count FROM article_share_counts WHERE article_id = ?");
+        $stmt->execute([$articleId]);
+        return (int)$stmt->fetchColumn();
+    } catch (Throwable $e) { return 0; }
+}
