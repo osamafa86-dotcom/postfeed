@@ -323,6 +323,65 @@
     NF.post('log_read.php', { article_id: articleId }).catch(() => {});
   };
 
+  // --------------- Reactions (like / dislike) ---------------
+  NF.toggleReaction = async (btn) => {
+    const id = parseInt(btn.dataset.reactId, 10);
+    const type = btn.dataset.reactType; // 'like' | 'dislike'
+    if (!id || !type) return;
+    const group = btn.closest('.nf-action-bar');
+    if (!group) return;
+    const likeBtn = group.querySelector('.nf-act.like');
+    const dislikeBtn = group.querySelector('.nf-act.dislike');
+    const res = await NF.post('reaction.php', { article_id: id, reaction: type });
+    if (!res.ok) {
+      if (res.error === 'auth_required') {
+        NF.toast('سجّل دخول للتفاعل');
+        setTimeout(() => {
+          location.href = '/account/login.php?return=' + encodeURIComponent(location.pathname);
+        }, 800);
+        return;
+      }
+      NF.toast('حدث خطأ');
+      return;
+    }
+    likeBtn.classList.toggle('active', res.reaction === 'like');
+    dislikeBtn.classList.toggle('active', res.reaction === 'dislike');
+    likeBtn.querySelector('.nf-act-count').textContent = res.like;
+    dislikeBtn.querySelector('.nf-act-count').textContent = res.dislike;
+  };
+
+  // --------------- Share ---------------
+  NF.shareArticle = async (btn) => {
+    const id = parseInt(btn.dataset.shareId, 10);
+    const url = btn.dataset.shareUrl || location.href;
+    const title = btn.dataset.shareTitle || document.title;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, url });
+      } else if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url);
+        NF.toast('✓ تم نسخ الرابط');
+      } else {
+        prompt('انسخ الرابط:', url);
+      }
+    } catch (e) {
+      // user canceled share — don't count
+      return;
+    }
+    if (id) {
+      const res = await NF.post('share.php', { article_id: id });
+      if (res && res.ok) {
+        let countEl = btn.querySelector('.nf-act-count');
+        if (!countEl) {
+          countEl = document.createElement('span');
+          countEl.className = 'nf-act-count';
+          btn.appendChild(countEl);
+        }
+        countEl.textContent = res.count;
+      }
+    }
+  };
+
   // --------------- Boot ---------------
   window.NF = NF;
   document.addEventListener('DOMContentLoaded', () => {

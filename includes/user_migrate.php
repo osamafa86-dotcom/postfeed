@@ -12,7 +12,7 @@ function user_dashboard_migrate(): void {
     if ($done) return;
 
     $flagDir  = __DIR__ . '/../storage/cache';
-    $flagFile = $flagDir . '/user_dashboard_migrated_v1.flag';
+    $flagFile = $flagDir . '/user_dashboard_migrated_v2.flag';
     if (is_file($flagFile)) { $done = true; return; }
 
     try {
@@ -138,6 +138,22 @@ function user_dashboard_migrate(): void {
                 `comment_id` INT(11) NOT NULL,
                 `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (`user_id`, `comment_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            'article_reactions' => "CREATE TABLE IF NOT EXISTS `article_reactions` (
+                `user_id` INT(11) NOT NULL,
+                `article_id` INT(11) NOT NULL,
+                `reaction` ENUM('like','dislike') NOT NULL,
+                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`user_id`, `article_id`),
+                KEY `idx_ar_article` (`article_id`, `reaction`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            'article_share_counts' => "CREATE TABLE IF NOT EXISTS `article_share_counts` (
+                `article_id` INT(11) NOT NULL,
+                `count` INT(11) NOT NULL DEFAULT 0,
+                `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (`article_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
         ];
         foreach ($tables as $name => $ddl) {
