@@ -54,7 +54,7 @@ $dedup = function(array $list, int $keep) use (&$usedIds): array {
     return $out;
 };
 $breakingNews   = $dedup($breakingNews, 5);
-$latestArticles = $dedup($latestArticles, 6);
+$latestArticles = $dedup($latestArticles, 12);
 $politicalNews  = $dedup($politicalNews, 4);
 $economyNews    = $dedup($economyNews, 4);
 $sportsNews     = $dedup($sportsNews, 4);
@@ -105,7 +105,7 @@ try {
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
 <meta name="description" content="مجمع الأخبار العربية الأول - أحدث الأخبار من مصادر موثوقة في السياسة، الاقتصاد، الرياضة، والتكنولوجيا">
 <link rel="stylesheet" href="assets/css/home.css?v=1">
-<link rel="stylesheet" href="assets/css/user.css?v=5">
+<link rel="stylesheet" href="assets/css/user.css?v=6">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>
@@ -248,6 +248,51 @@ try {
   </div>
 </div>
 
+<!-- LATEST NEWS (Featured 3-column layout) — full-width above main-layout -->
+<?php
+// Split: 1 center + 3 left + 3 right (7 items total), remainder spills into main news-grid
+$__featMain  = $latestArticles[0] ?? null;
+$__featSide  = array_slice($latestArticles, 1, 6);
+$__featLeft  = array_slice($__featSide, 0, 3);
+$__featRight = array_slice($__featSide, 3, 3);
+$__featRest  = array_slice($latestArticles, 7);
+?>
+<?php if ($__featMain): ?>
+<div class="nf-feature-container">
+  <div id="latest" class="section-header">
+    <div class="section-title blue"><div class="line"></div>⏱ آخر الأخبار</div>
+    <a class="see-all" href="category.php?type=latest">عرض الكل ›</a>
+  </div>
+  <div class="nf-feature-wrap">
+    <!-- Left column (side cards) -->
+    <div class="nf-feature-side">
+      <?php foreach ($__featLeft as $article): ?>
+        <?php include __DIR__ . '/includes/components/home_feature_side.php'; ?>
+      <?php endforeach; ?>
+    </div>
+    <!-- Center featured -->
+    <a class="nf-feature-main" href="<?php echo articleUrl($__featMain); ?>">
+      <div class="nf-feature-main-img" style="background-image:url('<?php echo e($__featMain['image_url'] ?? 'https://picsum.photos/seed/feat/1200/800'); ?>');"></div>
+      <div class="nf-feature-main-body">
+        <h3 class="nf-feature-main-title"><?php echo e($__featMain['title']); ?></h3>
+        <div class="nf-feature-main-meta">
+          <span><?php echo timeAgo($__featMain['published_at']); ?></span>
+          <span class="sep">|</span>
+          <span><?php echo e($__featMain['cat_name'] ?? ''); ?></span>
+        </div>
+        <?php $article = $__featMain; include __DIR__ . '/includes/components/action_bar.php'; ?>
+      </div>
+    </a>
+    <!-- Right column (side cards) -->
+    <div class="nf-feature-side">
+      <?php foreach ($__featRight as $article): ?>
+        <?php include __DIR__ . '/includes/components/home_feature_side.php'; ?>
+      <?php endforeach; ?>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
+
 <!-- MAIN CONTENT -->
 <div class="main-layout">
   <div class="main-col">
@@ -336,69 +381,6 @@ try {
               <span class="tg-time"><?php echo timeAgo($m['posted_at']); ?></span>
             </div>
             <div class="tg-text"><?php echo nl2br(e(mb_substr($m['text'], 0, 280))); ?><?php echo mb_strlen($m['text'])>280?'...':''; ?></div>
-          </div>
-        </a>
-      <?php endforeach; ?>
-    </div>
-    <?php endif; ?>
-
-    <!-- LATEST NEWS (Featured 3-column layout) -->
-    <div id="latest" class="section-header">
-      <div class="section-title blue"><div class="line"></div>⏱ آخر الأخبار</div>
-      <a class="see-all" href="category.php?type=latest">عرض الكل ›</a>
-    </div>
-    <?php
-    // Split: center featured + 3 left + 3 right (7 items total)
-    $__featMain = $latestArticles[0] ?? null;
-    $__featSide = array_slice($latestArticles, 1, 6);
-    $__featLeft = array_slice($__featSide, 0, 3);
-    $__featRight = array_slice($__featSide, 3, 3);
-    $__featRest = array_slice($latestArticles, 7);
-    ?>
-    <?php if ($__featMain): ?>
-    <div class="nf-feature-wrap">
-      <!-- Left column (side cards) -->
-      <div class="nf-feature-side">
-        <?php foreach ($__featLeft as $article): ?>
-          <?php include __DIR__ . '/includes/components/home_feature_side.php'; ?>
-        <?php endforeach; ?>
-      </div>
-      <!-- Center featured -->
-      <a class="nf-feature-main" href="<?php echo articleUrl($__featMain); ?>">
-        <div class="nf-feature-main-img" style="background-image:url('<?php echo e($__featMain['image_url'] ?? 'https://picsum.photos/seed/feat/1200/800'); ?>');"></div>
-        <div class="nf-feature-main-body">
-          <h3 class="nf-feature-main-title"><?php echo e($__featMain['title']); ?></h3>
-          <div class="nf-feature-main-meta">
-            <span><?php echo timeAgo($__featMain['published_at']); ?></span>
-            <span class="sep">|</span>
-            <span><?php echo e($__featMain['cat_name'] ?? ''); ?></span>
-          </div>
-          <?php $article = $__featMain; include __DIR__ . '/includes/components/action_bar.php'; ?>
-        </div>
-      </a>
-      <!-- Right column (side cards) -->
-      <div class="nf-feature-side">
-        <?php foreach ($__featRight as $article): ?>
-          <?php include __DIR__ . '/includes/components/home_feature_side.php'; ?>
-        <?php endforeach; ?>
-      </div>
-    </div>
-    <?php endif; ?>
-    <?php if ($__featRest): ?>
-    <div class="news-grid" style="margin-bottom:28px">
-      <?php foreach ($__featRest as $article): ?>
-        <?php $__sid = (int)($article['id'] ?? 0); $__ss = !empty($GLOBALS['__nf_saved_ids']) && isset($GLOBALS['__nf_saved_ids'][$__sid]); ?>
-        <a class="news-card" href="<?php echo articleUrl($article); ?>">
-          <button type="button" class="nf-bookmark-btn <?php echo $__ss ? 'saved' : ''; ?>" title="<?php echo $__ss ? 'إزالة من المحفوظات' : 'حفظ'; ?>" data-save-id="<?php echo $__sid; ?>" onclick="event.preventDefault(); event.stopPropagation(); NF.toggleSave(this)">🔖</button>
-          <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/lat' . rand(1,10) . '/400/300'); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
-          <div class="card-body">
-            <span class="card-cat <?php echo $article['css_class'] ?? 'cat-political'; ?>"><?php echo e($article['cat_name']); ?></span>
-            <div class="card-title"><?php echo e($article['title']); ?></div>
-            <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
-            <div class="card-meta">
-              <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#6b9fd4'); ?>"></span><?php echo e($article['source_name']); ?></div>
-              <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
-            </div>
           </div>
         </a>
       <?php endforeach; ?>
@@ -648,25 +630,6 @@ try {
         </div>
       </div>
     </div>
-
-    <!-- POLL -->
-    <?php if ($poll): ?>
-      <div class="sidebar-widget">
-        <div class="widget-header"><span class="icon">📊</span>استطلاع الرأي</div>
-        <div class="widget-body">
-          <div style="font-size:13px;font-weight:600;margin-bottom:14px;line-height:1.5"><?php echo e($poll['question']); ?></div>
-          <?php $totalVotes = array_sum(array_column($poll['options'], 'votes')); ?>
-          <?php foreach ($poll['options'] as $option): ?>
-            <?php $percentage = $totalVotes > 0 ? round(($option['votes'] / $totalVotes) * 100) : 0; ?>
-            <div class="poll-option">
-              <div class="poll-label"><span><?php echo e($option['text']); ?></span><span style="color:var(--accent);font-weight:700"><?php echo $percentage; ?>%</span></div>
-              <div class="poll-bar"><div class="poll-fill" style="width:<?php echo $percentage; ?>%;background:var(--accent)"></div></div>
-            </div>
-          <?php endforeach; ?>
-          <div style="font-size:11px;color:var(--muted);margin-top:10px;text-align:center"><?php echo number_format($totalVotes); ?> مصوّت · ينتهي خلال 2 يوم</div>
-        </div>
-      </div>
-    <?php endif; ?>
 
     <!-- MOST READ -->
     <div class="sidebar-widget">
