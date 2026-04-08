@@ -88,10 +88,74 @@
     const res = await NF.post('follow.php', { kind, id });
     if (!res.ok) {
       btn.classList.toggle('on', was);
+      if (res.error === 'auth_required') {
+        NF.toast('سجّل دخول للمتابعة');
+        setTimeout(() => {
+          location.href = '/account/login.php?return=' + encodeURIComponent(location.pathname);
+        }, 800);
+        return;
+      }
       NF.toast('حدث خطأ');
       return;
     }
     NF.toast(res.following ? '✓ تمت المتابعة' : 'تم الإلغاء');
+
+    // Live-update the reorder list on /me/following.php
+    if (kind === 'cat') {
+      NF.syncReorderRow(id, btn, !!res.following);
+    }
+  };
+
+  // Insert or remove a reorder row matching the follow/unfollow.
+  // Only runs on /me/following.php where the reorder card exists.
+  NF.syncReorderRow = (id, chipBtn, following) => {
+    let list = document.getElementById('reorderList');
+
+    if (following) {
+      // Extract category label + icon from the chip button
+      const chipText = (chipBtn.textContent || '').trim();
+      // chip text is like "📚 سياسة" — first whitespace-separated token may be icon
+      let icon = '📂', name = chipText;
+      const parts = chipText.split(/\s+/);
+      if (parts.length > 1 && parts[0].length <= 4) {
+        icon = parts[0];
+        name = parts.slice(1).join(' ');
+      }
+
+      if (!list) {
+        // Replace empty-state paragraph with a fresh <ul>
+        const card = [...document.querySelectorAll('.panel-card')].find(p => {
+          const h = p.querySelector('.panel-head h2');
+          return h && h.textContent.includes('ترتيب');
+        });
+        if (card) {
+          const emptyP = card.querySelector('p');
+          if (emptyP) emptyP.remove();
+          list = document.createElement('ul');
+          list.className = 'reorder-list';
+          list.id = 'reorderList';
+          card.appendChild(list);
+          NF.initReorder();
+        }
+      }
+      if (!list) return;
+      // Avoid duplicate
+      if (list.querySelector('li[data-cat-id="' + id + '"]')) return;
+
+      const li = document.createElement('li');
+      li.setAttribute('draggable', 'true');
+      li.dataset.catId = String(id);
+      li.innerHTML =
+        '<span class="drag-handle">⋮⋮</span>' +
+        '<span class="cat-icon">' + NF.escape(icon) + '</span>' +
+        '<span style="flex:1; font-weight:600;">' + NF.escape(name) + '</span>' +
+        '<button type="button" class="btn sm danger" onclick="NF.unfollowCatRow(this, ' + id + ')">إلغاء</button>';
+      list.appendChild(li);
+    } else {
+      if (!list) return;
+      const row = list.querySelector('li[data-cat-id="' + id + '"]');
+      if (row) row.remove();
+    }
   };
 
   NF.unfollowCatRow = async (btn, id) => {

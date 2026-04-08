@@ -4,7 +4,7 @@ $imgUrl = $a['image_url'] ?? ('https://picsum.photos/seed/user' . (int)$a['id'] 
 $catName = $a['cat_name'] ?? '';
 ?>
 <a class="u-card news-card" href="../<?= e(articleUrl($a)) ?>" data-article-id="<?= (int)$a['id'] ?>">
-  <button type="button" class="save-btn saved" title="إزالة من المحفوظات" data-save-id="<?= (int)$a['id'] ?>" onclick="event.preventDefault(); event.stopPropagation(); NF.toggleSave(this)">🔖</button>
+  <button type="button" class="nf-bookmark-btn saved" title="إزالة من المحفوظات" data-save-id="<?= (int)$a['id'] ?>" onclick="event.preventDefault(); event.stopPropagation(); NF.toggleSave(this)">🔖</button>
   <div class="u-img"><img src="<?= e($imgUrl) ?>" alt="<?= e($a['title']) ?>" loading="lazy" decoding="async"></div>
   <div class="u-body">
     <span class="u-cat"><?= e($catName) ?></span>
