@@ -8,8 +8,11 @@ $catLabel = $catLabel ?? ($article['cat_name'] ?? '');
 $catClass = $catClass ?? ($article['css_class'] ?? 'cat-political');
 $seed     = $seed     ?? 'card';
 $imgUrl   = $article['image_url'] ?? ('https://picsum.photos/seed/' . $seed . rand(1,10) . '/400/300');
+$__aId    = (int)($article['id'] ?? 0);
+$__isSaved = !empty($GLOBALS['__nf_saved_ids']) && isset($GLOBALS['__nf_saved_ids'][$__aId]);
 ?>
 <a class="news-card" href="<?php echo articleUrl($article); ?>">
+  <button type="button" class="save-btn <?php echo $__isSaved ? 'saved' : ''; ?>" title="<?php echo $__isSaved ? 'إزالة من المحفوظات' : 'حفظ'; ?>" data-save-id="<?php echo $__aId; ?>" onclick="event.preventDefault(); event.stopPropagation(); NF.toggleSave(this)">🔖</button>
   <div class="card-img"><img src="<?php echo e($imgUrl); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
   <div class="card-body">
     <span class="card-cat <?php echo e($catClass); ?>"><?php echo e($catLabel); ?></span>
