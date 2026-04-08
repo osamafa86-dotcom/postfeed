@@ -160,19 +160,20 @@ if ($__allIds) {
 }
 
 // جلب الريلز للعرض في الصفحة الرئيسية
-$homeReels = [];
-try {
-    $pdo = getDB();
-    $stmt = $pdo->query("SELECT r.*, s.username, s.display_name, s.avatar_url
-                         FROM reels r
-                         LEFT JOIN reels_sources s ON r.source_id = s.id
-                         WHERE r.is_active = 1
-                         ORDER BY r.sort_order DESC, r.created_at DESC
-                         LIMIT 8");
-    $homeReels = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (Exception $ex) {
-    $homeReels = [];
-}
+$homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
+    try {
+        $pdo = getDB();
+        $stmt = $pdo->query("SELECT r.*, s.username, s.display_name, s.avatar_url
+                             FROM reels r
+                             LEFT JOIN reels_sources s ON r.source_id = s.id
+                             WHERE r.is_active = 1
+                             ORDER BY r.sort_order DESC, r.created_at DESC
+                             LIMIT 8");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $ex) {
+        return [];
+    }
+});
 
 ?><!DOCTYPE html>
 <html lang="ar" dir="rtl" data-theme="<?php echo e($pageTheme); ?>">
@@ -353,7 +354,7 @@ $__featRest  = array_slice($latestArticles, 7);
     <!-- Center featured -->
     <div class="nf-feature-main">
       <a class="nf-feature-main-link" href="<?php echo articleUrl($__featMain); ?>">
-        <div class="nf-feature-main-img" style="background-image:url('<?php echo e($__featMain['image_url'] ?? 'https://picsum.photos/seed/feat/1200/800'); ?>');"></div>
+        <div class="nf-feature-main-img" style="background-image:url('<?php echo e($__featMain['image_url'] ?? placeholderImage(1200,800)); ?>');"></div>
         <div class="nf-feature-main-body">
           <h3 class="nf-feature-main-title"><?php echo e($__featMain['title']); ?></h3>
           <div class="nf-feature-main-meta">
@@ -400,7 +401,7 @@ $__featRest  = array_slice($latestArticles, 7);
             </div>
           </div>
           <div class="ps-hero-img">
-            <img src="<?php echo e($psFirst['image_url'] ?? 'https://picsum.photos/seed/ps0/800/500'); ?>" alt="<?php echo e($psFirst['title'] ?? ''); ?>" loading="lazy" decoding="async">
+            <img src="<?php echo e($psFirst['image_url'] ?? placeholderImage(800,500)); ?>" alt="<?php echo e($psFirst['title'] ?? ''); ?>" loading="lazy" decoding="async">
           </div>
         </a>
         <?php $article = $psFirst; include __DIR__ . '/includes/components/action_bar.php'; ?>
@@ -411,7 +412,7 @@ $__featRest  = array_slice($latestArticles, 7);
           <div class="ps-card">
             <a class="ps-card-link" href="<?php echo articleUrl($article); ?>">
               <div class="img-wrap">
-                <img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/ps' . $pIdx . '/400/300'); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async">
+                <img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async">
                 <div class="img-date"><?php echo timeAgo($article['published_at']); ?></div>
               </div>
               <div class="ps-card-body">
@@ -436,7 +437,7 @@ $__featRest  = array_slice($latestArticles, 7);
     <div class="news-list" style="margin-bottom:28px">
       <?php foreach ($breakingNews as $article): ?>
         <a class="list-item" href="<?php echo articleUrl($article); ?>">
-          <div class="list-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/brk' . rand(1,10) . '/200/150'); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
+          <div class="list-img"><img src="<?php echo e($article['image_url'] ?? placeholderImage(200,150)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
           <div class="list-body">
             <div class="card-cat cat-breaking">عاجل</div>
             <div class="list-title"><?php echo e($article['title']); ?></div>
@@ -484,7 +485,7 @@ $__featRest  = array_slice($latestArticles, 7);
       <?php foreach ($politicalNews as $article): ?>
         <div class="news-card">
           <a class="news-card-link" href="<?php echo articleUrl($article); ?>">
-            <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/pol' . rand(1,10) . '/400/300'); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
+            <div class="card-img"><img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
             <div class="card-body">
               <span class="card-cat cat-political">سياسة</span>
               <div class="card-title"><?php echo e($article['title']); ?></div>
@@ -509,7 +510,7 @@ $__featRest  = array_slice($latestArticles, 7);
       <?php foreach ($economyNews as $article): ?>
         <div class="news-card">
           <a class="news-card-link" href="<?php echo articleUrl($article); ?>">
-            <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/eco' . rand(1,10) . '/400/300'); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
+            <div class="card-img"><img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
             <div class="card-body">
               <span class="card-cat cat-economic">اقتصاد</span>
               <div class="card-title"><?php echo e($article['title']); ?></div>
@@ -534,7 +535,7 @@ $__featRest  = array_slice($latestArticles, 7);
       <?php foreach ($sportsNews as $article): ?>
         <div class="news-card">
           <a class="news-card-link" href="<?php echo articleUrl($article); ?>">
-            <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/sp' . rand(1,10) . '/400/300'); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
+            <div class="card-img"><img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
             <div class="card-body">
               <span class="card-cat cat-sports">رياضة</span>
               <div class="card-title"><?php echo e($article['title']); ?></div>
@@ -559,7 +560,7 @@ $__featRest  = array_slice($latestArticles, 7);
       <?php foreach ($artsNews as $article): ?>
         <div class="news-card">
           <a class="news-card-link" href="<?php echo articleUrl($article); ?>">
-            <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/art' . rand(1,10) . '/400/300'); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
+            <div class="card-img"><img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
             <div class="card-body">
               <span class="card-cat cat-arts">فنون</span>
               <div class="card-title"><?php echo e($article['title']); ?></div>
@@ -584,7 +585,7 @@ $__featRest  = array_slice($latestArticles, 7);
       <?php foreach ($mediaItems as $i => $media): ?>
         <a class="vreel" href="<?php echo articleUrl($media); ?>">
           <div class="vreel-thumb">
-            <img src="<?php echo e($media['image_url'] ?? 'https://picsum.photos/seed/vid' . $i . '/400/600'); ?>" alt="<?php echo e($media['title'] ?? ''); ?>" loading="lazy" decoding="async">
+            <img src="<?php echo e($media['image_url'] ?? placeholderImage(400,600)); ?>" alt="<?php echo e($media['title'] ?? ''); ?>" loading="lazy" decoding="async">
             <div class="vreel-play">▶</div>
           </div>
           <div class="vreel-title"><?php echo e($media['title']); ?></div>
@@ -602,7 +603,7 @@ $__featRest  = array_slice($latestArticles, 7);
       <?php foreach ($reportsNews as $article): ?>
         <div class="news-card">
           <a class="news-card-link" href="<?php echo articleUrl($article); ?>">
-            <div class="card-img"><img src="<?php echo e($article['image_url'] ?? 'https://picsum.photos/seed/rep' . rand(1,10) . '/400/300'); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
+            <div class="card-img"><img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
             <div class="card-body">
               <span class="card-cat cat-reports">تقرير</span>
               <div class="card-title"><?php echo e($article['title']); ?></div>

@@ -3,7 +3,7 @@
  * Compact side card for the homepage featured 3-column grid.
  * Expects $article (array row).
  */
-$__imgUrl = $article['image_url'] ?? ('https://picsum.photos/seed/side' . (int)($article['id'] ?? 0) . '/200/160');
+$__imgUrl = $article['image_url'] ?? placeholderImage(200, 160);
 ?>
 <div class="nf-side-card">
   <a class="nf-side-card-link" href="<?php echo articleUrl($article); ?>">

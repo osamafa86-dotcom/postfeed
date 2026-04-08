@@ -133,8 +133,10 @@ function getAllArticles($page = 1, $perPage = 20) {
 }
 
 function countArticles() {
-    $db = getDB();
-    return $db->query("SELECT COUNT(*) FROM articles")->fetchColumn();
+    return cache_remember('count_articles', HOMEPAGE_CACHE_TTL, function() {
+        $db = getDB();
+        return $db->query("SELECT COUNT(*) FROM articles")->fetchColumn();
+    });
 }
 
 // ============================================
@@ -142,8 +144,10 @@ function countArticles() {
 // ============================================
 
 function getTickerItems() {
-    $db = getDB();
-    return $db->query("SELECT * FROM ticker_items WHERE is_active = 1 ORDER BY sort_order")->fetchAll();
+    return cache_remember('ticker_items', HOMEPAGE_CACHE_TTL, function() {
+        $db = getDB();
+        return $db->query("SELECT * FROM ticker_items WHERE is_active = 1 ORDER BY sort_order")->fetchAll();
+    });
 }
 
 // ============================================
@@ -151,8 +155,10 @@ function getTickerItems() {
 // ============================================
 
 function getTrends() {
-    $db = getDB();
-    return $db->query("SELECT * FROM trends WHERE is_active = 1 ORDER BY sort_order LIMIT 5")->fetchAll();
+    return cache_remember('trends_active', HOMEPAGE_CACHE_TTL, function() {
+        $db = getDB();
+        return $db->query("SELECT * FROM trends WHERE is_active = 1 ORDER BY sort_order LIMIT 5")->fetchAll();
+    });
 }
 
 // ============================================
@@ -160,8 +166,10 @@ function getTrends() {
 // ============================================
 
 function getActiveSources() {
-    $db = getDB();
-    return $db->query("SELECT * FROM sources WHERE is_active = 1 ORDER BY name")->fetchAll();
+    return cache_remember('sources_active', HOMEPAGE_CACHE_TTL, function() {
+        $db = getDB();
+        return $db->query("SELECT * FROM sources WHERE is_active = 1 ORDER BY name")->fetchAll();
+    });
 }
 
 function getAllSources() {
@@ -174,15 +182,19 @@ function getAllSources() {
 // ============================================
 
 function getNotifications($limit = 6) {
-    $db = getDB();
-    $stmt = $db->prepare("SELECT * FROM notifications ORDER BY created_at DESC LIMIT ?");
-    $stmt->execute([$limit]);
-    return $stmt->fetchAll();
+    return cache_remember('notifications_' . (int)$limit, HOMEPAGE_CACHE_TTL, function() use ($limit) {
+        $db = getDB();
+        $stmt = $db->prepare("SELECT * FROM notifications ORDER BY created_at DESC LIMIT ?");
+        $stmt->execute([$limit]);
+        return $stmt->fetchAll();
+    });
 }
 
 function getUnreadNotifCount() {
-    $db = getDB();
-    return $db->query("SELECT COUNT(*) FROM notifications WHERE is_read = 0")->fetchColumn();
+    return cache_remember('notifications_unread_count', HOMEPAGE_CACHE_TTL, function() {
+        $db = getDB();
+        return $db->query("SELECT COUNT(*) FROM notifications WHERE is_read = 0")->fetchColumn();
+    });
 }
 
 // ============================================
@@ -190,14 +202,16 @@ function getUnreadNotifCount() {
 // ============================================
 
 function getActivePoll() {
-    $db = getDB();
-    $poll = $db->query("SELECT * FROM polls WHERE is_active = 1 ORDER BY id DESC LIMIT 1")->fetch();
-    if ($poll) {
-        $stmt = $db->prepare("SELECT * FROM poll_options WHERE poll_id = ? ORDER BY sort_order");
-        $stmt->execute([$poll['id']]);
-        $poll['options'] = $stmt->fetchAll();
-    }
-    return $poll;
+    return cache_remember('active_poll', HOMEPAGE_CACHE_TTL, function() {
+        $db = getDB();
+        $poll = $db->query("SELECT * FROM polls WHERE is_active = 1 ORDER BY id DESC LIMIT 1")->fetch();
+        if ($poll) {
+            $stmt = $db->prepare("SELECT * FROM poll_options WHERE poll_id = ? ORDER BY sort_order");
+            $stmt->execute([$poll['id']]);
+            $poll['options'] = $stmt->fetchAll();
+        }
+        return $poll;
+    });
 }
 
 // ============================================
@@ -205,10 +219,12 @@ function getActivePoll() {
 // ============================================
 
 function getMediaItems($limit = 4) {
-    $db = getDB();
-    $stmt = $db->prepare("SELECT * FROM media_items WHERE is_active = 1 ORDER BY sort_order LIMIT ?");
-    $stmt->execute([$limit]);
-    return $stmt->fetchAll();
+    return cache_remember('media_items_' . (int)$limit, HOMEPAGE_CACHE_TTL, function() use ($limit) {
+        $db = getDB();
+        $stmt = $db->prepare("SELECT * FROM media_items WHERE is_active = 1 ORDER BY sort_order LIMIT ?");
+        $stmt->execute([$limit]);
+        return $stmt->fetchAll();
+    });
 }
 
 // ============================================
@@ -216,8 +232,10 @@ function getMediaItems($limit = 4) {
 // ============================================
 
 function getMostRead() {
-    $db = getDB();
-    return $db->query("SELECT * FROM most_read ORDER BY sort_order LIMIT 5")->fetchAll();
+    return cache_remember('most_read', HOMEPAGE_CACHE_TTL, function() {
+        $db = getDB();
+        return $db->query("SELECT * FROM most_read ORDER BY sort_order LIMIT 5")->fetchAll();
+    });
 }
 
 // ============================================
@@ -225,8 +243,10 @@ function getMostRead() {
 // ============================================
 
 function getCategories() {
-    $db = getDB();
-    return $db->query("SELECT * FROM categories WHERE is_active = 1 ORDER BY sort_order")->fetchAll();
+    return cache_remember('categories_active', HOMEPAGE_CACHE_TTL, function() {
+        $db = getDB();
+        return $db->query("SELECT * FROM categories WHERE is_active = 1 ORDER BY sort_order")->fetchAll();
+    });
 }
 
 // ============================================
@@ -234,11 +254,20 @@ function getCategories() {
 // ============================================
 
 function getSetting($key, $default = '') {
-    $db = getDB();
-    $stmt = $db->prepare("SELECT setting_value FROM settings WHERE setting_key = ?");
-    $stmt->execute([$key]);
-    $val = $stmt->fetchColumn();
-    return $val !== false ? $val : $default;
+    static $settings = null;
+    if ($settings === null) {
+        $settings = cache_remember('settings_all', HOMEPAGE_CACHE_TTL, function() {
+            try {
+                $db = getDB();
+                $rows = $db->query("SELECT setting_key, setting_value FROM settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+                return $rows ?: [];
+            } catch (Throwable $e) {
+                return [];
+            }
+        });
+        if (!is_array($settings)) $settings = [];
+    }
+    return array_key_exists($key, $settings) ? $settings[$key] : $default;
 }
 
 // ============================================
@@ -267,6 +296,24 @@ function formatViews($num) {
 
 function e($str) {
     return htmlspecialchars($str, ENT_QUOTES, 'UTF-8');
+}
+
+/**
+ * Returns a tiny inline SVG data URI used when an article has no image.
+ * Avoids any external HTTP request (previously used picsum.photos).
+ */
+function placeholderImage(int $w = 800, int $h = 500): string {
+    static $cache = [];
+    $key = $w . 'x' . $h;
+    if (isset($cache[$key])) return $cache[$key];
+    $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' . $w . ' ' . $h . '">'
+         . '<defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1">'
+         . '<stop offset="0" stop-color="#1e293b"/><stop offset="1" stop-color="#334155"/>'
+         . '</linearGradient></defs>'
+         . '<rect width="100%" height="100%" fill="url(#g)"/>'
+         . '<text x="50%" y="50%" fill="#94a3b8" font-family="Tajawal,sans-serif" font-size="' . (int)($w/14) . '" text-anchor="middle" dominant-baseline="middle">نيوزفلو</text>'
+         . '</svg>';
+    return $cache[$key] = 'data:image/svg+xml;utf8,' . rawurlencode($svg);
 }
 
 function articleUrl($article) {

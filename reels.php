@@ -40,6 +40,7 @@ $siteName = getSetting('site_name', SITE_NAME);
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>الريلز - <?php echo e($siteName); ?></title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }

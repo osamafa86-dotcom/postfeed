@@ -7,7 +7,7 @@
 $catLabel = $catLabel ?? ($article['cat_name'] ?? '');
 $catClass = $catClass ?? ($article['css_class'] ?? 'cat-political');
 $seed     = $seed     ?? 'card';
-$imgUrl   = $article['image_url'] ?? ('https://picsum.photos/seed/' . $seed . rand(1,10) . '/400/300');
+$imgUrl   = $article['image_url'] ?? placeholderImage(400, 300);
 $__aId    = (int)($article['id'] ?? 0);
 $__isSaved = !empty($GLOBALS['__nf_saved_ids']) && isset($GLOBALS['__nf_saved_ids'][$__aId]);
 ?>
