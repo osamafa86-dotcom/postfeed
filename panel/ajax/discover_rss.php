@@ -10,9 +10,9 @@ require_once __DIR__ . '/../../includes/rss_discover.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
-// Admin-only
+// Editor or admin — viewers cannot add sources.
 if (session_status() === PHP_SESSION_NONE) session_start();
-if (!isAdmin()) {
+if (!hasRole('editor')) {
     http_response_code(403);
     echo json_encode(['ok' => false, 'error' => 'غير مصرّح']);
     exit;

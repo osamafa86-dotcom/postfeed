@@ -44,7 +44,7 @@ try {
 }
 
 if (session_status() === PHP_SESSION_NONE) { @session_start(); }
-if (!isAdmin()) {
+if (!hasRole('editor')) {
     tgs_json_exit(['ok' => false, 'error' => 'انتهت الجلسة. أعد تسجيل الدخول.']);
 }
 
