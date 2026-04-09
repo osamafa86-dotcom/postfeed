@@ -963,6 +963,14 @@
   .tg-source strong { color:#229ED9; }
   .tg-time { color:var(--text-muted); font-size:11px; }
   .tg-text { font-size:13px; line-height:1.6; color:var(--text); display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden; }
+  .tg-card.is-new {
+    animation: tgHomeNew .9s ease-out;
+    border-right-width:6px;
+  }
+  @keyframes tgHomeNew {
+    0%   { background:#e6f6fd; transform:translateY(-10px); opacity:0; }
+    100% { background:#fff;    transform:translateY(0);     opacity:1; }
+  }
   @media(max-width:1100px) { .tg-breaking { grid-template-columns:1fr; } }
 
   /* REELS SECTION */

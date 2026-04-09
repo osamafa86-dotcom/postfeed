@@ -200,6 +200,9 @@
 .site-nav .nav-link.breaking::after { background:linear-gradient(90deg,#ef4444,#f87171); }
 .site-nav .nav-link.nav-reels { color:#fbbf24; }
 .site-nav .nav-link.nav-reels::after { background:linear-gradient(90deg,#fbbf24,#f59e0b); }
+.site-nav .nav-link.nav-telegram { color:#7dd3fc; }
+.site-nav .nav-link.nav-telegram:hover { color:#fff; }
+.site-nav .nav-link.nav-telegram::after { background:linear-gradient(90deg,#229ED9,#0ea5e9); }
 
 /* MOBILE HAMBURGER */
 .site-header .menu-toggle {
