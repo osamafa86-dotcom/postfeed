@@ -27,14 +27,14 @@ if ($q === '') {
  */
 function tg_normalize_username(string $raw): ?string {
     $raw = trim($raw);
-    $raw = preg_replace('#^https?://#i', '', $raw);
-    $raw = preg_replace('#^(www\.)?(t|telegram)\.me/#i', '', $raw);
-    $raw = preg_replace('#^s/#i', '', $raw);
-    $raw = ltrim($raw, '@');
-    // Strip trailing path/query
-    $raw = preg_replace('#[/?#].*$#', '', $raw);
+    $raw = preg_replace('~^https?://~i', '', $raw);
+    $raw = preg_replace('~^(www\.)?(t|telegram)\.me/~i', '', $raw);
+    $raw = preg_replace('~^s/~i', '', $raw);
+    $raw = ltrim($raw ?? '', '@');
+    // Strip trailing path/query/hash
+    $raw = preg_replace('~[/?#].*$~', '', $raw) ?? '';
     // Reject private invite links (start with +) and joinchat
-    if ($raw === '' || str_starts_with($raw, '+') || strcasecmp($raw, 'joinchat') === 0) return null;
+    if ($raw === '' || $raw[0] === '+' || strcasecmp($raw, 'joinchat') === 0) return null;
     // Telegram usernames: 5..32 chars, alnum + underscore, must start with a letter
     if (!preg_match('/^[a-zA-Z][a-zA-Z0-9_]{4,31}$/', $raw)) return null;
     return strtolower($raw);
