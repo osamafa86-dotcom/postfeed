@@ -186,7 +186,7 @@ $homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
 <meta name="description" content="مجمع الأخبار العربية الأول - أحدث الأخبار من مصادر موثوقة في السياسة، الاقتصاد، الرياضة، والتكنولوجيا">
 <link rel="stylesheet" href="assets/css/home.css?v=8">
-<link rel="stylesheet" href="assets/css/user.css?v=11">
+<link rel="stylesheet" href="assets/css/user.css?v=12">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>
@@ -358,6 +358,13 @@ $__featRest  = array_slice($latestArticles, 7);
         <div class="nf-feature-main-body">
           <h3 class="nf-feature-main-title"><?php echo e($__featMain['title']); ?></h3>
           <div class="nf-feature-main-meta">
+            <?php if (!empty($__featMain['source_name'])): ?>
+              <span class="nf-feature-main-source">
+                <span class="src-dot" style="background:<?php echo e($__featMain['logo_color'] ?? '#6b9fd4'); ?>"><?php echo e(mb_substr($__featMain['source_name'], 0, 1)); ?></span>
+                <?php echo e($__featMain['source_name']); ?>
+              </span>
+              <span class="sep">·</span>
+            <?php endif; ?>
             <span><?php echo timeAgo($__featMain['published_at']); ?></span>
             <span class="sep">|</span>
             <span><?php echo e($__featMain['cat_name'] ?? ''); ?></span>
