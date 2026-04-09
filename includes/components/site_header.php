@@ -24,6 +24,7 @@ $nf_nav_link_class = function (string $type, string $slug = '') use ($activeType
     $classes = ['nav-link'];
     if ($type === 'breaking') $classes[] = 'breaking';
     if ($type === 'reels')    $classes[] = 'nav-reels';
+    if ($type === 'telegram') $classes[] = 'nav-telegram';
     if ($type === $activeType && $slug === $activeSlug) $classes[] = 'active';
     return implode(' ', $classes);
 };
@@ -81,6 +82,7 @@ $nf_nav_link_class = function (string $type, string $slug = '') use ($activeType
       <a href="category/arts" class="<?php echo $nf_nav_link_class('category', 'arts'); ?>">فنون</a>
       <a href="category/media" class="<?php echo $nf_nav_link_class('category', 'media'); ?>">ميديا</a>
       <a href="category/reports" class="<?php echo $nf_nav_link_class('category', 'reports'); ?>">تقارير</a>
+      <a href="telegram.php" class="<?php echo $nf_nav_link_class('telegram'); ?>">📢 تلغرام</a>
       <a href="reels.php" class="<?php echo $nf_nav_link_class('reels'); ?>">🎬 ريلز</a>
     </div>
   </nav>
@@ -99,6 +101,7 @@ $nf_nav_link_class = function (string $type, string $slug = '') use ($activeType
   <a href="category/arts"<?php echo $activeSlug === 'arts' ? ' class="active"' : ''; ?>>🎨 فنون</a>
   <a href="category/media"<?php echo $activeSlug === 'media' ? ' class="active"' : ''; ?>>🎥 ميديا</a>
   <a href="category/reports"<?php echo $activeSlug === 'reports' ? ' class="active"' : ''; ?>>📊 تقارير</a>
+  <a href="telegram.php"<?php echo $activeType === 'telegram' ? ' class="active"' : ''; ?>>📢 تلغرام</a>
   <a href="reels.php">🎬 ريلز</a>
 </nav>
 

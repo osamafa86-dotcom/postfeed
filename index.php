@@ -364,9 +364,18 @@ $__featRest  = array_slice($latestArticles, 7);
     } catch (Exception $e) { error_log('tg read: ' . $e->getMessage()); }
     ?>
     <?php if (!empty($tgMsgs)): ?>
-    <div class="tg-breaking" style="margin-bottom:28px">
+    <!-- TELEGRAM BREAKING NEWS -->
+    <div class="section-header">
+      <div class="section-title"><div class="line" style="background:#229ED9"></div>📢 أخبار من تيليغرام</div>
+      <a class="see-all" href="telegram.php">عرض الكل ›</a>
+    </div>
+    <?php
+    $tgLatestId = 0;
+    foreach ($tgMsgs as $__m) { if ((int)$__m['id'] > $tgLatestId) $tgLatestId = (int)$__m['id']; }
+    ?>
+    <div class="tg-breaking" style="margin-bottom:28px" data-latest-id="<?php echo (int)$tgLatestId; ?>" data-page="1">
       <?php foreach ($tgMsgs as $m): ?>
-        <a href="<?php echo e($m['post_url']); ?>" target="_blank" class="tg-card">
+        <a href="<?php echo e($m['post_url']); ?>" target="_blank" rel="noopener" class="tg-card" data-tg-id="<?php echo (int)$m['id']; ?>">
           <?php if (!empty($m['image_url'])): ?>
             <div class="tg-img"><img src="<?php echo e($m['image_url']); ?>" alt="<?php echo e($m['text'] ?? ''); ?>" loading="lazy" decoding="async"></div>
           <?php endif; ?>
@@ -987,6 +996,7 @@ $__featRest  = array_slice($latestArticles, 7);
 <div class="nf-toast" id="nfToast"></div>
 <script src="assets/js/home.js?v=3" defer></script>
 <script src="assets/js/user.js?v=4" defer></script>
+<script src="assets/js/telegram-live.js?v=1" defer></script>
 
 </body>
 </html>
