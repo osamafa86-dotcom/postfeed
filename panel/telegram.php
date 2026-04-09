@@ -160,6 +160,25 @@ include __DIR__ . '/includes/panel_layout_head.php';
       .tg-confirm-row.show { display:flex; }
       .tg-confirm-row .tg-edit-fields { flex:1; display:flex; gap:10px; }
       .tg-confirm-row .tg-edit-fields input { flex:1; }
+      .tg-results { margin-top:14px; display:none; flex-direction:column; gap:8px; }
+      .tg-results.show { display:flex; }
+      .tg-result-item {
+        display:flex; align-items:center; gap:12px; padding:10px 12px;
+        border:1px solid var(--border,#e0e3e8); border-radius:10px;
+        background:var(--bg,#fff); cursor:pointer; transition:all .15s;
+        text-align:right;
+      }
+      .tg-result-item:hover { border-color:var(--primary,#1a73e8); background:var(--bg2,#f5f8ff); transform:translateX(-2px); }
+      .tg-result-item .tg-result-icon {
+        width:36px; height:36px; border-radius:50%; flex-shrink:0;
+        background:linear-gradient(135deg,#0ea5e9,#1a73e8); color:#fff;
+        display:flex; align-items:center; justify-content:center;
+        font-size:14px; font-weight:900;
+      }
+      .tg-result-item .tg-result-info { flex:1; min-width:0; }
+      .tg-result-item .tg-result-user { font-size:13px; font-weight:700; color:var(--text,#1a1a2e); }
+      .tg-result-item .tg-result-hint { font-size:11px; color:var(--text-muted,#6b7280); margin-top:2px; }
+      .tg-results-empty { padding:14px; text-align:center; color:var(--text-muted,#6b7280); font-size:13px; }
     </style>
     <div class="form-card">
       <h3 style="font-size:16px;font-weight:700;margin-bottom:10px;">➕ إضافة قناة تيليغرام</h3>
@@ -185,9 +204,10 @@ include __DIR__ . '/includes/panel_layout_head.php';
       <!-- TAB 2: Search by name -->
       <div class="tg-add-pane" data-pane="search">
         <label style="display:block;font-weight:600;margin-bottom:6px;">ابحث عن القناة بالاسم</label>
-        <input type="text" id="tgSearchInput" class="form-control" placeholder="اكتب اسم القناة على تيليغرام، مثل: aljazeera">
-        <small class="tg-hint">يتم التحقق تلقائياً أثناء الكتابة. ملاحظة: يجب استخدام اليوزرنيم (بالإنجليزية) كما هو على تيليغرام.</small>
+        <input type="text" id="tgSearchInput" class="form-control" placeholder="اكتب اسم القناة عربي أو إنجليزي، مثل: الجزيرة عاجل">
+        <small class="tg-hint">نبحث في محرّك بحث عام عن روابط قنوات تيليغرام المطابقة، ثم تختار القناة من القائمة.</small>
         <div class="tg-loading" data-loading="search">⏳ جاري البحث...</div>
+        <div class="tg-results" id="tgSearchResults"></div>
         <div class="tg-preview" data-preview="search"></div>
       </div>
 
@@ -301,18 +321,80 @@ include __DIR__ . '/includes/panel_layout_head.php';
         if (e.key === 'Enter') { e.preventDefault(); lookup('link', linkInput.value.trim()); }
       });
 
-      // Tab 2: debounced as-you-type
+      // Tab 2: real-name search via DuckDuckGo + click-to-verify
       var searchInput = document.getElementById('tgSearchInput');
+      var searchResults = document.getElementById('tgSearchResults');
+      var searchLoading = document.querySelector('[data-loading="search"]');
+      var searchPreview = document.querySelector('[data-preview="search"]');
       var searchTimer = null;
+
+      function clearSearchUI() {
+        searchResults.classList.remove('show');
+        searchResults.innerHTML = '';
+        searchPreview.classList.remove('show','error');
+        searchPreview.innerHTML = '';
+        form.style.display = 'none';
+      }
+
+      function renderSearchResults(data) {
+        searchResults.innerHTML = '';
+        if (!data || !data.ok) {
+          searchResults.classList.add('show');
+          searchResults.innerHTML = '<div class="tg-results-empty">⚠ ' + escapeHtml((data && data.error) || 'تعذّر البحث') + '</div>';
+          return;
+        }
+        if (!data.results || !data.results.length) {
+          searchResults.classList.add('show');
+          searchResults.innerHTML = '<div class="tg-results-empty">لا توجد نتائج — جرّب كلمة مختلفة أو الصق الرابط في التبويب الآخر.</div>';
+          return;
+        }
+        data.results.forEach(function(r){
+          var div = document.createElement('div');
+          div.className = 'tg-result-item';
+          var initial = (r.username || '?').trim().charAt(0).toUpperCase();
+          div.innerHTML =
+            '<div class="tg-result-icon">' + escapeHtml(initial) + '</div>' +
+            '<div class="tg-result-info">' +
+              '<div class="tg-result-user">@' + escapeHtml(r.username) + '</div>' +
+              '<div class="tg-result-hint">اضغط للتحقق وعرض تفاصيل القناة</div>' +
+            '</div>';
+          div.addEventListener('click', function(){
+            // Verify the picked username via the lookup endpoint, then render preview.
+            lookup('search', r.username);
+          });
+          searchResults.appendChild(div);
+        });
+        searchResults.classList.add('show');
+      }
+
+      function runSearch(query) {
+        clearSearchUI();
+        if (!query || query.length < 2) return;
+        searchLoading.classList.add('show');
+        fetch('telegram_search.php?q=' + encodeURIComponent(query), { credentials:'same-origin' })
+          .then(function(r){ return r.json(); })
+          .then(function(data){
+            searchLoading.classList.remove('show');
+            renderSearchResults(data);
+          })
+          .catch(function(){
+            searchLoading.classList.remove('show');
+            renderSearchResults({ok:false, error:'خطأ في الاتصال بمحرك البحث'});
+          });
+      }
+
       searchInput.addEventListener('input', function(){
         clearTimeout(searchTimer);
         var v = searchInput.value.trim();
-        if (v.length < 3) {
-          document.querySelector('[data-preview="search"]').classList.remove('show');
-          form.style.display = 'none';
-          return;
+        if (v.length < 2) { clearSearchUI(); return; }
+        searchTimer = setTimeout(function(){ runSearch(v); }, 600);
+      });
+      searchInput.addEventListener('keydown', function(e){
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          clearTimeout(searchTimer);
+          runSearch(searchInput.value.trim());
         }
-        searchTimer = setTimeout(function(){ lookup('search', v); }, 500);
       });
     })();
     </script>
