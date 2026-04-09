@@ -29,6 +29,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['api_key'])) {
     $key = trim($_POST['api_key']);
     $stmt = $db->prepare("INSERT INTO settings (setting_key, setting_value) VALUES ('anthropic_api_key', ?) ON DUPLICATE KEY UPDATE setting_value = ?");
     $stmt->execute([$key, $key]);
+    // getSetting() caches the whole settings table under 'settings_all'
+    // for an hour. Without busting that key here, the panel would keep
+    // handing the OLD invalid key to ai_helper.php until the cache expires.
+    cache_forget('settings_all');
     $success = 'تم حفظ المفتاح';
 }
 
