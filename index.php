@@ -256,75 +256,6 @@ include __DIR__ . '/includes/components/site_header.php';
   </div>
 </div>
 
-<!-- TRENDING NOW (velocity-scored hot stories) -->
-<?php if (!empty($trendingNow)): ?>
-<section id="trending-now" class="trending-strip" aria-label="الأكثر تداولاً الآن">
-  <div class="trending-strip-inner">
-    <div class="trending-strip-head">
-      <div class="trending-strip-title">
-        <span class="fire-badge" aria-hidden="true">🔥</span>
-        <h2>الأكثر تداولاً الآن</h2>
-        <span class="trending-live-dot" aria-hidden="true"></span>
-        <span class="trending-live-label">مباشر</span>
-      </div>
-      <div class="trending-strip-meta">
-        <?php if ($trendingReaders > 0): ?>
-          <span class="trending-readers">
-            <span class="trending-readers-pulse" aria-hidden="true"></span>
-            <b><?php echo number_format($trendingReaders); ?></b> يقرأ الآن
-          </span>
-        <?php endif; ?>
-        <a class="trending-see-all" href="trending.php">عرض الكل ›</a>
-      </div>
-    </div>
-    <div class="trending-strip-grid">
-      <?php foreach ($trendingNow as $__i => $__t):
-          $__rank = $__i + 1;
-          $__ck   = (string)($__t['cluster_key'] ?? '');
-          $__hasCluster = ($__ck !== '' && $__ck !== '-' && (int)$__t['cluster_size'] > 1);
-          $__href = $__hasCluster
-              ? ('cluster.php?key=' . urlencode($__ck))
-              : articleUrl($__t);
-          $__velocity = (int)$__t['velocity_score'];
-      ?>
-        <a class="trending-card<?php echo $__rank <= 3 ? ' trending-card-hot' : ''; ?>" href="<?php echo e($__href); ?>">
-          <span class="trending-rank">#<?php echo $__rank; ?></span>
-          <?php if (!empty($__t['image_url'])): ?>
-            <div class="trending-thumb" style="background-image:url('<?php echo e($__t['image_url']); ?>');"></div>
-          <?php else: ?>
-            <div class="trending-thumb trending-thumb-empty"></div>
-          <?php endif; ?>
-          <div class="trending-body">
-            <?php if (!empty($__t['cat_name'])): ?>
-              <span class="trending-cat trending-cat-<?php echo e($__t['css_class'] ?? 'general'); ?>"><?php echo e($__t['cat_name']); ?></span>
-            <?php endif; ?>
-            <h3 class="trending-title"><?php echo e($__t['title']); ?></h3>
-            <div class="trending-stats">
-              <span class="trending-stat trending-velocity" title="درجة السرعة">
-                <span class="trending-stat-ico">⚡</span>
-                <?php echo number_format($__velocity); ?>
-              </span>
-              <?php if ($__hasCluster): ?>
-                <span class="trending-stat trending-sources" title="عدد المصادر">
-                  <span class="trending-stat-ico">📰</span>
-                  <?php echo (int)$__t['cluster_size']; ?> مصادر
-                </span>
-              <?php endif; ?>
-              <?php if ((int)$__t['views_last_hour'] > 0): ?>
-                <span class="trending-stat trending-hour">
-                  <span class="trending-stat-ico">⏱</span>
-                  <?php echo number_format((int)$__t['views_last_hour']); ?>/ساعة
-                </span>
-              <?php endif; ?>
-            </div>
-          </div>
-        </a>
-      <?php endforeach; ?>
-    </div>
-  </div>
-</section>
-<?php endif; ?>
-
 <!-- LATEST NEWS (Featured 3-column layout) — full-width above main-layout -->
 <?php
 // Split: 1 center + 3 left + 3 right (7 items total), remainder spills into main news-grid
@@ -748,6 +679,75 @@ $__featRest  = array_slice($latestArticles, 7);
 
   </div><!-- /main-col -->
 </div><!-- /main-layout -->
+
+<!-- TRENDING NOW (velocity-scored hot stories) — sits above the footer -->
+<?php if (!empty($trendingNow)): ?>
+<section id="trending-now" class="trending-strip" aria-label="الأكثر تداولاً الآن">
+  <div class="trending-strip-inner">
+    <div class="trending-strip-head">
+      <div class="trending-strip-title">
+        <span class="fire-badge" aria-hidden="true">🔥</span>
+        <h2>الأكثر تداولاً الآن</h2>
+        <span class="trending-live-dot" aria-hidden="true"></span>
+        <span class="trending-live-label">مباشر</span>
+      </div>
+      <div class="trending-strip-meta">
+        <?php if ($trendingReaders > 0): ?>
+          <span class="trending-readers">
+            <span class="trending-readers-pulse" aria-hidden="true"></span>
+            <b><?php echo number_format($trendingReaders); ?></b> يقرأ الآن
+          </span>
+        <?php endif; ?>
+        <a class="trending-see-all" href="trending.php">عرض الكل ›</a>
+      </div>
+    </div>
+    <div class="trending-strip-grid">
+      <?php foreach ($trendingNow as $__i => $__t):
+          $__rank = $__i + 1;
+          $__ck   = (string)($__t['cluster_key'] ?? '');
+          $__hasCluster = ($__ck !== '' && $__ck !== '-' && (int)$__t['cluster_size'] > 1);
+          $__href = $__hasCluster
+              ? ('cluster.php?key=' . urlencode($__ck))
+              : articleUrl($__t);
+          $__velocity = (int)$__t['velocity_score'];
+      ?>
+        <a class="trending-card<?php echo $__rank <= 3 ? ' trending-card-hot' : ''; ?>" href="<?php echo e($__href); ?>">
+          <span class="trending-rank">#<?php echo $__rank; ?></span>
+          <?php if (!empty($__t['image_url'])): ?>
+            <div class="trending-thumb" style="background-image:url('<?php echo e($__t['image_url']); ?>');"></div>
+          <?php else: ?>
+            <div class="trending-thumb trending-thumb-empty"></div>
+          <?php endif; ?>
+          <div class="trending-body">
+            <?php if (!empty($__t['cat_name'])): ?>
+              <span class="trending-cat trending-cat-<?php echo e($__t['css_class'] ?? 'general'); ?>"><?php echo e($__t['cat_name']); ?></span>
+            <?php endif; ?>
+            <h3 class="trending-title"><?php echo e($__t['title']); ?></h3>
+            <div class="trending-stats">
+              <span class="trending-stat trending-velocity" title="درجة السرعة">
+                <span class="trending-stat-ico">⚡</span>
+                <?php echo number_format($__velocity); ?>
+              </span>
+              <?php if ($__hasCluster): ?>
+                <span class="trending-stat trending-sources" title="عدد المصادر">
+                  <span class="trending-stat-ico">📰</span>
+                  <?php echo (int)$__t['cluster_size']; ?> مصادر
+                </span>
+              <?php endif; ?>
+              <?php if ((int)$__t['views_last_hour'] > 0): ?>
+                <span class="trending-stat trending-hour">
+                  <span class="trending-stat-ico">⏱</span>
+                  <?php echo number_format((int)$__t['views_last_hour']); ?>/ساعة
+                </span>
+              <?php endif; ?>
+            </div>
+          </div>
+        </a>
+      <?php endforeach; ?>
+    </div>
+  </div>
+</section>
+<?php endif; ?>
 
 <!-- FOOTER -->
 <footer>
