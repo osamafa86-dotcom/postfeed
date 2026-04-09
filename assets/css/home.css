@@ -825,6 +825,32 @@
     box-shadow:0 6px 18px -6px rgba(220,38,38,.55);
   }
   .mr2-tab-icon { font-size:14px; }
+  /* Velocity tab — orange accent + pulsing live dot */
+  .mr2-tab-velocity { position:relative; }
+  .mr2-tab-velocity.active {
+    background:linear-gradient(135deg,#f97316,#dc2626); border-color:#f97316;
+    box-shadow:0 6px 18px -6px rgba(249,115,22,.6);
+  }
+  .mr2-live-dot {
+    width:7px; height:7px; border-radius:50%;
+    background:#16a34a; display:inline-block;
+    box-shadow:0 0 0 0 rgba(22,163,74,.6);
+    animation:mr2LivePulse 1.6s ease-out infinite;
+  }
+  .mr2-tab-velocity.active .mr2-live-dot { background:#fff; box-shadow:0 0 0 0 rgba(255,255,255,.7); }
+  @keyframes mr2LivePulse {
+    0%   { box-shadow:0 0 0 0 rgba(22,163,74,.6); }
+    70%  { box-shadow:0 0 0 7px rgba(22,163,74,0); }
+    100% { box-shadow:0 0 0 0 rgba(22,163,74,0); }
+  }
+  /* Hot rank badge for velocity items */
+  .mr2-rank-hot {
+    background:linear-gradient(135deg,#f97316,#dc2626) !important;
+    color:#fff !important;
+    box-shadow:0 4px 12px -3px rgba(220,38,38,.5);
+  }
+  .mr2-item-velocity { border-color:#fed7aa; }
+  .mr2-item-velocity:hover { border-color:#f97316; box-shadow:0 8px 20px -8px rgba(249,115,22,.35); }
   .mr2-range {
     display:flex; align-items:center; gap:14px;
     font-size:13px; color:#6b7280;

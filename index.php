@@ -208,7 +208,7 @@ $homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#1a5c5c">
 <link rel="stylesheet" href="assets/css/site-header.css?v=1">
-<link rel="stylesheet" href="assets/css/home.css?v=19">
+<link rel="stylesheet" href="assets/css/home.css?v=20">
 <link rel="stylesheet" href="assets/css/user.css?v=17">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 <script>
@@ -611,8 +611,8 @@ $__featRest  = array_slice($latestArticles, 7);
     </div>
     <?php endif; ?>
 
-    <!-- MOST READ / TRENDING TABBED SECTION -->
-    <?php if (!empty($mostRead) || !empty($trends)): ?>
+    <!-- MOST READ / TRENDING TOPICS / HOTTEST RIGHT NOW — tabbed -->
+    <?php if (!empty($mostRead) || !empty($trends) || !empty($trendingNow)): ?>
     <div id="trending" class="mr2-section">
       <div class="mr2-head">
         <div class="mr2-tabs">
@@ -622,16 +622,33 @@ $__featRest  = array_slice($latestArticles, 7);
           <button type="button" class="mr2-tab" data-mr2-tab="trend">
             <span class="mr2-tab-icon">🔥</span> مواضيع شائعة
           </button>
+          <?php if (!empty($trendingNow)): ?>
+          <button type="button" class="mr2-tab mr2-tab-velocity" data-mr2-tab="velocity">
+            <span class="mr2-tab-icon">⚡</span> الأكثر تداولاً الآن
+            <span class="mr2-live-dot" aria-hidden="true"></span>
+          </button>
+          <?php endif; ?>
         </div>
-        <div class="mr2-range">
+        <div class="mr2-range" data-mr2-range>
           <label class="mr2-range-opt active"><input type="radio" name="mr2range" value="day" checked><span>اليوم</span></label>
           <label class="mr2-range-opt"><input type="radio" name="mr2range" value="week"><span>الأسبوع</span></label>
           <label class="mr2-range-opt"><input type="radio" name="mr2range" value="month"><span>الشهر</span></label>
         </div>
       </div>
-      <div class="mr2-desc">
+      <div class="mr2-desc" data-mr2-desc="read">
         تم اختيار مواضيع «نيوزفلو» الأكثر قراءة بناءً على إجمالي عدد المشاهدات اليومية. اقرأ المواضيع الأكثر شعبية كل يوم من هنا.
       </div>
+      <div class="mr2-desc" data-mr2-desc="trend" hidden>
+        أكثر المواضيع تداولاً على منصات التواصل خلال الساعات الأخيرة.
+      </div>
+      <?php if (!empty($trendingNow)): ?>
+      <div class="mr2-desc" data-mr2-desc="velocity" hidden>
+        أخبار ترتفع قراءاتها بسرعة <b>الآن</b> — مرتبة بدرجة السرعة (آخر ساعة × 4 + آخر 6 ساعات).
+        <?php if ($trendingReaders > 0): ?>
+          · <b style="color:#dc2626;"><?php echo number_format($trendingReaders); ?></b> يقرأ الآن
+        <?php endif; ?>
+      </div>
+      <?php endif; ?>
 
       <?php if (!empty($mostRead)): ?>
       <div class="mr2-grid" data-mr2-panel="read">
@@ -674,80 +691,47 @@ $__featRest  = array_slice($latestArticles, 7);
           <?php $trendNum++; endforeach; ?>
       </div>
       <?php endif; ?>
+
+      <?php if (!empty($trendingNow)): ?>
+      <div class="mr2-grid" data-mr2-panel="velocity" hidden>
+        <?php $vNum = 1; foreach (array_slice($trendingNow, 0, 6) as $__t):
+            $__ck = (string)($__t['cluster_key'] ?? '');
+            $__hasCluster = ($__ck !== '' && $__ck !== '-' && (int)$__t['cluster_size'] > 1);
+            $__href = $__hasCluster ? ('cluster.php?key=' . urlencode($__ck)) : articleUrl($__t);
+            $__velocity = (int)$__t['velocity_score'];
+            $__vh       = (int)$__t['views_last_hour'];
+        ?>
+          <a class="mr2-item mr2-item-velocity" href="<?php echo e($__href); ?>">
+            <div class="mr2-rank mr2-rank-hot"><?php echo $vNum; ?></div>
+            <div class="mr2-body">
+              <div class="mr2-title"><?php echo e($__t['title']); ?></div>
+              <div class="mr2-meta">
+                <?php if (!empty($__t['cat_name'])): ?>
+                  <span class="mr2-cat"><?php echo e($__t['cat_name']); ?></span>
+                <?php endif; ?>
+                <span class="mr2-views" style="color:#dc2626;font-weight:800;">⚡ <?php echo number_format($__velocity); ?></span>
+                <?php if ($__vh > 0): ?>
+                  <span class="mr2-views">⏱ <?php echo number_format($__vh); ?>/ساعة</span>
+                <?php endif; ?>
+                <?php if ($__hasCluster): ?>
+                  <span class="mr2-views">📰 <?php echo (int)$__t['cluster_size']; ?> مصادر</span>
+                <?php endif; ?>
+              </div>
+            </div>
+            <?php if (!empty($__t['image_url'])): ?>
+              <div class="mr2-thumb"><img src="<?php echo e($__t['image_url']); ?>" alt="" loading="lazy" decoding="async"></div>
+            <?php else: ?>
+              <div class="mr2-thumb mr2-thumb-trend">⚡</div>
+            <?php endif; ?>
+          </a>
+          <?php $vNum++; endforeach; ?>
+      </div>
+      <?php endif; ?>
     </div>
     <?php endif; ?>
 
   </div><!-- /main-col -->
 </div><!-- /main-layout -->
-
-<!-- TRENDING NOW (velocity-scored hot stories) — sits above the footer -->
-<?php if (!empty($trendingNow)): ?>
-<section id="trending-now" class="trending-strip" aria-label="الأكثر تداولاً الآن">
-  <div class="trending-strip-inner">
-    <div class="trending-strip-head">
-      <div class="trending-strip-title">
-        <span class="fire-badge" aria-hidden="true">🔥</span>
-        <h2>الأكثر تداولاً الآن</h2>
-        <span class="trending-live-dot" aria-hidden="true"></span>
-        <span class="trending-live-label">مباشر</span>
-      </div>
-      <div class="trending-strip-meta">
-        <?php if ($trendingReaders > 0): ?>
-          <span class="trending-readers">
-            <span class="trending-readers-pulse" aria-hidden="true"></span>
-            <b><?php echo number_format($trendingReaders); ?></b> يقرأ الآن
-          </span>
-        <?php endif; ?>
-        <a class="trending-see-all" href="trending.php">عرض الكل ›</a>
-      </div>
-    </div>
-    <div class="trending-strip-grid">
-      <?php foreach ($trendingNow as $__i => $__t):
-          $__rank = $__i + 1;
-          $__ck   = (string)($__t['cluster_key'] ?? '');
-          $__hasCluster = ($__ck !== '' && $__ck !== '-' && (int)$__t['cluster_size'] > 1);
-          $__href = $__hasCluster
-              ? ('cluster.php?key=' . urlencode($__ck))
-              : articleUrl($__t);
-          $__velocity = (int)$__t['velocity_score'];
-      ?>
-        <a class="trending-card<?php echo $__rank <= 3 ? ' trending-card-hot' : ''; ?>" href="<?php echo e($__href); ?>">
-          <span class="trending-rank">#<?php echo $__rank; ?></span>
-          <?php if (!empty($__t['image_url'])): ?>
-            <div class="trending-thumb" style="background-image:url('<?php echo e($__t['image_url']); ?>');"></div>
-          <?php else: ?>
-            <div class="trending-thumb trending-thumb-empty"></div>
-          <?php endif; ?>
-          <div class="trending-body">
-            <?php if (!empty($__t['cat_name'])): ?>
-              <span class="trending-cat trending-cat-<?php echo e($__t['css_class'] ?? 'general'); ?>"><?php echo e($__t['cat_name']); ?></span>
-            <?php endif; ?>
-            <h3 class="trending-title"><?php echo e($__t['title']); ?></h3>
-            <div class="trending-stats">
-              <span class="trending-stat trending-velocity" title="درجة السرعة">
-                <span class="trending-stat-ico">⚡</span>
-                <?php echo number_format($__velocity); ?>
-              </span>
-              <?php if ($__hasCluster): ?>
-                <span class="trending-stat trending-sources" title="عدد المصادر">
-                  <span class="trending-stat-ico">📰</span>
-                  <?php echo (int)$__t['cluster_size']; ?> مصادر
-                </span>
-              <?php endif; ?>
-              <?php if ((int)$__t['views_last_hour'] > 0): ?>
-                <span class="trending-stat trending-hour">
-                  <span class="trending-stat-ico">⏱</span>
-                  <?php echo number_format((int)$__t['views_last_hour']); ?>/ساعة
-                </span>
-              <?php endif; ?>
-            </div>
-          </div>
-        </a>
-      <?php endforeach; ?>
-    </div>
-  </div>
-</section>
-<?php endif; ?>
 
 <!-- FOOTER -->
 <footer>
@@ -1138,7 +1122,7 @@ $__featRest  = array_slice($latestArticles, 7);
 </div>
 
 <div class="nf-toast" id="nfToast"></div>
-<script src="assets/js/home.js?v=4" defer></script>
+<script src="assets/js/home.js?v=5" defer></script>
 <script src="assets/js/user.js?v=4" defer></script>
 <script src="assets/js/telegram-live.js?v=2" defer></script>
 <script>
