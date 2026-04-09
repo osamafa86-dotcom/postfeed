@@ -996,7 +996,7 @@ $__featRest  = array_slice($latestArticles, 7);
 <div class="nf-toast" id="nfToast"></div>
 <script src="assets/js/home.js?v=3" defer></script>
 <script src="assets/js/user.js?v=4" defer></script>
-<script src="assets/js/telegram-live.js?v=1" defer></script>
+<script src="assets/js/telegram-live.js?v=2" defer></script>
 
 </body>
 </html>

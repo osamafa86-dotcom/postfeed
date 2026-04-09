@@ -1,38 +1,39 @@
 /**
- * NewsFlow — near-real-time Telegram feed updater.
+ * NewsFlow — real-time Telegram feed updater.
  *
  * Drives both:
  *   1) The `/telegram.php` dedicated page (.tg-grid)
  *   2) The homepage's Telegram section (.tg-breaking)
  *
+ * Primary transport: Server-Sent Events via /telegram_stream.php.
+ *   The stream stays open; the server pushes new messages as soon as
+ *   they're scraped, so the page updates live with ~seconds of latency.
+ *
+ * Fallback: polling /telegram_feed.php every 20s if the browser is too
+ * old for EventSource or the stream errors out repeatedly.
+ *
  * Behavior:
- *   - On load, starts a poll loop that hits /telegram_feed.php?since_id=N
- *     every POLL_INTERVAL_MS (30s by default).
- *   - First poll of each cycle also asks the server to sync-if-stale
- *     (&sync=1), which triggers tg_sync_all_sources under a file lock so
- *     visitors effectively drive updates without waiting for cron.
- *   - When new messages arrive, they're prepended to the grid with a
- *     slide-in animation and the total counter bumps.
- *   - Polling pauses when the tab is hidden, resumes on focus.
- *   - Escalates to a faster interval (15s) for the first 2 minutes after
- *     the page loads, then settles at the normal 30s cadence.
+ *   - New messages are prepended to the grid with a slide-in animation
+ *     and the total counter bumps.
+ *   - The live pill flashes "تم التحديث" for 2.5s whenever new content
+ *     arrives, then returns to "مباشر".
+ *   - Streaming pauses when the tab is hidden and reconnects on focus
+ *     so we don't waste PHP-FPM workers on backgrounded tabs.
  */
 (function(){
   'use strict';
 
-  var POLL_INTERVAL_MS      = 30000;  // normal cadence
-  var POLL_INTERVAL_FAST_MS = 15000;  // initial faster cadence
-  var FAST_WINDOW_MS        = 120000; // fast cadence lasts this long after load
-  var MAX_ON_PAGE_1         = 24;     // cap on /telegram.php page 1
+  var MAX_ON_PAGE_1    = 24;     // cap items on page 1 of /telegram.php
+  var POLL_FALLBACK_MS = 20000;  // fallback polling cadence (SSE not available)
 
   var grid = document.getElementById('tgGrid') || document.querySelector('.tg-breaking');
   if (!grid) return;
 
-  var pill       = document.getElementById('tgLivePill');
-  var pillLabel  = document.getElementById('tgLiveLabel');
-  var totalEl    = document.getElementById('tgTotalCount');
+  var pill      = document.getElementById('tgLivePill');
+  var pillLabel = document.getElementById('tgLiveLabel');
+  var totalEl   = document.getElementById('tgTotalCount');
 
-  // Latest message id in the current DOM (highest wins)
+  // Latest message id known to the client — sync with server via since_id.
   function getLatestId() {
     var fromAttr = parseInt(grid.getAttribute('data-latest-id') || '0', 10);
     var maxId = isNaN(fromAttr) ? 0 : fromAttr;
@@ -44,7 +45,7 @@
     return maxId;
   }
 
-  // Only auto-update page 1 on /telegram.php. On deeper pages, leave the grid alone.
+  // Only update page 1 of /telegram.php. Deeper pages stay static.
   var pageNumber = parseInt(grid.getAttribute('data-page') || '1', 10);
   if (isNaN(pageNumber)) pageNumber = 1;
   var canPrepend = (pageNumber === 1);
@@ -104,14 +105,16 @@
   }
 
   function prependMessages(messages) {
-    if (!messages || !messages.length) return;
+    if (!messages || !messages.length) return 0;
     // Walk backwards so the newest ends up on top after prepending
+    var added = 0;
     for (var i = messages.length - 1; i >= 0; i--) {
       var m = messages[i];
       // Skip if already present (safety)
       if (grid.querySelector('[data-tg-id="'+m.id+'"]')) continue;
       var node = buildNode(m);
       grid.insertBefore(node, grid.firstChild);
+      added++;
     }
 
     // Cap items on page 1 of /telegram.php so the DOM doesn't grow unboundedly
@@ -121,73 +124,156 @@
         all[j].parentNode && all[j].parentNode.removeChild(all[j]);
       }
     }
+    return added;
   }
 
   function bumpCounter(added) {
-    if (!totalEl) return;
+    if (!totalEl || !added) return;
     var n = parseInt((totalEl.textContent || '0').replace(/[^0-9]/g, ''), 10) || 0;
     totalEl.textContent = (n + added).toLocaleString('ar-EG');
   }
 
+  var pillResetTimer = null;
   function setPillState(state) {
     if (!pill || !pillLabel) return;
     pill.classList.remove('updating');
+    if (pillResetTimer) { clearTimeout(pillResetTimer); pillResetTimer = null; }
     if (state === 'updating') {
       pill.classList.add('updating');
       pillLabel.textContent = 'جاري التحديث...';
     } else if (state === 'new') {
       pillLabel.textContent = 'تم التحديث';
-      setTimeout(function(){ if (pillLabel) pillLabel.textContent = 'مباشر'; }, 2500);
+      pillResetTimer = setTimeout(function(){ if (pillLabel) pillLabel.textContent = 'مباشر'; }, 2500);
     } else {
       pillLabel.textContent = 'مباشر';
     }
   }
 
-  var loadedAt = Date.now();
-  var timerId  = null;
-  var inFlight = false;
+  function handleIncoming(messages) {
+    if (!canPrepend || !messages || !messages.length) return;
+    var added = prependMessages(messages);
+    if (added > 0) {
+      bumpCounter(added);
+      setPillState('new');
+    }
+  }
 
-  function poll() {
-    if (inFlight) return;
-    if (document.hidden) return;
-    inFlight = true;
+  // ---------- Transport 1: Server-Sent Events ----------
+
+  var sseSource    = null;
+  var sseFailCount = 0;
+  var usingFallback = false;
+
+  function startSSE() {
+    if (typeof window.EventSource !== 'function') { startPolling(); return; }
+    if (sseSource) { try { sseSource.close(); } catch(e){} sseSource = null; }
+
+    var url = 'telegram_stream.php?since_id=' + encodeURIComponent(getLatestId()) + '&_=' + Date.now();
+    try {
+      sseSource = new EventSource(url);
+    } catch (e) {
+      startPolling();
+      return;
+    }
+
+    sseSource.addEventListener('open', function(){
+      sseFailCount = 0;
+      setPillState('idle');
+    });
+
+    sseSource.addEventListener('hello', function(){
+      // Server said hi — connection is live.
+      setPillState('idle');
+    });
+
+    sseSource.addEventListener('messages', function(ev){
+      try {
+        var payload = JSON.parse(ev.data);
+        handleIncoming(payload && payload.messages);
+      } catch (e) { /* ignore malformed frame */ }
+    });
+
+    sseSource.addEventListener('bye', function(){
+      // Server told us it hit its max lifetime. Close and reconnect —
+      // this is the normal "rotate connection" path.
+      try { sseSource.close(); } catch(e){}
+      sseSource = null;
+      if (!document.hidden) startSSE();
+    });
+
+    sseSource.addEventListener('error', function(){
+      // Network blip or server-side crash. EventSource will try to
+      // auto-reconnect, but if it keeps failing we fall back to polling.
+      sseFailCount++;
+      if (sseFailCount >= 3) {
+        try { sseSource.close(); } catch(e){}
+        sseSource = null;
+        startPolling();
+      }
+    });
+  }
+
+  function stopSSE() {
+    if (sseSource) { try { sseSource.close(); } catch(e){} sseSource = null; }
+  }
+
+  // ---------- Transport 2: polling fallback ----------
+
+  var pollTimer = null;
+  var pollInFlight = false;
+
+  function pollOnce() {
+    if (pollInFlight || document.hidden) return;
+    pollInFlight = true;
     setPillState('updating');
-
     var sinceId = getLatestId();
     var url = 'telegram_feed.php?since_id=' + encodeURIComponent(sinceId) + '&limit=20&sync=1&_=' + Date.now();
-
     fetch(url, { credentials: 'same-origin', cache: 'no-store' })
       .then(function(r){ return r.json(); })
       .catch(function(){ return null; })
       .then(function(data){
-        inFlight = false;
-        if (!data || !data.ok) {
-          setPillState('idle');
-          return;
-        }
-        if (canPrepend && data.messages && data.messages.length) {
-          prependMessages(data.messages);
-          bumpCounter(data.messages.length);
-          setPillState('new');
+        pollInFlight = false;
+        if (!data || !data.ok) { setPillState('idle'); return; }
+        if (data.messages && data.messages.length) {
+          handleIncoming(data.messages);
         } else {
           setPillState('idle');
         }
       });
   }
 
-  function schedule() {
-    if (timerId) clearTimeout(timerId);
-    var interval = (Date.now() - loadedAt < FAST_WINDOW_MS) ? POLL_INTERVAL_FAST_MS : POLL_INTERVAL_MS;
-    timerId = setTimeout(function(){ poll(); schedule(); }, interval);
+  function startPolling() {
+    if (usingFallback) return;
+    usingFallback = true;
+    stopSSE();
+    if (pollTimer) clearInterval(pollTimer);
+    pollOnce();
+    pollTimer = setInterval(pollOnce, POLL_FALLBACK_MS);
   }
 
+  function stopPolling() {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  }
+
+  // ---------- Lifecycle ----------
+
   document.addEventListener('visibilitychange', function(){
-    if (!document.hidden) {
-      poll();     // catch up immediately on focus
-      schedule(); // resume timer
+    if (document.hidden) {
+      // Don't hold an SSE connection open for a backgrounded tab.
+      stopSSE();
+      stopPolling();
+    } else {
+      // Coming back into focus — reconnect fresh.
+      if (usingFallback) {
+        stopPolling();
+        pollTimer = setInterval(pollOnce, POLL_FALLBACK_MS);
+        pollOnce();
+      } else {
+        startSSE();
+      }
     }
   });
 
-  // Kick off: first poll after 2s, then normal cadence.
-  setTimeout(function(){ poll(); schedule(); }, 2000);
+  // Kick off: wait a beat for the rest of the page to settle.
+  setTimeout(startSSE, 500);
 })();
