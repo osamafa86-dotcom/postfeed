@@ -77,7 +77,7 @@ function ai_summarize_article($title, $content, $maxTokens = 500) {
  *                            'bullets'=>array<string>, 'topics'=>array<string>]
  *                           or ['ok'=>false, 'error'=>string].
  */
-function ai_summarize_telegram(array $messages, int $maxTokens = 900): array {
+function ai_summarize_telegram(array $messages, int $maxTokens = 2400): array {
     // Prefer the key saved through the admin panel so rotations from
     // panel/ai.php take effect immediately. Fall back to the env var
     // only if the DB setting is empty.
@@ -90,17 +90,17 @@ function ai_summarize_telegram(array $messages, int $maxTokens = 900): array {
         return ['ok' => false, 'error' => 'لا توجد رسائل للتلخيص'];
     }
 
-    // Build a compact corpus. We cap each message at 400 chars and the
-    // whole blob at ~12 000 chars so we stay well under Claude's input
-    // budget even for very chatty windows.
+    // Build a compact corpus. We cap each message at 350 chars and the
+    // whole blob at ~45 000 chars. Claude Haiku has a 200K-token context
+    // window so this still leaves massive headroom for the prompt + output.
     $lines = [];
-    $budget = 12000;
+    $budget = 45000;
     $used   = 0;
     foreach ($messages as $m) {
         $text = trim((string)($m['text'] ?? ''));
         if ($text === '') continue;
         $text = preg_replace('/\s+/u', ' ', $text);
-        if (mb_strlen($text) > 400) $text = mb_substr($text, 0, 400) . '…';
+        if (mb_strlen($text) > 350) $text = mb_substr($text, 0, 350) . '…';
         $handle = '@' . ($m['username'] ?? 'tg');
         $when   = !empty($m['posted_at']) ? date('H:i', strtotime($m['posted_at'])) : '';
         $line   = '- [' . $handle . ' ' . $when . '] ' . $text;
@@ -116,19 +116,38 @@ function ai_summarize_telegram(array $messages, int $maxTokens = 900): array {
     $corpus = implode("\n", $lines);
     $count  = count($lines);
 
-    $prompt = "أنت محرر أخبار محترف في غرفة أخبار عربية. لديك قائمة بآخر {$count} رسالة وصلت "
-            . "من قنوات تيليغرام إخبارية خلال الفترة الماضية. اقرأها كلها ثم اكتب موجزاً إخبارياً "
-            . "عربياً قصيراً ومحايداً. ادمج الأخبار المكررة أو المتعلقة بنفس الحدث في نقطة واحدة، "
-            . "وتجاهل الإعلانات والرسائل غير الإخبارية. حافظ على النبرة الصحفية الرسمية ولا تخترع "
-            . "معلومات غير موجودة في الرسائل.\n\n"
+    $prompt = "أنت رئيس تحرير في غرفة أخبار عربية محترفة. لديك قائمة بآخر {$count} رسالة وصلت "
+            . "من قنوات تيليغرام إخبارية خلال الفترة الماضية. مهمتك: قراءة كل الرسائل ثم كتابة "
+            . "تقرير إخباري عربي منظم ومنسّق بمستوى احترافي عالٍ، كأنه تقرير موجز في نشرة أخبار "
+            . "رسمية.\n\n"
+            . "قواعد التحرير:\n"
+            . "- اجمع الرسائل المتعلقة بنفس الحدث في عنصر واحد، ولا تكرّر الخبر.\n"
+            . "- تجاهل الإعلانات والرسائل غير الإخبارية وروابط الاشتراك.\n"
+            . "- نظّم المحتوى في محاور رئيسية (ملفات إخبارية)، وكل محور يضم عناوين فرعية وتفاصيل.\n"
+            . "- استخدم لغة عربية فصحى، محايدة، بنبرة صحفية رسمية.\n"
+            . "- كل تفصيلة إخبارية يجب أن تكون جملة كاملة وواضحة تعطي السياق والمكان والأطراف.\n"
+            . "- لا تخترع أي معلومة غير موجودة في الرسائل.\n"
+            . "- رتّب المحاور من الأهم إلى الأقل أهمية.\n\n"
             . "الرسائل:\n" . $corpus . "\n\n"
-            . "أعطني الرد بصيغة JSON صالح فقط (بدون أي نص خارج الـ JSON) بالشكل التالي:\n"
+            . "أعطني الرد بصيغة JSON صالح فقط (بدون أي نص خارج الـ JSON) وبالشكل التالي حصراً:\n"
             . '{'
-            . '"headline":"عنوان رئيسي قصير يلخّص أبرز ما جاء في الرسائل (أقل من 90 حرفاً)",'
-            . '"summary":"فقرة موجزة من 3-5 جمل تلخّص المشهد العام",'
-            . '"bullets":["نقطة إخبارية 1","نقطة 2","نقطة 3","نقطة 4","نقطة 5"],'
-            . '"topics":["موضوع 1","موضوع 2","موضوع 3"]'
-            . '}';
+            . '"headline":"عنوان رئيسي قوي يلخّص أبرز حدث (أقل من 90 حرفاً)",'
+            . '"summary":"فقرة افتتاحية من 3-5 جمل تعطي القارئ المشهد العام بأسلوب نشرة الأخبار",'
+            . '"sections":['
+            .   '{'
+            .     '"title":"عنوان المحور (مثال: التطورات العسكرية في الشمال)",'
+            .     '"icon":"رمز emoji واحد مناسب للمحور",'
+            .     '"items":["تفصيلة إخبارية كاملة 1","تفصيلة 2","تفصيلة 3"]'
+            .   '}'
+            . '],'
+            . '"topics":["وسم 1","وسم 2","وسم 3","وسم 4"]'
+            . '}'
+            . "\n\n"
+            . "متطلبات:\n"
+            . "- اجعل عدد المحاور (sections) بين 3 و 6 حسب ما تستحقه الأخبار.\n"
+            . "- كل محور يحتوي على 2 إلى 5 تفاصيل إخبارية (items).\n"
+            . "- الرموز التعبيرية يجب أن تكون رمزاً واحداً فقط لكل محور (مثل 🔴 🟢 🗞️ ⚡ 🛡️ 🏛️ 📍 ⚖️).\n"
+            . "- العنوان الرئيسي (headline) يجب أن يكون جذّاباً وإخبارياً، لا عاماً.";
 
     $body = json_encode([
         'model'      => 'claude-haiku-4-5-20251001',
@@ -193,11 +212,35 @@ function ai_summarize_telegram(array $messages, int $maxTokens = 900): array {
         return ['ok' => false, 'error' => 'Failed to parse AI response', 'raw' => $text];
     }
 
+    // Normalize sections: each section becomes
+    //   ['title'=>string, 'icon'=>string, 'items'=>string[]]
+    // Drop any section that has no usable items, and bail out to the
+    // legacy flat-bullets shape if the model ignored the new schema.
+    $sections = [];
+    foreach ((array)($parsed['sections'] ?? []) as $sec) {
+        if (!is_array($sec)) continue;
+        $title = trim((string)($sec['title'] ?? ''));
+        $icon  = trim((string)($sec['icon']  ?? ''));
+        $items = array_values(array_filter(array_map(
+            function($v) { return trim((string)$v); },
+            (array)($sec['items'] ?? [])
+        )));
+        if (!$items) continue;
+        $sections[] = [
+            'title' => $title,
+            'icon'  => $icon,
+            'items' => $items,
+        ];
+    }
+
+    $bullets = array_values(array_filter(array_map('strval', (array)($parsed['bullets'] ?? []))));
+
     return [
         'ok'       => true,
         'headline' => (string)($parsed['headline'] ?? ''),
         'summary'  => (string)$parsed['summary'],
-        'bullets'  => array_values(array_filter(array_map('strval', (array)($parsed['bullets'] ?? [])))),
+        'sections' => $sections,
+        'bullets'  => $bullets,
         'topics'   => array_values(array_filter(array_map('strval', (array)($parsed['topics']  ?? [])))),
     ];
 }

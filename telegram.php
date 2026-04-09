@@ -273,7 +273,7 @@ function tg_page_url(int $p): string {
     transition:max-height .35s ease, opacity .25s ease, margin .25s ease;
   }
   .tg-summary.open {
-    max-height:2000px;
+    max-height:6000px;
     opacity:1;
     box-shadow:0 10px 30px rgba(79,70,229,.12);
   }
@@ -331,13 +331,66 @@ function tg_page_url(int $p): string {
     color:#b91c1c; font-size:13.5px; font-weight:600;
   }
   .tg-summary-headline {
-    font-size:18px; font-weight:900; color:var(--text);
-    margin-bottom:10px; line-height:1.5;
+    font-size:20px; font-weight:900; color:var(--text);
+    margin-bottom:12px; line-height:1.5;
+    padding-right:14px;
+    border-right:4px solid #7c3aed;
   }
   .tg-summary-text {
-    font-size:14.5px; line-height:1.85; color:#374151;
-    margin-bottom:16px;
+    font-size:14.5px; line-height:1.9; color:#374151;
+    margin-bottom:20px;
+    padding:14px 16px;
+    background:rgba(255,255,255,.65);
+    border:1px solid rgba(124,58,237,.12);
+    border-radius:12px;
   }
+  .tg-summary-sections {
+    display:flex; flex-direction:column; gap:14px;
+    margin:0 0 16px;
+  }
+  .tg-summary-section {
+    background:#fff;
+    border:1px solid #e4defb;
+    border-radius:14px;
+    padding:14px 16px 12px;
+    box-shadow:0 2px 6px rgba(79,70,229,.04);
+  }
+  .tg-summary-section-head {
+    display:flex; align-items:center; gap:10px;
+    margin-bottom:10px;
+    padding-bottom:10px;
+    border-bottom:1px dashed rgba(124,58,237,.18);
+  }
+  .tg-summary-section-icon {
+    font-size:20px; line-height:1;
+    width:36px; height:36px;
+    display:inline-flex; align-items:center; justify-content:center;
+    background:linear-gradient(135deg,#ede9fe,#ddd6fe);
+    border-radius:10px; flex:0 0 36px;
+  }
+  .tg-summary-section-title {
+    font-size:15px; font-weight:900;
+    color:#4c1d95; line-height:1.4; flex:1;
+  }
+  .tg-summary-section-items {
+    list-style:none; padding:0; margin:0;
+    display:flex; flex-direction:column; gap:7px;
+  }
+  .tg-summary-section-items li {
+    position:relative;
+    padding:8px 30px 8px 10px;
+    font-size:13.5px; line-height:1.8; color:#1f2937;
+    font-weight:500;
+    border-right:3px solid #c4b5fd;
+    background:#fafaff;
+    border-radius:8px;
+  }
+  .tg-summary-section-items li::before {
+    content:'◂';
+    position:absolute; right:12px; top:7px;
+    color:#7c3aed; font-weight:900; font-size:13px;
+  }
+  /* Fallback for legacy flat bullets (if Claude ignores sections). */
   .tg-summary-bullets {
     list-style:none; padding:0; margin:0 0 14px;
     display:flex; flex-direction:column; gap:8px;
@@ -357,7 +410,10 @@ function tg_page_url(int $p): string {
     color:#7c3aed; font-weight:900; font-size:15px;
   }
   .tg-summary-topics {
-    display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;
+    display:flex; flex-wrap:wrap; gap:6px;
+    margin-top:14px;
+    padding-top:14px;
+    border-top:1px dashed rgba(124,58,237,.18);
   }
   .tg-summary-topic {
     background:#ede9fe; color:#5b21b6;
@@ -598,13 +654,36 @@ include __DIR__ . '/includes/components/site_header.php';
     if (payload.summary) {
       html += '<div class="tg-summary-text">' + escapeHtml(payload.summary) + '</div>';
     }
-    if (payload.bullets && payload.bullets.length) {
+
+    // Preferred layout: structured sections (file-style report).
+    // Fall back to the legacy flat bullets if Claude returned the old shape.
+    if (payload.sections && payload.sections.length) {
+      html += '<div class="tg-summary-sections">';
+      for (var s = 0; s < payload.sections.length; s++) {
+        var sec = payload.sections[s] || {};
+        var items = sec.items || [];
+        if (!items.length) continue;
+        html += '<div class="tg-summary-section">';
+        html +=   '<div class="tg-summary-section-head">';
+        html +=     '<span class="tg-summary-section-icon">' + escapeHtml(sec.icon || '📰') + '</span>';
+        html +=     '<span class="tg-summary-section-title">' + escapeHtml(sec.title || '') + '</span>';
+        html +=   '</div>';
+        html +=   '<ul class="tg-summary-section-items">';
+        for (var k = 0; k < items.length; k++) {
+          html += '<li>' + escapeHtml(items[k]) + '</li>';
+        }
+        html +=   '</ul>';
+        html += '</div>';
+      }
+      html += '</div>';
+    } else if (payload.bullets && payload.bullets.length) {
       html += '<ul class="tg-summary-bullets">';
       for (var i = 0; i < payload.bullets.length; i++) {
         html += '<li>' + escapeHtml(payload.bullets[i]) + '</li>';
       }
       html += '</ul>';
     }
+
     if (payload.topics && payload.topics.length) {
       html += '<div class="tg-summary-topics">';
       for (var j = 0; j < payload.topics.length; j++) {
