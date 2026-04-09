@@ -364,10 +364,27 @@ function tg_summary_prune(int $keep = 48): void {
     } catch (Throwable $e) {}
 }
 
+/**
+ * Format a MySQL TIMESTAMP epoch as ISO 8601 with the server's
+ * timezone offset, e.g. "2026-04-09T12:00:00+03:00". Frontend code
+ * can pass this straight to `new Date()` and get correct local-time
+ * rendering across browsers — without it, Chrome and Safari disagree
+ * on how to interpret a bare "YYYY-MM-DD HH:MM:SS" string.
+ */
+function tg_summary_format_ts($epoch): string {
+    $ts = is_numeric($epoch) ? (int)$epoch : (int)strtotime((string)$epoch);
+    if ($ts <= 0) return '';
+    return date('c', $ts);
+}
+
 /** Decode a stored row into the shape the frontend expects. */
 function tg_summary_hydrate(array $row): array {
     $sections = json_decode((string)($row['sections'] ?? '[]'), true);
     $topics   = json_decode((string)($row['topics']   ?? '[]'), true);
+    // Prefer the unambiguous UNIX_TIMESTAMP value when present (set by
+    // the SELECTs below); fall back to parsing the raw TIMESTAMP string
+    // through PHP's local timezone, which is set to TIMEZONE in config.
+    $tsSource = $row['generated_at_unix'] ?? $row['generated_at'] ?? null;
     return [
         'id'            => (int)$row['id'],
         'headline'      => (string)$row['headline'],
@@ -376,7 +393,7 @@ function tg_summary_hydrate(array $row): array {
         'topics'        => is_array($topics)   ? $topics   : [],
         'window_mins'   => (int)$row['window_mins'],
         'message_count' => (int)$row['message_count'],
-        'generated_at'  => (string)$row['generated_at'],
+        'generated_at'  => tg_summary_format_ts($tsSource),
     ];
 }
 
@@ -385,7 +402,8 @@ function tg_summary_get_latest(): ?array {
     tg_summary_ensure_table();
     try {
         $db = getDB();
-        $row = $db->query("SELECT * FROM telegram_summaries
+        $row = $db->query("SELECT *, UNIX_TIMESTAMP(generated_at) AS generated_at_unix
+                             FROM telegram_summaries
                             ORDER BY generated_at DESC, id DESC LIMIT 1")
                   ->fetch(PDO::FETCH_ASSOC);
         return $row ? tg_summary_hydrate($row) : null;
@@ -399,7 +417,8 @@ function tg_summary_get_by_id(int $id): ?array {
     tg_summary_ensure_table();
     try {
         $db = getDB();
-        $stmt = $db->prepare("SELECT * FROM telegram_summaries WHERE id = ?");
+        $stmt = $db->prepare("SELECT *, UNIX_TIMESTAMP(generated_at) AS generated_at_unix
+                                FROM telegram_summaries WHERE id = ?");
         $stmt->execute([$id]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row ? tg_summary_hydrate($row) : null;
@@ -414,12 +433,22 @@ function tg_summary_list(int $limit = 24): array {
     $limit = max(1, min(100, $limit));
     try {
         $db = getDB();
-        $rows = $db->query("SELECT id, headline, generated_at, message_count, window_mins
+        $rows = $db->query("SELECT id, headline,
+                                   UNIX_TIMESTAMP(generated_at) AS generated_at_unix,
+                                   message_count, window_mins
                              FROM telegram_summaries
                              ORDER BY generated_at DESC, id DESC
                              LIMIT {$limit}")
                     ->fetchAll(PDO::FETCH_ASSOC);
-        return $rows ?: [];
+        if (!$rows) return [];
+        // Normalize the timestamp the same way hydrate does so the
+        // archive pills agree with the main panel.
+        foreach ($rows as &$r) {
+            $r['generated_at'] = tg_summary_format_ts($r['generated_at_unix'] ?? null);
+            unset($r['generated_at_unix']);
+        }
+        unset($r);
+        return $rows;
     } catch (Throwable $e) {
         return [];
     }
