@@ -38,7 +38,9 @@ require_once __DIR__ . '/includes/ai_helper.php';
 
 const TG_SUMMARY_LIST_DEFAULT    = 12;
 const TG_SUMMARY_LIST_MAX        = 48;
-const TG_SUMMARY_SEED_THROTTLE   = 600; // seconds between cold-start seed attempts
+const TG_SUMMARY_SEED_THROTTLE   = 600;    // seconds between cold-start seed attempts
+const TG_SUMMARY_STALE_AFTER     = 3900;   // 65 min — anything older counts as "stale"
+const TG_SUMMARY_REFRESH_THROTTLE = 600;   // seconds between inline refresh attempts
 
 /** Emit a JSON response and exit, clearing any stray output. */
 function tgs_json_exit(array $payload, int $code = 200): void {
@@ -74,19 +76,18 @@ function tgs_render_payload(array $row): array {
 }
 
 /**
- * Generate ONE briefing inline and save it. Used only when the
- * telegram_summaries table is completely empty, so the very first
- * visitor after deploy sees a briefing instead of an empty state.
- * Guarded by a short cache throttle so a broken cron can't cause
- * per-visitor generation.
+ * Generate ONE briefing inline and save it. Used either as a cold-start
+ * seed (empty table) or as a self-healing refresh when the latest briefing
+ * is older than TG_SUMMARY_STALE_AFTER and the external cron hasn't
+ * caught up. Guarded by a short cache throttle so a broken cron can't
+ * cause per-visitor generation.
  */
-function tgs_seed_if_empty(): ?array {
-    $throttleKey = 'tg_summary_seed_attempt';
+function tgs_generate_inline(string $throttleKey, int $throttleSecs): ?array {
     $lastAt = (int)(cache_get($throttleKey) ?: 0);
-    if ($lastAt > 0 && (time() - $lastAt) < TG_SUMMARY_SEED_THROTTLE) {
+    if ($lastAt > 0 && (time() - $lastAt) < $throttleSecs) {
         return null;
     }
-    cache_set($throttleKey, time(), TG_SUMMARY_SEED_THROTTLE * 2);
+    cache_set($throttleKey, time(), $throttleSecs * 2);
 
     $messages = tg_summary_collect_messages(60, 250);
     if (count($messages) < 3) return null;
@@ -96,6 +97,9 @@ function tgs_seed_if_empty(): ?array {
 
     $id = tg_summary_save($ai, count($messages), 60);
     if (!$id) return null;
+
+    // Keep archive size sane on the refresh path too.
+    if (function_exists('tg_summary_prune')) tg_summary_prune(72);
 
     return tg_summary_get_by_id($id);
 }
@@ -136,9 +140,27 @@ try {
 
     // ---- default: latest briefing ----------------------------------
     $latest = tg_summary_get_latest();
+
+    // Cold-start: table is empty → generate one inline so the first
+    // visitor sees real content.
     if (!$latest) {
-        $latest = tgs_seed_if_empty();
+        $latest = tgs_generate_inline('tg_summary_seed_attempt', TG_SUMMARY_SEED_THROTTLE);
     }
+
+    // Self-healing: table has a briefing but it's older than 65 min,
+    // which means the hourly cron didn't run (broken key, cPanel cron
+    // missing, network blip, etc.). Try to refresh inline — throttled
+    // to 10 min so a broken cron can't spam Claude. On failure (no
+    // fresh messages, API error, still throttled), we fall back to
+    // returning the stale briefing so the UI is never empty.
+    if ($latest) {
+        $ageSecs = time() - (strtotime($latest['generated_at'] ?? '') ?: 0);
+        if ($ageSecs > TG_SUMMARY_STALE_AFTER) {
+            $fresh = tgs_generate_inline('tg_summary_refresh_attempt', TG_SUMMARY_REFRESH_THROTTLE);
+            if ($fresh) $latest = $fresh;
+        }
+    }
+
     if (!$latest) {
         tgs_json_exit([
             'ok'    => false,
