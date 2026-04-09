@@ -30,11 +30,15 @@ function fetchWeather(cityKey) {
     const cur = data.current;
     const temp = Math.round(cur.temperature_2m);
     const code = cur.weather_code;
-    document.getElementById('wTemp').textContent = temp + '°';
-    document.getElementById('wCity').textContent = c.name + '، فلسطين';
-    document.getElementById('wDesc').textContent = weatherDesc[code] || 'غير معروف';
-    document.getElementById('wIcon').textContent = weatherCodes[code] || '🌤';
-    document.getElementById('topWeather').textContent = (weatherCodes[code]||'☀') + ' ' + c.name + ' ' + temp + '°';
+    const icon = weatherCodes[code] || '🌤';
+    const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setTxt('wTemp', temp + '°');
+    setTxt('wCity', c.name + '، فلسطين');
+    setTxt('wDesc', weatherDesc[code] || 'غير معروف');
+    setTxt('wIcon', icon);
+    // Header button: keep emoji + temp span
+    const topBtn = document.getElementById('topWeather');
+    if (topBtn) topBtn.innerHTML = `${icon} <span>${temp}°</span>`;
 
     // Forecast
     const daily = data.daily;
@@ -45,49 +49,44 @@ function fetchWeather(cityKey) {
       const dTemp = Math.round(daily.temperature_2m_max[i]);
       forecastHTML += `<div class="weather-day"><div class="day">${dayShort[d.getDay()]}</div><div>${weatherCodes[dCode]||'🌤'}</div><div class="temp">${dTemp}°</div></div>`;
     }
-    document.getElementById('wForecast').innerHTML = forecastHTML;
+    const fc = document.getElementById('wForecast');
+    if (fc) fc.innerHTML = forecastHTML;
   }).catch(() => {});
 }
 
-// City buttons
-document.querySelectorAll('.weather-city-btn').forEach(btn => {
-  btn.addEventListener('click', function() {
-    document.querySelectorAll('.weather-city-btn').forEach(b => b.classList.remove('active'));
-    this.classList.add('active');
-    fetchWeather(this.dataset.city);
-  });
+// City buttons (delegated — modal content exists in DOM from load)
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('.weather-city-btn');
+  if (!btn) return;
+  document.querySelectorAll('.weather-city-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  fetchWeather(btn.dataset.city);
 });
 
 // Load default
 fetchWeather('Jerusalem');
 
-// Align weather widget to palestine hero card (top + bottom)
-function syncWeatherHeight() {
-  const w = document.querySelector('.weather-widget');
-  if (!w) return;
-  w.style.marginTop = ''; w.style.minHeight = ''; w.style.height = '';
-  if (window.innerWidth < 1100) return;
-  const ps = document.querySelector('.ps-hero');
-  if (!ps || !w.parentElement) return;
-  const psTop = ps.getBoundingClientRect().top;
-  const wpTop = w.parentElement.getBoundingClientRect().top;
-  const offset = psTop - wpTop;
-  if (offset > 0) w.style.marginTop = offset + 'px';
-  w.style.minHeight = ps.offsetHeight + 'px';
+// Weather modal
+function openWeatherModal() {
+  document.getElementById('weatherModal').classList.add('show');
 }
-syncWeatherHeight();
-window.addEventListener('load', syncWeatherHeight);
-window.addEventListener('resize', syncWeatherHeight);
-// Recalc whenever palestine hero images load
-document.querySelectorAll('.ps-hero img').forEach(img => {
-  if (img.complete) syncWeatherHeight();
-  else img.addEventListener('load', syncWeatherHeight);
+function closeWeatherModal() {
+  document.getElementById('weatherModal').classList.remove('show');
+}
+document.getElementById('weatherModal')?.addEventListener('click', function(e) {
+  if (e.target === this) closeWeatherModal();
 });
-// Observe size changes (handles fonts/late layout)
-if (window.ResizeObserver) {
-  const ps = document.querySelector('.ps-hero');
-  if (ps) new ResizeObserver(syncWeatherHeight).observe(ps);
+
+// Sources modal
+function openSourcesModal() {
+  document.getElementById('sourcesModal').classList.add('show');
 }
+function closeSourcesModal() {
+  document.getElementById('sourcesModal').classList.remove('show');
+}
+document.getElementById('sourcesModal')?.addEventListener('click', function(e) {
+  if (e.target === this) closeSourcesModal();
+});
 
 // CURRENCY (using exchangerate.host or frankfurter.app - free)
 const currencyData = [
@@ -111,15 +110,7 @@ function fetchCurrency() {
     .then(data => {
       exchangeRates = data.rates;
       exchangeRates['USD'] = 1;
-      // Update sidebar
-      document.getElementById('cUSD').textContent = '1.00 $';
-      document.getElementById('cILS').textContent = (exchangeRates['ILS'] || 3.65).toFixed(2) + ' ₪';
-      document.getElementById('cJOD').textContent = (exchangeRates['JOD'] || 0.71).toFixed(3) + ' د.أ';
-    }).catch(() => {
-      document.getElementById('cUSD').textContent = '1.00 $';
-      document.getElementById('cILS').textContent = '3.65 ₪';
-      document.getElementById('cJOD').textContent = '0.709 د.أ';
-    });
+    }).catch(() => {});
 }
 fetchCurrency();
 
