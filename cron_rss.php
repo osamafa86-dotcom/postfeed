@@ -6,6 +6,7 @@
 
 require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/article_fetch.php';
+require_once __DIR__ . '/includes/article_cluster.php';
 require_once __DIR__ . '/includes/cache.php';
 
 $db = getDB();
@@ -20,6 +21,16 @@ try {
             ADD COLUMN last_error VARCHAR(500) DEFAULT NULL,
             ADD COLUMN last_new_count INT DEFAULT 0,
             ADD COLUMN total_articles INT DEFAULT 0");
+    }
+} catch (Exception $e) {}
+
+// Auto-migrate cluster_key so a fresh deploy doesn't break INSERTs
+// when cron runs before migrate.php is hit.
+try {
+    $cols = $db->query("SHOW COLUMNS FROM articles LIKE 'cluster_key'")->fetch();
+    if (!$cols) {
+        $db->exec("ALTER TABLE articles ADD COLUMN cluster_key VARCHAR(64) NULL");
+        $db->exec("CREATE INDEX idx_cluster_key ON articles (cluster_key)");
     }
 } catch (Exception $e) {}
 
@@ -174,7 +185,14 @@ if (!empty($pageUrls)) {
 }
 
 // ============ INSERT ============
-$insertStmt = $db->prepare("INSERT INTO articles (title, slug, excerpt, content, image_url, source_url, category_id, source_id, status, published_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'published', ?, NOW())");
+$insertStmt = $db->prepare("INSERT INTO articles (title, slug, excerpt, content, image_url, source_url, category_id, source_id, cluster_key, status, published_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'published', ?, NOW())");
+
+// Pre-build a fuzzy-match index over the last 7 days of published
+// articles. cluster_assign() walks it for each new title and reuses
+// the cluster_key of the closest existing story (Jaccard ≥ 0.55), so
+// "حماس تعلن وقف إطلاق النار" and "حماس: وقف إطلاق النار يبدأ غدا"
+// land in the same cluster instead of being treated as separate.
+$clusterIndex = cluster_index_build($db, 7, 600);
 
 foreach ($pendingInserts as $it) {
     $pageHtml = $pageHtmls[$it['source_url']] ?? '';
@@ -190,11 +208,15 @@ foreach ($pendingInserts as $it) {
         $fullContent = '<p>' . nl2br($it['excerpt']) . '</p>';
     }
 
+    // Fuzzy cluster assignment — mutates $clusterIndex so back-to-back
+    // articles in the same batch can cluster with each other.
+    $clusterKey = cluster_assign($it['title'], $clusterIndex);
+
     try {
         $insertStmt->execute([
             $it['title'], $it['slug'], $it['excerpt'], $fullContent,
             $imageUrl, $it['source_url'], $it['category_id'],
-            $it['source_id'], $it['published_at'],
+            $it['source_id'], $clusterKey, $it['published_at'],
         ]);
         $totalNew++;
     } catch (Exception $e) {

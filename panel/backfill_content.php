@@ -10,7 +10,7 @@
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/article_fetch.php';
-requireAdmin();
+requireRole('editor');
 
 @set_time_limit(600);
 header('Content-Type: text/plain; charset=utf-8');

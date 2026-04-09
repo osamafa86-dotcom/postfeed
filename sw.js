@@ -1,0 +1,132 @@
+/**
+ * نيوزفلو Service Worker
+ *
+ * Strategy:
+ *   - HTML / dynamic pages: network-first with a 3s timeout, then
+ *     cached fallback. Lets returning visitors see the latest news
+ *     when online but still get something readable when offline.
+ *   - Static assets (CSS, JS, fonts, images): cache-first with
+ *     background revalidation. Almost everything in /assets is
+ *     fingerprinted via ?v= query strings so this is safe.
+ *   - Skips API endpoints, the admin panel, telegram_summary.php
+ *     and anything cross-origin from being cached.
+ *
+ * Bump CACHE_VERSION whenever the asset bundle changes substantially
+ * to force clients to discard the previous generation of caches.
+ */
+const CACHE_VERSION = 'newsflow-v1';
+const STATIC_CACHE  = `${CACHE_VERSION}-static`;
+const PAGES_CACHE   = `${CACHE_VERSION}-pages`;
+
+// Bundle a tiny offline shell so navigations still resolve when
+// the network is unreachable on first load.
+const OFFLINE_URL = '/offline.html';
+const PRECACHE = [
+  '/',
+  OFFLINE_URL,
+  '/manifest.json',
+];
+
+// Anything matching these patterns bypasses the SW entirely —
+// admin pages, JSON APIs, and any auth-sensitive surface should
+// always hit the network with no SW caching at all.
+const BYPASS_PATTERNS = [
+  /^\/panel\//,
+  /^\/api\//,
+  /\/cron_/,
+  /\/login\.php/,
+  /\/logout\.php/,
+  /telegram_summary\.php/,
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(STATIC_CACHE)
+      .then((cache) => cache.addAll(PRECACHE).catch(() => {}))
+      .then(() => self.skipWaiting())
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(
+        keys
+          .filter((k) => !k.startsWith(CACHE_VERSION))
+          .map((k) => caches.delete(k))
+      )
+    ).then(() => self.clients.claim())
+  );
+});
+
+function shouldBypass(url) {
+  if (url.origin !== self.location.origin) return true;
+  return BYPASS_PATTERNS.some((re) => re.test(url.pathname));
+}
+
+function isHTMLRequest(request) {
+  if (request.mode === 'navigate') return true;
+  const accept = request.headers.get('accept') || '';
+  return accept.includes('text/html');
+}
+
+// Network-first with a short timeout. Resolves with a cached copy
+// if the network is slow or down, and falls back to the offline
+// shell when there's nothing cached either.
+async function networkFirst(request) {
+  const cache = await caches.open(PAGES_CACHE);
+  try {
+    const fresh = await Promise.race([
+      fetch(request),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
+    ]);
+    if (fresh && fresh.ok) {
+      cache.put(request, fresh.clone()).catch(() => {});
+    }
+    return fresh;
+  } catch (err) {
+    const cached = await cache.match(request);
+    if (cached) return cached;
+    const offline = await caches.match(OFFLINE_URL);
+    if (offline) return offline;
+    return new Response('غير متصل بالإنترنت', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+  }
+}
+
+// Cache-first for static assets. We still kick off a background
+// fetch to keep the cached copy fresh for next time.
+async function cacheFirst(request) {
+  const cache = await caches.open(STATIC_CACHE);
+  const cached = await cache.match(request);
+  if (cached) {
+    fetch(request).then((res) => {
+      if (res && res.ok) cache.put(request, res.clone()).catch(() => {});
+    }).catch(() => {});
+    return cached;
+  }
+  try {
+    const fresh = await fetch(request);
+    if (fresh && fresh.ok) cache.put(request, fresh.clone()).catch(() => {});
+    return fresh;
+  } catch (err) {
+    return new Response('', { status: 504 });
+  }
+}
+
+self.addEventListener('fetch', (event) => {
+  const request = event.request;
+  if (request.method !== 'GET') return;
+
+  const url = new URL(request.url);
+  if (shouldBypass(url)) return;
+
+  if (isHTMLRequest(request)) {
+    event.respondWith(networkFirst(request));
+    return;
+  }
+
+  // Same-origin static assets get the cache-first treatment.
+  if (/\.(?:css|js|woff2?|ttf|otf|svg|png|jpg|jpeg|webp|gif|ico)$/i.test(url.pathname)) {
+    event.respondWith(cacheFirst(request));
+  }
+});

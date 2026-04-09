@@ -350,16 +350,70 @@ function isAdmin() {
     return isset($_SESSION[ADMIN_SESSION_NAME]) && $_SESSION[ADMIN_SESSION_NAME] === true;
 }
 
-function requireAdmin() {
+// ============================================
+// Role-based access control
+// ============================================
+// Hierarchy: viewer (1) < editor (2) < admin (3). Helpers below
+// let panel pages declare the minimum role they require so we can
+// finally use the editor/viewer slots in the users.role enum that
+// were previously dead.
+const ROLE_LEVELS = ['viewer' => 1, 'editor' => 2, 'admin' => 3];
+
+/** Current logged-in panel user's role, or null if not logged in. */
+function currentRole(): ?string {
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    if (!isAdmin()) return null;
+    $role = $_SESSION['admin_role'] ?? 'admin'; // legacy sessions default to admin
+    return isset(ROLE_LEVELS[$role]) ? $role : 'viewer';
+}
+
+/** True if the current user holds at least the requested role. */
+function hasRole(string $minRole): bool {
+    $current = currentRole();
+    if ($current === null) return false;
+    $need = ROLE_LEVELS[$minRole] ?? 99;
+    $have = ROLE_LEVELS[$current] ?? 0;
+    return $have >= $need;
+}
+
+/**
+ * Gate a panel page on minimum role. Replaces requireAdmin() at
+ * the top of admin-only pages; pages that should also be reachable
+ * by editor or viewer pass the appropriate level here.
+ *
+ *   requireRole('viewer') — anyone signed in (read-only OK)
+ *   requireRole('editor') — content editing pages
+ *   requireRole('admin')  — settings, users, AI keys, etc.
+ *
+ * Also handles the CSRF check that requireAdmin() used to do, so
+ * existing pages keep the same protection on POST.
+ */
+function requireRole(string $minRole = 'admin'): void {
     if (session_status() === PHP_SESSION_NONE) session_start();
     if (!isAdmin()) {
         header('Location: login.php');
+        exit;
+    }
+    if (!hasRole($minRole)) {
+        http_response_code(403);
+        echo '<!DOCTYPE html><html lang="ar" dir="rtl"><meta charset="utf-8"><title>غير مصرّح</title>'
+           . '<body style="font-family:Tajawal,Tahoma,sans-serif;background:#f8fafc;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;">'
+           . '<div style="text-align:center;background:#fff;padding:40px;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.08);max-width:420px;">'
+           . '<div style="font-size:48px;margin-bottom:12px;">🔒</div>'
+           . '<h1 style="font-size:20px;margin:0 0 8px;">غير مصرّح بالوصول</h1>'
+           . '<p style="color:#64748b;font-size:14px;margin:0 0 20px;">صلاحيتك الحالية لا تسمح بفتح هذه الصفحة.</p>'
+           . '<a href="index.php" style="background:#1a5c5c;color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:700;">العودة للوحة</a>'
+           . '</div></body></html>';
         exit;
     }
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && !csrf_verify($_POST['_csrf'] ?? '')) {
         http_response_code(403);
         exit('CSRF token mismatch');
     }
+}
+
+function requireAdmin() {
+    requireRole('admin');
 }
 
 // ============================================

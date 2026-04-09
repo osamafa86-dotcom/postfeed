@@ -350,6 +350,17 @@ $pageTitle  = $pageTitle  ?? 'نيوزفلو';
     </a>
   </div>
 
+  <?php
+    // Sidebar visibility follows the same role hierarchy as
+    // requireRole(): viewers see only the dashboard, editors see
+    // content management pages, admins see everything.
+    $__role     = function_exists('currentRole') ? (currentRole() ?? 'viewer') : 'admin';
+    $__canEdit  = function_exists('hasRole') ? hasRole('editor') : true;
+    $__canAdmin = function_exists('hasRole') ? hasRole('admin')  : true;
+    $__roleLabels = ['admin' => 'مدير', 'editor' => 'محرّر', 'viewer' => 'مشاهد'];
+    $__roleColors = ['admin' => '#dc2626', 'editor' => '#16a34a', 'viewer' => '#6b7280'];
+  ?>
+  <?php if ($__canEdit): ?>
   <div class="sidebar-section">
     <div class="sidebar-section-label">المحتوى</div>
     <a href="articles.php" class="nav-item<?php echo $activePage==='articles'?' active':''; ?>">
@@ -378,14 +389,18 @@ $pageTitle  = $pageTitle  ?? 'نيوزفلو';
       <div class="nav-icon">📢</div>
       <span class="label">تيليغرام</span>
     </a>
+    <?php if ($__canAdmin): ?>
     <a href="ai.php" class="nav-item<?php echo $activePage==='ai'?' active':''; ?>">
       <div class="nav-icon">🤖</div>
       <span class="label">الذكاء الاصطناعي</span>
     </a>
+    <?php endif; ?>
   </div>
+  <?php endif; ?>
 
   <div class="sidebar-section">
     <div class="sidebar-section-label">الإدارة</div>
+    <?php if ($__canAdmin): ?>
     <a href="settings.php" class="nav-item<?php echo $activePage==='settings'?' active':''; ?>">
       <div class="nav-icon">⚙️</div>
       <span class="label">الإعدادات</span>
@@ -398,6 +413,12 @@ $pageTitle  = $pageTitle  ?? 'نيوزفلو';
       <div class="nav-icon">📋</div>
       <span class="label">سجل التدقيق</span>
     </a>
+    <?php endif; ?>
+    <div class="nav-item" style="cursor:default;background:transparent;">
+      <div class="nav-icon">👤</div>
+      <span class="label">صلاحيتك</span>
+      <span class="nav-badge" style="background:<?php echo $__roleColors[$__role] ?? '#6b7280'; ?>;color:#fff;"><?php echo e($__roleLabels[$__role] ?? $__role); ?></span>
+    </div>
     <a href="logout.php" class="nav-item">
       <div class="nav-icon">🚪</div>
       <span class="label">تسجيل الخروج</span>

@@ -47,9 +47,10 @@ try {
     tg_json_exit(['ok' => false, 'error' => 'Init error: ' . $e->getMessage()]);
 }
 
-// 2) Manual admin check — do NOT call requireAdmin() because it redirects.
+// 2) Manual role check — do NOT call requireRole() because it redirects.
+//    Editors and admins can use the lookup; viewers cannot.
 if (session_status() === PHP_SESSION_NONE) { @session_start(); }
-if (!isAdmin()) {
+if (!hasRole('editor')) {
     tg_json_exit(['ok' => false, 'error' => 'انتهت الجلسة. أعد تسجيل الدخول من لوحة التحكم.']);
 }
 

@@ -767,6 +767,47 @@ if ($article['cat_slug']) {
             margin-top: 3px;
         }
 
+        /* === Compare coverage CTA — multi-source cluster banner === */
+        .compare-coverage-cta {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            padding: 18px 22px;
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border: 1.5px solid #fcd34d;
+            border-radius: 16px;
+            margin: 1.5rem 0 2rem;
+            text-decoration: none;
+            color: #78350f;
+            transition: all .25s ease;
+            box-shadow: 0 4px 16px -6px rgba(245,158,11,.25);
+        }
+        .compare-coverage-cta:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 28px -10px rgba(245,158,11,.35);
+            border-color: #f59e0b;
+        }
+        .compare-coverage-cta .cc-icon {
+            font-size: 32px;
+            flex-shrink: 0;
+            background: rgba(255,255,255,.6);
+            width: 56px; height: 56px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 14px;
+        }
+        .compare-coverage-cta .cc-text { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+        .compare-coverage-cta .cc-text strong { font-size: 17px; font-weight: 900; color: #78350f; }
+        .compare-coverage-cta .cc-text em { font-style: normal; font-size: 13px; color: #92400e; line-height: 1.55; }
+        .compare-coverage-cta .cc-arrow { font-size: 28px; font-weight: 900; color: #92400e; flex-shrink: 0; }
+        [data-theme="dark"] .compare-coverage-cta {
+            background: linear-gradient(135deg, rgba(120,53,15,.4) 0%, rgba(146,64,14,.5) 100%);
+            border-color: rgba(245,158,11,.5);
+            color: #fde68a;
+        }
+        [data-theme="dark"] .compare-coverage-cta .cc-text strong,
+        [data-theme="dark"] .compare-coverage-cta .cc-text em,
+        [data-theme="dark"] .compare-coverage-cta .cc-arrow { color: #fde68a; }
+
         /* === Source CTA (read full article) === */
         .source-cta {
             display: flex;
@@ -1069,7 +1110,47 @@ if ($article['cat_slug']) {
                         <?php endforeach; ?>
                     </ul>
                 <?php endif; ?>
+                <?php
+                // Topic chips: turn the comma-separated ai_keywords into
+                // clickable links to /topic/{kw}. Lets readers jump from
+                // one article to every related story we've ingested.
+                $__kwList = !empty($article['ai_keywords'])
+                    ? array_filter(array_map('trim', explode(',', (string)$article['ai_keywords'])), fn($s) => $s !== '')
+                    : [];
+                if (!empty($__kwList)): ?>
+                    <div class="ai-topics" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;padding-top:14px;border-top:1px dashed rgba(0,0,0,.08);">
+                        <?php foreach (array_slice($__kwList, 0, 8) as $__kw): ?>
+                            <a href="/topic/<?php echo rawurlencode($__kw); ?>" style="display:inline-flex;align-items:center;gap:4px;background:rgba(13,148,136,.08);color:#0d9488;border:1px solid rgba(13,148,136,.2);padding:5px 12px;border-radius:999px;font-size:12px;font-weight:700;text-decoration:none;transition:all .2s;" onmouseover="this.style.background='#0d9488';this.style.color='#fff';" onmouseout="this.style.background='rgba(13,148,136,.08)';this.style.color='#0d9488';">#<?php echo e($__kw); ?></a>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
             </div>
+        <?php endif; ?>
+
+        <!-- === Compare coverage callout ===
+             If this article is part of a multi-source cluster, surface a
+             prominent CTA so readers can jump to the side-by-side
+             "قارن التغطية" page. Validates the key shape inline so a
+             stale row with junk data is just hidden. -->
+        <?php
+        $__ck = (string)($article['cluster_key'] ?? '');
+        $__cnt = 0;
+        if ($__ck !== '' && $__ck !== '-' && preg_match('/^[a-f0-9]{40}$/', $__ck)) {
+            try {
+                require_once __DIR__ . '/includes/article_cluster.php';
+                $__cm = cluster_counts_for([$__ck]);
+                $__cnt = (int)($__cm[$__ck] ?? 0);
+            } catch (Throwable $e) { $__cnt = 0; }
+        }
+        if ($__cnt >= 2): ?>
+            <a class="compare-coverage-cta" href="/cluster/<?php echo e($__ck); ?>">
+                <span class="cc-icon">📰</span>
+                <span class="cc-text">
+                    <strong>قارن التغطية</strong>
+                    <em>هذا الخبر نُشر في <?php echo (int)$__cnt; ?> مصادر مختلفة — اطّلع على كل التغطيات جنباً إلى جنب</em>
+                </span>
+                <span class="cc-arrow">›</span>
+            </a>
         <?php endif; ?>
 
         <!-- Article Content -->

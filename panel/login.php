@@ -54,13 +54,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stage = 'totp';
         try {
             $db = getDB();
-            $stmt = $db->prepare("SELECT id, name, totp_secret FROM users WHERE id = ?");
+            $stmt = $db->prepare("SELECT id, name, role, totp_secret FROM users WHERE id = ?");
             $stmt->execute([(int)$_SESSION['2fa_pending_user_id']]);
             $user = $stmt->fetch();
             if ($user && $user['totp_secret'] && totp_verify($user['totp_secret'], $_POST['totp_code'])) {
                 $_SESSION[ADMIN_SESSION_NAME] = true;
-                $_SESSION['admin_id'] = $user['id'];
+                $_SESSION['admin_id']   = $user['id'];
                 $_SESSION['admin_name'] = $user['name'];
+                $_SESSION['admin_role'] = $user['role'] ?: 'viewer';
                 unset($_SESSION['2fa_pending_user_id']);
                 audit_log('auth.login.success', 'user', $user['id'], ['method' => '2fa']);
                 header('Location: index.php');
@@ -84,7 +85,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         try {
             $db = getDB();
-            $stmt = $db->prepare("SELECT id, name, password, totp_enabled, totp_secret FROM users WHERE email = ? AND role = 'admin'");
+            // Allow any active panel user (admin, editor, viewer) to
+            // sign in. The role is then stored in the session and
+            // enforced page-by-page via requireRole().
+            $stmt = $db->prepare("SELECT id, name, password, role, totp_enabled, totp_secret
+                                    FROM users
+                                   WHERE email = ?
+                                     AND role IN ('admin','editor','viewer')
+                                     AND (is_active IS NULL OR is_active = 1)");
             $stmt->execute([$email]);
             $user = $stmt->fetch();
 
@@ -96,9 +104,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     audit_log('auth.login.pw_ok', 'user', $user['id'], ['email' => $email]);
                 } else {
                     $_SESSION[ADMIN_SESSION_NAME] = true;
-                    $_SESSION['admin_id'] = $user['id'];
+                    $_SESSION['admin_id']   = $user['id'];
                     $_SESSION['admin_name'] = $user['name'];
-                    audit_log('auth.login.success', 'user', $user['id'], ['email' => $email]);
+                    $_SESSION['admin_role'] = $user['role'] ?: 'viewer';
+                    audit_log('auth.login.success', 'user', $user['id'], ['email' => $email, 'role' => $user['role']]);
                     header('Location: index.php');
                     exit;
                 }

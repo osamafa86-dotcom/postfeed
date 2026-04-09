@@ -7,6 +7,7 @@
 require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/user_auth.php';
 require_once __DIR__ . '/includes/user_functions.php';
+require_once __DIR__ . '/includes/article_cluster.php';
 
 // Viewer context for save buttons / theme / user menu
 $viewer = current_user();
@@ -146,10 +147,16 @@ $reportsNews    = $dedup($reportsNews, 4);
 $GLOBALS['__nf_saved_ids']       = [];
 $GLOBALS['__nf_reaction_counts'] = [];
 $GLOBALS['__nf_user_reactions']  = [];
+$GLOBALS['__nf_cluster_counts']  = [];
 $__allIds = [];
+$__allClusterKeys = [];
 foreach ([$heroArticles, $palestineNews, $breakingNews, $latestArticles,
           $politicalNews, $economyNews, $sportsNews, $artsNews, $reportsNews] as $__list) {
-    foreach ($__list as $__a) { $__allIds[] = (int)($__a['id'] ?? 0); }
+    foreach ($__list as $__a) {
+        $__allIds[] = (int)($__a['id'] ?? 0);
+        $__ck = (string)($__a['cluster_key'] ?? '');
+        if ($__ck !== '' && $__ck !== '-') $__allClusterKeys[] = $__ck;
+    }
 }
 if ($__allIds) {
     $GLOBALS['__nf_reaction_counts'] = article_reactions_counts_for($__allIds);
@@ -157,6 +164,12 @@ if ($__allIds) {
         $GLOBALS['__nf_saved_ids'] = array_flip(user_bookmark_ids_for($viewerId, $__allIds));
         $GLOBALS['__nf_user_reactions'] = user_article_reactions_for($viewerId, $__allIds);
     }
+}
+// One round-trip groups every visible article's cluster and tells us
+// which keys actually have multiple sources (≥ 2 rows). Single-row
+// clusters are dropped server-side so the badge stays meaningful.
+if ($__allClusterKeys) {
+    $GLOBALS['__nf_cluster_counts'] = cluster_counts_for($__allClusterKeys);
 }
 
 // جلب الريلز للعرض في الصفحة الرئيسية
@@ -186,10 +199,23 @@ $homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap"></noscript>
 <meta name="description" content="مجمع الأخبار العربية الأول - أحدث الأخبار من مصادر موثوقة في السياسة، الاقتصاد، الرياضة، والتكنولوجيا">
+<link rel="alternate" type="application/rss+xml" title="<?php echo e(getSetting('site_name', SITE_NAME)); ?> RSS" href="/rss.xml">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1a5c5c">
 <link rel="stylesheet" href="assets/css/site-header.css?v=1">
-<link rel="stylesheet" href="assets/css/home.css?v=15">
+<link rel="stylesheet" href="assets/css/home.css?v=17">
 <link rel="stylesheet" href="assets/css/user.css?v=17">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
+<script>
+// Register the service worker for the PWA shell. Wrapped in a load
+// listener so it never blocks first paint, and a try/catch so an
+// older browser without SW support is a no-op instead of an error.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    try { navigator.serviceWorker.register('/sw.js', { scope: '/' }); } catch (e) {}
+  });
+}
+</script>
 </head>
 <body>
 
@@ -252,6 +278,7 @@ $__featRest  = array_slice($latestArticles, 7);
       <a class="nf-feature-main-link" href="<?php echo articleUrl($__featMain); ?>">
         <div class="nf-feature-main-img" style="background-image:url('<?php echo e($__featMain['image_url'] ?? placeholderImage(1200,800)); ?>');"></div>
         <div class="nf-feature-main-body">
+          <?php echo renderClusterBadge($__featMain); ?>
           <h3 class="nf-feature-main-title"><?php echo e($__featMain['title']); ?></h3>
           <div class="nf-feature-main-meta">
             <?php if (!empty($__featMain['source_name'])): ?>
@@ -292,6 +319,7 @@ $__featRest  = array_slice($latestArticles, 7);
       <div class="ps-hero">
         <a class="ps-hero-link" href="<?php echo articleUrl($psFirst); ?>">
           <div class="ps-hero-text">
+            <?php echo renderClusterBadge($psFirst); ?>
             <h3><?php echo e($psFirst['title']); ?></h3>
             <div class="ps-hero-excerpt"><?php echo e(mb_substr(strip_tags($psFirst['content'] ?? $psFirst['excerpt'] ?? ''), 0, 200)); ?></div>
             <div class="ps-hero-meta">
@@ -319,6 +347,7 @@ $__featRest  = array_slice($latestArticles, 7);
                 <div class="img-date"><?php echo timeAgo($article['published_at']); ?></div>
               </div>
               <div class="ps-card-body">
+                <?php echo renderClusterBadge($article); ?>
                 <h3><?php echo e($article['title']); ?></h3>
                 <div class="ps-card-footer">
                   <span class="source-dot"><?php echo e(mb_substr($article['source_name'], 0, 1)); ?></span>
@@ -345,6 +374,7 @@ $__featRest  = array_slice($latestArticles, 7);
           </div>
           <div class="bn-body">
             <span class="bn-badge"><span class="bn-dot"></span>عاجل</span>
+            <?php echo renderClusterBadge($article); ?>
             <div class="bn-title"><?php echo e($article['title']); ?></div>
             <div class="bn-meta">
               <span class="bn-source"><?php echo e($article['source_name']); ?></span>
@@ -405,6 +435,7 @@ $__featRest  = array_slice($latestArticles, 7);
             <div class="card-img"><img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
             <div class="card-body">
               <span class="card-cat cat-political">سياسة</span>
+              <?php echo renderClusterBadge($article); ?>
               <div class="card-title"><?php echo e($article['title']); ?></div>
               <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
               <div class="card-meta">
@@ -430,6 +461,7 @@ $__featRest  = array_slice($latestArticles, 7);
             <div class="card-img"><img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
             <div class="card-body">
               <span class="card-cat cat-economic">اقتصاد</span>
+              <?php echo renderClusterBadge($article); ?>
               <div class="card-title"><?php echo e($article['title']); ?></div>
               <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
               <div class="card-meta">
@@ -455,6 +487,7 @@ $__featRest  = array_slice($latestArticles, 7);
             <div class="card-img"><img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
             <div class="card-body">
               <span class="card-cat cat-sports">رياضة</span>
+              <?php echo renderClusterBadge($article); ?>
               <div class="card-title"><?php echo e($article['title']); ?></div>
               <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
               <div class="card-meta">
@@ -480,6 +513,7 @@ $__featRest  = array_slice($latestArticles, 7);
             <div class="card-img"><img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
             <div class="card-body">
               <span class="card-cat cat-arts">فنون</span>
+              <?php echo renderClusterBadge($article); ?>
               <div class="card-title"><?php echo e($article['title']); ?></div>
               <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
               <div class="card-meta">
@@ -523,6 +557,7 @@ $__featRest  = array_slice($latestArticles, 7);
             <div class="card-img"><img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
             <div class="card-body">
               <span class="card-cat cat-reports">تقرير</span>
+              <?php echo renderClusterBadge($article); ?>
               <div class="card-title"><?php echo e($article['title']); ?></div>
               <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
               <div class="card-meta">
