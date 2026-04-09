@@ -67,4 +67,6 @@ FileETag None
     RewriteRule ^article/([0-9]+)(?:/[^/]*)?/?$ article.php?id=$1 [L,QSA]
     RewriteRule ^category/([a-z0-9-]+)/?$ category.php?slug=$1 [L,QSA]
     RewriteRule ^source/([0-9]+)/?$ source.php?id=$1 [L,QSA]
+    RewriteRule ^topic/([^/]+)/?$ topic.php?slug=$1 [L,QSA]
+    RewriteRule ^rss\.xml$ rss.php [L]
 </IfModule>
