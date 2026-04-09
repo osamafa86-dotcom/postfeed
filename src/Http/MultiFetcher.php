@@ -8,10 +8,15 @@ namespace NewsFlow\Http;
  */
 final class MultiFetcher
 {
+    /**
+     * Browser-like defaults because many Arabic news sites block or serve
+     * a stripped page to generic bot UAs. Timeouts bumped to match the
+     * single-request fetcher in includes/article_fetch.php.
+     */
     public function __construct(
-        private int $timeout = 12,
-        private int $connectTimeout = 6,
-        private string $userAgent = 'Mozilla/5.0 (compatible; NewsFlow/1.0)'
+        private int $timeout = 15,
+        private int $connectTimeout = 8,
+        private string $userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
     ) {}
 
     /**
@@ -97,11 +102,19 @@ final class MultiFetcher
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS => 5,
             CURLOPT_TIMEOUT => $this->timeout,
             CURLOPT_CONNECTTIMEOUT => $this->connectTimeout,
             CURLOPT_USERAGENT => $this->userAgent,
-            CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_HTTPHEADER => [
+                'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language: ar,en-US;q=0.9,en;q=0.8',
+                'Cache-Control: no-cache',
+            ],
+            // Many Arabic news sites ship old/misconfigured certs. We fall
+            // back to verify-off rather than lose the whole page.
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => 0,
             CURLOPT_ENCODING => '',
         ];
     }
