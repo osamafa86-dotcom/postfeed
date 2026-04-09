@@ -1,17 +1,22 @@
 <?php
 /**
- * Backfill: re-fetch full body (≥3 paragraphs) for articles whose content is too short.
+ * Backfill: re-fetch full body (≥2 paragraphs) for articles whose content is too short.
  * CLI:  php cron_backfill_content.php 50
- * HTTP: cron_backfill_content.php?key=XXX&limit=50
+ * HTTP: cron_backfill_content.php?key=XXX&limit=50        (for cron jobs)
+ * HTTP: cron_backfill_content.php?limit=50                (for logged-in admins)
  */
 require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/article_fetch.php';
 
 if (PHP_SAPI !== 'cli') {
+    session_start();
+    $isAdminLoggedIn = function_exists('isAdmin') && isAdmin();
     $expected = getSetting('cron_key', '');
-    if (!$expected || ($_GET['key'] ?? '') !== $expected) {
-        http_response_code(403); exit('forbidden');
+    $validKey = $expected !== '' && ($_GET['key'] ?? '') === $expected;
+    if (!$isAdminLoggedIn && !$validKey) {
+        http_response_code(403);
+        exit('forbidden — log in as admin or pass ?key=<cron_key>');
     }
     header('Content-Type: text/plain; charset=utf-8');
 }
