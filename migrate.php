@@ -96,6 +96,38 @@ $db->exec("CREATE TABLE IF NOT EXISTS telegram_messages (
     FOREIGN KEY (source_id) REFERENCES telegram_sources(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
+// ---------- newsletter subscribers ----------
+// Daily digest sign-ups: double opt-in via confirm_token, one-click
+// unsubscribe via unsubscribe_token. last_sent_at is bumped by
+// cron_newsletter.php so we can throttle / show "next send" in admin.
+$db->exec("CREATE TABLE IF NOT EXISTS newsletter_subscribers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(190) NOT NULL UNIQUE,
+    confirmed TINYINT(1) NOT NULL DEFAULT 0,
+    confirm_token VARCHAR(64) NOT NULL,
+    unsubscribe_token VARCHAR(64) NOT NULL,
+    subscribed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    confirmed_at TIMESTAMP NULL,
+    last_sent_at TIMESTAMP NULL,
+    ip_address VARCHAR(45) DEFAULT NULL,
+    INDEX idx_confirmed (confirmed),
+    INDEX idx_confirm_token (confirm_token),
+    INDEX idx_unsubscribe_token (unsubscribe_token)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+// Track each digest send so we can show stats in the admin and avoid
+// double-sending if cron runs twice in the same window.
+$db->exec("CREATE TABLE IF NOT EXISTS newsletter_sends (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    sent_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    subject VARCHAR(255) NOT NULL,
+    article_count INT NOT NULL DEFAULT 0,
+    recipient_count INT NOT NULL DEFAULT 0,
+    success_count INT NOT NULL DEFAULT 0,
+    fail_count INT NOT NULL DEFAULT 0,
+    INDEX idx_sent (sent_at DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
 // ---------- reels tables ----------
 $db->exec("CREATE TABLE IF NOT EXISTS reels_sources (
     id INT AUTO_INCREMENT PRIMARY KEY,

@@ -203,7 +203,7 @@ $homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#1a5c5c">
 <link rel="stylesheet" href="assets/css/site-header.css?v=1">
-<link rel="stylesheet" href="assets/css/home.css?v=17">
+<link rel="stylesheet" href="assets/css/home.css?v=18">
 <link rel="stylesheet" href="assets/css/user.css?v=17">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 <script>
@@ -677,6 +677,22 @@ $__featRest  = array_slice($latestArticles, 7);
 
 <!-- FOOTER -->
 <footer>
+  <!-- NEWSLETTER SIGNUP -->
+  <div class="newsletter-band">
+    <div class="newsletter-inner">
+      <div class="newsletter-text">
+        <div class="newsletter-eyebrow">📬 نشرة يومية بالبريد</div>
+        <h3 class="newsletter-title">أهم الأخبار في صندوقك كل صباح</h3>
+        <p class="newsletter-desc">ملخّص ذكي لأبرز الأخبار والتحليلات يصلك يوميًا — مجاني، وبدون إزعاج.</p>
+      </div>
+      <form class="newsletter-form" id="newsletterForm" onsubmit="return nfSubscribeNewsletter(event)">
+        <input type="email" name="email" id="newsletterEmail" placeholder="بريدك الإلكتروني" required dir="ltr">
+        <input type="hidden" name="_csrf" value="<?php echo csrf_token(); ?>">
+        <button type="submit" id="newsletterBtn">اشترك الآن</button>
+      </form>
+      <div class="newsletter-msg" id="newsletterMsg" role="status" aria-live="polite"></div>
+    </div>
+  </div>
   <div class="footer-inner">
     <div class="footer-brand">
       <div class="footer-logo"><?php echo e(getSetting('site_name', SITE_NAME)); ?></div>
@@ -1051,6 +1067,47 @@ $__featRest  = array_slice($latestArticles, 7);
 <script src="assets/js/home.js?v=4" defer></script>
 <script src="assets/js/user.js?v=4" defer></script>
 <script src="assets/js/telegram-live.js?v=2" defer></script>
+<script>
+// Footer newsletter signup — simple fetch + status feedback.
+function nfSubscribeNewsletter(e) {
+  e.preventDefault();
+  var form = document.getElementById('newsletterForm');
+  var btn  = document.getElementById('newsletterBtn');
+  var msg  = document.getElementById('newsletterMsg');
+  var fd   = new FormData(form);
+  msg.textContent = ''; msg.className = 'newsletter-msg';
+  btn.disabled = true; btn.textContent = 'جاري الإرسال...';
+  fetch('api/newsletter_subscribe.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+    .then(function(r){ return r.json().catch(function(){ return { ok:false, error:'bad_response' }; }); })
+    .then(function(j){
+      btn.disabled = false; btn.textContent = 'اشترك الآن';
+      if (j && j.ok) {
+        if (j.already) {
+          msg.textContent = '✅ هذا البريد مشترك بالفعل في النشرة';
+          msg.className = 'newsletter-msg ok';
+        } else {
+          msg.textContent = '🎉 أرسلنا لك رسالة تأكيد. تفقّد بريدك (وربما مجلد الرسائل غير المرغوبة).';
+          msg.className = 'newsletter-msg ok';
+          form.reset();
+        }
+      } else {
+        var err = (j && j.error) || 'error';
+        var label = err === 'invalid_email' ? '⚠️ البريد الإلكتروني غير صحيح'
+                  : err === 'rate_limited' ? '⏱️ محاولات كثيرة — أعد المحاولة بعد قليل'
+                  : err === 'csrf' ? '🔒 جلسة منتهية — حدّث الصفحة وحاول مجددًا'
+                  : '😔 تعذّر تسجيل اشتراكك مؤقتًا';
+        msg.textContent = label;
+        msg.className = 'newsletter-msg err';
+      }
+    })
+    .catch(function(){
+      btn.disabled = false; btn.textContent = 'اشترك الآن';
+      msg.textContent = '⚠️ خطأ في الاتصال — حاول مرة أخرى';
+      msg.className = 'newsletter-msg err';
+    });
+  return false;
+}
+</script>
 
 </body>
 </html>
