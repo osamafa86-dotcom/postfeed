@@ -115,20 +115,222 @@ include __DIR__ . '/includes/panel_layout_head.php';
   <?php if ($success): ?><div class="alert alert-success"><?php echo e($success); ?></div><?php endif; ?>
 
   <?php if ($action === 'add' || $action === 'edit'): ?>
+    <?php if ($action === 'add'): ?>
+    <style>
+      .tg-add-tabs { display:flex; gap:6px; margin-bottom:18px; border-bottom:2px solid var(--border,#e0e3e8); }
+      .tg-add-tab {
+        padding:10px 18px; font-weight:700; font-size:14px; font-family:inherit;
+        background:none; border:0; cursor:pointer; color:var(--text-muted,#6b7280);
+        border-bottom:3px solid transparent; margin-bottom:-2px; transition:all .2s;
+      }
+      .tg-add-tab:hover { color:var(--text,#1a1a2e); }
+      .tg-add-tab.active { color:var(--primary,#1a73e8); border-bottom-color:var(--primary,#1a73e8); }
+      .tg-add-pane { display:none; }
+      .tg-add-pane.active { display:block; animation:tgFadeIn .2s ease; }
+      @keyframes tgFadeIn { from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
+      .tg-lookup-row { display:flex; gap:8px; align-items:flex-start; }
+      .tg-lookup-row .form-control { flex:1; }
+      .tg-lookup-row .btn-primary { white-space:nowrap; height:42px; }
+      .tg-hint { color:var(--text-muted,#6b7280); font-size:12px; margin-top:6px; display:block; }
+      .tg-preview {
+        margin-top:14px; padding:14px; border-radius:12px;
+        background:var(--bg2,#fafafa); border:1px solid var(--border,#e0e3e8);
+        display:none; gap:14px; align-items:center;
+      }
+      .tg-preview.show { display:flex; }
+      .tg-preview.error { background:#fef2f2; border-color:#fecaca; color:#b91c1c; }
+      .tg-preview-avatar {
+        width:64px; height:64px; border-radius:50%; flex-shrink:0;
+        background:linear-gradient(135deg,#1a73e8,#4f46e5);
+        display:flex; align-items:center; justify-content:center;
+        color:#fff; font-size:24px; font-weight:900; overflow:hidden;
+      }
+      .tg-preview-avatar img { width:100%; height:100%; object-fit:cover; }
+      .tg-preview-info { flex:1; min-width:0; }
+      .tg-preview-name { font-size:15px; font-weight:800; margin-bottom:4px; color:var(--text,#1a1a2e); }
+      .tg-preview-user { font-size:12px; color:var(--primary,#1a73e8); font-weight:600; }
+      .tg-preview-desc {
+        font-size:12.5px; color:var(--text-muted,#6b7280); margin-top:6px;
+        display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+      }
+      .tg-preview-meta { font-size:11px; color:var(--text-muted,#6b7280); margin-top:4px; }
+      .tg-loading { color:var(--text-muted,#6b7280); font-size:13px; padding:10px 0; display:none; }
+      .tg-loading.show { display:block; }
+      .tg-confirm-row { margin-top:14px; display:none; gap:10px; align-items:center; }
+      .tg-confirm-row.show { display:flex; }
+      .tg-confirm-row .tg-edit-fields { flex:1; display:flex; gap:10px; }
+      .tg-confirm-row .tg-edit-fields input { flex:1; }
+    </style>
     <div class="form-card">
-      <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;"><?php echo $action === 'edit' ? '✏️ تعديل قناة' : '➕ إضافة قناة'; ?></h3>
+      <h3 style="font-size:16px;font-weight:700;margin-bottom:10px;">➕ إضافة قناة تيليغرام</h3>
+      <p style="color:var(--text-muted,#6b7280);font-size:13px;margin-bottom:16px;">اختر طريقة الإضافة المناسبة لك — إما من خلال لصق الرابط/اليوزرنيم، أو البحث باسم القناة.</p>
+
+      <div class="tg-add-tabs" role="tablist">
+        <button type="button" class="tg-add-tab active" data-tab="link">🔗 رابط أو يوزرنيم</button>
+        <button type="button" class="tg-add-tab" data-tab="search">🔎 بحث تلقائي</button>
+      </div>
+
+      <!-- TAB 1: Link / Username -->
+      <div class="tg-add-pane active" data-pane="link">
+        <label style="display:block;font-weight:600;margin-bottom:6px;">الصق رابط القناة أو اليوزرنيم</label>
+        <div class="tg-lookup-row">
+          <input type="text" id="tgLinkInput" class="form-control" placeholder="https://t.me/aljazeera  أو  @aljazeera  أو  aljazeera">
+          <button type="button" class="btn-primary" id="tgLinkVerify">✓ تحقق</button>
+        </div>
+        <small class="tg-hint">يجب أن تكون قناة عامة (Public). تقبل الصيغ: <code>@name</code>, <code>t.me/name</code>, <code>https://t.me/name</code></small>
+        <div class="tg-loading" data-loading="link">⏳ جاري التحقق من القناة...</div>
+        <div class="tg-preview" data-preview="link"></div>
+      </div>
+
+      <!-- TAB 2: Search by name -->
+      <div class="tg-add-pane" data-pane="search">
+        <label style="display:block;font-weight:600;margin-bottom:6px;">ابحث عن القناة بالاسم</label>
+        <input type="text" id="tgSearchInput" class="form-control" placeholder="اكتب اسم القناة على تيليغرام، مثل: aljazeera">
+        <small class="tg-hint">يتم التحقق تلقائياً أثناء الكتابة. ملاحظة: يجب استخدام اليوزرنيم (بالإنجليزية) كما هو على تيليغرام.</small>
+        <div class="tg-loading" data-loading="search">⏳ جاري البحث...</div>
+        <div class="tg-preview" data-preview="search"></div>
+      </div>
+
+      <!-- Shared: confirmation form (revealed after a successful lookup) -->
+      <form method="POST" id="tgAddForm" style="margin-top:20px;display:none;">
+        <?php echo csrf_field(); ?>
+        <input type="hidden" name="username" id="tgFormUsername">
+        <input type="hidden" name="avatar_url" id="tgFormAvatar">
+        <div class="form-row">
+          <div class="form-group">
+            <label>الاسم المعروض *</label>
+            <input type="text" name="display_name" id="tgFormDisplayName" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label>الترتيب</label>
+            <input type="number" name="sort_order" class="form-control" value="0">
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="checkbox-item">
+            <input type="checkbox" name="is_active" id="tg_active_new" checked>
+            <label for="tg_active_new" style="margin:0;">نشط</label>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button type="submit" class="btn-primary">💾 حفظ القناة</button>
+          <a href="telegram.php" class="btn-outline">إلغاء</a>
+        </div>
+      </form>
+
+      <?php if (!($action === 'add')): ?>
+        <a href="telegram.php" class="btn-outline" style="margin-top:14px;display:inline-block;">إلغاء</a>
+      <?php endif; ?>
+    </div>
+
+    <script>
+    (function(){
+      var tabs = document.querySelectorAll('.tg-add-tab');
+      var panes = document.querySelectorAll('.tg-add-pane');
+      tabs.forEach(function(t){
+        t.addEventListener('click', function(){
+          tabs.forEach(function(x){ x.classList.remove('active'); });
+          panes.forEach(function(x){ x.classList.remove('active'); });
+          t.classList.add('active');
+          document.querySelector('[data-pane="'+t.dataset.tab+'"]').classList.add('active');
+        });
+      });
+
+      var form = document.getElementById('tgAddForm');
+      var elUsername = document.getElementById('tgFormUsername');
+      var elAvatar   = document.getElementById('tgFormAvatar');
+      var elDisplay  = document.getElementById('tgFormDisplayName');
+
+      function escapeHtml(s){
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+          return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+        });
+      }
+
+      function renderPreview(pane, data) {
+        var target = document.querySelector('[data-preview="'+pane+'"]');
+        target.classList.remove('error');
+        if (!data || !data.ok) {
+          target.classList.add('show','error');
+          target.innerHTML = '<div>⚠ ' + escapeHtml((data && data.error) || 'لم يتم العثور على القناة') + '</div>';
+          form.style.display = 'none';
+          return;
+        }
+        var initial = (data.display_name || data.username || '?').trim().charAt(0).toUpperCase();
+        var avatar = data.avatar_url
+          ? '<img src="'+escapeHtml(data.avatar_url)+'" alt="">'
+          : escapeHtml(initial);
+        var subs = data.subscribers ? '👥 ' + escapeHtml(data.subscribers) + ' مشترك' : '';
+        target.classList.add('show');
+        target.innerHTML =
+          '<div class="tg-preview-avatar">'+avatar+'</div>' +
+          '<div class="tg-preview-info">' +
+            '<div class="tg-preview-name">'+escapeHtml(data.display_name || data.username)+'</div>' +
+            '<div class="tg-preview-user"><a href="'+escapeHtml(data.channel_url)+'" target="_blank">@'+escapeHtml(data.username)+'</a></div>' +
+            (data.description ? '<div class="tg-preview-desc">'+escapeHtml(data.description)+'</div>' : '') +
+            (subs ? '<div class="tg-preview-meta">'+subs+'</div>' : '') +
+          '</div>';
+
+        // populate the hidden/confirmation form
+        elUsername.value = data.username || '';
+        elAvatar.value   = data.avatar_url || '';
+        elDisplay.value  = data.display_name || data.username || '';
+        form.style.display = 'block';
+      }
+
+      function lookup(pane, query) {
+        var target = document.querySelector('[data-preview="'+pane+'"]');
+        var loading = document.querySelector('[data-loading="'+pane+'"]');
+        target.classList.remove('show','error');
+        target.innerHTML = '';
+        form.style.display = 'none';
+        if (!query || query.length < 3) return;
+        loading.classList.add('show');
+        fetch('telegram_lookup.php?q=' + encodeURIComponent(query), { credentials:'same-origin' })
+          .then(function(r){ return r.json(); })
+          .then(function(data){ loading.classList.remove('show'); renderPreview(pane, data); })
+          .catch(function(){ loading.classList.remove('show'); renderPreview(pane, {ok:false, error:'خطأ في الاتصال'}); });
+      }
+
+      // Tab 1: button click + Enter
+      var linkInput = document.getElementById('tgLinkInput');
+      document.getElementById('tgLinkVerify').addEventListener('click', function(){
+        lookup('link', linkInput.value.trim());
+      });
+      linkInput.addEventListener('keydown', function(e){
+        if (e.key === 'Enter') { e.preventDefault(); lookup('link', linkInput.value.trim()); }
+      });
+
+      // Tab 2: debounced as-you-type
+      var searchInput = document.getElementById('tgSearchInput');
+      var searchTimer = null;
+      searchInput.addEventListener('input', function(){
+        clearTimeout(searchTimer);
+        var v = searchInput.value.trim();
+        if (v.length < 3) {
+          document.querySelector('[data-preview="search"]').classList.remove('show');
+          form.style.display = 'none';
+          return;
+        }
+        searchTimer = setTimeout(function(){ lookup('search', v); }, 500);
+      });
+    })();
+    </script>
+    <?php else: /* edit mode — keep original simple form */ ?>
+    <div class="form-card">
+      <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;">✏️ تعديل قناة</h3>
       <form method="POST">
-                <?php echo csrf_field(); ?>
-        <?php if ($editSource): ?><input type="hidden" name="id" value="<?php echo (int)$editSource['id']; ?>"><?php endif; ?>
+        <?php echo csrf_field(); ?>
+        <input type="hidden" name="id" value="<?php echo (int)$editSource['id']; ?>">
         <div class="form-row">
           <div class="form-group">
             <label>اسم القناة على تيليغرام *</label>
-            <input type="text" name="username" class="form-control" placeholder="aljazeera" value="<?php echo e($editSource['username'] ?? ''); ?>" required>
-            <small style="color:var(--text-muted);font-size:11px;">يجب أن تكون قناة عامة (Public). بدون @</small>
+            <input type="text" name="username" class="form-control" value="<?php echo e($editSource['username']); ?>" required>
+            <small style="color:var(--text-muted);font-size:11px;">بدون @</small>
           </div>
           <div class="form-group">
             <label>الاسم المعروض *</label>
-            <input type="text" name="display_name" class="form-control" placeholder="قناة الجزيرة" value="<?php echo e($editSource['display_name'] ?? ''); ?>" required>
+            <input type="text" name="display_name" class="form-control" value="<?php echo e($editSource['display_name']); ?>" required>
           </div>
         </div>
         <div class="form-row">
@@ -143,7 +345,7 @@ include __DIR__ . '/includes/panel_layout_head.php';
         </div>
         <div class="form-group">
           <div class="checkbox-item">
-            <input type="checkbox" name="is_active" id="tg_active" <?php echo (!isset($editSource) || $editSource['is_active']) ? 'checked' : ''; ?>>
+            <input type="checkbox" name="is_active" id="tg_active" <?php echo $editSource['is_active'] ? 'checked' : ''; ?>>
             <label for="tg_active" style="margin:0;">نشط</label>
           </div>
         </div>
@@ -153,6 +355,7 @@ include __DIR__ . '/includes/panel_layout_head.php';
         </div>
       </form>
     </div>
+    <?php endif; ?>
   <?php else: ?>
     <div class="card" style="margin-bottom:20px;">
       <table>
