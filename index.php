@@ -185,68 +185,68 @@ $homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
 <meta name="description" content="مجمع الأخبار العربية الأول - أحدث الأخبار من مصادر موثوقة في السياسة، الاقتصاد، الرياضة، والتكنولوجيا">
-<link rel="stylesheet" href="assets/css/home.css?v=12">
+<link rel="stylesheet" href="assets/css/home.css?v=13">
 <link rel="stylesheet" href="assets/css/user.css?v=17">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>
 
-<!-- TOP BAR -->
-<div class="topbar">
-  <div class="topbar-left">
-    <span><span class="live-dot"></span> مباشر الآن</span>
-    <span><?php echo date('l, j F Y'); ?></span>
-    <span id="liveTime"><?php echo date('h:i A'); ?></span>
-  </div>
-  <div class="topbar-right">
-    <span>أحدث الأخبار من مصادر موثوقة</span>
-  </div>
-</div>
-
 <!-- HEADER -->
-<header>
-  <a class="logo" href="index.php">
-    <div class="logo-icon">N</div>
-    <div>
-      <h1 class="logo-text" style="font:inherit;margin:0;"><?php echo e(getSetting('site_name', SITE_NAME)); ?></h1>
-      <div class="logo-sub"><?php echo e(getSetting('site_tagline', SITE_TAGLINE)); ?></div>
-    </div>
-  </a>
-
-  <nav>
-    <a href="category.php?type=breaking" class="breaking">🔴 عاجل</a>
-    <a href="index.php" class="active">الرئيسية</a>
-    <a href="category.php?type=latest">آخر الأخبار</a>
-    <a href="category/political">سياسة</a>
-    <a href="category/economy">اقتصاد</a>
-    <a href="category/sports">رياضة</a>
-    <a href="category/arts">فنون</a>
-    <a href="category/media">ميديا</a>
-    <a href="category/reports">تقارير</a>
-    <a href="reels.php">🎬 ريلز</a>
-  </nav>
-
-  <div class="header-actions">
-    <button class="menu-toggle" onclick="toggleMobileNav()" aria-label="القائمة">☰</button>
-    <div class="search-box">
-      <span class="search-icon">&#x1F50D;</span>
-      <input type="text" placeholder="ابحث عن خبر...">
-    </div>
-    <button type="button" class="icon-btn icon-btn-wide" id="topWeather" onclick="openWeatherModal()" title="الطقس">🌤 <span>--°</span></button>
-    <button type="button" class="icon-btn" onclick="openCurrencyModal()" title="أسعار العملات">💱</button>
-    <button type="button" class="icon-btn" onclick="openSourcesModal()" title="المصادر النشطة">🌐</button>
-    <div class="icon-btn" onclick="NF.cycleTheme()" title="تبديل الثيم">🌓</div>
-    <?php if ($viewerId): ?>
-      <div class="icon-btn" data-nf-notif-btn onclick="NF.toggleNotifDropdown(this)" title="الإشعارات">
-        🔔
-        <?php if ($userUnread > 0): ?><span class="notif-badge" data-notif-badge><?php echo (int)$userUnread; ?></span><?php endif; ?>
+<header class="site-header">
+  <div class="site-header-inner">
+    <a class="logo" href="index.php">
+      <div class="logo-icon">N</div>
+      <div class="logo-text-wrap">
+        <h1 class="logo-text"><?php echo e(getSetting('site_name', SITE_NAME)); ?></h1>
+        <div class="logo-sub"><?php echo e(getSetting('site_tagline', SITE_TAGLINE)); ?></div>
       </div>
-      <a href="me/" class="avatar" title="لوحتي"><?php echo e(mb_substr($viewer['name'] ?? '?', 0, 1)); ?></a>
-    <?php else: ?>
-      <a href="account/login.php" class="icon-btn" title="دخول" style="text-decoration:none">🔑</a>
-      <a href="account/register.php" style="padding:8px 14px;border-radius:10px;background:linear-gradient(135deg,#1a73e8,#4f46e5);color:#fff;font-size:13px;font-weight:700;text-decoration:none;">انضم مجاناً</a>
-    <?php endif; ?>
+    </a>
+
+    <div class="header-center">
+      <div class="search-box">
+        <span class="search-icon">&#x1F50D;</span>
+        <input type="text" placeholder="ابحث عن خبر، مصدر، أو موضوع...">
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <span class="live-pill" title="<?php echo date('l, j F Y H:i'); ?>">
+        <span class="live-dot"></span>
+        <span class="live-pill-label">مباشر</span>
+        <span class="live-pill-time" id="liveTime"><?php echo date('H:i'); ?></span>
+      </span>
+      <button type="button" class="icon-btn icon-btn-wide" id="topWeather" onclick="openWeatherModal()" title="الطقس">🌤 <span>--°</span></button>
+      <button type="button" class="icon-btn" onclick="openCurrencyModal()" title="أسعار العملات" aria-label="أسعار العملات">💱</button>
+      <button type="button" class="icon-btn" onclick="openSourcesModal()" title="المصادر النشطة" aria-label="المصادر">🌐</button>
+      <button type="button" class="icon-btn" onclick="NF.cycleTheme()" title="تبديل الثيم" aria-label="الثيم">🌓</button>
+      <?php if ($viewerId): ?>
+        <button type="button" class="icon-btn" data-nf-notif-btn onclick="NF.toggleNotifDropdown(this)" title="الإشعارات" aria-label="الإشعارات">
+          🔔
+          <?php if ($userUnread > 0): ?><span class="notif-badge" data-notif-badge><?php echo (int)$userUnread; ?></span><?php endif; ?>
+        </button>
+        <a href="me/" class="avatar" title="لوحتي"><?php echo e(mb_substr($viewer['name'] ?? '?', 0, 1)); ?></a>
+      <?php else: ?>
+        <a href="account/login.php" class="icon-btn" title="دخول" aria-label="تسجيل الدخول">🔑</a>
+        <a href="account/register.php" class="btn-join">انضم مجاناً</a>
+      <?php endif; ?>
+      <button class="menu-toggle" onclick="toggleMobileNav()" aria-label="القائمة">☰</button>
+    </div>
   </div>
+
+  <nav class="site-nav">
+    <div class="site-nav-inner">
+      <a href="category.php?type=breaking" class="nav-link breaking"><span class="nav-dot"></span>عاجل</a>
+      <a href="index.php" class="nav-link active">الرئيسية</a>
+      <a href="category.php?type=latest" class="nav-link">آخر الأخبار</a>
+      <a href="category/political" class="nav-link">سياسة</a>
+      <a href="category/economy" class="nav-link">اقتصاد</a>
+      <a href="category/sports" class="nav-link">رياضة</a>
+      <a href="category/arts" class="nav-link">فنون</a>
+      <a href="category/media" class="nav-link">ميديا</a>
+      <a href="category/reports" class="nav-link">تقارير</a>
+      <a href="reels.php" class="nav-link nav-reels">🎬 ريلز</a>
+    </div>
+  </nav>
 </header>
 
 <!-- MOBILE NAV -->
@@ -265,22 +265,9 @@ $homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
   <a href="reels.php">🎬 ريلز</a>
 </nav>
 
-<!-- SECTIONS NAV -->
-<div class="sections-nav">
-  <div class="sec-btn active" onclick="filterSection(this,'all')">📰 الكل</div>
-  <div class="sec-btn" onclick="filterSection(this,'breaking')">🔴 عاجل</div>
-  <div class="sec-btn" onclick="filterSection(this,'latest')">⏱ آخر الأخبار</div>
-  <div class="sec-btn" onclick="filterSection(this,'political')">🏛 سياسة</div>
-  <div class="sec-btn" onclick="filterSection(this,'economy')">💹 اقتصاد</div>
-  <div class="sec-btn" onclick="filterSection(this,'sports')">⚽ رياضة</div>
-  <div class="sec-btn" onclick="filterSection(this,'arts')">🎨 فنون</div>
-  <div class="sec-btn" onclick="filterSection(this,'media')">🎥 ميديا</div>
-  <div class="sec-btn" onclick="filterSection(this,'reports')">📊 تقارير</div>
-</div>
-
 <!-- TICKER -->
 <div class="ticker-wrap">
-  <div class="ticker-label">عاجل</div>
+  <div class="ticker-label"><span class="ticker-label-dot"></span>عاجل</div>
   <div class="ticker-content">
     <?php foreach ($tickerItems as $item): ?>
       <a class="ticker-item" href="<?php echo articleUrl($item); ?>"><?php echo e($item['title']); ?></a>
@@ -293,39 +280,41 @@ $homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
 
 <!-- STATS BAR -->
 <div class="stats-bar">
-  <div class="stat-item">
-    <span class="stat-icon">📰</span>
-    <div>
-      <div class="stat-val"><?php echo number_format($totalArticles); ?></div>
-      <div class="stat-label">خبر</div>
+  <div class="stats-bar-inner">
+    <div class="stat-card stat-card-blue">
+      <span class="stat-icon">📰</span>
+      <div class="stat-body">
+        <div class="stat-val"><?php echo number_format($totalArticles); ?></div>
+        <div class="stat-label">خبر</div>
+      </div>
     </div>
-  </div>
-  <div class="stat-item">
-    <span class="stat-icon">🌐</span>
-    <div>
-      <div class="stat-val"><?php echo $totalSources; ?></div>
-      <div class="stat-label">مصدر نشط</div>
+    <div class="stat-card stat-card-teal">
+      <span class="stat-icon">🌐</span>
+      <div class="stat-body">
+        <div class="stat-val"><?php echo $totalSources; ?></div>
+        <div class="stat-label">مصدر نشط</div>
+      </div>
     </div>
-  </div>
-  <div class="stat-item">
-    <span class="stat-icon">👁</span>
-    <div>
-      <div class="stat-val">3.2M</div>
-      <div class="stat-label">مشاهدة اليوم</div>
+    <div class="stat-card stat-card-purple">
+      <span class="stat-icon">👁</span>
+      <div class="stat-body">
+        <div class="stat-val">3.2M</div>
+        <div class="stat-label">مشاهدة اليوم</div>
+      </div>
     </div>
-  </div>
-  <div class="stat-item">
-    <span class="stat-icon">🔥</span>
-    <div>
-      <div class="stat-val">سياسة</div>
-      <div class="stat-label">الأكثر تداولاً</div>
+    <div class="stat-card stat-card-orange">
+      <span class="stat-icon">🔥</span>
+      <div class="stat-body">
+        <div class="stat-val">سياسة</div>
+        <div class="stat-label">الأكثر تداولاً</div>
+      </div>
     </div>
-  </div>
-  <div class="stat-item">
-    <span class="stat-icon">⏱</span>
-    <div>
-      <div class="stat-val">منذ 2 دق</div>
-      <div class="stat-label">آخر تحديث</div>
+    <div class="stat-card stat-card-red">
+      <span class="stat-icon">⏱</span>
+      <div class="stat-body">
+        <div class="stat-val">منذ 2 دق</div>
+        <div class="stat-label">آخر تحديث</div>
+      </div>
     </div>
   </div>
 </div>
@@ -928,29 +917,18 @@ $__featRest  = array_slice($latestArticles, 7);
     document.getElementById('addSourceModal').classList.remove('show');
   }
 
-  // SECTIONS NAV
-  function filterSection(el, section) {
-    document.querySelectorAll('.sec-btn').forEach(b => b.classList.remove('active'));
-    el.classList.add('active');
-    if(section !== 'all') {
-      const target = document.getElementById(section);
-      if(target) target.scrollIntoView({ behavior:'smooth', block:'start' });
-    }
-  }
-
   function scrollToSection(id) {
     const el = document.getElementById(id);
     if(el) el.scrollIntoView({ behavior:'smooth', block:'start' });
   }
 
-  // LIVE CLOCK
+  // LIVE CLOCK (24h)
   setInterval(() => {
     const now = new Date();
-    const h = now.getHours() % 12 || 12;
+    const h = String(now.getHours()).padStart(2,'0');
     const m = String(now.getMinutes()).padStart(2,'0');
-    const ampm = now.getHours() >= 12 ? 'PM' : 'AM';
     const el = document.getElementById('liveTime');
-    if(el) el.textContent = h + ':' + m + ' ' + ampm;
+    if(el) el.textContent = h + ':' + m;
   }, 1000);
 
   // ANIMATED COUNTERS ON LOAD
