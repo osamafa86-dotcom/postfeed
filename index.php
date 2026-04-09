@@ -230,7 +230,7 @@ $homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#1a5c5c">
 <link rel="stylesheet" href="assets/css/site-header.css?v=1">
-<link rel="stylesheet" href="assets/css/home.css?v=22">
+<link rel="stylesheet" href="assets/css/home.css?v=23">
 <link rel="stylesheet" href="assets/css/user.css?v=17">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 <script>
@@ -1055,7 +1055,20 @@ $__featRest  = array_slice($latestArticles, 7);
   // Homepage section pills
   function scrollToHomeSection(pill, id) {
     document.querySelectorAll('.sec-pill').forEach(p => p.classList.toggle('active', p === pill));
+    // Clear any prior filter mode whenever any pill is clicked. Only the
+    // "خاص بك" pill re-enables it below; every other pill (including "الكل")
+    // should show the full homepage.
+    document.body.classList.remove('home-filter-foryou');
+
     if (id === 'all') {
+      window.scrollTo({ top:0, behavior:'smooth' });
+      return;
+    }
+    if (id === 'foryou') {
+      // "For You" acts as a real filter: hide the rest of the page so the
+      // reader can focus on their personalized picks. Clicking any other
+      // pill (or "الكل") restores the full homepage.
+      document.body.classList.add('home-filter-foryou');
       window.scrollTo({ top:0, behavior:'smooth' });
       return;
     }

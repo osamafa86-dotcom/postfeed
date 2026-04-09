@@ -1582,6 +1582,15 @@
     box-shadow:0 14px 32px -8px rgba(124,58,237,.6);
   }
 
+  /* "For You" filter mode — activated when the reader clicks the "خاص بك"
+     pill. Hides the rest of the homepage so they can focus on their
+     personalized picks. Clicking any other pill (including "الكل") removes
+     this class and restores the full homepage. */
+  body.home-filter-foryou .nf-feature-container,
+  body.home-filter-foryou .main-layout {
+    display:none !important;
+  }
+
   /* NEWSLETTER SIGNUP BAND */
   .newsletter-band {
     background:linear-gradient(135deg,#1a5c5c 0%,#0f3a3a 100%);
