@@ -5,8 +5,11 @@
  */
 
 function ai_summarize_article($title, $content, $maxTokens = 500) {
-    $apiKey = trim((string)env('ANTHROPIC_API_KEY', ''));
-    if ($apiKey === '') $apiKey = trim((string)getSetting('anthropic_api_key', ''));
+    // Prefer the key saved through the admin panel so rotations from
+    // panel/ai.php take effect immediately. Fall back to the env var
+    // only if the DB setting is empty.
+    $apiKey = trim((string)getSetting('anthropic_api_key', ''));
+    if ($apiKey === '') $apiKey = trim((string)env('ANTHROPIC_API_KEY', ''));
     if ($apiKey === '') {
         return ['ok' => false, 'error' => 'API key not configured'];
     }
@@ -75,8 +78,11 @@ function ai_summarize_article($title, $content, $maxTokens = 500) {
  *                           or ['ok'=>false, 'error'=>string].
  */
 function ai_summarize_telegram(array $messages, int $maxTokens = 900): array {
-    $apiKey = trim((string)env('ANTHROPIC_API_KEY', ''));
-    if ($apiKey === '') $apiKey = trim((string)getSetting('anthropic_api_key', ''));
+    // Prefer the key saved through the admin panel so rotations from
+    // panel/ai.php take effect immediately. Fall back to the env var
+    // only if the DB setting is empty.
+    $apiKey = trim((string)getSetting('anthropic_api_key', ''));
+    if ($apiKey === '') $apiKey = trim((string)env('ANTHROPIC_API_KEY', ''));
     if ($apiKey === '') {
         return ['ok' => false, 'error' => 'مفتاح Anthropic API غير مُعدّ. يرجى إضافته من لوحة التحكم.'];
     }
