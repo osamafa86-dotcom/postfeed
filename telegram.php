@@ -347,6 +347,6 @@ include __DIR__ . '/includes/components/site_header.php';
   <div class="footer-copy">&copy; <?php echo date('Y'); ?> <?php echo e(getSetting('site_name', SITE_NAME)); ?></div>
 </footer>
 
-<script src="assets/js/telegram-live.js?v=1" defer></script>
+<script src="assets/js/telegram-live.js?v=2" defer></script>
 </body>
 </html>
