@@ -106,6 +106,12 @@ final class RssFetcher
                     $imageUrl = extractArticleImage($html, $it['source_url']);
                 }
             }
+            // Retry once via the single-request fetcher: it has a SSL-off
+            // fallback and different timing, and rescues sites that blanked
+            // us on the parallel pass.
+            if ($fullContent === '' && !empty($it['source_url']) && function_exists('fetchArticleBody')) {
+                $fullContent = fetchArticleBody($it['source_url']);
+            }
             if ($fullContent === '') {
                 $fullContent = '<p>' . nl2br($it['excerpt']) . '</p>';
             }
