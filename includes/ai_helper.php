@@ -77,7 +77,7 @@ function ai_summarize_article($title, $content, $maxTokens = 500) {
  *                            'bullets'=>array<string>, 'topics'=>array<string>]
  *                           or ['ok'=>false, 'error'=>string].
  */
-function ai_summarize_telegram(array $messages, int $maxTokens = 2400): array {
+function ai_summarize_telegram(array $messages, int $maxTokens = 3500): array {
     // Prefer the key saved through the admin panel so rotations from
     // panel/ai.php take effect immediately. Fall back to the env var
     // only if the DB setting is empty.
@@ -117,42 +117,80 @@ function ai_summarize_telegram(array $messages, int $maxTokens = 2400): array {
     $count  = count($lines);
 
     $prompt = "أنت رئيس تحرير في غرفة أخبار عربية محترفة. لديك قائمة بآخر {$count} رسالة وصلت "
-            . "من قنوات تيليغرام إخبارية خلال الفترة الماضية. مهمتك: قراءة كل الرسائل ثم كتابة "
+            . "من قنوات تيليغرام إخبارية خلال الفترة الماضية. مهمتك: قراءة كل الرسائل ثم إرسال "
             . "تقرير إخباري عربي منظم ومنسّق بمستوى احترافي عالٍ، كأنه تقرير موجز في نشرة أخبار "
-            . "رسمية.\n\n"
+            . "رسمية، عبر استدعاء الأداة submit_news_briefing.\n\n"
             . "قواعد التحرير:\n"
             . "- اجمع الرسائل المتعلقة بنفس الحدث في عنصر واحد، ولا تكرّر الخبر.\n"
             . "- تجاهل الإعلانات والرسائل غير الإخبارية وروابط الاشتراك.\n"
-            . "- نظّم المحتوى في محاور رئيسية (ملفات إخبارية)، وكل محور يضم عناوين فرعية وتفاصيل.\n"
+            . "- نظّم المحتوى في محاور رئيسية (ملفات إخبارية)، وكل محور يضم تفاصيل متعلقة.\n"
             . "- استخدم لغة عربية فصحى، محايدة، بنبرة صحفية رسمية.\n"
             . "- كل تفصيلة إخبارية يجب أن تكون جملة كاملة وواضحة تعطي السياق والمكان والأطراف.\n"
             . "- لا تخترع أي معلومة غير موجودة في الرسائل.\n"
-            . "- رتّب المحاور من الأهم إلى الأقل أهمية.\n\n"
-            . "الرسائل:\n" . $corpus . "\n\n"
-            . "أعطني الرد بصيغة JSON صالح فقط (بدون أي نص خارج الـ JSON) وبالشكل التالي حصراً:\n"
-            . '{'
-            . '"headline":"عنوان رئيسي قوي يلخّص أبرز حدث (أقل من 90 حرفاً)",'
-            . '"summary":"فقرة افتتاحية من 3-5 جمل تعطي القارئ المشهد العام بأسلوب نشرة الأخبار",'
-            . '"sections":['
-            .   '{'
-            .     '"title":"عنوان المحور (مثال: التطورات العسكرية في الشمال)",'
-            .     '"icon":"رمز emoji واحد مناسب للمحور",'
-            .     '"items":["تفصيلة إخبارية كاملة 1","تفصيلة 2","تفصيلة 3"]'
-            .   '}'
-            . '],'
-            . '"topics":["وسم 1","وسم 2","وسم 3","وسم 4"]'
-            . '}'
-            . "\n\n"
-            . "متطلبات:\n"
-            . "- اجعل عدد المحاور (sections) بين 3 و 6 حسب ما تستحقه الأخبار.\n"
-            . "- كل محور يحتوي على 2 إلى 5 تفاصيل إخبارية (items).\n"
-            . "- الرموز التعبيرية يجب أن تكون رمزاً واحداً فقط لكل محور (مثل 🔴 🟢 🗞️ ⚡ 🛡️ 🏛️ 📍 ⚖️).\n"
-            . "- العنوان الرئيسي (headline) يجب أن يكون جذّاباً وإخبارياً، لا عاماً.";
+            . "- رتّب المحاور من الأهم إلى الأقل أهمية.\n"
+            . "- اجعل عدد المحاور بين 3 و 6 حسب ما تستحقه الأخبار.\n"
+            . "- كل محور يحتوي على 2 إلى 5 تفاصيل إخبارية.\n"
+            . "- استخدم رمز emoji واحد فقط لكل محور (مثل 🔴 🟢 🗞️ ⚡ 🛡️ 🏛️ 📍 ⚖️ 🕌).\n"
+            . "- العنوان الرئيسي (headline) يجب أن يكون جذّاباً وإخبارياً، لا عاماً.\n\n"
+            . "الرسائل:\n" . $corpus;
+
+    // Force structured output via Anthropic tool use. Claude is guaranteed
+    // to return a tool_use block whose `input` matches the JSON schema,
+    // which eliminates the "free-text JSON with stray prose / markdown
+    // fences" parsing failures we had with the previous approach.
+    $tool = [
+        'name'        => 'submit_news_briefing',
+        'description' => 'Submit a structured Arabic news briefing with headline, summary, thematic sections and topic tags.',
+        'input_schema' => [
+            'type'     => 'object',
+            'properties' => [
+                'headline' => [
+                    'type'        => 'string',
+                    'description' => 'عنوان رئيسي قوي يلخّص أبرز حدث (أقل من 90 حرفاً).',
+                ],
+                'summary' => [
+                    'type'        => 'string',
+                    'description' => 'فقرة افتتاحية من 3-5 جمل تعطي المشهد العام بأسلوب نشرة الأخبار.',
+                ],
+                'sections' => [
+                    'type'        => 'array',
+                    'description' => 'المحاور الإخبارية، بين 3 و 6 محاور، مرتبة من الأهم إلى الأقل أهمية.',
+                    'items' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'title' => [
+                                'type'        => 'string',
+                                'description' => 'عنوان المحور، مثل: التطورات العسكرية في الشمال.',
+                            ],
+                            'icon'  => [
+                                'type'        => 'string',
+                                'description' => 'رمز emoji واحد فقط يعبّر عن المحور.',
+                            ],
+                            'items' => [
+                                'type'        => 'array',
+                                'description' => 'بين 2 و 5 تفاصيل إخبارية كاملة بجمل واضحة.',
+                                'items'       => ['type' => 'string'],
+                            ],
+                        ],
+                        'required' => ['title', 'items'],
+                    ],
+                ],
+                'topics' => [
+                    'type'        => 'array',
+                    'description' => 'وسوم قصيرة للمواضيع البارزة، 3-6 وسوم بدون رمز #.',
+                    'items'       => ['type' => 'string'],
+                ],
+            ],
+            'required' => ['headline', 'summary', 'sections', 'topics'],
+        ],
+    ];
 
     $body = json_encode([
-        'model'      => 'claude-haiku-4-5-20251001',
-        'max_tokens' => $maxTokens,
-        'messages'   => [['role' => 'user', 'content' => $prompt]],
+        'model'       => 'claude-haiku-4-5-20251001',
+        'max_tokens'  => $maxTokens,
+        'tools'       => [$tool],
+        'tool_choice' => ['type' => 'tool', 'name' => 'submit_news_briefing'],
+        'messages'    => [['role' => 'user', 'content' => $prompt]],
     ], JSON_UNESCAPED_UNICODE);
 
     $ch = curl_init('https://api.anthropic.com/v1/messages');
@@ -197,19 +235,33 @@ function ai_summarize_telegram(array $messages, int $maxTokens = 2400): array {
     }
 
     $data = json_decode($resp, true);
-    $text = $data['content'][0]['text'] ?? '';
-    if ($text === '') {
-        return ['ok' => false, 'error' => 'Empty AI response'];
+    if (!is_array($data)) {
+        return ['ok' => false, 'error' => 'تعذّر قراءة رد خدمة الملخصات.'];
     }
 
-    // Claude will usually return pure JSON, but guard against it wrapping
-    // the payload in prose by extracting the first {...} block.
+    // With tool_choice forced, Claude returns one or more content blocks
+    // and the briefing arrives as a tool_use block whose `input` is
+    // already a structured array matching our schema — no JSON parsing,
+    // no stray prose, no markdown fences.
     $parsed = null;
-    if (preg_match('/\{.*\}/s', $text, $m)) {
-        $parsed = json_decode($m[0], true);
+    foreach ((array)($data['content'] ?? []) as $block) {
+        if (!is_array($block)) continue;
+        if (($block['type'] ?? '') === 'tool_use'
+            && ($block['name'] ?? '') === 'submit_news_briefing'
+            && is_array($block['input'] ?? null)) {
+            $parsed = $block['input'];
+            break;
+        }
     }
+
     if (!is_array($parsed) || empty($parsed['summary'])) {
-        return ['ok' => false, 'error' => 'Failed to parse AI response', 'raw' => $text];
+        // Stop-reason diagnostics help explain max-tokens truncation.
+        $stopReason = (string)($data['stop_reason'] ?? '');
+        if ($stopReason === 'max_tokens') {
+            return ['ok' => false, 'error' => 'الرد طويل جداً ولم يكتمل. سنقلّل حجم الرسائل وتحاول مرة أخرى.'];
+        }
+        error_log('[tg_summary] Failed to parse AI response. stop_reason=' . $stopReason . ' raw=' . mb_substr(json_encode($data, JSON_UNESCAPED_UNICODE), 0, 2000));
+        return ['ok' => false, 'error' => 'تعذّر توليد الملخص — الرد غير مكتمل.'];
     }
 
     // Normalize sections: each section becomes
