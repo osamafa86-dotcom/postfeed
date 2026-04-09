@@ -46,6 +46,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate_cron_key']))
     $success = 'تم توليد مفتاح cron جديد';
 }
 
+// Manual "generate now" trigger. Useful when the cron is broken or the
+// admin wants to verify the Claude key works. Bypasses the 30-min dedup
+// guard in cron_tg_summary.php so the admin can see immediate results.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tg_generate_now'])) {
+    try {
+        $msgs = tg_summary_collect_messages(60, 250);
+        if (count($msgs) < 3) {
+            $error = 'لا توجد رسائل كافية في آخر 60 دقيقة (' . count($msgs) . ' فقط، يلزم 3 على الأقل).';
+        } else {
+            $t0  = microtime(true);
+            $res = ai_summarize_telegram($msgs);
+            $dt  = round(microtime(true) - $t0, 2);
+            if (empty($res['ok'])) {
+                $error = 'فشل التوليد: ' . ($res['error'] ?? 'سبب غير معروف') . ' (' . $dt . 'ث)';
+            } else {
+                $id = tg_summary_save($res, count($msgs), 60);
+                if ($id) {
+                    if (function_exists('tg_summary_prune')) tg_summary_prune(72);
+                    $success = 'تم توليد ملخص جديد #' . $id . ' من ' . count($msgs) . ' رسالة خلال ' . $dt . 'ث.';
+                } else {
+                    $error = 'تم التوليد لكن فشل الحفظ في قاعدة البيانات.';
+                }
+            }
+        }
+    } catch (Throwable $e) {
+        $error = 'خطأ: ' . $e->getMessage();
+    }
+}
+
 // Bulk summarize
 if (($_GET['action'] ?? '') === 'bulk') {
     @set_time_limit(120);
@@ -162,6 +191,50 @@ include __DIR__ . '/includes/panel_layout_head.php';
         <input type="hidden" name="generate_cron_key" value="1">
         <button type="submit" class="btn-outline" style="font-size:12px;">🔄 توليد مفتاح جديد (يُبطل القديم)</button>
       </form>
+    <?php endif; ?>
+
+    <hr style="margin:18px 0;border:0;border-top:1px solid var(--border);">
+
+    <div class="form-group" style="margin-bottom:10px;">
+      <label style="font-weight:700;">🚀 توليد ملخص يدوياً الآن</label>
+      <small style="color:var(--text-muted);font-size:11px;display:block;margin-bottom:8px;">
+        يتجاوز حد الـ 30 دقيقة ويولّد ملخصاً فورياً من رسائل الساعة الماضية. استخدمه للاختبار أو عندما لا يعمل cron تلقائياً.
+      </small>
+      <form method="POST" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='⏳ يتم التوليد…';">
+        <?php echo csrf_field(); ?>
+        <input type="hidden" name="tg_generate_now" value="1">
+        <button type="submit" class="btn-primary">🚀 توليد ملخص الآن</button>
+      </form>
+    </div>
+
+    <?php
+      // Latest briefing preview (so the admin can see whether it's stale
+      // or fresh without leaving the panel).
+      try {
+          $tgLatest = tg_summary_get_latest();
+      } catch (Throwable $e) { $tgLatest = null; }
+    ?>
+    <?php if ($tgLatest): ?>
+      <div class="form-group" style="margin:14px 0 0;padding:12px 14px;background:rgba(13,148,136,.06);border:1px solid rgba(13,148,136,.2);border-radius:8px;">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">آخر ملخص مُخزّن</div>
+        <div style="font-weight:700;font-size:13px;">
+          <?php
+            $age = time() - strtotime((string)$tgLatest['generated_at']);
+            $ageMin = (int)round($age / 60);
+            $ageLabel = $ageMin < 60 ? "منذ {$ageMin} دقيقة" : 'منذ ' . (int)round($ageMin / 60) . ' ساعة';
+            $stale = $ageMin > 65;
+          ?>
+          #<?php echo (int)$tgLatest['id']; ?> — <?php echo e($ageLabel); ?>
+          <?php if ($stale): ?>
+            <span style="color:#dc2626;font-weight:700;">⚠️ قديم (أكثر من ساعة)</span>
+          <?php else: ?>
+            <span style="color:#16a34a;font-weight:700;">✓ حديث</span>
+          <?php endif; ?>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">
+          <?php echo e(mb_substr((string)$tgLatest['headline'], 0, 80)); ?>
+        </div>
+      </div>
     <?php endif; ?>
   </div>
 
