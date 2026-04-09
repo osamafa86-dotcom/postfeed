@@ -333,7 +333,10 @@ function categoryUrl($slug) {
 }
 
 function sourceUrl($id) {
-    return 'source/' . (int)$id;
+    // Root-absolute so the link resolves correctly even when rendered
+    // from a friendly URL like /article/123/slug (where a relative
+    // "source/123" would become /article/123/source/123 → 404).
+    return '/source/' . (int)$id;
 }
 
 function isAdmin() {

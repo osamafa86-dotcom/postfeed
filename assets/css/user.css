@@ -470,13 +470,15 @@ img { max-width:100%; height:auto; }
 }
 .nf-side-card-img {
   flex-shrink:0;
-  width:130px; height:100%;
-  min-height:96px;
-  border-radius:8px;
+  width:120px;
+  height:120px;
+  aspect-ratio:1/1;
+  border-radius:10px;
   overflow:hidden;
   background:#eef1f6;
+  align-self:center;
 }
-.nf-side-card-img img { width:100%; height:100%; object-fit:cover; }
+.nf-side-card-img img { width:100%; height:100%; object-fit:cover; display:block; }
 .nf-side-card-body { flex:1; min-width:0; display:flex; flex-direction:column; gap:6px; }
 .nf-side-card-meta {
   display:flex; align-items:center; gap:6px;
@@ -551,12 +553,12 @@ img { max-width:100%; height:auto; }
     grid-auto-columns:minmax(280px, 1fr);
     overflow-x:auto;
   }
-  .nf-side-card-img { width:130px; height:auto; min-height:100px; }
+  .nf-side-card-img { width:110px; height:110px; aspect-ratio:1/1; }
 }
 @media (max-width: 640px) {
   .nf-feature-main { min-height:300px; }
   .nf-feature-main-title { font-size:16px; }
-  .nf-side-card-img { width:100px; height:84px; min-height:84px; }
+  .nf-side-card-img { width:90px; height:90px; aspect-ratio:1/1; }
   .nf-side-card-title { font-size:14px; }
   .nf-action-bar .nf-act { font-size:11px; padding:5px 6px; }
 }
