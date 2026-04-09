@@ -16,11 +16,29 @@
  * to error_log so cron failures show up in the host control panel.
  */
 
+// Last error from a mailer_send call. Lets the admin "test send"
+// button surface the real reason instead of a useless "false".
+$GLOBALS['__nf_mail_last_error'] = '';
+
+if (!function_exists('mailer_last_error')) {
+    function mailer_last_error(): string {
+        return (string)($GLOBALS['__nf_mail_last_error'] ?? '');
+    }
+}
+
+if (!function_exists('mailer_set_error')) {
+    function mailer_set_error(string $msg): void {
+        $GLOBALS['__nf_mail_last_error'] = $msg;
+        error_log('mailer: ' . $msg);
+    }
+}
+
 if (!function_exists('mailer_send')) {
     function mailer_send(string $to, string $subject, string $htmlBody, string $textBody = ''): bool {
+        $GLOBALS['__nf_mail_last_error'] = '';
         $to = trim($to);
         if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
-            error_log("mailer_send: invalid recipient '$to'");
+            mailer_set_error("recipient invalid: '$to'");
             return false;
         }
 
@@ -64,9 +82,18 @@ if (!function_exists('mailer_send_phpmail')) {
         $body .= chunk_split(base64_encode($htmlBody)) . "\r\n";
         $body .= "--$boundary--\r\n";
 
+        // Some hosts block the -f param. Try with it first, fall back
+        // without if it returns false (covers both modes safely).
         $ok = @mail($to, $encSubject, $body, implode("\r\n", $headers), '-f' . $fromEmail);
-        if (!$ok) error_log("mailer_send_phpmail: mail() returned false for $to");
-        return $ok;
+        if (!$ok) {
+            $ok = @mail($to, $encSubject, $body, implode("\r\n", $headers));
+        }
+        if (!$ok) {
+            $err = error_get_last();
+            $msg = $err && !empty($err['message']) ? $err['message'] : 'mail() returned false';
+            mailer_set_error("PHP mail() failed: $msg");
+        }
+        return (bool)$ok;
     }
 }
 
@@ -83,12 +110,12 @@ if (!function_exists('mailer_send_smtp')) {
         $user = (string)getSetting('smtp_user', '');
         $pass = (string)getSetting('smtp_pass', '');
         $sec  = strtolower((string)getSetting('smtp_secure', 'tls'));
-        if ($host === '') { error_log('mailer_send_smtp: smtp_host empty'); return false; }
+        if ($host === '') { mailer_set_error('smtp_host is empty — fill it in panel/newsletter.php'); return false; }
 
         $remote = ($sec === 'ssl' ? 'ssl://' : '') . $host;
         $errno = 0; $errstr = '';
         $fp = @fsockopen($remote, $port, $errno, $errstr, 15);
-        if (!$fp) { error_log("smtp connect fail: $errstr"); return false; }
+        if (!$fp) { mailer_set_error("connect $remote:$port failed: $errstr ($errno)"); return false; }
         stream_set_timeout($fp, 15);
 
         $expect = function($code) use ($fp) {
@@ -98,7 +125,7 @@ if (!function_exists('mailer_send_smtp')) {
                 if (isset($l[3]) && $l[3] === ' ') break;
             }
             if ((int)substr($line, 0, 3) !== $code) {
-                error_log("smtp expected $code got: " . trim($line));
+                mailer_set_error("expected $code, got: " . trim($line));
                 return false;
             }
             return true;
@@ -113,7 +140,7 @@ if (!function_exists('mailer_send_smtp')) {
             $send('STARTTLS');
             if (!$expect(220)) { fclose($fp); return false; }
             if (!@stream_socket_enable_crypto($fp, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) {
-                error_log('smtp STARTTLS failed'); fclose($fp); return false;
+                mailer_set_error('STARTTLS handshake failed'); fclose($fp); return false;
             }
             $send('EHLO ' . (parse_url(SITE_URL, PHP_URL_HOST) ?: 'localhost'));
             if (!$expect(250)) { fclose($fp); return false; }

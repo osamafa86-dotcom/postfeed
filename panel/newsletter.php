@@ -7,6 +7,7 @@
  */
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/mailer.php';
 requireRole('admin');
 
 $db = getDB();
@@ -55,6 +56,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_from'])) {
     }
 }
 
+// Save SMTP settings (transport / host / port / user / pass / secure).
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_smtp'])) {
+    $up = $db->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");
+    $up->execute(['mail_transport', $_POST['mail_transport'] === 'smtp' ? 'smtp' : 'mail']);
+    $up->execute(['smtp_host',   trim((string)($_POST['smtp_host']   ?? ''))]);
+    $up->execute(['smtp_port',   (string)(int)($_POST['smtp_port']   ?? 587)]);
+    $up->execute(['smtp_user',   trim((string)($_POST['smtp_user']   ?? ''))]);
+    // Only update password if a new one was provided (placeholder ●●●●●● keeps the old one).
+    $newPass = (string)($_POST['smtp_pass'] ?? '');
+    if ($newPass !== '' && strpos($newPass, '●') === false) {
+        $up->execute(['smtp_pass', $newPass]);
+    }
+    $up->execute(['smtp_secure', in_array($_POST['smtp_secure'] ?? '', ['tls','ssl',''], true) ? $_POST['smtp_secure'] : 'tls']);
+    cache_forget('settings_all');
+    $success = 'تم حفظ إعدادات SMTP';
+}
+
+// Send a test email so the admin can see the actual delivery error.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['test_send'])) {
+    $testEmail = trim((string)($_POST['test_email'] ?? ''));
+    if (!filter_var($testEmail, FILTER_VALIDATE_EMAIL)) {
+        $error = 'بريد الاختبار غير صحيح';
+    } else {
+        $body = '<p style="font-size:16px;">مرحباً 👋</p>'
+              . '<p>هذه رسالة اختبار من نظام النشرة البريدية في <strong>' . e(getSetting('site_name', SITE_NAME)) . '</strong>.</p>'
+              . '<p>إذا وصلتك هذه الرسالة فالإعدادات تعمل بشكل صحيح ✅</p>'
+              . '<p style="color:#94a3b8;font-size:12px;margin-top:24px;">الوقت: ' . date('Y-m-d H:i:s') . '</p>';
+        $html = newsletter_email_html('اختبار إرسال', $body, SITE_URL);
+        $ok = mailer_send($testEmail, 'اختبار النشرة البريدية', $html);
+        if ($ok) {
+            $success = '✅ تم إرسال رسالة الاختبار إلى ' . e($testEmail) . ' — تفقّد بريدك (وأيضاً مجلد Spam)';
+        } else {
+            $error = '❌ فشل الإرسال — السبب: <code style="background:#1e293b;color:#fca5a5;padding:4px 8px;border-radius:4px;direction:ltr;display:inline-block;">'
+                   . e(mailer_last_error() ?: 'unknown') . '</code>';
+        }
+    }
+}
+
 // Delete a subscriber.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
     $stmt = $db->prepare("DELETE FROM newsletter_subscribers WHERE id = ?");
@@ -78,6 +117,12 @@ $cronLine = $cronUrl ? ('0 7 * * * curl -fsS "' . $cronUrl . '" > /dev/null 2>&1
 
 $mailFromEmail = (string)getSetting('mail_from_email', '');
 $mailFromName  = (string)getSetting('mail_from_name', '');
+$mailTransport = strtolower((string)getSetting('mail_transport', 'mail'));
+$smtpHost      = (string)getSetting('smtp_host', '');
+$smtpPort      = (int)(getSetting('smtp_port', '587') ?: 587);
+$smtpUser      = (string)getSetting('smtp_user', '');
+$smtpPassSet   = trim((string)getSetting('smtp_pass', '')) !== '';
+$smtpSecure    = strtolower((string)getSetting('smtp_secure', 'tls'));
 
 $pageTitle = 'النشرة البريدية - نيوزفلو';
 $activePage = 'newsletter';
@@ -135,6 +180,88 @@ include __DIR__ . '/includes/panel_layout_head.php';
         <small style="color:var(--text-muted);font-size:11px;">يجب أن يكون عنوانًا حقيقيًا على نطاقك حتى لا تُعتبر الرسائل مزعجة.</small>
       </div>
       <button type="submit" class="btn-primary">💾 حفظ</button>
+    </form>
+  </div>
+
+  <!-- SMTP SETTINGS -->
+  <div class="form-card" style="margin-bottom:22px;border:2px solid var(--primary-light);">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:6px;">📡 طريقة الإرسال (SMTP)</h3>
+    <p style="font-size:13px;color:var(--text-muted);margin:0 0 14px;">
+      دالة <code>mail()</code> الافتراضية في الاستضافات المشتركة (مثل GoDaddy) غير موثوقة وغالباً ترفضها Gmail.
+      الحل: استخدم خدمة SMTP مجانية مثل <a href="https://www.brevo.com/free-smtp-server/" target="_blank" style="color:var(--primary);font-weight:700;">Brevo</a> (300 رسالة/يوم مجاناً)
+      أو <a href="https://resend.com" target="_blank" style="color:var(--primary);font-weight:700;">Resend</a> (3000/شهر مجاناً) أو Gmail SMTP.
+    </p>
+    <form method="POST">
+      <?php echo csrf_field(); ?>
+      <input type="hidden" name="save_smtp" value="1">
+      <div class="form-group">
+        <label>طريقة الإرسال</label>
+        <select name="mail_transport" class="form-control">
+          <option value="mail" <?php echo $mailTransport==='mail'?'selected':''; ?>>PHP mail() — افتراضي (غير موثوق)</option>
+          <option value="smtp" <?php echo $mailTransport==='smtp'?'selected':''; ?>>SMTP — موصى به</option>
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;">
+        <div class="form-group">
+          <label>SMTP Host</label>
+          <input type="text" name="smtp_host" class="form-control" value="<?php echo e($smtpHost); ?>" placeholder="smtp-relay.brevo.com" dir="ltr">
+        </div>
+        <div class="form-group">
+          <label>المنفذ</label>
+          <input type="number" name="smtp_port" class="form-control" value="<?php echo (int)$smtpPort; ?>" placeholder="587" dir="ltr">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>اسم المستخدم</label>
+        <input type="text" name="smtp_user" class="form-control" value="<?php echo e($smtpUser); ?>" placeholder="your-account@example.com" dir="ltr">
+      </div>
+      <div class="form-group">
+        <label>كلمة المرور / API Key</label>
+        <input type="password" name="smtp_pass" class="form-control" value="<?php echo $smtpPassSet ? '●●●●●●●●●●' : ''; ?>" placeholder="<?php echo $smtpPassSet ? 'محفوظة — اتركها فارغة للإبقاء عليها' : ''; ?>" dir="ltr">
+      </div>
+      <div class="form-group">
+        <label>التشفير</label>
+        <select name="smtp_secure" class="form-control">
+          <option value="tls" <?php echo $smtpSecure==='tls'?'selected':''; ?>>TLS (Port 587 - شائع)</option>
+          <option value="ssl" <?php echo $smtpSecure==='ssl'?'selected':''; ?>>SSL (Port 465)</option>
+          <option value="" <?php echo $smtpSecure===''?'selected':''; ?>>بدون تشفير</option>
+        </select>
+      </div>
+      <button type="submit" class="btn-primary">💾 حفظ إعدادات SMTP</button>
+    </form>
+
+    <details style="margin-top:18px;background:var(--bg-page);padding:14px;border-radius:8px;">
+      <summary style="cursor:pointer;font-weight:700;font-size:13px;color:var(--primary);">📘 خطوات إعداد Brevo (الأسهل والأسرع)</summary>
+      <ol style="font-size:13px;line-height:1.9;color:var(--text-muted);margin:12px 0 0;padding-right:18px;">
+        <li>أنشئ حساباً مجاناً في <a href="https://www.brevo.com" target="_blank" style="color:var(--primary);">brevo.com</a></li>
+        <li>من القائمة اليسرى: <strong>SMTP &amp; API → SMTP</strong></li>
+        <li>انسخ القيم وألصقها هنا:
+          <ul style="margin:6px 0;padding-right:18px;">
+            <li><strong>Host:</strong> <code>smtp-relay.brevo.com</code></li>
+            <li><strong>Port:</strong> <code>587</code></li>
+            <li><strong>User:</strong> البريد الذي سجّلت به (مثل <code>you@gmail.com</code>)</li>
+            <li><strong>Password:</strong> اضغط <em>"Generate a new SMTP key"</em> وانسخ المفتاح</li>
+            <li><strong>التشفير:</strong> TLS</li>
+          </ul>
+        </li>
+        <li>غيّر "طريقة الإرسال" إلى <strong>SMTP</strong> واحفظ</li>
+        <li>أرسل رسالة اختبار من البطاقة التالية ✓</li>
+      </ol>
+    </details>
+  </div>
+
+  <!-- TEST SEND -->
+  <div class="form-card" style="margin-bottom:22px;border:2px solid var(--warning-light);background:var(--warning-light);">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:6px;">🧪 اختبار الإرسال</h3>
+    <p style="font-size:13px;color:var(--text-muted);margin:0 0 14px;">أرسل رسالة اختبار صغيرة للتحقّق من إعداداتك. إذا فشلت، سيظهر السبب الحقيقي هنا.</p>
+    <form method="POST" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+      <?php echo csrf_field(); ?>
+      <input type="hidden" name="test_send" value="1">
+      <div class="form-group" style="flex:1;min-width:240px;margin:0;">
+        <label>إلى</label>
+        <input type="email" name="test_email" class="form-control" value="<?php echo e($_SESSION['admin_email'] ?? ''); ?>" placeholder="your@email.com" dir="ltr" required>
+      </div>
+      <button type="submit" class="btn-primary" style="background:var(--warning);">📤 إرسال اختبار</button>
     </form>
   </div>
 
