@@ -130,6 +130,7 @@ if ($viewerId && !empty($articles)) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<base href="/">
 <title><?php echo e($pageIcon . ' ' . $pageTitle); ?> — <?php echo e(getSetting('site_name', SITE_NAME)); ?></title>
 <meta name="description" content="<?php echo e('أحدث الأخبار في قسم ' . $pageTitle . ' من ' . getSetting('site_name', SITE_NAME)); ?>">
 <link rel="canonical" href="<?php echo e(SITE_URL . '/category.php?slug=' . urlencode($_GET['slug'] ?? '')); ?>">
