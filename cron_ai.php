@@ -6,6 +6,7 @@
 require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/ai_helper.php';
+require_once __DIR__ . '/includes/tts.php';
 
 // HTTP access requires key; CLI always allowed
 if (PHP_SAPI !== 'cli') {
@@ -40,7 +41,7 @@ if (empty($apiKey)) {
     exit;
 }
 
-$stmt = $db->prepare("SELECT id, title, content FROM articles
+$stmt = $db->prepare("SELECT id, title, content, excerpt FROM articles
                         WHERE ai_summary IS NULL AND status = 'published'
                         ORDER BY created_at DESC LIMIT ?");
 $stmt->bindValue(1, $limit, PDO::PARAM_INT);
@@ -48,6 +49,8 @@ $stmt->execute();
 $articles = $stmt->fetchAll();
 
 $done = 0; $fail = 0;
+$ttsDone = 0; $ttsFail = 0;
+$ttsEnabled = tts_is_enabled();
 $start = microtime(true);
 foreach ($articles as $a) {
     $r = ai_summarize_article($a['title'], $a['content']);
@@ -55,6 +58,35 @@ foreach ($articles as $a) {
         ai_save_summary($a['id'], $r);
         $done++;
         echo "  ✓ #{$a['id']}\n";
+
+        // Pre-generate the MP3 for this article so the first reader
+        // hears cached audio instantly. If cloud TTS is off in the
+        // panel this is a no-op. We pass the freshly generated
+        // summary directly instead of re-reading from the DB.
+        if ($ttsEnabled) {
+            $forTts = [
+                'title'      => $a['title'],
+                'ai_summary' => $r['summary'] ?? '',
+                'excerpt'    => $a['excerpt'] ?? '',
+                'content'    => $a['content'] ?? '',
+            ];
+            try {
+                $ttsRes = tts_get_or_generate($forTts);
+            } catch (Throwable $e) {
+                $ttsRes = null;
+            }
+            if ($ttsRes) {
+                $ttsDone++;
+                echo "    🔊 TTS #{$a['id']} (" . number_format($ttsRes['bytes']) . "b"
+                   . ($ttsRes['cached'] ? ', cached' : ', fresh') . ")\n";
+            } else {
+                $ttsFail++;
+                echo "    ✗ TTS #{$a['id']} failed\n";
+            }
+            // Extra pacing when we also hit the TTS provider on the
+            // same loop iteration to stay well under their burst caps.
+            usleep(300000);
+        }
     } else {
         $fail++;
         echo "  ✗ #{$a['id']}: " . ($r['error'] ?? '?') . "\n";
@@ -63,4 +95,6 @@ foreach ($articles as $a) {
     usleep(200000);
 }
 $elapsed = round(microtime(true) - $start, 2);
-echo "\nتم: $done | فشل: $fail | الوقت: {$elapsed}s\n";
+echo "\nتم: $done | فشل: $fail";
+if ($ttsEnabled) echo " | TTS: $ttsDone ✓ / $ttsFail ✗";
+echo " | الوقت: {$elapsed}s\n";

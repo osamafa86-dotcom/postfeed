@@ -866,7 +866,7 @@ if ($article['cat_slug']) {
         /* === TTS player === */
         .tts-player {
             display: none;
-            align-items: center;
+            flex-direction: column;
             gap: 12px;
             padding: 14px 18px;
             background: var(--card);
@@ -876,6 +876,12 @@ if ($article['cat_slug']) {
             box-shadow: 0 1px 3px rgba(0,0,0,.04);
         }
         .tts-player.active { display: flex; }
+        .tts-player-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
         .tts-pill {
             display: inline-flex;
             align-items: center;
@@ -920,12 +926,38 @@ if ($article['cat_slug']) {
             color: var(--dark);
             cursor: pointer;
         }
+        .tts-time {
+            font-size: .75rem;
+            color: var(--gray);
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            min-width: 78px;
+            text-align: center;
+        }
         .tts-status {
             font-size: .85rem;
             color: var(--gray);
             font-weight: 500;
             flex: 1;
+            min-width: 150px;
         }
+        .tts-progress {
+            height: 6px;
+            background: var(--border);
+            border-radius: 999px;
+            overflow: hidden;
+            cursor: pointer;
+            position: relative;
+        }
+        .tts-progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--primary), #0d9488);
+            border-radius: 999px;
+            transition: width .15s linear;
+        }
+        /* Hide the raw <audio> element — we render our own chrome. */
+        #ttsAudio { display: none; }
 
         /* Dark theme fixes for article content */
         [data-theme="dark"] .article-content,
@@ -1082,18 +1114,28 @@ if ($article['cat_slug']) {
             </div>
 
             <!-- TTS Player (hidden until play pressed) -->
-            <div class="tts-player" id="ttsPlayer" aria-hidden="true">
-                <span class="tts-pill">🔊 وضع الاستماع</span>
-                <button type="button" class="tts-ctrl" id="ttsPlayBtn" aria-label="تشغيل">▶</button>
-                <button type="button" class="tts-ctrl secondary" id="ttsStopBtn" aria-label="إيقاف">■</button>
-                <select class="tts-speed" id="ttsSpeed" aria-label="سرعة القراءة">
-                    <option value="0.75">0.75x</option>
-                    <option value="1" selected>1x</option>
-                    <option value="1.25">1.25x</option>
-                    <option value="1.5">1.5x</option>
-                    <option value="2">2x</option>
-                </select>
-                <span class="tts-status" id="ttsStatus">جاهز للقراءة</span>
+            <div class="tts-player" id="ttsPlayer" aria-hidden="true" data-article-id="<?php echo (int)$articleId; ?>">
+                <div class="tts-player-row">
+                    <span class="tts-pill">🔊 وضع الاستماع</span>
+                    <button type="button" class="tts-ctrl" id="ttsPlayBtn" aria-label="تشغيل">▶</button>
+                    <button type="button" class="tts-ctrl secondary" id="ttsStopBtn" aria-label="إيقاف">■</button>
+                    <select class="tts-speed" id="ttsSpeed" aria-label="سرعة القراءة">
+                        <option value="0.75">0.75x</option>
+                        <option value="1" selected>1x</option>
+                        <option value="1.25">1.25x</option>
+                        <option value="1.5">1.5x</option>
+                        <option value="2">2x</option>
+                    </select>
+                    <span class="tts-time" id="ttsTime">0:00 / 0:00</span>
+                    <span class="tts-status" id="ttsStatus">جاهز للقراءة</span>
+                </div>
+                <div class="tts-progress" id="ttsProgress" aria-hidden="true">
+                    <div class="tts-progress-bar" id="ttsProgressBar"></div>
+                </div>
+                <!-- Hidden <audio> element populated by the JS below when
+                     cloud TTS is enabled. Falls back to window.speechSynthesis
+                     if /api/tts.php returns 404 (cloud TTS disabled server-side). -->
+                <audio id="ttsAudio" preload="none"></audio>
             </div>
         </article>
 
@@ -1334,14 +1376,40 @@ if ($article['cat_slug']) {
             }
         });
 
-        // ====== Text-to-speech using Web Speech API ======
-        const ttsToggle = document.getElementById('ttsToggle');
-        const ttsPlayer = document.getElementById('ttsPlayer');
-        const ttsPlayBtn = document.getElementById('ttsPlayBtn');
-        const ttsStopBtn = document.getElementById('ttsStopBtn');
-        const ttsSpeed = document.getElementById('ttsSpeed');
-        const ttsStatus = document.getElementById('ttsStatus');
-        const synth = window.speechSynthesis;
+        // ====== Text-to-speech ======
+        // Dual-path player:
+        //   1. Cloud TTS  -> streams an MP3 from /api/tts.php?id=N.
+        //      Used when the admin has enabled high-quality TTS in the
+        //      panel. Offers a real <audio> element with seek, speed,
+        //      and a progress bar.
+        //   2. Web Speech -> window.speechSynthesis fallback. Used when
+        //      /api/tts.php returns 404 (= TTS disabled server-side)
+        //      or when the MP3 request fails. Keeps the feature working
+        //      even without API keys configured.
+        const ttsToggle    = document.getElementById('ttsToggle');
+        const ttsPlayer    = document.getElementById('ttsPlayer');
+        const ttsPlayBtn   = document.getElementById('ttsPlayBtn');
+        const ttsStopBtn   = document.getElementById('ttsStopBtn');
+        const ttsSpeed     = document.getElementById('ttsSpeed');
+        const ttsStatus    = document.getElementById('ttsStatus');
+        const ttsTime      = document.getElementById('ttsTime');
+        const ttsProgress  = document.getElementById('ttsProgress');
+        const ttsProgressBar = document.getElementById('ttsProgressBar');
+        const ttsAudio     = document.getElementById('ttsAudio');
+        const synth        = window.speechSynthesis;
+        const articleId    = ttsPlayer ? parseInt(ttsPlayer.dataset.articleId || '0', 10) : 0;
+
+        // 'cloud' | 'browser' | null (unknown until first click)
+        let ttsMode = null;
+
+        const fmtTime = (s) => {
+            if (!isFinite(s) || s < 0) s = 0;
+            const m = Math.floor(s / 60);
+            const r = Math.floor(s % 60);
+            return m + ':' + (r < 10 ? '0' : '') + r;
+        };
+
+        const setStatus = (txt) => { if (ttsStatus) ttsStatus.textContent = txt; };
 
         const getReadableText = () => {
             const parts = [];
@@ -1356,82 +1424,167 @@ if ($article['cat_slug']) {
             return parts.filter(Boolean).join('. ');
         };
 
+        // ---- Cloud MP3 path ----------------------------------------
+        const tryCloudStart = async () => {
+            if (!articleId || !ttsAudio) return false;
+            setStatus('جاري تحميل الصوت…');
+            ttsAudio.src = '/api/tts.php?id=' + articleId;
+            ttsAudio.playbackRate = parseFloat(ttsSpeed.value) || 1;
+            try {
+                await ttsAudio.play();
+                ttsMode = 'cloud';
+                ttsPlayBtn.textContent = '❚❚';
+                setStatus('⏵ يقرأ الآن…');
+                return true;
+            } catch (err) {
+                // Browser blocked autoplay (rare here, the click is user-initiated)
+                // or the endpoint returned an error/404.
+                return false;
+            }
+        };
+
+        ttsAudio?.addEventListener('loadedmetadata', () => {
+            if (ttsTime) ttsTime.textContent = fmtTime(0) + ' / ' + fmtTime(ttsAudio.duration);
+        });
+        ttsAudio?.addEventListener('timeupdate', () => {
+            if (!ttsAudio.duration) return;
+            const pct = (ttsAudio.currentTime / ttsAudio.duration) * 100;
+            if (ttsProgressBar) ttsProgressBar.style.width = pct + '%';
+            if (ttsTime) ttsTime.textContent = fmtTime(ttsAudio.currentTime) + ' / ' + fmtTime(ttsAudio.duration);
+        });
+        ttsAudio?.addEventListener('ended', () => {
+            ttsPlayBtn.textContent = '▶';
+            setStatus('✓ انتهت القراءة');
+            if (ttsProgressBar) ttsProgressBar.style.width = '100%';
+        });
+        ttsAudio?.addEventListener('error', () => {
+            // Cloud endpoint gave up — fall back to browser TTS on the
+            // next click so the user is never stranded.
+            ttsMode = null;
+            setStatus('تعذّر تحميل الصوت السحابي — تم التحويل إلى المتصفح');
+            ttsPlayBtn.textContent = '▶';
+        });
+        // Click the progress bar to seek (cloud path only — Web Speech
+        // has no seek API).
+        ttsProgress?.addEventListener('click', (e) => {
+            if (ttsMode !== 'cloud' || !ttsAudio.duration) return;
+            const rect = ttsProgress.getBoundingClientRect();
+            // RTL layout: progress fills from right-to-left, so invert.
+            const ratio = 1 - ((e.clientX - rect.left) / rect.width);
+            ttsAudio.currentTime = Math.max(0, Math.min(ttsAudio.duration, ratio * ttsAudio.duration));
+        });
+
+        // ---- Browser Web Speech fallback ---------------------------
         let utter = null;
         let isPaused = false;
 
         const pickArabicVoice = () => {
+            if (!synth) return null;
             const voices = synth.getVoices();
             return voices.find(v => /^ar/i.test(v.lang)) || voices.find(v => v.default) || voices[0];
         };
 
-        const startSpeaking = () => {
+        const startBrowserSpeaking = () => {
             if (!synth) {
-                ttsStatus.textContent = 'المتصفح لا يدعم القراءة الصوتية';
+                setStatus('المتصفح لا يدعم القراءة الصوتية');
                 return;
             }
             synth.cancel();
             const text = getReadableText();
-            if (!text) { ttsStatus.textContent = 'لا يوجد نص للقراءة'; return; }
+            if (!text) { setStatus('لا يوجد نص للقراءة'); return; }
             utter = new SpeechSynthesisUtterance(text);
             utter.lang = 'ar-SA';
             utter.rate = parseFloat(ttsSpeed.value) || 1;
             const v = pickArabicVoice();
             if (v) utter.voice = v;
-            utter.onstart = () => { ttsStatus.textContent = '⏵ يقرأ الآن...'; ttsPlayBtn.textContent = '❚❚'; isPaused = false; };
-            utter.onend = () => { ttsStatus.textContent = '✓ انتهت القراءة'; ttsPlayBtn.textContent = '▶'; isPaused = false; };
-            utter.onerror = () => { ttsStatus.textContent = 'حدث خطأ أثناء القراءة'; ttsPlayBtn.textContent = '▶'; };
+            utter.onstart = () => { setStatus('⏵ يقرأ الآن… (صوت المتصفح)'); ttsPlayBtn.textContent = '❚❚'; isPaused = false; };
+            utter.onend   = () => { setStatus('✓ انتهت القراءة'); ttsPlayBtn.textContent = '▶'; isPaused = false; };
+            utter.onerror = () => { setStatus('حدث خطأ أثناء القراءة'); ttsPlayBtn.textContent = '▶'; };
             synth.speak(utter);
+            ttsMode = 'browser';
+        };
+
+        // ---- Unified play/pause/stop -------------------------------
+        const startPlayback = async () => {
+            // Try cloud first unless we've already fallen back this session.
+            if (ttsMode !== 'browser') {
+                const ok = await tryCloudStart();
+                if (ok) return;
+            }
+            startBrowserSpeaking();
+        };
+
+        const stopPlayback = () => {
+            if (ttsAudio) { try { ttsAudio.pause(); ttsAudio.currentTime = 0; } catch(_){} }
+            if (synth)   { synth.cancel(); }
+            if (ttsProgressBar) ttsProgressBar.style.width = '0%';
+            ttsPlayBtn.textContent = '▶';
+            isPaused = false;
+            setStatus('جاهز للقراءة');
         };
 
         ttsToggle?.addEventListener('click', () => {
-            if (!synth) { alert('المتصفح لا يدعم ميزة القراءة الصوتية'); return; }
             const isOpen = ttsPlayer.classList.toggle('active');
             ttsToggle.classList.toggle('active', isOpen);
             ttsPlayer.setAttribute('aria-hidden', String(!isOpen));
             if (isOpen) {
-                // Load voices (some browsers need a kick)
-                if (synth.getVoices().length === 0) {
-                    synth.onvoiceschanged = () => {};
-                }
-                startSpeaking();
+                startPlayback();
             } else {
-                synth.cancel();
-                ttsPlayBtn.textContent = '▶';
+                stopPlayback();
             }
         });
 
         ttsPlayBtn?.addEventListener('click', () => {
-            if (!synth) return;
-            if (synth.speaking && !isPaused) {
-                synth.pause();
-                isPaused = true;
-                ttsPlayBtn.textContent = '▶';
-                ttsStatus.textContent = '⏸ موقوف مؤقتاً';
-            } else if (isPaused) {
-                synth.resume();
-                isPaused = false;
-                ttsPlayBtn.textContent = '❚❚';
-                ttsStatus.textContent = '⏵ يقرأ الآن...';
-            } else {
-                startSpeaking();
+            if (ttsMode === 'cloud') {
+                if (ttsAudio.paused) {
+                    ttsAudio.play().catch(()=>{});
+                    ttsPlayBtn.textContent = '❚❚';
+                    setStatus('⏵ يقرأ الآن…');
+                } else {
+                    ttsAudio.pause();
+                    ttsPlayBtn.textContent = '▶';
+                    setStatus('⏸ موقوف مؤقتاً');
+                }
+                return;
             }
+            if (ttsMode === 'browser' && synth) {
+                if (synth.speaking && !isPaused) {
+                    synth.pause();
+                    isPaused = true;
+                    ttsPlayBtn.textContent = '▶';
+                    setStatus('⏸ موقوف مؤقتاً');
+                } else if (isPaused) {
+                    synth.resume();
+                    isPaused = false;
+                    ttsPlayBtn.textContent = '❚❚';
+                    setStatus('⏵ يقرأ الآن…');
+                } else {
+                    startBrowserSpeaking();
+                }
+                return;
+            }
+            // First click — nothing playing yet
+            startPlayback();
         });
 
-        ttsStopBtn?.addEventListener('click', () => {
-            if (synth) synth.cancel();
-            ttsPlayBtn.textContent = '▶';
-            isPaused = false;
-            ttsStatus.textContent = 'جاهز للقراءة';
-        });
+        ttsStopBtn?.addEventListener('click', stopPlayback);
 
         ttsSpeed?.addEventListener('change', () => {
-            if (synth && synth.speaking) {
-                startSpeaking();
+            const rate = parseFloat(ttsSpeed.value) || 1;
+            if (ttsMode === 'cloud' && ttsAudio) {
+                ttsAudio.playbackRate = rate;
+            } else if (ttsMode === 'browser' && synth && synth.speaking) {
+                // Web Speech rate is set at speak() time — restart to apply.
+                startBrowserSpeaking();
             }
         });
 
-        // Stop TTS when leaving the page
-        window.addEventListener('beforeunload', () => { if (synth) synth.cancel(); });
+        // Stop everything when leaving the page so audio doesn't keep
+        // playing after navigation.
+        window.addEventListener('beforeunload', () => {
+            try { if (ttsAudio) ttsAudio.pause(); } catch(_){}
+            if (synth) synth.cancel();
+        });
     })();
     </script>
     <?php if ($viewerId): ?>
