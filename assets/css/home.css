@@ -327,7 +327,9 @@
   /* CLUSTER BADGE — "نُشر في N مصادر"
      Inline pill rendered when an article belongs to a cluster of ≥2
      republications. Stays compact (no full row) so it slots between
-     the category chip and the title without breaking card height. */
+     the category chip and the title without breaking card height.
+     It is a real link to /cluster/{key}; clicks are stopped from
+     bubbling to the outer card <a>. */
   .cluster-badge {
     display:inline-flex; align-items:center; gap:4px;
     margin:6px 0 4px;
@@ -338,6 +340,15 @@
     border-radius:999px;
     font-size:11px; font-weight:700; line-height:1.4;
     white-space:nowrap;
+    text-decoration:none;
+    cursor:pointer;
+    transition:all .18s ease;
+  }
+  .cluster-badge:hover {
+    background:linear-gradient(135deg,#fde68a,#fcd34d);
+    border-color:#f59e0b;
+    transform:translateY(-1px);
+    box-shadow:0 3px 8px rgba(245,158,11,.25);
   }
   .nf-feature-main-body .cluster-badge,
   .ps-hero-text .cluster-badge { font-size:12px; }

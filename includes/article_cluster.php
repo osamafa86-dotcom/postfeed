@@ -117,13 +117,23 @@ if (!function_exists('renderClusterBadge')) {
     /**
      * Inline badge for an article card. Returns '' when the cluster
      * has only one member or counts haven't been pre-loaded yet.
+     *
+     * The badge is a real link to /cluster/{key} so readers can jump
+     * straight to the side-by-side "قارن التغطية" page. We swallow
+     * card clicks via stopPropagation so the badge doesn't trip the
+     * outer <a> wrapper used by most card layouts.
      */
     function renderClusterBadge(array $article): string {
         $key = (string)($article['cluster_key'] ?? '');
-        if ($key === '') return '';
+        if ($key === '' || $key === '-') return '';
+        // Only render for valid SHA1 hex keys to be safe in URLs.
+        if (!preg_match('/^[a-f0-9]{40}$/', $key)) return '';
         $counts = $GLOBALS['__nf_cluster_counts'] ?? [];
         $cnt = (int)($counts[$key] ?? 0);
         if ($cnt < 2) return '';
-        return '<span class="cluster-badge" title="نُشر هذا الخبر في عدة مصادر">📰 ' . (int)$cnt . ' مصادر</span>';
+        $href = '/cluster/' . $key;
+        return '<a class="cluster-badge" href="' . htmlspecialchars($href, ENT_QUOTES) . '"'
+             . ' title="قارن التغطية — هذا الخبر في ' . (int)$cnt . ' مصادر"'
+             . ' onclick="event.stopPropagation()">📰 ' . (int)$cnt . ' مصادر ›</a>';
     }
 }
