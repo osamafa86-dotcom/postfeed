@@ -9,12 +9,29 @@ require_once __DIR__ . '/includes/user_auth.php';
 require_once __DIR__ . '/includes/user_functions.php';
 require_once __DIR__ . '/includes/article_cluster.php';
 require_once __DIR__ . '/includes/trending.php';
+require_once __DIR__ . '/includes/personalize.php';
 
 // Viewer context for save buttons / theme / user menu
 $viewer = current_user();
 $viewerId = $viewer ? (int)$viewer['id'] : 0;
 $pageTheme = current_theme();
 $userUnread = $viewerId ? user_unread_notifications_count($viewerId) : 0;
+
+// Personalized "For You" rail — only computed for logged-in users. Empty for
+// guests, and also empty for brand-new users with no follows/reads yet, in
+// which case we show an onboarding CTA instead.
+$personalFeed       = [];
+$personalShowOnboarding = false;
+if ($viewerId) {
+    $personalFeed = personalize_feed_for($viewerId, 6, 72);
+    if (!$personalFeed) {
+        // No score-able candidates → either truly quiet or a brand-new user.
+        // Show onboarding if the user hasn't picked any follows yet.
+        if (!user_followed_category_ids($viewerId) && !user_followed_source_ids($viewerId)) {
+            $personalShowOnboarding = true;
+        }
+    }
+}
 
 // جلب البيانات من قاعدة البيانات
 $heroArticles = getHeroArticles();
@@ -107,6 +124,11 @@ foreach ($heroArticles as $h) {
     if (!empty($h['id'])) $usedIds[(int)$h['id']] = true;
     if (!empty($h['title'])) $usedTitleTokens[] = $nf_title_tokens($h['title']);
 }
+// Pre-seed with the personalized rail so those stories don't repeat below.
+foreach ($personalFeed as $pf) {
+    if (!empty($pf['id'])) $usedIds[(int)$pf['id']] = true;
+    if (!empty($pf['title'])) $usedTitleTokens[] = $nf_title_tokens($pf['title']);
+}
 $dedup = function(array $list, int $keep) use (&$usedIds, &$usedTitleTokens, $nf_title_tokens): array {
     $out = [];
     foreach ($list as $a) {
@@ -155,7 +177,7 @@ $GLOBALS['__nf_user_reactions']  = [];
 $GLOBALS['__nf_cluster_counts']  = [];
 $__allIds = [];
 $__allClusterKeys = [];
-foreach ([$heroArticles, $palestineNews, $breakingNews, $latestArticles,
+foreach ([$heroArticles, $personalFeed, $palestineNews, $breakingNews, $latestArticles,
           $politicalNews, $economyNews, $sportsNews, $artsNews, $reportsNews] as $__list) {
     foreach ($__list as $__a) {
         $__allIds[] = (int)($__a['id'] ?? 0);
@@ -208,7 +230,7 @@ $homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#1a5c5c">
 <link rel="stylesheet" href="assets/css/site-header.css?v=1">
-<link rel="stylesheet" href="assets/css/home.css?v=21">
+<link rel="stylesheet" href="assets/css/home.css?v=22">
 <link rel="stylesheet" href="assets/css/user.css?v=17">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 <script>
@@ -247,6 +269,9 @@ include __DIR__ . '/includes/components/site_header.php';
 <div class="sections-nav">
   <div class="sections-nav-inner">
     <button type="button" class="sec-pill active" data-sec="all" onclick="scrollToHomeSection(this,'all')"><span class="sec-pill-ico">📰</span>الكل</button>
+    <?php if ($viewerId && ($personalFeed || $personalShowOnboarding)): ?>
+    <button type="button" class="sec-pill sec-pill-foryou" data-sec="foryou" onclick="scrollToHomeSection(this,'foryou')"><span class="sec-pill-ico">✨</span>خاص بك</button>
+    <?php endif; ?>
     <a class="sec-pill sec-pill-ask" href="ask.php"><span class="sec-pill-ico">🤖</span>اسأل الأخبار</a>
     <button type="button" class="sec-pill" data-sec="breaking" onclick="scrollToHomeSection(this,'breaking')"><span class="sec-pill-ico">🔴</span>عاجل</button>
     <button type="button" class="sec-pill" data-sec="latest" onclick="scrollToHomeSection(this,'latest')"><span class="sec-pill-ico">⏱</span>آخر الأخبار</button>
@@ -256,6 +281,68 @@ include __DIR__ . '/includes/components/site_header.php';
     <button type="button" class="sec-pill" data-sec="reels" onclick="scrollToHomeSection(this,'reels')"><span class="sec-pill-ico">🎬</span>ريلز</button>
   </div>
 </div>
+
+<?php if ($viewerId && $personalFeed): ?>
+<!-- ✨ FOR YOU (personalized rail) — logged-in users only -->
+<div id="foryou" class="foryou-section">
+  <div class="foryou-head">
+    <div class="foryou-head-title">
+      <span class="foryou-ico">✨</span>
+      <div>
+        <h2>خاص بك</h2>
+        <p class="foryou-sub">مختارة حسب اهتماماتك<?php if (!empty($viewer['name'])): ?> يا <?php echo e($viewer['name']); ?><?php endif; ?></p>
+      </div>
+    </div>
+    <a class="foryou-manage" href="me/following.php" title="عدّل اهتماماتك">⚙️ تعديل</a>
+  </div>
+  <div class="foryou-grid">
+    <?php foreach ($personalFeed as $pf):
+      $pfSaved = isset($GLOBALS['__nf_saved_ids'][(int)$pf['id']]);
+      $pfImg = $pf['image_url'] ?? placeholderImage(400, 300);
+    ?>
+      <a class="foryou-card" href="<?php echo e(articleUrl($pf)); ?>" data-article-id="<?php echo (int)$pf['id']; ?>">
+        <button type="button"
+                class="nf-bookmark-btn <?php echo $pfSaved ? 'saved' : ''; ?>"
+                title="<?php echo $pfSaved ? 'إزالة من المحفوظات' : 'حفظ'; ?>"
+                data-save-id="<?php echo (int)$pf['id']; ?>"
+                onclick="event.preventDefault(); event.stopPropagation(); NF.toggleSave(this)">🔖</button>
+        <div class="foryou-card-img" style="background-image:url('<?php echo e($pfImg); ?>');">
+          <?php if (!empty($pf['cat_name'])): ?>
+            <span class="foryou-card-cat"><?php echo e($pf['cat_name']); ?></span>
+          <?php endif; ?>
+        </div>
+        <div class="foryou-card-body">
+          <h3 class="foryou-card-title"><?php echo e($pf['title']); ?></h3>
+          <div class="foryou-card-reason">
+            <span class="foryou-reason-dot">•</span>
+            <span><?php echo e($pf['_reason'] ?? 'مُقترح لك'); ?></span>
+          </div>
+          <div class="foryou-card-meta">
+            <?php if (!empty($pf['source_name'])): ?>
+              <span class="foryou-source">
+                <span class="src-dot" style="background:<?php echo e($pf['logo_color'] ?? '#0d9488'); ?>"><?php echo e(mb_substr($pf['source_name'], 0, 1)); ?></span>
+                <?php echo e($pf['source_name']); ?>
+              </span>
+              <span class="sep">·</span>
+            <?php endif; ?>
+            <span><?php echo timeAgo($pf['published_at']); ?></span>
+          </div>
+        </div>
+      </a>
+    <?php endforeach; ?>
+  </div>
+</div>
+<?php elseif ($viewerId && $personalShowOnboarding): ?>
+<!-- ✨ FOR YOU (onboarding CTA) — logged-in user with no follows yet -->
+<div id="foryou" class="foryou-section">
+  <div class="foryou-onboard">
+    <div class="foryou-onboard-ico">✨</div>
+    <h2>خصّص صفحتك الرئيسية</h2>
+    <p>اختر اهتماماتك والمصادر المفضلة لديك لنعرض لك أخباراً مختارة خصيصاً — في كل زيارة.</p>
+    <a class="foryou-onboard-btn" href="me/following.php">اختر اهتماماتك ›</a>
+  </div>
+</div>
+<?php endif; ?>
 
 <!-- LATEST NEWS (Featured 3-column layout) — full-width above main-layout -->
 <?php

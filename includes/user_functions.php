@@ -201,6 +201,12 @@ function user_log_read(int $userId, int $articleId): void {
         $db->prepare("INSERT INTO user_reading_history (user_id, article_id) VALUES (?, ?)")
            ->execute([$userId, $articleId]);
 
+        // A new read changes the user's top categories/sources/keywords, so
+        // the cached personalized feed needs to be regenerated next visit.
+        if (function_exists('personalize_invalidate')) {
+            personalize_invalidate($userId);
+        }
+
         // Update streak
         $today = date('Y-m-d');
         $stmt = $db->prepare("SELECT reading_streak, last_read_date FROM users WHERE id = ?");

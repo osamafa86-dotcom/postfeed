@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/_json.php';
+require_once __DIR__ . '/../includes/personalize.php';
 
 require_post_json();
 $userId = require_user_json();
@@ -30,6 +31,9 @@ try {
             $now = true;
         }
     }
+    // Any follow/unfollow changes the "for you" feed — drop the cached copy
+    // so the homepage reflects the new preferences on the very next visit.
+    personalize_invalidate($userId);
     json_out(['ok' => true, 'following' => $now]);
 } catch (Throwable $e) {
     json_out(['ok' => false, 'error' => 'server'], 500);
