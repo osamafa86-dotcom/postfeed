@@ -185,98 +185,20 @@ $homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
 <meta name="description" content="مجمع الأخبار العربية الأول - أحدث الأخبار من مصادر موثوقة في السياسة، الاقتصاد، الرياضة، والتكنولوجيا">
-<link rel="stylesheet" href="assets/css/home.css?v=14">
+<link rel="stylesheet" href="assets/css/site-header.css?v=1">
+<link rel="stylesheet" href="assets/css/home.css?v=15">
 <link rel="stylesheet" href="assets/css/user.css?v=17">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>
 
-<!-- HEADER -->
-<header class="site-header">
-  <div class="site-header-inner">
-    <a class="logo" href="index.php">
-      <div class="logo-icon">N</div>
-      <div class="logo-text-wrap">
-        <h1 class="logo-text"><?php echo e(getSetting('site_name', SITE_NAME)); ?></h1>
-        <div class="logo-sub"><?php echo e(getSetting('site_tagline', SITE_TAGLINE)); ?></div>
-      </div>
-    </a>
-
-    <div class="header-center">
-      <div class="search-box">
-        <span class="search-icon">&#x1F50D;</span>
-        <input type="text" placeholder="ابحث عن خبر، مصدر، أو موضوع...">
-      </div>
-    </div>
-
-    <div class="header-actions">
-      <span class="live-pill" title="<?php echo date('l, j F Y H:i'); ?>">
-        <span class="live-dot"></span>
-        <span class="live-pill-label">مباشر</span>
-        <span class="live-pill-time" id="liveTime"><?php echo date('H:i'); ?></span>
-      </span>
-      <button type="button" class="icon-btn icon-btn-wide" id="topWeather" onclick="openWeatherModal()" title="الطقس">🌤 <span>--°</span></button>
-      <button type="button" class="icon-btn" onclick="openCurrencyModal()" title="أسعار العملات" aria-label="أسعار العملات">💱</button>
-      <button type="button" class="icon-btn" onclick="openSourcesModal()" title="المصادر النشطة" aria-label="المصادر">🌐</button>
-      <button type="button" class="icon-btn" onclick="NF.cycleTheme()" title="تبديل الثيم" aria-label="الثيم">🌓</button>
-      <?php if ($viewerId): ?>
-        <button type="button" class="icon-btn" data-nf-notif-btn onclick="NF.toggleNotifDropdown(this)" title="الإشعارات" aria-label="الإشعارات">
-          🔔
-          <?php if ($userUnread > 0): ?><span class="notif-badge" data-notif-badge><?php echo (int)$userUnread; ?></span><?php endif; ?>
-        </button>
-        <a href="me/" class="avatar" title="لوحتي"><?php echo e(mb_substr($viewer['name'] ?? '?', 0, 1)); ?></a>
-      <?php else: ?>
-        <a href="account/login.php" class="icon-btn" title="دخول" aria-label="تسجيل الدخول">🔑</a>
-        <a href="account/register.php" class="btn-join">انضم مجاناً</a>
-      <?php endif; ?>
-      <button class="menu-toggle" onclick="toggleMobileNav()" aria-label="القائمة">☰</button>
-    </div>
-  </div>
-
-  <nav class="site-nav">
-    <div class="site-nav-inner">
-      <a href="category.php?type=breaking" class="nav-link breaking"><span class="nav-dot"></span>عاجل</a>
-      <a href="index.php" class="nav-link active">الرئيسية</a>
-      <a href="category.php?type=latest" class="nav-link">آخر الأخبار</a>
-      <a href="category/political" class="nav-link">سياسة</a>
-      <a href="category/economy" class="nav-link">اقتصاد</a>
-      <a href="category/sports" class="nav-link">رياضة</a>
-      <a href="category/arts" class="nav-link">فنون</a>
-      <a href="category/media" class="nav-link">ميديا</a>
-      <a href="category/reports" class="nav-link">تقارير</a>
-      <a href="reels.php" class="nav-link nav-reels">🎬 ريلز</a>
-    </div>
-  </nav>
-</header>
-
-<!-- MOBILE NAV -->
-<div class="mobile-nav-overlay" onclick="toggleMobileNav()"></div>
-<nav class="mobile-nav" id="mobileNav">
-  <button class="mobile-nav-close" onclick="toggleMobileNav()">×</button>
-  <a href="index.php" class="active">🏠 الرئيسية</a>
-  <a href="category.php?type=breaking">🔴 عاجل</a>
-  <a href="category.php?type=latest">⏱ آخر الأخبار</a>
-  <a href="category/political">🏛 سياسة</a>
-  <a href="category/economy">💹 اقتصاد</a>
-  <a href="category/sports">⚽ رياضة</a>
-  <a href="category/arts">🎨 فنون</a>
-  <a href="category/media">🎥 ميديا</a>
-  <a href="category/reports">📊 تقارير</a>
-  <a href="reels.php">🎬 ريلز</a>
-</nav>
-
-<!-- TICKER -->
-<div class="ticker-wrap">
-  <div class="ticker-label"><span class="ticker-label-dot"></span>عاجل</div>
-  <div class="ticker-content">
-    <?php foreach ($tickerItems as $item): ?>
-      <a class="ticker-item" href="<?php echo articleUrl($item); ?>"><?php echo e($item['title']); ?></a>
-    <?php endforeach; ?>
-    <?php foreach ($tickerItems as $item): ?>
-      <a class="ticker-item" href="<?php echo articleUrl($item); ?>"><?php echo e($item['title']); ?></a>
-    <?php endforeach; ?>
-  </div>
-</div>
+<?php
+// Shared site header (header + main nav + mobile nav + breaking ticker)
+$activeType = 'home';
+$activeSlug = '';
+$showTicker = true;
+include __DIR__ . '/includes/components/site_header.php';
+?>
 
 <!-- STATS STRIP (compact) -->
 <div class="stats-strip">
@@ -419,9 +341,9 @@ $__featRest  = array_slice($latestArticles, 7);
         <a class="bn-card" href="<?php echo articleUrl($article); ?>">
           <div class="bn-thumb">
             <img src="<?php echo e($article['image_url'] ?? placeholderImage(200,150)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async">
-            <span class="bn-badge"><span class="bn-dot"></span>عاجل</span>
           </div>
           <div class="bn-body">
+            <span class="bn-badge"><span class="bn-dot"></span>عاجل</span>
             <div class="bn-title"><?php echo e($article['title']); ?></div>
             <div class="bn-meta">
               <span class="bn-source"><?php echo e($article['source_name']); ?></span>

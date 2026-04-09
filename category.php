@@ -165,39 +165,6 @@ if ($viewerId && !empty($articles)) {
   ::-webkit-scrollbar-track { background:transparent; }
   ::-webkit-scrollbar-thumb { background:#c1c5cc; border-radius:3px; }
 
-  /* HEADER */
-  header {
-    background:var(--header-bg);
-    padding:0 24px;
-    display:flex; align-items:center; justify-content:space-between;
-    position:sticky; top:0; z-index:1000;
-    height:64px;
-    box-shadow:0 4px 20px rgba(0,0,0,.15);
-  }
-  .logo { display:flex; align-items:center; gap:12px; text-decoration:none; }
-  .logo-icon {
-    width:42px; height:42px; border-radius:10px;
-    background:linear-gradient(135deg,#1a73e8,#4f46e5);
-    display:flex; align-items:center; justify-content:center;
-    font-size:20px; font-weight:900; color:#fff;
-    box-shadow:0 4px 12px rgba(26,115,232,.4);
-  }
-  .logo-text { font-size:24px; font-weight:900; color:#fff; letter-spacing:-0.5px; }
-  .logo-text span { color:#60a5fa; }
-  .logo-sub { font-size:10px; color:rgba(255,255,255,.45); margin-top:-3px; }
-
-  nav { display:flex; gap:2px; align-items:center; height:100%; }
-  nav a {
-    padding:8px 16px; border-radius:8px; text-decoration:none;
-    color:rgba(255,255,255,.6); font-size:13px; font-weight:500;
-    transition:all .2s; white-space:nowrap;
-  }
-  nav a:hover { background:rgba(255,255,255,.08); color:rgba(255,255,255,.9); }
-  nav a.active { background:rgba(26,115,232,.25); color:#60a5fa; font-weight:700; }
-  nav a.breaking { background:rgba(220,38,38,.15); color:#fca5a5; animation:breakingPulse 2.5s ease infinite; }
-  nav a.breaking.active { background:rgba(220,38,38,.25); color:#fca5a5; }
-  @keyframes breakingPulse { 0%,100%{background:rgba(220,38,38,.1)} 50%{background:rgba(220,38,38,.22)} }
-
   .container { max-width:1400px; margin:0 auto; padding:0 24px; }
 
   .page-header { padding:32px 0 24px; }
@@ -304,45 +271,30 @@ if ($viewerId && !empty($articles)) {
 
   @media(max-width:900px) {
     .news-grid { grid-template-columns:repeat(2,1fr); }
-    nav { display:none; }
     .page-title { font-size:22px; }
   }
   @media(max-width:560px) {
     .news-grid { grid-template-columns:1fr; }
-    header { padding:0 14px; height:56px; }
     .page-header { padding:20px 0 16px; }
     .page-title { font-size:18px; }
     footer { flex-direction:column; text-align:center; padding:24px 16px; }
     .footer-links { flex-wrap:wrap; justify-content:center; }
   }
 </style>
+<link rel="stylesheet" href="assets/css/site-header.css?v=1">
 <link rel="stylesheet" href="assets/css/user.css?v=17">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>
 
-<!-- HEADER -->
-<header>
-  <a class="logo" href="index.php">
-    <div class="logo-icon">N</div>
-    <div>
-      <div class="logo-text"><?php echo e(getSetting('site_name', SITE_NAME)); ?></div>
-      <div class="logo-sub"><?php echo e(getSetting('site_tagline', SITE_TAGLINE)); ?></div>
-    </div>
-  </a>
-
-  <nav>
-    <a href="category.php?type=breaking" class="breaking<?php echo $type === 'breaking' ? ' active' : ''; ?>">🔴 عاجل</a>
-    <a href="index.php">الرئيسية</a>
-    <a href="category.php?type=latest"<?php echo $type === 'latest' ? ' class="active"' : ''; ?>>آخر الأخبار</a>
-    <a href="category/political"<?php echo $slug === 'political' ? ' class="active"' : ''; ?>>سياسة</a>
-    <a href="category/economy"<?php echo $slug === 'economy' ? ' class="active"' : ''; ?>>اقتصاد</a>
-    <a href="category/sports"<?php echo $slug === 'sports' ? ' class="active"' : ''; ?>>رياضة</a>
-    <a href="category/arts"<?php echo $slug === 'arts' ? ' class="active"' : ''; ?>>فنون</a>
-    <a href="category/media"<?php echo $slug === 'media' ? ' class="active"' : ''; ?>>ميديا</a>
-    <a href="category/reports"<?php echo $slug === 'reports' ? ' class="active"' : ''; ?>>تقارير</a>
-  </nav>
-</header>
+<?php
+// Shared site header — keep nav right-aligned consistently across pages
+$activeType  = ($type === 'breaking' || $type === 'latest') ? $type : (($slug !== '') ? 'category' : 'home');
+$activeSlug  = $slug;
+$showTicker  = false;
+$userUnread  = $viewerId ? user_unread_notifications_count($viewerId) : 0;
+include __DIR__ . '/includes/components/site_header.php';
+?>
 
 <!-- PAGE CONTENT -->
 <div class="container">
