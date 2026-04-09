@@ -1331,6 +1331,257 @@
   }
   .sec-pill-ask .sec-pill-ico { filter:drop-shadow(0 1px 2px rgba(0,0,0,.25)); }
 
+  /* "For You" pill — purple/violet so the personalized section has its own
+     visual identity, distinct from the teal "Ask the news" chip. */
+  .sec-pill-foryou {
+    background:linear-gradient(135deg,#7c3aed 0%,#6d28d9 55%,#4c1d95 100%);
+    border-color:transparent;
+    color:#fff;
+    box-shadow:0 6px 18px -6px rgba(124,58,237,.55);
+  }
+  .sec-pill-foryou:hover {
+    color:#fff;
+    border-color:transparent;
+    transform:translateY(-1px);
+    box-shadow:0 10px 22px -8px rgba(124,58,237,.6);
+  }
+  .sec-pill-foryou.active {
+    background:linear-gradient(135deg,#7c3aed 0%,#6d28d9 55%,#4c1d95 100%);
+    color:#fff;
+    border-color:transparent;
+  }
+  .sec-pill-foryou .sec-pill-ico { filter:drop-shadow(0 1px 2px rgba(0,0,0,.25)); }
+
+  /* ============================================================
+     ✨ FOR YOU (personalized rail)
+     ============================================================ */
+  .foryou-section {
+    max-width:1200px;
+    margin:16px auto 18px;
+    padding:0 20px;
+  }
+  .foryou-head {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    margin-bottom:14px;
+    padding:14px 18px;
+    background:linear-gradient(135deg,rgba(124,58,237,.08) 0%,rgba(124,58,237,.02) 100%);
+    border:1px solid rgba(124,58,237,.18);
+    border-radius:14px;
+  }
+  .foryou-head-title {
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  .foryou-ico {
+    font-size:26px;
+    width:44px; height:44px;
+    display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(135deg,#7c3aed,#6d28d9);
+    border-radius:12px;
+    box-shadow:0 8px 20px -6px rgba(124,58,237,.5);
+  }
+  .foryou-head h2 {
+    margin:0;
+    font-size:19px;
+    font-weight:900;
+    color:var(--text);
+    line-height:1.2;
+  }
+  .foryou-sub {
+    margin:2px 0 0;
+    font-size:12.5px;
+    color:var(--muted);
+    font-weight:500;
+  }
+  .foryou-manage {
+    display:inline-flex;
+    align-items:center;
+    gap:4px;
+    padding:7px 14px;
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:8px;
+    color:var(--text);
+    font-size:12.5px;
+    font-weight:700;
+    text-decoration:none;
+    transition:all .15s;
+    flex-shrink:0;
+  }
+  .foryou-manage:hover {
+    background:rgba(124,58,237,.08);
+    border-color:rgba(124,58,237,.35);
+    color:#7c3aed;
+  }
+
+  /* Cards grid — 3 cols desktop, 2 tablet, 1 mobile */
+  .foryou-grid {
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:16px;
+  }
+  .foryou-card {
+    position:relative;
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:14px;
+    overflow:hidden;
+    text-decoration:none;
+    color:var(--text);
+    transition:transform .2s, box-shadow .2s, border-color .2s;
+    display:flex;
+    flex-direction:column;
+  }
+  .foryou-card:hover {
+    transform:translateY(-2px);
+    border-color:rgba(124,58,237,.35);
+    box-shadow:0 14px 30px -12px rgba(124,58,237,.3);
+  }
+  .foryou-card .nf-bookmark-btn {
+    position:absolute;
+    top:10px;
+    left:10px;
+    z-index:5;
+  }
+  .foryou-card-img {
+    position:relative;
+    height:160px;
+    background-size:cover;
+    background-position:center;
+    background-color:#0f172a;
+  }
+  .foryou-card-img::after {
+    content:"";
+    position:absolute; inset:auto 0 0 0; height:55%;
+    background:linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,0));
+    pointer-events:none;
+  }
+  .foryou-card-cat {
+    position:absolute;
+    bottom:10px;
+    right:10px;
+    padding:4px 10px;
+    background:rgba(124,58,237,.92);
+    color:#fff;
+    font-size:11px;
+    font-weight:800;
+    border-radius:20px;
+    backdrop-filter:blur(6px);
+    z-index:2;
+  }
+  .foryou-card-body {
+    padding:14px 16px 16px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    flex:1;
+  }
+  .foryou-card-title {
+    margin:0;
+    font-size:15.5px;
+    font-weight:800;
+    line-height:1.45;
+    color:var(--text);
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+  .foryou-card-reason {
+    display:flex;
+    align-items:center;
+    gap:5px;
+    font-size:11.5px;
+    color:#7c3aed;
+    font-weight:700;
+  }
+  .foryou-reason-dot { font-size:16px; line-height:1; }
+  .foryou-card-meta {
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:11.5px;
+    color:var(--muted);
+    margin-top:auto;
+  }
+  .foryou-card-meta .sep { opacity:.5; }
+  .foryou-source {
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    font-weight:600;
+  }
+  .foryou-source .src-dot {
+    width:16px; height:16px;
+    border-radius:50%;
+    display:inline-flex; align-items:center; justify-content:center;
+    color:#fff;
+    font-size:10px;
+    font-weight:800;
+  }
+
+  @media (max-width:960px) {
+    .foryou-grid { grid-template-columns:repeat(2, 1fr); }
+  }
+  @media (max-width:600px) {
+    .foryou-grid { grid-template-columns:1fr; }
+    .foryou-head { padding:12px 14px; }
+    .foryou-head h2 { font-size:17px; }
+    .foryou-card-img { height:180px; }
+  }
+
+  /* Onboarding CTA — shown when the user is logged in but hasn't picked
+     any follows yet. Replaces the grid with a single centered card. */
+  .foryou-onboard {
+    text-align:center;
+    padding:36px 28px;
+    background:linear-gradient(135deg,rgba(124,58,237,.08) 0%,rgba(124,58,237,.02) 100%);
+    border:1px dashed rgba(124,58,237,.35);
+    border-radius:16px;
+  }
+  .foryou-onboard-ico {
+    width:72px; height:72px;
+    margin:0 auto 14px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:36px;
+    background:linear-gradient(135deg,#7c3aed,#6d28d9);
+    border-radius:50%;
+    box-shadow:0 14px 30px -8px rgba(124,58,237,.5);
+  }
+  .foryou-onboard h2 {
+    margin:0 0 8px;
+    font-size:22px;
+    font-weight:900;
+    color:var(--text);
+  }
+  .foryou-onboard p {
+    margin:0 auto 18px;
+    max-width:520px;
+    font-size:14px;
+    line-height:1.7;
+    color:var(--muted);
+  }
+  .foryou-onboard-btn {
+    display:inline-block;
+    padding:12px 28px;
+    background:linear-gradient(135deg,#7c3aed,#6d28d9);
+    color:#fff;
+    border-radius:10px;
+    font-weight:800;
+    font-size:14.5px;
+    text-decoration:none;
+    box-shadow:0 10px 26px -8px rgba(124,58,237,.55);
+    transition:transform .15s, box-shadow .15s;
+  }
+  .foryou-onboard-btn:hover {
+    transform:translateY(-1px);
+    box-shadow:0 14px 32px -8px rgba(124,58,237,.6);
+  }
+
   /* NEWSLETTER SIGNUP BAND */
   .newsletter-band {
     background:linear-gradient(135deg,#1a5c5c 0%,#0f3a3a 100%);
