@@ -132,7 +132,7 @@ $dedup = function(array $list, int $keep) use (&$usedIds, &$usedTitleTokens, $nf
 };
 // Order matters: palestine first so it keeps its featured stories; latest
 // then fills in around them without repeating palestine items.
-$palestineNews  = $dedup($palestineNews, 5);
+$palestineNews  = $dedup($palestineNews, 4);
 $breakingNews   = $dedup($breakingNews, 5);
 $latestArticles = $dedup($latestArticles, 12);
 $politicalNews  = $dedup($politicalNews, 4);
@@ -185,7 +185,7 @@ $homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
 <meta name="description" content="مجمع الأخبار العربية الأول - أحدث الأخبار من مصادر موثوقة في السياسة، الاقتصاد، الرياضة، والتكنولوجيا">
-<link rel="stylesheet" href="assets/css/home.css?v=8">
+<link rel="stylesheet" href="assets/css/home.css?v=9">
 <link rel="stylesheet" href="assets/css/user.css?v=16">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
