@@ -128,6 +128,20 @@ $db->exec("CREATE TABLE IF NOT EXISTS newsletter_sends (
     INDEX idx_sent (sent_at DESC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
+// ---------- trending now (velocity tracking) ----------
+// One row per page view, pruned to a 48h window. Used by
+// includes/trending.php to compute velocity scores for the
+// "🔥 الأكثر تداولاً الآن" rail. Two indexes: viewed_at for the
+// time-window scan, and (article_id, viewed_at) for per-article
+// lookups (debug pages, future "trending in category" rails).
+$db->exec("CREATE TABLE IF NOT EXISTS article_view_events (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    article_id INT NOT NULL,
+    viewed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_viewed_at (viewed_at),
+    INDEX idx_article_viewed (article_id, viewed_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
 // ---------- reels tables ----------
 $db->exec("CREATE TABLE IF NOT EXISTS reels_sources (
     id INT AUTO_INCREMENT PRIMARY KEY,
