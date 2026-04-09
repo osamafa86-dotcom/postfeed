@@ -5,9 +5,9 @@
  */
 
 function ai_summarize_article($title, $content, $maxTokens = 500) {
-    $apiKey = env('ANTHROPIC_API_KEY', '');
-    if (empty($apiKey)) $apiKey = getSetting('anthropic_api_key', '');
-    if (empty($apiKey)) {
+    $apiKey = trim((string)env('ANTHROPIC_API_KEY', ''));
+    if ($apiKey === '') $apiKey = trim((string)getSetting('anthropic_api_key', ''));
+    if ($apiKey === '') {
         return ['ok' => false, 'error' => 'API key not configured'];
     }
 
@@ -75,10 +75,10 @@ function ai_summarize_article($title, $content, $maxTokens = 500) {
  *                           or ['ok'=>false, 'error'=>string].
  */
 function ai_summarize_telegram(array $messages, int $maxTokens = 900): array {
-    $apiKey = env('ANTHROPIC_API_KEY', '');
-    if (empty($apiKey)) $apiKey = getSetting('anthropic_api_key', '');
-    if (empty($apiKey)) {
-        return ['ok' => false, 'error' => 'API key not configured'];
+    $apiKey = trim((string)env('ANTHROPIC_API_KEY', ''));
+    if ($apiKey === '') $apiKey = trim((string)getSetting('anthropic_api_key', ''));
+    if ($apiKey === '') {
+        return ['ok' => false, 'error' => 'مفتاح Anthropic API غير مُعدّ. يرجى إضافته من لوحة التحكم.'];
     }
     if (!$messages) {
         return ['ok' => false, 'error' => 'لا توجد رسائل للتلخيص'];
@@ -148,6 +148,26 @@ function ai_summarize_telegram(array $messages, int $maxTokens = 900): array {
     curl_close($ch);
 
     if ($http !== 200) {
+        // Surface a friendly Arabic message for the common failure modes so the
+        // UI doesn't show a raw HTTP dump to end users.
+        if ($http === 401 || $http === 403) {
+            return [
+                'ok'    => false,
+                'error' => 'مفتاح Anthropic API غير صالح أو منتهي الصلاحية. يرجى تحديثه من لوحة التحكم.',
+            ];
+        }
+        if ($http === 429) {
+            return [
+                'ok'    => false,
+                'error' => 'تم تجاوز حد الطلبات لخدمة الملخصات حالياً. حاول مرة أخرى بعد قليل.',
+            ];
+        }
+        if ($http === 0 || $http >= 500) {
+            return [
+                'ok'    => false,
+                'error' => 'تعذّر الاتصال بخدمة الملخصات حالياً. حاول مرة أخرى بعد قليل.',
+            ];
+        }
         return ['ok' => false, 'error' => "HTTP $http: " . ($err ?: mb_substr((string)$resp, 0, 200))];
     }
 
