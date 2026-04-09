@@ -413,6 +413,10 @@ $pageTitle  = $pageTitle  ?? 'نيوزفلو';
       <div class="nav-icon">📋</div>
       <span class="label">سجل التدقيق</span>
     </a>
+    <a href="newsletter.php" class="nav-item<?php echo $activePage==='newsletter'?' active':''; ?>">
+      <div class="nav-icon">📬</div>
+      <span class="label">النشرة البريدية</span>
+    </a>
     <?php endif; ?>
     <div class="nav-item" style="cursor:default;background:transparent;">
       <div class="nav-icon">👤</div>
