@@ -187,6 +187,13 @@ if (!empty($pageUrls)) {
 // ============ INSERT ============
 $insertStmt = $db->prepare("INSERT INTO articles (title, slug, excerpt, content, image_url, source_url, category_id, source_id, cluster_key, status, published_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'published', ?, NOW())");
 
+// Pre-build a fuzzy-match index over the last 7 days of published
+// articles. cluster_assign() walks it for each new title and reuses
+// the cluster_key of the closest existing story (Jaccard ≥ 0.55), so
+// "حماس تعلن وقف إطلاق النار" and "حماس: وقف إطلاق النار يبدأ غدا"
+// land in the same cluster instead of being treated as separate.
+$clusterIndex = cluster_index_build($db, 7, 600);
+
 foreach ($pendingInserts as $it) {
     $pageHtml = $pageHtmls[$it['source_url']] ?? '';
     $fullContent = '';
@@ -201,10 +208,9 @@ foreach ($pendingInserts as $it) {
         $fullContent = '<p>' . nl2br($it['excerpt']) . '</p>';
     }
 
-    // Stable fingerprint over normalized title tokens — empty for titles
-    // too short/generic to cluster, sentinel '-' so backfill skips them.
-    $clusterKey = compute_cluster_key($it['title']);
-    if ($clusterKey === '') $clusterKey = '-';
+    // Fuzzy cluster assignment — mutates $clusterIndex so back-to-back
+    // articles in the same batch can cluster with each other.
+    $clusterKey = cluster_assign($it['title'], $clusterIndex);
 
     try {
         $insertStmt->execute([

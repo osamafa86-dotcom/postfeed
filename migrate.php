@@ -117,23 +117,37 @@ $db->exec("CREATE TABLE IF NOT EXISTS reels (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
 // ---------- backfill cluster_key for legacy rows ----------
-// Runs in batches so a huge archive doesn't blow the request budget;
-// re-running migrate.php picks up where it left off.
+// Walks rows in chronological order so each new article can fuzzy-match
+// against the keys we already assigned earlier in the same run via
+// cluster_assign(). Processes batches of 2000 per request — re-running
+// migrate.php picks up where the last batch stopped (NULL filter), so a
+// huge archive backfills incrementally without timing out.
+//
+// To force a re-cluster (e.g. after improving the tokenization rules)
+// hit /migrate.php?key=...&recluster=1 once and it will reset the column
+// before this block runs.
 try {
     if (col_exists($db, 'articles', 'cluster_key')) {
+        if (!empty($_GET['recluster'])) {
+            $db->exec("UPDATE articles SET cluster_key = NULL");
+            $applied[] = "+ cluster_key reset (recluster requested)";
+        }
+
         $bf = $db->prepare("SELECT id, title FROM articles
                              WHERE cluster_key IS NULL AND title IS NOT NULL AND title <> ''
+                             ORDER BY published_at ASC
                              LIMIT 2000");
         $bf->execute();
         $rows = $bf->fetchAll(PDO::FETCH_ASSOC);
         if ($rows) {
+            // Seed the fuzzy index with whatever has already been
+            // clustered (from prior batches or live cron inserts).
+            $idx = cluster_index_build($db, 30, 1500);
             $upd = $db->prepare("UPDATE articles SET cluster_key = ? WHERE id = ?");
             $done = 0;
             foreach ($rows as $row) {
-                $key = compute_cluster_key((string)$row['title']);
-                // Empty key (title too short / generic) still gets a sentinel
-                // marker so we don't re-scan the same row on every run.
-                $upd->execute([$key !== '' ? $key : '-', (int)$row['id']]);
+                $key = cluster_assign((string)$row['title'], $idx);
+                $upd->execute([$key, (int)$row['id']]);
                 $done++;
             }
             $applied[] = "+ backfilled cluster_key for $done rows";

@@ -82,6 +82,104 @@ if (!function_exists('compute_cluster_key')) {
     }
 }
 
+if (!function_exists('cluster_index_build')) {
+    /**
+     * Build an in-memory index of recent published articles' cluster
+     * tokens so a batch of new inserts can find fuzzy matches without
+     * repeating SQL or re-tokenization on each call.
+     *
+     * Returns an array of ['tokens' => [...], 'key' => '...'] entries.
+     * Tolerates a missing column on a fresh deploy.
+     */
+    function cluster_index_build(PDO $db, int $sinceDays = 7, int $limit = 500): array {
+        try {
+            $stmt = $db->prepare("SELECT title, cluster_key FROM articles
+                                   WHERE status = 'published'
+                                     AND cluster_key IS NOT NULL
+                                     AND cluster_key <> '-'
+                                     AND published_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+                                   ORDER BY published_at DESC
+                                   LIMIT " . (int)$limit);
+            $stmt->execute([$sinceDays]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {
+            return [];
+        }
+        $out = [];
+        foreach ($rows as $r) {
+            $tk = article_cluster_tokens((string)$r['title']);
+            if (count($tk) < 3) continue;
+            $out[] = ['tokens' => $tk, 'key' => (string)$r['cluster_key']];
+        }
+        return $out;
+    }
+}
+
+if (!function_exists('cluster_assign')) {
+    /**
+     * Pick a cluster_key for a new article, given a pre-built index of
+     * recent (tokens, key) pairs. Walks the index in newest-first order
+     * (callers should pass it that way) and returns the key of the
+     * closest title with Jaccard similarity ≥ 0.55 — the same threshold
+     * the in-memory dedup in index.php uses for "same story".
+     *
+     * Falls back to a fresh sha1 of the sorted tokens when nothing is
+     * close enough. Returns '-' for titles too short to fingerprint
+     * usefully (< 3 tokens after stop-word filtering).
+     *
+     * IMPORTANT: this function MUTATES the passed-in $index by appending
+     * the new article so subsequent calls within the same batch can
+     * cluster against it. Pass by reference.
+     */
+    function cluster_assign(string $title, array &$index): string {
+        $tokens = article_cluster_tokens($title);
+        if (count($tokens) < 3) return '-';
+
+        $best     = null;
+        $bestSim  = 0.0;
+        $tokenMap = array_flip($tokens); // O(1) membership check
+        foreach ($index as $cand) {
+            $candTokens = $cand['tokens'];
+            // Quick reject: at least 2 shared tokens before doing the
+            // full Jaccard calculation, otherwise we burn time on
+            // obviously unrelated headlines.
+            $inter = 0;
+            foreach ($candTokens as $ct) {
+                if (isset($tokenMap[$ct])) $inter++;
+                if ($inter >= 2) break;
+            }
+            if ($inter < 2) continue;
+
+            // Full Jaccard now that we know the candidate is plausible.
+            $shared = 0;
+            $candMap = array_flip($candTokens);
+            foreach ($tokens as $t) if (isset($candMap[$t])) $shared++;
+            $unionCount = count($tokens) + count($candTokens) - $shared;
+            if ($unionCount <= 0) continue;
+            $sim = $shared / $unionCount;
+            if ($sim > $bestSim) {
+                $bestSim = $sim;
+                $best    = $cand;
+                if ($bestSim >= 0.85) break; // near-exact, stop searching
+            }
+        }
+
+        if ($best !== null && $bestSim >= 0.55) {
+            $key = (string)$best['key'];
+        } else {
+            // No close match — mint a new fingerprint from sorted tokens.
+            $sorted = $tokens;
+            sort($sorted, SORT_STRING);
+            $key = sha1(implode(' ', $sorted));
+        }
+
+        // Append to the index so the next article in this batch can
+        // cluster against the freshly-assigned key.
+        $index[] = ['tokens' => $tokens, 'key' => $key];
+        return $key;
+    }
+}
+
 if (!function_exists('cluster_counts_for')) {
     /**
      * For an array of cluster keys, return [key => total_articles_in_cluster].
@@ -118,10 +216,13 @@ if (!function_exists('renderClusterBadge')) {
      * Inline badge for an article card. Returns '' when the cluster
      * has only one member or counts haven't been pre-loaded yet.
      *
-     * The badge is a real link to /cluster/{key} so readers can jump
-     * straight to the side-by-side "قارن التغطية" page. We swallow
-     * card clicks via stopPropagation so the badge doesn't trip the
-     * outer <a> wrapper used by most card layouts.
+     * Rendered as a <span> (not <a>) because most cards already wrap
+     * their entire body in an outer <a class="news-card-link">, and
+     * HTML5 forbids nested anchors — the browser would close the
+     * outer link when it saw the inner one. Instead we navigate via
+     * an inline onclick that also stops the click from bubbling up
+     * to the card's article link. Keyboard users still get role +
+     * tabindex so the element is focusable.
      */
     function renderClusterBadge(array $article): string {
         $key = (string)($article['cluster_key'] ?? '');
@@ -132,8 +233,12 @@ if (!function_exists('renderClusterBadge')) {
         $cnt = (int)($counts[$key] ?? 0);
         if ($cnt < 2) return '';
         $href = '/cluster/' . $key;
-        return '<a class="cluster-badge" href="' . htmlspecialchars($href, ENT_QUOTES) . '"'
+        $hrefAttr = htmlspecialchars($href, ENT_QUOTES);
+        return '<span class="cluster-badge" role="link" tabindex="0"'
+             . ' data-href="' . $hrefAttr . '"'
              . ' title="قارن التغطية — هذا الخبر في ' . (int)$cnt . ' مصادر"'
-             . ' onclick="event.stopPropagation()">📰 ' . (int)$cnt . ' مصادر ›</a>';
+             . ' onclick="event.preventDefault();event.stopPropagation();window.location.href=\'' . $hrefAttr . '\';"'
+             . ' onkeydown="if(event.key===\'Enter\'){event.preventDefault();window.location.href=\'' . $hrefAttr . '\';}"'
+             . '>📰 ' . (int)$cnt . ' مصادر ›</span>';
     }
 }
