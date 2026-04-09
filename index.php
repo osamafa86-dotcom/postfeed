@@ -193,6 +193,16 @@ $homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
 <link rel="stylesheet" href="assets/css/home.css?v=15">
 <link rel="stylesheet" href="assets/css/user.css?v=17">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
+<script>
+// Register the service worker for the PWA shell. Wrapped in a load
+// listener so it never blocks first paint, and a try/catch so an
+// older browser without SW support is a no-op instead of an error.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    try { navigator.serviceWorker.register('/sw.js', { scope: '/' }); } catch (e) {}
+  });
+}
+</script>
 </head>
 <body>
 

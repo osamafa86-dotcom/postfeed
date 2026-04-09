@@ -1,0 +1,42 @@
+{
+  "name": "نيوزفلو - مجمع المصادر الإخبارية",
+  "short_name": "نيوزفلو",
+  "description": "مجمع الأخبار العربية الأول من مصادر موثوقة",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f172a",
+  "theme_color": "#1a5c5c",
+  "categories": ["news", "magazines"],
+  "icons": [
+    {
+      "src": "/assets/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "الأخبار العاجلة",
+      "short_name": "عاجل",
+      "url": "/category/breaking",
+      "description": "أحدث الأخبار العاجلة"
+    },
+    {
+      "name": "تيليغرام",
+      "short_name": "تيليغرام",
+      "url": "/telegram.php",
+      "description": "آخر منشورات قنوات تيليغرام"
+    }
+  ]
+}
