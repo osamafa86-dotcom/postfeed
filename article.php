@@ -9,6 +9,7 @@ session_start();
 require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/user_auth.php';
 require_once __DIR__ . '/includes/user_functions.php';
+require_once __DIR__ . '/includes/trending.php';
 
 // Get article ID
 $articleId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -34,6 +35,13 @@ try {
     $stmt->execute([$articleId]);
 } catch (Exception $e) {
     // Silent fail on view count increment
+}
+
+// Velocity log for "trending now" rail. Skips bots internally.
+// 1% chance per view we also prune the events table — saves a cron.
+trending_log_view($articleId);
+if (mt_rand(1, 100) === 1) {
+    try { trending_prune(getDB()); } catch (Throwable $e) {}
 }
 
 // Fetch user context (for save button, comments, theme)
