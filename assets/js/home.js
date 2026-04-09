@@ -148,6 +148,8 @@ document.getElementById('currencyModal').addEventListener('click', function(e) {
 });
 
 // MOST READ / TRENDING TABS
+// Tab → panel + description swap. The "velocity" tab also hides the
+// day/week/month pills since velocity is always "right now".
 document.querySelectorAll('.mr2-tab').forEach(tab => {
   tab.addEventListener('click', function() {
     const target = this.dataset.mr2Tab;
@@ -157,6 +159,11 @@ document.querySelectorAll('.mr2-tab').forEach(tab => {
     section.querySelectorAll('[data-mr2-panel]').forEach(p => {
       p.hidden = (p.dataset.mr2Panel !== target);
     });
+    section.querySelectorAll('[data-mr2-desc]').forEach(d => {
+      d.hidden = (d.dataset.mr2Desc !== target);
+    });
+    const range = section.querySelector('[data-mr2-range]');
+    if (range) range.style.visibility = (target === 'read') ? '' : 'hidden';
   });
 });
 // Range pill active state (visual only — data is server-rendered)
