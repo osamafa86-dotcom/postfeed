@@ -185,7 +185,7 @@ $homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
 <meta name="description" content="مجمع الأخبار العربية الأول - أحدث الأخبار من مصادر موثوقة في السياسة، الاقتصاد، الرياضة، والتكنولوجيا">
-<link rel="stylesheet" href="assets/css/home.css?v=9">
+<link rel="stylesheet" href="assets/css/home.css?v=10">
 <link rel="stylesheet" href="assets/css/user.css?v=16">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
@@ -199,9 +199,7 @@ $homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
     <span id="liveTime"><?php echo date('h:i A'); ?></span>
   </div>
   <div class="topbar-right">
-    <span class="weather-badge" id="topWeather">☀ القدس --°</span>
-    <span>USD: 0.71 JD</span>
-    <span>EUR: 0.78 JD</span>
+    <span>أحدث الأخبار من مصادر موثوقة</span>
   </div>
 </div>
 
@@ -234,6 +232,9 @@ $homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
       <span class="search-icon">&#x1F50D;</span>
       <input type="text" placeholder="ابحث عن خبر...">
     </div>
+    <button type="button" class="icon-btn icon-btn-wide" id="topWeather" onclick="openWeatherModal()" title="الطقس">🌤 <span>--°</span></button>
+    <button type="button" class="icon-btn" onclick="openCurrencyModal()" title="أسعار العملات">💱</button>
+    <button type="button" class="icon-btn" onclick="openSourcesModal()" title="المصادر النشطة">🌐</button>
     <div class="icon-btn" onclick="NF.cycleTheme()" title="تبديل الثيم">🌓</div>
     <?php if ($viewerId): ?>
       <div class="icon-btn" data-nf-notif-btn onclick="NF.toggleNotifDropdown(this)" title="الإشعارات">
@@ -643,114 +644,57 @@ $__featRest  = array_slice($latestArticles, 7);
     </div>
     <?php endif; ?>
 
+    <!-- MOST READ + TRENDING SECTION -->
+    <?php if (!empty($mostRead) || !empty($trends)): ?>
+    <div class="mr-section">
+      <div class="mr-grid">
+        <?php if (!empty($mostRead)): ?>
+        <div class="mr-block mr-block-read">
+          <div class="mr-head">
+            <div class="section-title"><div class="line" style="background:var(--gold)"></div>👁 الأكثر قراءة</div>
+          </div>
+          <div class="mr-list">
+            <?php $rankNum = 1; foreach (array_slice($mostRead, 0, 5) as $article): ?>
+              <a class="mr-item" href="<?php echo articleUrl($article); ?>">
+                <div class="mr-rank mr-rank-<?php echo $rankNum; ?>"><?php echo $rankNum; ?></div>
+                <?php if (!empty($article['image_url'])): ?>
+                  <div class="mr-thumb"><img src="<?php echo e($article['image_url']); ?>" alt="" loading="lazy" decoding="async"></div>
+                <?php endif; ?>
+                <div class="mr-body">
+                  <div class="mr-title"><?php echo e($article['title']); ?></div>
+                  <div class="mr-meta">
+                    <?php if (!empty($article['source_name'])): ?><span><?php echo e($article['source_name']); ?></span><span class="mr-dot"></span><?php endif; ?>
+                    <span>👁 <?php echo formatViews($article['view_count']); ?></span>
+                  </div>
+                </div>
+              </a>
+              <?php $rankNum++; endforeach; ?>
+          </div>
+        </div>
+        <?php endif; ?>
+        <?php if (!empty($trends)): ?>
+        <div class="mr-block mr-block-trend">
+          <div class="mr-head">
+            <div class="section-title"><div class="line" style="background:var(--red)"></div>🔥 الأكثر تداولاً</div>
+          </div>
+          <div class="mr-list mr-trend-list">
+            <?php $trendNum = 1; foreach (array_slice($trends, 0, 5) as $trend): ?>
+              <div class="mr-trend-item">
+                <div class="mr-rank mr-rank-<?php echo $trendNum; ?>"><?php echo $trendNum; ?></div>
+                <div class="mr-body">
+                  <div class="mr-title"><?php echo e($trend['title']); ?></div>
+                  <div class="mr-meta">🔥 <?php echo number_format($trend['tweet_count']); ?> تغريدة</div>
+                </div>
+              </div>
+              <?php $trendNum++; endforeach; ?>
+          </div>
+        </div>
+        <?php endif; ?>
+      </div>
+    </div>
+    <?php endif; ?>
+
   </div><!-- /main-col -->
-
-  <!-- SIDEBAR -->
-  <div class="sidebar">
-
-    <!-- WEATHER -->
-    <div class="weather-widget">
-      <div class="section-title" style="margin-bottom:14px;font-size:14px"><div class="line" style="background:var(--accent2)"></div>☀️ الطقس الآن</div>
-      <div class="weather-cities">
-        <button class="weather-city-btn active" data-city="Jerusalem" data-name="القدس">القدس</button>
-        <button class="weather-city-btn" data-city="Gaza" data-name="غزة">غزة</button>
-        <button class="weather-city-btn" data-city="Ramallah" data-name="رام الله">رام الله</button>
-        <button class="weather-city-btn" data-city="Nablus" data-name="نابلس">نابلس</button>
-        <button class="weather-city-btn" data-city="Hebron" data-name="الخليل">الخليل</button>
-        <button class="weather-city-btn" data-city="Jenin" data-name="جنين">جنين</button>
-      </div>
-      <div class="weather-main">
-        <div>
-          <div class="weather-temp" id="wTemp">--°</div>
-          <div class="weather-city" id="wCity">القدس، فلسطين</div>
-          <div class="weather-desc" id="wDesc">جارٍ التحميل...</div>
-        </div>
-        <div class="weather-icon" id="wIcon">🌤</div>
-      </div>
-      <div class="weather-days" id="wForecast">
-        <div class="weather-day"><div class="day">--</div><div>🌤</div><div class="temp">--°</div></div>
-        <div class="weather-day"><div class="day">--</div><div>🌤</div><div class="temp">--°</div></div>
-        <div class="weather-day"><div class="day">--</div><div>🌤</div><div class="temp">--°</div></div>
-        <div class="weather-day"><div class="day">--</div><div>🌤</div><div class="temp">--°</div></div>
-      </div>
-    </div>
-
-    <!-- CURRENCY -->
-    <div class="currency-widget" onclick="openCurrencyModal()">
-      <h4>💱 أسعار الصرف</h4>
-      <div class="currency-row">
-        <div style="display:flex;align-items:center"><span class="currency-flag">🇺🇸</span><span class="currency-name">دولار أمريكي</span></div>
-        <div><span class="currency-rate" id="cUSD">--</span> <span class="currency-change" id="cUSDc"></span></div>
-      </div>
-      <div class="currency-row">
-        <div style="display:flex;align-items:center"><span class="currency-flag">🇮🇱</span><span class="currency-name">شيقل</span></div>
-        <div><span class="currency-rate" id="cILS">--</span> <span class="currency-change" id="cILSc"></span></div>
-      </div>
-      <div class="currency-row">
-        <div style="display:flex;align-items:center"><span class="currency-flag">🇯🇴</span><span class="currency-name">دينار أردني</span></div>
-        <div><span class="currency-rate" id="cJOD">--</span> <span class="currency-change" id="cJODc"></span></div>
-      </div>
-      <div class="currency-foot">اضغط لعرض التفاصيل ›</div>
-    </div>
-
-    <!-- TRENDING -->
-    <div class="sidebar-widget">
-      <div class="widget-header"><span class="icon">🔥</span>الأكثر تداولاً</div>
-      <div class="widget-body" style="padding:8px 16px">
-        <?php $trendNum = 1; ?>
-        <?php foreach ($trends as $trend): ?>
-          <div class="trend-item">
-            <div class="trend-num"><?php echo $trendNum; ?></div>
-            <div>
-              <div class="trend-title"><?php echo e($trend['title']); ?></div>
-              <div class="trend-heat">🔥 <?php echo number_format($trend['tweet_count']); ?> تغريدة</div>
-            </div>
-          </div>
-          <?php $trendNum++; ?>
-        <?php endforeach; ?>
-      </div>
-    </div>
-
-    <!-- SOURCES -->
-    <div class="sidebar-widget">
-      <div class="widget-header"><span class="icon">🌐</span>مصادرك النشطة</div>
-      <div class="widget-body" style="padding:6px 16px">
-        <?php foreach (array_slice($sources, 0, 5) as $source): ?>
-          <div class="source-item">
-            <div class="source-logo" style="background:<?php echo e($source['logo_bg']); ?>;color:<?php echo e($source['logo_color']); ?>"><?php echo e($source['logo_letter']); ?></div>
-            <div class="source-info">
-              <div class="source-name"><?php echo e($source['name']); ?></div>
-              <div class="source-count"><?php echo rand(50, 300); ?> خبر اليوم</div>
-            </div>
-            <div class="source-toggle" onclick="this.classList.toggle('off')"></div>
-          </div>
-        <?php endforeach; ?>
-        <div class="add-source-card" style="margin-top:12px;margin-bottom:0;padding:16px" onclick="openAddSource()">
-          <div class="add-source-icon">➕</div>
-          <div class="add-source-text" style="font-size:13px">إضافة مصدر جديد</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- MOST READ -->
-    <div class="sidebar-widget">
-      <div class="widget-header"><span class="icon">👁</span>الأكثر قراءة</div>
-      <div class="widget-body" style="padding:8px 16px">
-        <?php $rankNum = 1; ?>
-        <?php foreach (array_slice($mostRead, 0, 3) as $article): ?>
-          <a class="list-item" href="<?php echo articleUrl($article); ?>" style="padding:8px 0;background:none;border:none;<?php echo $rankNum < 3 ? 'border-bottom:1px solid var(--border);' : ''; ?>">
-            <div class="rank-num"><?php echo $rankNum; ?></div>
-            <div class="list-body">
-              <div class="list-title" style="font-size:12px"><?php echo e(substr($article['title'], 0, 40) . '...'); ?></div>
-              <div class="list-meta"><span>👁 <?php echo formatViews($article['view_count']); ?></span></div>
-            </div>
-          </a>
-          <?php $rankNum++; ?>
-        <?php endforeach; ?>
-      </div>
-    </div>
-
-  </div><!-- /sidebar -->
 </div><!-- /main-layout -->
 
 <!-- FOOTER -->
@@ -1057,8 +1001,73 @@ $__featRest  = array_slice($latestArticles, 7);
   </div>
 </div>
 
+<!-- WEATHER MODAL -->
+<div class="modal-overlay" id="weatherModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>☀️ الطقس الآن</h2>
+      <button class="modal-close" onclick="closeWeatherModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="weather-widget weather-widget-modal">
+        <div class="weather-cities">
+          <button class="weather-city-btn active" data-city="Jerusalem" data-name="القدس">القدس</button>
+          <button class="weather-city-btn" data-city="Gaza" data-name="غزة">غزة</button>
+          <button class="weather-city-btn" data-city="Ramallah" data-name="رام الله">رام الله</button>
+          <button class="weather-city-btn" data-city="Nablus" data-name="نابلس">نابلس</button>
+          <button class="weather-city-btn" data-city="Hebron" data-name="الخليل">الخليل</button>
+          <button class="weather-city-btn" data-city="Jenin" data-name="جنين">جنين</button>
+        </div>
+        <div class="weather-main">
+          <div>
+            <div class="weather-temp" id="wTemp">--°</div>
+            <div class="weather-city" id="wCity">القدس، فلسطين</div>
+            <div class="weather-desc" id="wDesc">جارٍ التحميل...</div>
+          </div>
+          <div class="weather-icon" id="wIcon">🌤</div>
+        </div>
+        <div class="weather-days" id="wForecast">
+          <div class="weather-day"><div class="day">--</div><div>🌤</div><div class="temp">--°</div></div>
+          <div class="weather-day"><div class="day">--</div><div>🌤</div><div class="temp">--°</div></div>
+          <div class="weather-day"><div class="day">--</div><div>🌤</div><div class="temp">--°</div></div>
+          <div class="weather-day"><div class="day">--</div><div>🌤</div><div class="temp">--°</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SOURCES MODAL -->
+<div class="modal-overlay" id="sourcesModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>🌐 المصادر النشطة</h2>
+      <button class="modal-close" onclick="closeSourcesModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-sources-list">
+        <?php foreach (array_slice($sources, 0, 12) as $source): ?>
+          <div class="source-item">
+            <div class="source-logo" style="background:<?php echo e($source['logo_bg']); ?>;color:<?php echo e($source['logo_color']); ?>"><?php echo e($source['logo_letter']); ?></div>
+            <div class="source-info">
+              <div class="source-name"><?php echo e($source['name']); ?></div>
+              <div class="source-count"><?php echo rand(50, 300); ?> خبر اليوم</div>
+            </div>
+            <div class="source-toggle" onclick="this.classList.toggle('off')"></div>
+          </div>
+        <?php endforeach; ?>
+      </div>
+      <?php if ($viewerId): ?>
+        <a href="me/sources.php" class="modal-sources-all">إدارة المصادر ›</a>
+      <?php else: ?>
+        <a href="account/register.php" class="modal-sources-all">سجّل لإدارة مصادرك ›</a>
+      <?php endif; ?>
+    </div>
+  </div>
+</div>
+
 <div class="nf-toast" id="nfToast"></div>
-<script src="assets/js/home.js?v=1" defer></script>
+<script src="assets/js/home.js?v=2" defer></script>
 <script src="assets/js/user.js?v=4" defer></script>
 
 </body>
