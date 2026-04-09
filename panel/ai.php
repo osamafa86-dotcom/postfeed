@@ -36,6 +36,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['api_key'])) {
     $success = 'تم حفظ المفتاح';
 }
 
+// Generate / rotate the cron key used by cron_tg_summary.php and friends
+// so the admin doesn't have to dig into the DB to find (or create) it.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate_cron_key'])) {
+    $newKey = bin2hex(random_bytes(16));
+    $stmt = $db->prepare("INSERT INTO settings (setting_key, setting_value) VALUES ('cron_key', ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+    $stmt->execute([$newKey, $newKey]);
+    cache_forget('settings_all');
+    $success = 'تم توليد مفتاح cron جديد';
+}
+
 // Bulk summarize
 if (($_GET['action'] ?? '') === 'bulk') {
     @set_time_limit(120);
@@ -89,6 +99,70 @@ include __DIR__ . '/includes/panel_layout_head.php';
       </div>
       <button type="submit" class="btn-primary">💾 حفظ</button>
     </form>
+  </div>
+
+  <?php
+    // Cron key card — exposes the shared cron_key and a ready-made
+    // URL so the admin can paste it straight into cPanel without
+    // hunting through phpMyAdmin.
+    $cronKey  = trim((string)getSetting('cron_key', ''));
+    $siteUrl  = rtrim((string)getSetting('site_url', ''), '/');
+    if ($siteUrl === '') {
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $siteUrl = $scheme . '://' . $host;
+    }
+    $cronUrl  = $cronKey ? ($siteUrl . '/cron_tg_summary.php?key=' . $cronKey) : '';
+    $cronLine = $cronUrl ? ('0 * * * * curl -fsS "' . $cronUrl . '" > /dev/null 2>&1') : '';
+  ?>
+  <div class="form-card" style="margin-top:18px;">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:14px;">⏰ جدولة ملخصات تيليغرام (كل ساعة)</h3>
+
+    <?php if (!$cronKey): ?>
+      <div class="alert alert-warning" style="margin-bottom:14px;">
+        ⚠️ لم يُعدّ بعد <code>cron_key</code>. اضغط الزر أدناه لتوليد مفتاح جديد.
+      </div>
+      <form method="POST" style="margin-bottom:10px;">
+        <?php echo csrf_field(); ?>
+        <input type="hidden" name="generate_cron_key" value="1">
+        <button type="submit" class="btn-primary">🔑 توليد مفتاح cron جديد</button>
+      </form>
+    <?php else: ?>
+      <div class="form-group">
+        <label>مفتاح cron الحالي</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="cronKeyField" class="form-control" value="<?php echo e($cronKey); ?>" readonly>
+          <button type="button" class="btn-outline" onclick="navigator.clipboard.writeText(document.getElementById('cronKeyField').value);this.textContent='✓ نُسخ';setTimeout(()=>this.textContent='نسخ',1500);">نسخ</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>رابط التشغيل المباشر (اختبار يدوي في المتصفح)</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="cronUrlField" class="form-control" value="<?php echo e($cronUrl); ?>" readonly>
+          <button type="button" class="btn-outline" onclick="navigator.clipboard.writeText(document.getElementById('cronUrlField').value);this.textContent='✓ نُسخ';setTimeout(()=>this.textContent='نسخ',1500);">نسخ</button>
+          <a href="<?php echo e($cronUrl); ?>" target="_blank" class="btn-outline">فتح</a>
+        </div>
+        <small style="color:var(--text-muted);font-size:11px;">يجب أن ترى <code>ok: saved briefing #N</code> عند النجاح.</small>
+      </div>
+
+      <div class="form-group">
+        <label>السطر الكامل لجدولة cPanel / crontab</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="cronLineField" class="form-control" value="<?php echo e($cronLine); ?>" readonly style="font-family:monospace;font-size:12px;">
+          <button type="button" class="btn-outline" onclick="navigator.clipboard.writeText(document.getElementById('cronLineField').value);this.textContent='✓ نُسخ';setTimeout(()=>this.textContent='نسخ',1500);">نسخ</button>
+        </div>
+        <small style="color:var(--text-muted);font-size:11px;">
+          الصق هذا السطر في <strong>cPanel → Cron Jobs → Add New Cron Job → Command</strong> (واختر "Once Per Hour").
+        </small>
+      </div>
+
+      <form method="POST" onsubmit="return confirm('توليد مفتاح جديد سيُبطل السطر المُعدّ في cPanel حالياً. متأكد؟');">
+        <?php echo csrf_field(); ?>
+        <input type="hidden" name="generate_cron_key" value="1">
+        <button type="submit" class="btn-outline" style="font-size:12px;">🔄 توليد مفتاح جديد (يُبطل القديم)</button>
+      </form>
+    <?php endif; ?>
   </div>
 
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:24px 0;">
