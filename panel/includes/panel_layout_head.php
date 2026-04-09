@@ -394,6 +394,10 @@ $pageTitle  = $pageTitle  ?? 'نيوزفلو';
       <div class="nav-icon">🤖</div>
       <span class="label">الذكاء الاصطناعي</span>
     </a>
+    <a href="tts.php" class="nav-item<?php echo $activePage==='tts'?' active':''; ?>">
+      <div class="nav-icon">🎙</div>
+      <span class="label">الصوت والقراءة</span>
+    </a>
     <?php endif; ?>
   </div>
   <?php endif; ?>
