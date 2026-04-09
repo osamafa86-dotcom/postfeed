@@ -286,6 +286,20 @@ include __DIR__ . '/includes/components/site_header.php';
           <span><?php echo e($a['source_name'] ?? '—'); ?></span>
         <?php endforeach; ?>
       </div>
+      <?php if ($totalCount >= 3): ?>
+        <div style="margin-top:20px;">
+          <a href="/timeline/<?php echo e($key); ?>"
+             style="display:inline-flex;align-items:center;gap:10px;padding:12px 22px;
+                    background:linear-gradient(135deg,var(--accent2),#0f766e);color:#fff;
+                    border-radius:12px;font-weight:800;font-size:14px;
+                    box-shadow:0 6px 18px -8px rgba(13,148,136,.5);transition:all .2s;">
+            📅 شاهد الخط الزمني الذكي للقصّة ←
+          </a>
+          <div style="font-size:11px;color:var(--muted);margin-top:6px;">
+            ملخص تفاعلي مُولَّد بالذكاء الاصطناعي يُظهر كيف تطوّرت القصة عبر الزمن.
+          </div>
+        </div>
+      <?php endif; ?>
     </div>
 
     <!-- COVERAGE LIST -->

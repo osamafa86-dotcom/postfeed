@@ -1,0 +1,517 @@
+<?php
+/**
+ * Smart Story Timelines — Guardian Live inspired chronological view
+ * of ongoing news stories.
+ *
+ * A "story" is any cluster (articles sharing a cluster_key) that has
+ * enough articles to justify a narrative timeline — we require at
+ * least STORY_TIMELINE_MIN_ARTICLES articles before we'll call Claude
+ * to aggregate events.
+ *
+ * The generated timeline is persisted in the story_timelines table
+ * keyed by cluster_key. Regeneration is triggered when:
+ *   - the article count for the cluster has changed since the last
+ *     generation, OR
+ *   - the stored timeline is older than STORY_TIMELINE_MAX_AGE_HOURS.
+ *
+ * Claude is called via the tool_use pattern (same shape used by
+ * ai_summarize_telegram) so the return is always structured and
+ * parsing-safe.
+ */
+
+require_once __DIR__ . '/ai_helper.php';
+require_once __DIR__ . '/cache.php';
+
+const STORY_TIMELINE_MIN_ARTICLES   = 3;     // below this we redirect to cluster.php
+const STORY_TIMELINE_MAX_AGE_HOURS  = 6;     // force regenerate after this even if article count unchanged
+const STORY_TIMELINE_GEN_THROTTLE   = 120;   // seconds — prevents per-visitor thundering herd on misses
+const STORY_TIMELINE_ARTICLE_LIMIT  = 40;    // cap articles fed to Claude per story
+const STORY_TIMELINE_LIST_DEFAULT   = 12;
+
+/**
+ * Lazy-create the story_timelines table. Returns true on success.
+ * Keyed by cluster_key (unique) so INSERT…ON DUPLICATE KEY UPDATE
+ * is the natural upsert path.
+ */
+function story_timeline_ensure_table(): void {
+    static $ensured = false;
+    if ($ensured) return;
+    try {
+        $db = getDB();
+        $db->exec("CREATE TABLE IF NOT EXISTS story_timelines (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            cluster_key CHAR(40) NOT NULL,
+            headline VARCHAR(300) NOT NULL DEFAULT '',
+            intro TEXT,
+            events LONGTEXT,
+            topics TEXT,
+            article_count SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+            source_count SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+            generated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uniq_cluster (cluster_key),
+            INDEX idx_generated_at (generated_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $ensured = true;
+    } catch (Throwable $e) {
+        error_log('[story_timeline] ensure_table: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Fetch all published articles for a cluster, ordered chronologically.
+ * Joins source + category metadata because the timeline cards need them.
+ */
+function story_timeline_fetch_articles(string $clusterKey, int $limit = STORY_TIMELINE_ARTICLE_LIMIT): array {
+    if (!preg_match('/^[a-f0-9]{40}$/', $clusterKey)) return [];
+    $db = getDB();
+    $stmt = $db->prepare("SELECT a.id, a.title, a.slug, a.excerpt, a.image_url,
+                                 a.source_url, a.ai_summary, a.ai_keywords,
+                                 a.published_at, a.category_id, a.source_id,
+                                 c.name AS cat_name, c.slug AS cat_slug,
+                                 s.name AS source_name, s.logo_color
+                            FROM articles a
+                            LEFT JOIN categories c ON a.category_id = c.id
+                            LEFT JOIN sources    s ON a.source_id   = s.id
+                           WHERE a.cluster_key = ?
+                             AND a.status = 'published'
+                           ORDER BY a.published_at ASC
+                           LIMIT " . (int)$limit);
+    $stmt->execute([$clusterKey]);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+/**
+ * Count published articles in a cluster without hydrating them.
+ * Used for the freshness check — if the count has grown since the
+ * stored timeline was generated, we regenerate.
+ */
+function story_timeline_article_count(string $clusterKey): int {
+    if (!preg_match('/^[a-f0-9]{40}$/', $clusterKey)) return 0;
+    $db = getDB();
+    $stmt = $db->prepare("SELECT COUNT(*) FROM articles WHERE cluster_key = ? AND status = 'published'");
+    $stmt->execute([$clusterKey]);
+    return (int)$stmt->fetchColumn();
+}
+
+/**
+ * Count distinct sources in a cluster. Surfaced in the UI as
+ * "coverage" signal (more sources = more credible).
+ */
+function story_timeline_source_count(string $clusterKey): int {
+    if (!preg_match('/^[a-f0-9]{40}$/', $clusterKey)) return 0;
+    $db = getDB();
+    $stmt = $db->prepare("SELECT COUNT(DISTINCT source_id) FROM articles
+                           WHERE cluster_key = ? AND status = 'published' AND source_id IS NOT NULL");
+    $stmt->execute([$clusterKey]);
+    return (int)$stmt->fetchColumn();
+}
+
+/**
+ * Decode a DB row into the shape timeline.php expects.
+ */
+function story_timeline_hydrate(array $row): array {
+    $events = json_decode((string)($row['events'] ?? '[]'), true);
+    $topics = json_decode((string)($row['topics'] ?? '[]'), true);
+    return [
+        'id'            => (int)$row['id'],
+        'cluster_key'   => (string)$row['cluster_key'],
+        'headline'      => (string)$row['headline'],
+        'intro'         => (string)($row['intro'] ?? ''),
+        'events'        => is_array($events) ? $events : [],
+        'topics'        => is_array($topics) ? $topics : [],
+        'article_count' => (int)$row['article_count'],
+        'source_count'  => (int)$row['source_count'],
+        'generated_at'  => (string)$row['generated_at'],
+    ];
+}
+
+/**
+ * Fetch a stored timeline by cluster_key, or null if none exists.
+ */
+function story_timeline_get(string $clusterKey): ?array {
+    story_timeline_ensure_table();
+    if (!preg_match('/^[a-f0-9]{40}$/', $clusterKey)) return null;
+    try {
+        $db = getDB();
+        $stmt = $db->prepare("SELECT * FROM story_timelines WHERE cluster_key = ?");
+        $stmt->execute([$clusterKey]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? story_timeline_hydrate($row) : null;
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
+/**
+ * Upsert a generated timeline. Returns the hydrated row, or null on failure.
+ */
+function story_timeline_save(string $clusterKey, array $ai, int $articleCount, int $sourceCount): ?array {
+    story_timeline_ensure_table();
+    if (!preg_match('/^[a-f0-9]{40}$/', $clusterKey)) return null;
+    if (empty($ai['ok'])) return null;
+    try {
+        $db = getDB();
+        $stmt = $db->prepare("INSERT INTO story_timelines
+            (cluster_key, headline, intro, events, topics, article_count, source_count, generated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+            ON DUPLICATE KEY UPDATE
+                headline=VALUES(headline),
+                intro=VALUES(intro),
+                events=VALUES(events),
+                topics=VALUES(topics),
+                article_count=VALUES(article_count),
+                source_count=VALUES(source_count),
+                generated_at=NOW()");
+        $stmt->execute([
+            $clusterKey,
+            (string)($ai['headline'] ?? ''),
+            (string)($ai['intro']    ?? ''),
+            json_encode($ai['events'] ?? [], JSON_UNESCAPED_UNICODE),
+            json_encode($ai['topics'] ?? [], JSON_UNESCAPED_UNICODE),
+            $articleCount,
+            $sourceCount,
+        ]);
+        return story_timeline_get($clusterKey);
+    } catch (Throwable $e) {
+        error_log('[story_timeline] save: ' . $e->getMessage());
+        return null;
+    }
+}
+
+/**
+ * Is the stored timeline stale? Stale means: older than
+ * STORY_TIMELINE_MAX_AGE_HOURS, or the cluster has acquired new
+ * articles since the last generation.
+ */
+function story_timeline_is_stale(array $stored, int $currentArticleCount): bool {
+    if ((int)$stored['article_count'] !== $currentArticleCount) return true;
+    $ageSecs = time() - (strtotime($stored['generated_at'] ?? '') ?: 0);
+    if ($ageSecs > STORY_TIMELINE_MAX_AGE_HOURS * 3600) return true;
+    return false;
+}
+
+/**
+ * Build the Claude prompt and call the API via tool_use to get a
+ * structured timeline back. Returns the same contract as the other
+ * ai_* helpers: ['ok'=>true, ...] or ['ok'=>false, 'error'=>string].
+ *
+ * Each article is labeled with an A1/A2/… handle so Claude can
+ * reference them by id in the events[].sources field, letting the UI
+ * link back to the original article cards.
+ */
+function story_timeline_generate(array $articles): array {
+    $apiKey = trim((string)getSetting('anthropic_api_key', ''));
+    if ($apiKey === '') $apiKey = trim((string)env('ANTHROPIC_API_KEY', ''));
+    if ($apiKey === '') {
+        return ['ok' => false, 'error' => 'مفتاح Anthropic API غير مُعدّ.'];
+    }
+    if (count($articles) < STORY_TIMELINE_MIN_ARTICLES) {
+        return ['ok' => false, 'error' => 'لا توجد مقالات كافية لتوليد خط زمني.'];
+    }
+
+    // Build a compact corpus. Each article gets a short label (A1, A2…)
+    // so Claude can cite them in the events back to us. We keep the
+    // payload under ~40K chars to leave headroom for the tool schema
+    // and response.
+    $lines   = [];
+    $labels  = [];  // label => article id
+    $budget  = 40000;
+    $used    = 0;
+    foreach ($articles as $idx => $a) {
+        $label = 'A' . ($idx + 1);
+        $labels[$label] = (int)$a['id'];
+        $title   = trim((string)($a['title'] ?? ''));
+        $summary = trim((string)($a['ai_summary'] ?? $a['excerpt'] ?? ''));
+        $summary = preg_replace('/\s+/u', ' ', strip_tags($summary));
+        if (mb_strlen($summary) > 500) $summary = mb_substr($summary, 0, 500) . '…';
+        $when   = !empty($a['published_at']) ? date('Y-m-d H:i', strtotime($a['published_at'])) : '';
+        $source = trim((string)($a['source_name'] ?? ''));
+        $block  = "[{$label}] {$when} · {$source}\n"
+                . "العنوان: {$title}\n"
+                . ($summary ? "الملخص: {$summary}\n" : '');
+        $len    = mb_strlen($block);
+        if ($used + $len > $budget) break;
+        $lines[] = $block;
+        $used   += $len + 2;
+    }
+
+    $corpus = implode("\n", $lines);
+    $count  = count($lines);
+
+    $prompt = "أنت محرر أخبار محترف في غرفة أخبار عربية كبيرة. تحت يدك {$count} تقريراً من "
+            . "مصادر متعددة تغطي قصة إخبارية واحدة متطورة عبر الزمن. مهمتك: قراءة كل التقارير ثم "
+            . "بناء \"خط زمني\" (Live Timeline) مُنظّم يُظهر كيف تطوّرت القصة، عبر استدعاء "
+            . "الأداة submit_story_timeline.\n\n"
+            . "تعليمات حاسمة:\n"
+            . "- العنوان الرئيسي (headline) يجب أن يُلخّص القصة كلها بنبرة صحفية احترافية (أقل من 100 حرف).\n"
+            . "- المقدمة (intro) فقرة من 3-5 جمل تعرض المشهد العام، كأنها افتتاحية لمقال تحليلي.\n"
+            . "- الأحداث (events) يجب أن تكون مرتّبة زمنياً من الأقدم إلى الأحدث.\n"
+            . "- ادمج التقارير المتشابهة في حدث واحد، ولا تكرّر نفس المعلومة في أحداث متتالية.\n"
+            . "- كل حدث يمثل خطوة حقيقية في تطور القصة (إعلان، اجتماع، ضربة، قرار، رد فعل…).\n"
+            . "- عدد الأحداث المثالي بين 4 و 10، حسب ما يستحق التطور الفعلي للقصة.\n"
+            . "- لكل حدث اكتب عنواناً قصيراً جذّاباً (title، أقل من 90 حرفاً) وملخصاً من 2-3 جمل (summary) "
+            . "يعطي السياق كاملاً لمن لم يتابع القصة من قبل.\n"
+            . "- حقل date يجب أن يكون بصيغة YYYY-MM-DD مأخوذاً من أقدم تقرير يغطي الحدث.\n"
+            . "- حقل sources قائمة برموز التقارير (A1, A2…) التي استندت إليها في صياغة الحدث.\n"
+            . "- استخدم رمز emoji واحد واقعي لكل حدث (مثل 🛰️ 🏛️ ⚔️ 📢 🤝 🚨 🩺 🗳️ 📉).\n"
+            . "- استخدم لغة عربية فصحى محايدة، لا تستعمل صيغاً متحيزة.\n"
+            . "- لا تخترع معلومات غير موجودة في التقارير؛ التزم بما ورد حرفياً.\n"
+            . "- اختر 3-6 وسوم (topics) قصيرة تُمثّل القصة بدون رمز #.\n\n"
+            . "التقارير:\n" . $corpus;
+
+    $tool = [
+        'name'        => 'submit_story_timeline',
+        'description' => 'Submit a structured Arabic story timeline with headline, intro, chronological events, and topic tags.',
+        'input_schema' => [
+            'type'     => 'object',
+            'properties' => [
+                'headline' => [
+                    'type'        => 'string',
+                    'description' => 'عنوان رئيسي قوي يلخّص القصة كلها (أقل من 100 حرف).',
+                ],
+                'intro' => [
+                    'type'        => 'string',
+                    'description' => 'فقرة افتتاحية من 3-5 جمل تعطي المشهد العام للقصة.',
+                ],
+                'events' => [
+                    'type'        => 'array',
+                    'description' => 'الأحداث الرئيسية للقصة مرتبة زمنياً من الأقدم إلى الأحدث، بين 4 و 10 أحداث.',
+                    'items' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'date' => [
+                                'type'        => 'string',
+                                'description' => 'تاريخ الحدث بصيغة YYYY-MM-DD.',
+                            ],
+                            'icon' => [
+                                'type'        => 'string',
+                                'description' => 'رمز emoji واحد يعبّر عن طبيعة الحدث.',
+                            ],
+                            'title' => [
+                                'type'        => 'string',
+                                'description' => 'عنوان قصير للحدث (أقل من 90 حرفاً).',
+                            ],
+                            'summary' => [
+                                'type'        => 'string',
+                                'description' => 'ملخص الحدث في 2-3 جمل كاملة تعطي السياق.',
+                            ],
+                            'sources' => [
+                                'type'        => 'array',
+                                'description' => 'رموز التقارير المرجعية التي استند إليها الحدث (مثل A1, A3).',
+                                'items'       => ['type' => 'string'],
+                            ],
+                        ],
+                        'required' => ['date', 'title', 'summary'],
+                    ],
+                ],
+                'topics' => [
+                    'type'        => 'array',
+                    'description' => 'وسوم قصيرة تمثّل القصة، 3-6 وسوم بدون رمز #.',
+                    'items'       => ['type' => 'string'],
+                ],
+            ],
+            'required' => ['headline', 'intro', 'events', 'topics'],
+        ],
+    ];
+
+    $body = json_encode([
+        'model'       => 'claude-haiku-4-5-20251001',
+        'max_tokens'  => 4000,
+        'tools'       => [$tool],
+        'tool_choice' => ['type' => 'tool', 'name' => 'submit_story_timeline'],
+        'messages'    => [['role' => 'user', 'content' => $prompt]],
+    ], JSON_UNESCAPED_UNICODE);
+
+    $ch = curl_init('https://api.anthropic.com/v1/messages');
+    curl_setopt_array($ch, [
+        CURLOPT_POST            => true,
+        CURLOPT_POSTFIELDS      => $body,
+        CURLOPT_RETURNTRANSFER  => true,
+        CURLOPT_TIMEOUT         => 90,
+        CURLOPT_HTTPHEADER      => [
+            'Content-Type: application/json',
+            'x-api-key: ' . $apiKey,
+            'anthropic-version: 2023-06-01',
+        ],
+    ]);
+    $resp = curl_exec($ch);
+    $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err  = curl_error($ch);
+    curl_close($ch);
+
+    if ($http !== 200) {
+        if ($http === 401 || $http === 403) {
+            return ['ok' => false, 'error' => 'مفتاح Anthropic API غير صالح.'];
+        }
+        if ($http === 429) {
+            return ['ok' => false, 'error' => 'تم تجاوز حد الطلبات. حاول لاحقاً.'];
+        }
+        if ($http === 0 || $http >= 500) {
+            return ['ok' => false, 'error' => 'تعذّر الاتصال بخدمة الذكاء الاصطناعي.'];
+        }
+        return ['ok' => false, 'error' => "HTTP $http: " . ($err ?: mb_substr((string)$resp, 0, 200))];
+    }
+
+    $data = json_decode($resp, true);
+    if (!is_array($data)) {
+        return ['ok' => false, 'error' => 'رد غير صالح من خدمة الذكاء الاصطناعي.'];
+    }
+
+    $parsed = null;
+    foreach ((array)($data['content'] ?? []) as $block) {
+        if (!is_array($block)) continue;
+        if (($block['type'] ?? '') === 'tool_use'
+            && ($block['name'] ?? '') === 'submit_story_timeline'
+            && is_array($block['input'] ?? null)) {
+            $parsed = $block['input'];
+            break;
+        }
+    }
+
+    if (!is_array($parsed) || empty($parsed['events'])) {
+        error_log('[story_timeline] parse failed: ' . mb_substr(json_encode($data, JSON_UNESCAPED_UNICODE), 0, 1500));
+        return ['ok' => false, 'error' => 'تعذّر توليد الخط الزمني — رد غير مكتمل.'];
+    }
+
+    // Normalize events and resolve source labels (A1…) to article ids
+    // so the frontend can render links directly without another query.
+    $events = [];
+    foreach ((array)$parsed['events'] as $ev) {
+        if (!is_array($ev)) continue;
+        $title   = trim((string)($ev['title']   ?? ''));
+        $summary = trim((string)($ev['summary'] ?? ''));
+        if ($title === '' || $summary === '') continue;
+
+        $rawSources = (array)($ev['sources'] ?? []);
+        $sourceIds  = [];
+        foreach ($rawSources as $label) {
+            $label = strtoupper(trim((string)$label));
+            if (isset($labels[$label])) $sourceIds[] = $labels[$label];
+        }
+
+        $events[] = [
+            'date'       => trim((string)($ev['date']  ?? '')),
+            'icon'       => trim((string)($ev['icon']  ?? '')),
+            'title'      => $title,
+            'summary'    => $summary,
+            'source_ids' => array_values(array_unique($sourceIds)),
+        ];
+    }
+
+    if (!$events) {
+        return ['ok' => false, 'error' => 'لم يتم توليد أي حدث صالح.'];
+    }
+
+    return [
+        'ok'       => true,
+        'headline' => (string)($parsed['headline'] ?? ''),
+        'intro'    => (string)($parsed['intro']    ?? ''),
+        'events'   => $events,
+        'topics'   => array_values(array_filter(array_map('strval', (array)($parsed['topics'] ?? [])))),
+    ];
+}
+
+/**
+ * High-level entry point: return a timeline for a cluster, generating
+ * and caching as needed. Returns null if the cluster doesn't have
+ * enough articles (caller should redirect to cluster.php in that case).
+ *
+ * A short cache-based throttle prevents two concurrent visitors from
+ * triggering duplicate Claude calls when the stored timeline is
+ * stale — the second visitor gets the stored (stale) copy while the
+ * first is regenerating.
+ */
+function story_timeline_for(string $clusterKey): ?array {
+    if (!preg_match('/^[a-f0-9]{40}$/', $clusterKey)) return null;
+
+    $count = story_timeline_article_count($clusterKey);
+    if ($count < STORY_TIMELINE_MIN_ARTICLES) return null;
+
+    $stored = story_timeline_get($clusterKey);
+
+    // Fresh hit — return immediately.
+    if ($stored && !story_timeline_is_stale($stored, $count)) {
+        return $stored;
+    }
+
+    // Stale or missing — check the throttle before calling Claude.
+    $throttleKey = 'story_timeline_gen_' . $clusterKey;
+    $lastAttempt = (int)(cache_get($throttleKey) ?: 0);
+    if ($lastAttempt > 0 && (time() - $lastAttempt) < STORY_TIMELINE_GEN_THROTTLE) {
+        // Another request is (probably) generating. Return the stale
+        // copy if we have one rather than blocking.
+        return $stored;
+    }
+    cache_set($throttleKey, time(), STORY_TIMELINE_GEN_THROTTLE * 2);
+
+    $articles = story_timeline_fetch_articles($clusterKey);
+    if (count($articles) < STORY_TIMELINE_MIN_ARTICLES) {
+        return $stored; // degrade to whatever we have
+    }
+
+    $ai = story_timeline_generate($articles);
+    if (empty($ai['ok'])) {
+        error_log('[story_timeline] generate failed for ' . $clusterKey . ': ' . ($ai['error'] ?? '?'));
+        return $stored; // serve stale on failure
+    }
+
+    $sourceCount = story_timeline_source_count($clusterKey);
+    $saved = story_timeline_save($clusterKey, $ai, $count, $sourceCount);
+    return $saved ?: $stored;
+}
+
+/**
+ * List the most recently updated story timelines — used by any
+ * "Ongoing Stories" discovery rail and by the homepage CTA.
+ */
+function story_timeline_list(int $limit = STORY_TIMELINE_LIST_DEFAULT): array {
+    story_timeline_ensure_table();
+    $limit = max(1, min(50, $limit));
+    try {
+        $db = getDB();
+        $rows = $db->query("SELECT id, cluster_key, headline, intro, article_count, source_count, generated_at
+                              FROM story_timelines
+                             ORDER BY generated_at DESC, id DESC
+                             LIMIT {$limit}")
+                    ->fetchAll(PDO::FETCH_ASSOC);
+        return $rows ?: [];
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
+/**
+ * Find clusters in the last N days that have enough articles to
+ * deserve a timeline but don't have one yet (or have a very stale one).
+ * Used by a background job — or a discovery page — to seed new stories.
+ */
+function story_timeline_candidates(int $days = 7, int $minArticles = 4, int $limit = 20): array {
+    $db = getDB();
+    $days        = max(1, min(60, $days));
+    $minArticles = max(STORY_TIMELINE_MIN_ARTICLES, $minArticles);
+    $limit       = max(1, min(100, $limit));
+    try {
+        // Clusters ordered by recent article volume. We filter down to
+        // "ongoing" by requiring at least 2 distinct days of coverage
+        // — a single-day burst is just one event, not a story arc.
+        $stmt = $db->prepare("SELECT cluster_key,
+                                     COUNT(*) AS article_count,
+                                     COUNT(DISTINCT source_id) AS source_count,
+                                     COUNT(DISTINCT DATE(published_at)) AS day_span,
+                                     MAX(published_at) AS last_seen
+                                FROM articles
+                               WHERE cluster_key IS NOT NULL
+                                 AND cluster_key <> ''
+                                 AND status = 'published'
+                                 AND published_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+                               GROUP BY cluster_key
+                              HAVING article_count >= ?
+                                 AND day_span >= 2
+                               ORDER BY article_count DESC, last_seen DESC
+                               LIMIT {$limit}");
+        $stmt->execute([$days, $minArticles]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        return [];
+    }
+}

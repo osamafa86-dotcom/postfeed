@@ -10,6 +10,7 @@ require_once __DIR__ . '/includes/user_functions.php';
 require_once __DIR__ . '/includes/article_cluster.php';
 require_once __DIR__ . '/includes/trending.php';
 require_once __DIR__ . '/includes/personalize.php';
+require_once __DIR__ . '/includes/story_timeline.php';
 
 // Viewer context for save buttons / theme / user menu
 $viewer = current_user();
@@ -51,6 +52,60 @@ $mediaItems = getMediaItems(4);
 // clusters; empty on first deploy until article_view_events fills up.
 $trendingNow      = trending_get_top(8);
 $trendingReaders  = trending_active_readers();
+
+// Ongoing Stories — clusters with enough multi-day coverage to warrant a
+// Guardian-Live-style timeline. We merge: (a) stories that already have a
+// stored timeline, plus (b) fresh candidate clusters that don't have one
+// yet but will lazy-generate on the first click. Cached for 10 min so
+// the homepage stays fast.
+$ongoingStories = cache_remember('home_ongoing_stories_v1', 600, function() {
+    $out = [];
+    $seen = [];
+    // 1) Stored timelines first — they have an AI-written headline.
+    foreach (story_timeline_list(6) as $t) {
+        $ck = (string)$t['cluster_key'];
+        if ($ck === '' || isset($seen[$ck])) continue;
+        $seen[$ck] = true;
+        $out[] = [
+            'cluster_key'   => $ck,
+            'headline'      => (string)$t['headline'],
+            'intro'         => (string)$t['intro'],
+            'article_count' => (int)$t['article_count'],
+            'source_count'  => (int)$t['source_count'],
+            'has_timeline'  => true,
+            'generated_at'  => (string)$t['generated_at'],
+        ];
+    }
+    // 2) Pad with candidate clusters that don't yet have a timeline.
+    if (count($out) < 6) {
+        foreach (story_timeline_candidates(7, 4, 12) as $cand) {
+            $ck = (string)$cand['cluster_key'];
+            if ($ck === '' || isset($seen[$ck])) continue;
+            $seen[$ck] = true;
+            // Fetch one representative article to get a headline and image.
+            $db = getDB();
+            $stmt = $db->prepare("SELECT id, title, image_url, published_at
+                                    FROM articles
+                                   WHERE cluster_key = ? AND status='published'
+                                   ORDER BY published_at DESC LIMIT 1");
+            $stmt->execute([$ck]);
+            $rep = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$rep) continue;
+            $out[] = [
+                'cluster_key'   => $ck,
+                'headline'      => (string)$rep['title'],
+                'intro'         => '',
+                'image_url'     => (string)($rep['image_url'] ?? ''),
+                'article_count' => (int)$cand['article_count'],
+                'source_count'  => (int)$cand['source_count'],
+                'has_timeline'  => false,
+                'generated_at'  => (string)$cand['last_seen'],
+            ];
+            if (count($out) >= 6) break;
+        }
+    }
+    return $out;
+});
 // Ticker pulls from the latest Palestine news stream so the "عاجل" strip
 // mirrors the Palestine section headlines.
 $tickerItems = array_slice($palestineNews, 0, 10);
@@ -230,7 +285,7 @@ $homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#1a5c5c">
 <link rel="stylesheet" href="assets/css/site-header.css?v=1">
-<link rel="stylesheet" href="assets/css/home.css?v=24">
+<link rel="stylesheet" href="assets/css/home.css?v=25">
 <link rel="stylesheet" href="assets/css/user.css?v=17">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 <script>
@@ -277,6 +332,9 @@ include __DIR__ . '/includes/components/site_header.php';
     <button type="button" class="sec-pill" data-sec="latest" onclick="scrollToHomeSection(this,'latest')"><span class="sec-pill-ico">⏱</span>آخر الأخبار</button>
     <button type="button" class="sec-pill" data-sec="palestine" onclick="scrollToHomeSection(this,'palestine')"><span class="sec-pill-ico">🇵🇸</span>فلسطين</button>
     <button type="button" class="sec-pill" data-sec="trending" onclick="scrollToHomeSection(this,'trending')"><span class="sec-pill-ico">🔥</span>الأكثر تداولاً</button>
+    <?php if (!empty($ongoingStories)): ?>
+    <button type="button" class="sec-pill" data-sec="stories" onclick="scrollToHomeSection(this,'stories')"><span class="sec-pill-ico">📅</span>قصص متطوّرة</button>
+    <?php endif; ?>
     <button type="button" class="sec-pill" data-sec="media" onclick="scrollToHomeSection(this,'media')"><span class="sec-pill-ico">🎥</span>ميديا</button>
     <button type="button" class="sec-pill" data-sec="reels" onclick="scrollToHomeSection(this,'reels')"><span class="sec-pill-ico">🎬</span>ريلز</button>
   </div>
@@ -340,6 +398,50 @@ include __DIR__ . '/includes/components/site_header.php';
     <h2>خصّص صفحتك الرئيسية</h2>
     <p>اختر اهتماماتك والمصادر المفضلة لديك لنعرض لك أخباراً مختارة خصيصاً — في كل زيارة.</p>
     <a class="foryou-onboard-btn" href="me/following.php">اختر اهتماماتك ›</a>
+  </div>
+</div>
+<?php endif; ?>
+
+<?php if (!empty($ongoingStories)): ?>
+<!-- 📅 ONGOING STORIES — Smart timelines for stories still unfolding -->
+<div id="stories" class="stories-section">
+  <div class="stories-head">
+    <div class="stories-head-title">
+      <span class="stories-ico">📅</span>
+      <div>
+        <h2>قصص متطوّرة — خطوط زمنية ذكية</h2>
+        <p class="stories-sub">كيف تطوّرت أبرز القصص عبر الزمن — ملخّصات مُولَّدة بالذكاء الاصطناعي</p>
+      </div>
+    </div>
+  </div>
+  <div class="stories-grid">
+    <?php foreach ($ongoingStories as $st):
+      $stKey  = (string)$st['cluster_key'];
+      $stImg  = !empty($st['image_url']) ? $st['image_url'] : placeholderImage(400, 240);
+      $stHref = '/timeline/' . $stKey;
+    ?>
+      <a class="story-card" href="<?php echo e($stHref); ?>">
+        <div class="story-card-img" style="background-image:url('<?php echo e($stImg); ?>');">
+          <?php if (!empty($st['has_timeline'])): ?>
+            <span class="story-badge story-badge-live"><span class="live-dot"></span> خط زمني جاهز</span>
+          <?php else: ?>
+            <span class="story-badge">✨ جديد</span>
+          <?php endif; ?>
+          <span class="story-badge-count">📅 <?php echo (int)$st['article_count']; ?> تقرير</span>
+        </div>
+        <div class="story-card-body">
+          <h3 class="story-card-title"><?php echo e(mb_substr((string)$st['headline'], 0, 110)); ?></h3>
+          <?php if (!empty($st['intro'])): ?>
+            <p class="story-card-intro"><?php echo e(mb_substr((string)$st['intro'], 0, 140)); ?>…</p>
+          <?php endif; ?>
+          <div class="story-card-meta">
+            <span>🌐 <?php echo (int)$st['source_count']; ?> مصدر</span>
+            <span class="sep">·</span>
+            <span>↻ <?php echo e(timeAgo($st['generated_at'])); ?></span>
+          </div>
+        </div>
+      </a>
+    <?php endforeach; ?>
   </div>
 </div>
 <?php endif; ?>
