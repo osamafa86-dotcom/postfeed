@@ -547,23 +547,69 @@ img { max-width:100%; height:auto; }
 [data-theme="dark"] .nf-action-bar .nf-act:hover { background:rgba(125,165,230,.12); }
 
 @media (max-width: 1024px) {
-  .nf-feature-wrap { grid-template-columns: 1fr; }
-  .nf-feature-main { min-height:380px; }
+  .nf-feature-wrap {
+    grid-template-columns: 1fr;
+    gap:12px;
+  }
+  .nf-feature-main {
+    min-height:360px;
+    order:-1;
+  }
   .nf-feature-side {
     display:grid;
-    grid-template-rows:none;
-    grid-auto-flow:column;
-    grid-auto-columns:minmax(280px, 1fr);
-    overflow-x:auto;
+    grid-template-columns:1fr 1fr;
+    grid-template-rows:auto;
+    grid-auto-flow:row;
+    gap:10px;
+    overflow:visible;
   }
-  .nf-side-card-img { flex:0 0 100px; width:100px; height:100px; max-height:100px; }
+  .nf-side-card-img { flex:0 0 96px; width:96px; height:96px; max-height:96px; }
 }
 @media (max-width: 640px) {
-  .nf-feature-main { min-height:300px; }
-  .nf-feature-main-title { font-size:16px; }
-  .nf-side-card-img { flex:0 0 88px; width:88px; height:88px; max-height:88px; }
-  .nf-side-card-title { font-size:14px; }
-  .nf-action-bar .nf-act { font-size:11px; padding:5px 6px; }
+  .nf-feature-container { padding:18px 12px 0; }
+  .nf-feature-wrap { gap:10px; }
+  .nf-feature-main { min-height:260px; border-radius:12px; }
+  .nf-feature-main-body { padding:14px 14px 10px; }
+  .nf-feature-main-title { font-size:15px; line-height:1.5; }
+  .nf-feature-main-meta { font-size:11px; }
+  .nf-feature-side {
+    grid-template-columns:1fr;
+    gap:8px;
+  }
+  .nf-side-card { border-radius:10px; }
+  .nf-side-card-row { padding:8px; gap:10px; }
+  .nf-side-card-img {
+    flex:0 0 84px;
+    width:84px;
+    height:84px;
+    max-height:84px;
+    border-radius:8px;
+  }
+  .nf-side-card-title {
+    font-size:13px;
+    line-height:1.45;
+    -webkit-line-clamp:3;
+  }
+  .nf-side-card-meta { font-size:11px; }
+  .nf-side-card-source { font-size:10px; }
+  .nf-action-bar {
+    padding:4px 6px;
+    gap:2px;
+    flex-wrap:wrap;
+  }
+  .nf-action-bar .nf-act {
+    font-size:10px;
+    padding:4px 5px;
+    gap:3px;
+  }
+  .nf-action-bar .nf-act svg { width:14px; height:14px; }
+}
+@media (max-width: 380px) {
+  .nf-feature-main { min-height:220px; }
+  .nf-feature-main-title { font-size:14px; }
+  .nf-side-card-row { padding:6px; gap:8px; }
+  .nf-side-card-img { flex:0 0 72px; width:72px; height:72px; max-height:72px; }
+  .nf-side-card-title { font-size:12.5px; }
 }
 
 /* ================= COMMENTS ================= */
