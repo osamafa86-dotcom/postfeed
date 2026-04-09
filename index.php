@@ -258,7 +258,7 @@ include __DIR__ . '/includes/components/site_header.php';
 
 <!-- TRENDING NOW (velocity-scored hot stories) -->
 <?php if (!empty($trendingNow)): ?>
-<section id="trending" class="trending-strip" aria-label="الأكثر تداولاً الآن">
+<section id="trending-now" class="trending-strip" aria-label="الأكثر تداولاً الآن">
   <div class="trending-strip-inner">
     <div class="trending-strip-head">
       <div class="trending-strip-title">
