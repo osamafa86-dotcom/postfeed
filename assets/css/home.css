@@ -1582,10 +1582,13 @@
     box-shadow:0 14px 32px -8px rgba(124,58,237,.6);
   }
 
-  /* "For You" filter mode — activated when the reader clicks the "خاص بك"
-     pill. Hides the rest of the homepage so they can focus on their
-     personalized picks. Clicking any other pill (including "الكل") removes
-     this class and restores the full homepage. */
+  /* "For You" is opt-in: the section is hidden by default so the homepage
+     looks exactly like the generic feed at first glance. The reader reveals
+     it by clicking the "خاص بك" pill, which adds .home-filter-foryou on
+     body; clicking "الكل" (or any other pill) removes the class and hides
+     the section again. */
+  .foryou-section { display:none; }
+  body.home-filter-foryou .foryou-section { display:block; }
   body.home-filter-foryou .nf-feature-container,
   body.home-filter-foryou .main-layout {
     display:none !important;
