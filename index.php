@@ -26,7 +26,7 @@ $unreadCount = getUnreadNotifCount();
 $poll = getActivePoll();
 $trends = getTrends();
 $sources = getActiveSources();
-$mostRead = getMostRead();
+$mostRead = getMostRead(6);
 $mediaItems = getMediaItems(4);
 // Ticker pulls from the latest Palestine news stream so the "عاجل" strip
 // mirrors the Palestine section headlines.
@@ -185,7 +185,7 @@ $homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
 <meta name="description" content="مجمع الأخبار العربية الأول - أحدث الأخبار من مصادر موثوقة في السياسة، الاقتصاد، الرياضة، والتكنولوجيا">
-<link rel="stylesheet" href="assets/css/home.css?v=10">
+<link rel="stylesheet" href="assets/css/home.css?v=11">
 <link rel="stylesheet" href="assets/css/user.css?v=16">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
@@ -442,15 +442,20 @@ $__featRest  = array_slice($latestArticles, 7);
       <div class="section-title"><div class="line" style="background:var(--red)"></div>🔴 أخبار عاجلة</div>
       <a class="see-all" href="category.php?type=breaking">عرض الكل ›</a>
     </div>
-    <div class="news-list" style="margin-bottom:28px">
+    <div class="bn-grid">
       <?php foreach ($breakingNews as $article): ?>
-        <a class="list-item" href="<?php echo articleUrl($article); ?>">
-          <div class="list-img"><img src="<?php echo e($article['image_url'] ?? placeholderImage(200,150)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
-          <div class="list-body">
-            <div class="card-cat cat-breaking">عاجل</div>
-            <div class="list-title"><?php echo e($article['title']); ?></div>
-            <div class="card-excerpt" style="margin-bottom:6px"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 120)); ?></div>
-            <div class="list-meta"><span>🌐 <?php echo e($article['source_name']); ?></span><span>·</span><span><?php echo timeAgo($article['published_at']); ?></span><span>·</span><span>👁 <?php echo formatViews($article['view_count']); ?></span></div>
+        <a class="bn-card" href="<?php echo articleUrl($article); ?>">
+          <div class="bn-thumb">
+            <img src="<?php echo e($article['image_url'] ?? placeholderImage(200,150)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async">
+            <span class="bn-badge"><span class="bn-dot"></span>عاجل</span>
+          </div>
+          <div class="bn-body">
+            <div class="bn-title"><?php echo e($article['title']); ?></div>
+            <div class="bn-meta">
+              <span class="bn-source"><?php echo e($article['source_name']); ?></span>
+              <span class="bn-sep"></span>
+              <span><?php echo timeAgo($article['published_at']); ?></span>
+            </div>
           </div>
         </a>
       <?php endforeach; ?>
@@ -644,53 +649,69 @@ $__featRest  = array_slice($latestArticles, 7);
     </div>
     <?php endif; ?>
 
-    <!-- MOST READ + TRENDING SECTION -->
+    <!-- MOST READ / TRENDING TABBED SECTION -->
     <?php if (!empty($mostRead) || !empty($trends)): ?>
-    <div class="mr-section">
-      <div class="mr-grid">
-        <?php if (!empty($mostRead)): ?>
-        <div class="mr-block mr-block-read">
-          <div class="mr-head">
-            <div class="section-title"><div class="line" style="background:var(--gold)"></div>👁 الأكثر قراءة</div>
-          </div>
-          <div class="mr-list">
-            <?php $rankNum = 1; foreach (array_slice($mostRead, 0, 5) as $article): ?>
-              <a class="mr-item" href="<?php echo articleUrl($article); ?>">
-                <div class="mr-rank mr-rank-<?php echo $rankNum; ?>"><?php echo $rankNum; ?></div>
-                <?php if (!empty($article['image_url'])): ?>
-                  <div class="mr-thumb"><img src="<?php echo e($article['image_url']); ?>" alt="" loading="lazy" decoding="async"></div>
-                <?php endif; ?>
-                <div class="mr-body">
-                  <div class="mr-title"><?php echo e($article['title']); ?></div>
-                  <div class="mr-meta">
-                    <?php if (!empty($article['source_name'])): ?><span><?php echo e($article['source_name']); ?></span><span class="mr-dot"></span><?php endif; ?>
-                    <span>👁 <?php echo formatViews($article['view_count']); ?></span>
-                  </div>
-                </div>
-              </a>
-              <?php $rankNum++; endforeach; ?>
-          </div>
+    <div class="mr2-section">
+      <div class="mr2-head">
+        <div class="mr2-tabs">
+          <button type="button" class="mr2-tab active" data-mr2-tab="read">
+            <span class="mr2-tab-icon">👁</span> الأكثر قراءة
+          </button>
+          <button type="button" class="mr2-tab" data-mr2-tab="trend">
+            <span class="mr2-tab-icon">🔥</span> مواضيع شائعة
+          </button>
         </div>
-        <?php endif; ?>
-        <?php if (!empty($trends)): ?>
-        <div class="mr-block mr-block-trend">
-          <div class="mr-head">
-            <div class="section-title"><div class="line" style="background:var(--red)"></div>🔥 الأكثر تداولاً</div>
-          </div>
-          <div class="mr-list mr-trend-list">
-            <?php $trendNum = 1; foreach (array_slice($trends, 0, 5) as $trend): ?>
-              <div class="mr-trend-item">
-                <div class="mr-rank mr-rank-<?php echo $trendNum; ?>"><?php echo $trendNum; ?></div>
-                <div class="mr-body">
-                  <div class="mr-title"><?php echo e($trend['title']); ?></div>
-                  <div class="mr-meta">🔥 <?php echo number_format($trend['tweet_count']); ?> تغريدة</div>
-                </div>
-              </div>
-              <?php $trendNum++; endforeach; ?>
-          </div>
+        <div class="mr2-range">
+          <label class="mr2-range-opt active"><input type="radio" name="mr2range" value="day" checked><span>اليوم</span></label>
+          <label class="mr2-range-opt"><input type="radio" name="mr2range" value="week"><span>الأسبوع</span></label>
+          <label class="mr2-range-opt"><input type="radio" name="mr2range" value="month"><span>الشهر</span></label>
         </div>
-        <?php endif; ?>
       </div>
+      <div class="mr2-desc">
+        تم اختيار مواضيع «نيوزفلو» الأكثر قراءة بناءً على إجمالي عدد المشاهدات اليومية. اقرأ المواضيع الأكثر شعبية كل يوم من هنا.
+      </div>
+
+      <?php if (!empty($mostRead)): ?>
+      <div class="mr2-grid" data-mr2-panel="read">
+        <?php $rankNum = 1; foreach (array_slice($mostRead, 0, 6) as $article): ?>
+          <a class="mr2-item" href="<?php echo articleUrl($article); ?>">
+            <div class="mr2-rank"><?php echo $rankNum; ?></div>
+            <div class="mr2-body">
+              <div class="mr2-title"><?php echo e($article['title']); ?></div>
+              <div class="mr2-meta">
+                <?php if (!empty($article['cat_name'] ?? $article['source_name'] ?? '')): ?>
+                  <span class="mr2-cat"><?php echo e($article['cat_name'] ?? $article['source_name']); ?></span>
+                <?php endif; ?>
+                <span class="mr2-views">👁 <?php echo number_format((int)$article['view_count']); ?> مشاهدة</span>
+              </div>
+            </div>
+            <?php if (!empty($article['image_url'])): ?>
+              <div class="mr2-thumb"><img src="<?php echo e($article['image_url']); ?>" alt="" loading="lazy" decoding="async"></div>
+            <?php else: ?>
+              <div class="mr2-thumb mr2-thumb-ph"></div>
+            <?php endif; ?>
+          </a>
+          <?php $rankNum++; endforeach; ?>
+      </div>
+      <?php endif; ?>
+
+      <?php if (!empty($trends)): ?>
+      <div class="mr2-grid" data-mr2-panel="trend" hidden>
+        <?php $trendNum = 1; foreach (array_slice($trends, 0, 6) as $trend): ?>
+          <div class="mr2-item mr2-item-trend">
+            <div class="mr2-rank"><?php echo $trendNum; ?></div>
+            <div class="mr2-body">
+              <div class="mr2-title"><?php echo e($trend['title']); ?></div>
+              <div class="mr2-meta">
+                <span class="mr2-cat">رائج</span>
+                <span class="mr2-views">🔥 <?php echo number_format((int)$trend['tweet_count']); ?> تغريدة</span>
+              </div>
+            </div>
+            <div class="mr2-thumb mr2-thumb-trend">🔥</div>
+          </div>
+          <?php $trendNum++; endforeach; ?>
+      </div>
+      <?php endif; ?>
     </div>
     <?php endif; ?>
 
@@ -1067,7 +1088,7 @@ $__featRest  = array_slice($latestArticles, 7);
 </div>
 
 <div class="nf-toast" id="nfToast"></div>
-<script src="assets/js/home.js?v=2" defer></script>
+<script src="assets/js/home.js?v=3" defer></script>
 <script src="assets/js/user.js?v=4" defer></script>
 
 </body>

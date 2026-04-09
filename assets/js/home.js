@@ -146,3 +146,25 @@ function closeCurrencyModal() {
 document.getElementById('currencyModal').addEventListener('click', function(e) {
   if (e.target === this) closeCurrencyModal();
 });
+
+// MOST READ / TRENDING TABS
+document.querySelectorAll('.mr2-tab').forEach(tab => {
+  tab.addEventListener('click', function() {
+    const target = this.dataset.mr2Tab;
+    const section = this.closest('.mr2-section');
+    if (!section) return;
+    section.querySelectorAll('.mr2-tab').forEach(t => t.classList.toggle('active', t === this));
+    section.querySelectorAll('[data-mr2-panel]').forEach(p => {
+      p.hidden = (p.dataset.mr2Panel !== target);
+    });
+  });
+});
+// Range pill active state (visual only — data is server-rendered)
+document.querySelectorAll('.mr2-range-opt input').forEach(inp => {
+  inp.addEventListener('change', function() {
+    const group = this.closest('.mr2-range');
+    if (!group) return;
+    group.querySelectorAll('.mr2-range-opt').forEach(o => o.classList.remove('active'));
+    this.closest('.mr2-range-opt').classList.add('active');
+  });
+});
