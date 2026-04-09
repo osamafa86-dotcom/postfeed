@@ -297,6 +297,170 @@ function ai_summarize_telegram(array $messages, int $maxTokens = 3500): array {
     ];
 }
 
+/**
+ * Persistent store for generated Telegram news briefings.
+ *
+ * The live summary card on /telegram.php used to call Claude on every
+ * click (cached for 30 minutes). To cut cost, briefings are now
+ * generated once per hour by cron_tg_summary.php and saved here;
+ * telegram_summary.php just reads from this table.
+ */
+function tg_summary_ensure_table(): void {
+    static $ensured = false;
+    if ($ensured) return;
+    try {
+        $db = getDB();
+        $db->exec("CREATE TABLE IF NOT EXISTS telegram_summaries (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            headline VARCHAR(300) NOT NULL DEFAULT '',
+            summary TEXT NOT NULL,
+            sections LONGTEXT,
+            topics TEXT,
+            window_mins SMALLINT UNSIGNED NOT NULL DEFAULT 60,
+            message_count SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+            generated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_generated_at (generated_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $ensured = true;
+    } catch (Throwable $e) {
+        // Let callers fail loudly on their own query; we don't want
+        // migration errors to crash an unrelated page.
+    }
+}
+
+/** Insert a generated briefing and return the new row id. */
+function tg_summary_save(array $ai, int $messageCount, int $windowMins = 60): ?int {
+    if (empty($ai['ok'])) return null;
+    tg_summary_ensure_table();
+    $db = getDB();
+    $stmt = $db->prepare("INSERT INTO telegram_summaries
+        (headline, summary, sections, topics, window_mins, message_count)
+        VALUES (?, ?, ?, ?, ?, ?)");
+    $ok = $stmt->execute([
+        (string)($ai['headline'] ?? ''),
+        (string)($ai['summary']  ?? ''),
+        json_encode($ai['sections'] ?? [], JSON_UNESCAPED_UNICODE),
+        json_encode($ai['topics']   ?? [], JSON_UNESCAPED_UNICODE),
+        $windowMins,
+        $messageCount,
+    ]);
+    return $ok ? (int)$db->lastInsertId() : null;
+}
+
+/** Keep only the most recent N briefings to bound disk use. */
+function tg_summary_prune(int $keep = 48): void {
+    tg_summary_ensure_table();
+    $keep = max(1, min(500, $keep));
+    try {
+        $db = getDB();
+        $db->exec("DELETE FROM telegram_summaries
+                    WHERE id NOT IN (
+                        SELECT id FROM (
+                            SELECT id FROM telegram_summaries
+                            ORDER BY generated_at DESC, id DESC
+                            LIMIT {$keep}
+                        ) keep_rows
+                    )");
+    } catch (Throwable $e) {}
+}
+
+/** Decode a stored row into the shape the frontend expects. */
+function tg_summary_hydrate(array $row): array {
+    $sections = json_decode((string)($row['sections'] ?? '[]'), true);
+    $topics   = json_decode((string)($row['topics']   ?? '[]'), true);
+    return [
+        'id'            => (int)$row['id'],
+        'headline'      => (string)$row['headline'],
+        'summary'       => (string)$row['summary'],
+        'sections'      => is_array($sections) ? $sections : [],
+        'topics'        => is_array($topics)   ? $topics   : [],
+        'window_mins'   => (int)$row['window_mins'],
+        'message_count' => (int)$row['message_count'],
+        'generated_at'  => (string)$row['generated_at'],
+    ];
+}
+
+/** Most recently generated briefing, or null if none exist yet. */
+function tg_summary_get_latest(): ?array {
+    tg_summary_ensure_table();
+    try {
+        $db = getDB();
+        $row = $db->query("SELECT * FROM telegram_summaries
+                            ORDER BY generated_at DESC, id DESC LIMIT 1")
+                  ->fetch(PDO::FETCH_ASSOC);
+        return $row ? tg_summary_hydrate($row) : null;
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
+/** Fetch a specific briefing by id, or null if missing. */
+function tg_summary_get_by_id(int $id): ?array {
+    tg_summary_ensure_table();
+    try {
+        $db = getDB();
+        $stmt = $db->prepare("SELECT * FROM telegram_summaries WHERE id = ?");
+        $stmt->execute([$id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? tg_summary_hydrate($row) : null;
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
+/** Lightweight list of recent briefings for the archive pill bar. */
+function tg_summary_list(int $limit = 24): array {
+    tg_summary_ensure_table();
+    $limit = max(1, min(100, $limit));
+    try {
+        $db = getDB();
+        $rows = $db->query("SELECT id, headline, generated_at, message_count, window_mins
+                             FROM telegram_summaries
+                             ORDER BY generated_at DESC, id DESC
+                             LIMIT {$limit}")
+                    ->fetchAll(PDO::FETCH_ASSOC);
+        return $rows ?: [];
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
+/**
+ * Pull the Telegram messages that will feed one briefing.
+ * Shared between the cron and the one-time seed path.
+ */
+function tg_summary_collect_messages(int $windowMins = 60, int $maxMsgs = 250): array {
+    $db = getDB();
+    $stmt = $db->prepare("SELECT m.id, m.text, m.posted_at, s.username, s.display_name
+                          FROM telegram_messages m
+                          JOIN telegram_sources s ON m.source_id = s.id
+                          WHERE m.is_active = 1
+                            AND s.is_active = 1
+                            AND m.text IS NOT NULL
+                            AND m.text <> ''
+                            AND m.posted_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
+                          ORDER BY m.posted_at DESC, m.id DESC
+                          LIMIT " . (int)$maxMsgs);
+    $stmt->execute([$windowMins]);
+    $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // If the window is quiet, widen to the most recent N messages so
+    // the briefing always has something to work with.
+    if (count($messages) < 3) {
+        $stmt = $db->query("SELECT m.id, m.text, m.posted_at, s.username, s.display_name
+                            FROM telegram_messages m
+                            JOIN telegram_sources s ON m.source_id = s.id
+                            WHERE m.is_active = 1
+                              AND s.is_active = 1
+                              AND m.text IS NOT NULL
+                              AND m.text <> ''
+                            ORDER BY m.posted_at DESC, m.id DESC
+                            LIMIT " . (int)$maxMsgs);
+        $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    return $messages;
+}
+
 function ai_save_summary($articleId, $result) {
     if (!$result['ok']) return false;
     $db = getDB();
