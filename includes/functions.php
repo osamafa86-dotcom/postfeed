@@ -8,6 +8,11 @@ require_once __DIR__ . '/cache.php';
 
 // Homepage cache TTL (seconds). Override in config.php if needed.
 if (!defined('HOMEPAGE_CACHE_TTL')) define('HOMEPAGE_CACHE_TTL', 120);
+// Rarely-changing reference data (settings, categories, sources,
+// total article counts) uses a longer TTL — these don't need minute-
+// by-minute freshness and bumping them saves DB round-trips on cold
+// page-cache misses.
+if (!defined('REFERENCE_CACHE_TTL')) define('REFERENCE_CACHE_TTL', 3600);
 
 // ============================================
 // دوال الأخبار
@@ -134,7 +139,7 @@ function getAllArticles($page = 1, $perPage = 20) {
 }
 
 function countArticles() {
-    return cache_remember('count_articles', HOMEPAGE_CACHE_TTL, function() {
+    return cache_remember('count_articles', REFERENCE_CACHE_TTL, function() {
         $db = getDB();
         return $db->query("SELECT COUNT(*) FROM articles")->fetchColumn();
     });
@@ -167,7 +172,7 @@ function getTrends() {
 // ============================================
 
 function getActiveSources() {
-    return cache_remember('sources_active', HOMEPAGE_CACHE_TTL, function() {
+    return cache_remember('sources_active', REFERENCE_CACHE_TTL, function() {
         $db = getDB();
         return $db->query("SELECT * FROM sources WHERE is_active = 1 ORDER BY name")->fetchAll();
     });
@@ -245,7 +250,7 @@ function getMostRead($limit = 5) {
 // ============================================
 
 function getCategories() {
-    return cache_remember('categories_active', HOMEPAGE_CACHE_TTL, function() {
+    return cache_remember('categories_active', REFERENCE_CACHE_TTL, function() {
         $db = getDB();
         return $db->query("SELECT * FROM categories WHERE is_active = 1 ORDER BY sort_order")->fetchAll();
     });
@@ -258,7 +263,7 @@ function getCategories() {
 function getSetting($key, $default = '') {
     static $settings = null;
     if ($settings === null) {
-        $settings = cache_remember('settings_all', HOMEPAGE_CACHE_TTL, function() {
+        $settings = cache_remember('settings_all', REFERENCE_CACHE_TTL, function() {
             try {
                 $db = getDB();
                 $rows = $db->query("SELECT setting_key, setting_value FROM settings")->fetchAll(PDO::FETCH_KEY_PAIR);

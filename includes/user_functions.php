@@ -418,6 +418,15 @@ function article_reactions_counts_for(array $articleIds): array {
     $ids = array_values(array_unique(array_map('intval', $articleIds)));
     if (!$ids) return $out;
     foreach ($ids as $id) { $out[$id] = ['like' => 0, 'dislike' => 0, 'share' => 0]; }
+
+    // The homepage calls this once per request with ~60 ids. Two DB
+    // round-trips per request add up under load, so we cache the
+    // per-batch result for 60s keyed on the sorted id list.
+    sort($ids);
+    $cacheKey = 'reactions_counts_' . md5(implode(',', $ids));
+    $cached = cache_get($cacheKey);
+    if (is_array($cached)) return $cached;
+
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
     try {
         $db = getDB();
@@ -433,6 +442,8 @@ function article_reactions_counts_for(array $articleIds): array {
             $out[(int)$r['article_id']]['share'] = (int)$r['count'];
         }
     } catch (Throwable $e) {}
+
+    cache_set($cacheKey, $out, 60);
     return $out;
 }
 
