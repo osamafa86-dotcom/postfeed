@@ -324,6 +324,26 @@
   .source-dot { width:8px; height:8px; border-radius:50%; }
   .card-time { font-size:11px; color:var(--muted2); font-weight:500; }
 
+  /* CLUSTER BADGE — "نُشر في N مصادر"
+     Inline pill rendered when an article belongs to a cluster of ≥2
+     republications. Stays compact (no full row) so it slots between
+     the category chip and the title without breaking card height. */
+  .cluster-badge {
+    display:inline-flex; align-items:center; gap:4px;
+    margin:6px 0 4px;
+    padding:3px 9px;
+    background:linear-gradient(135deg,#fef3c7,#fde68a);
+    color:#92400e;
+    border:1px solid #fcd34d;
+    border-radius:999px;
+    font-size:11px; font-weight:700; line-height:1.4;
+    white-space:nowrap;
+  }
+  .nf-feature-main-body .cluster-badge,
+  .ps-hero-text .cluster-badge { font-size:12px; }
+  .bn-body .cluster-badge { margin:4px 0 2px; padding:2px 7px; font-size:10px; }
+  .nf-side-card-body .cluster-badge { margin:4px 0 0; padding:2px 7px; font-size:10px; }
+
   /* ROWS STYLE (Sky News–like) */
   .news-rows { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:32px; }
   .news-rows .news-card {

@@ -8,6 +8,7 @@
  */
 require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/article_cluster.php';
 
 if (PHP_SAPI !== 'cli') {
     $expected = getSetting('cron_key', '');
@@ -58,6 +59,7 @@ add_col($db, 'articles', 'ai_key_points',   'ai_key_points TEXT', $applied);
 add_col($db, 'articles', 'ai_keywords',     'ai_keywords VARCHAR(500)', $applied);
 add_col($db, 'articles', 'ai_processed_at', 'ai_processed_at TIMESTAMP NULL', $applied);
 add_col($db, 'articles', 'source_url',      'source_url VARCHAR(1000) DEFAULT NULL', $applied);
+add_col($db, 'articles', 'cluster_key',     'cluster_key VARCHAR(64) NULL', $applied);
 
 // ---------- performance indexes ----------
 add_idx($db, 'articles', 'idx_status_pub',     '`status`, `published_at` DESC',                       $applied);
@@ -66,6 +68,7 @@ add_idx($db, 'articles', 'idx_src_status_pub', '`source_id`, `status`, `publishe
 add_idx($db, 'articles', 'idx_breaking_pub',   '`is_breaking`, `published_at` DESC',                  $applied);
 add_idx($db, 'articles', 'idx_hero_pub',       '`is_hero`, `published_at` DESC',                      $applied);
 add_idx($db, 'articles', 'idx_ai_null',        '`ai_summary`(1)',                                     $applied);
+add_idx($db, 'articles', 'idx_cluster_key',    '`cluster_key`',                                       $applied);
 
 // ---------- telegram tables ----------
 $db->exec("CREATE TABLE IF NOT EXISTS telegram_sources (
@@ -112,6 +115,33 @@ $db->exec("CREATE TABLE IF NOT EXISTS reels (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_active (is_active, created_at DESC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+// ---------- backfill cluster_key for legacy rows ----------
+// Runs in batches so a huge archive doesn't blow the request budget;
+// re-running migrate.php picks up where it left off.
+try {
+    if (col_exists($db, 'articles', 'cluster_key')) {
+        $bf = $db->prepare("SELECT id, title FROM articles
+                             WHERE cluster_key IS NULL AND title IS NOT NULL AND title <> ''
+                             LIMIT 2000");
+        $bf->execute();
+        $rows = $bf->fetchAll(PDO::FETCH_ASSOC);
+        if ($rows) {
+            $upd = $db->prepare("UPDATE articles SET cluster_key = ? WHERE id = ?");
+            $done = 0;
+            foreach ($rows as $row) {
+                $key = compute_cluster_key((string)$row['title']);
+                // Empty key (title too short / generic) still gets a sentinel
+                // marker so we don't re-scan the same row on every run.
+                $upd->execute([$key !== '' ? $key : '-', (int)$row['id']]);
+                $done++;
+            }
+            $applied[] = "+ backfilled cluster_key for $done rows";
+        }
+    }
+} catch (Throwable $e) {
+    $applied[] = "! cluster backfill skipped: " . $e->getMessage();
+}
 
 if (empty($applied)) {
     echo "✓ لا تغييرات — قاعدة البيانات محدّثة\n";

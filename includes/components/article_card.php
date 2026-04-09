@@ -16,6 +16,7 @@ $__isSaved = !empty($GLOBALS['__nf_saved_ids']) && isset($GLOBALS['__nf_saved_id
   <div class="card-img"><img src="<?php echo e($imgUrl); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
   <div class="card-body">
     <span class="card-cat <?php echo e($catClass); ?>"><?php echo e($catLabel); ?></span>
+    <?php echo renderClusterBadge($article); ?>
     <div class="card-title"><?php echo e($article['title'] ?? ''); ?></div>
     <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
     <div class="card-meta">

@@ -6,6 +6,7 @@
 
 require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/article_fetch.php';
+require_once __DIR__ . '/includes/article_cluster.php';
 require_once __DIR__ . '/includes/cache.php';
 
 $db = getDB();
@@ -20,6 +21,16 @@ try {
             ADD COLUMN last_error VARCHAR(500) DEFAULT NULL,
             ADD COLUMN last_new_count INT DEFAULT 0,
             ADD COLUMN total_articles INT DEFAULT 0");
+    }
+} catch (Exception $e) {}
+
+// Auto-migrate cluster_key so a fresh deploy doesn't break INSERTs
+// when cron runs before migrate.php is hit.
+try {
+    $cols = $db->query("SHOW COLUMNS FROM articles LIKE 'cluster_key'")->fetch();
+    if (!$cols) {
+        $db->exec("ALTER TABLE articles ADD COLUMN cluster_key VARCHAR(64) NULL");
+        $db->exec("CREATE INDEX idx_cluster_key ON articles (cluster_key)");
     }
 } catch (Exception $e) {}
 
@@ -174,7 +185,7 @@ if (!empty($pageUrls)) {
 }
 
 // ============ INSERT ============
-$insertStmt = $db->prepare("INSERT INTO articles (title, slug, excerpt, content, image_url, source_url, category_id, source_id, status, published_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'published', ?, NOW())");
+$insertStmt = $db->prepare("INSERT INTO articles (title, slug, excerpt, content, image_url, source_url, category_id, source_id, cluster_key, status, published_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'published', ?, NOW())");
 
 foreach ($pendingInserts as $it) {
     $pageHtml = $pageHtmls[$it['source_url']] ?? '';
@@ -190,11 +201,16 @@ foreach ($pendingInserts as $it) {
         $fullContent = '<p>' . nl2br($it['excerpt']) . '</p>';
     }
 
+    // Stable fingerprint over normalized title tokens — empty for titles
+    // too short/generic to cluster, sentinel '-' so backfill skips them.
+    $clusterKey = compute_cluster_key($it['title']);
+    if ($clusterKey === '') $clusterKey = '-';
+
     try {
         $insertStmt->execute([
             $it['title'], $it['slug'], $it['excerpt'], $fullContent,
             $imageUrl, $it['source_url'], $it['category_id'],
-            $it['source_id'], $it['published_at'],
+            $it['source_id'], $clusterKey, $it['published_at'],
         ]);
         $totalNew++;
     } catch (Exception $e) {
