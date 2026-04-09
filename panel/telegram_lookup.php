@@ -110,18 +110,19 @@ function tg_lookup_fetch(string $url): array {
 }
 
 try {
-    // Try the public message-stream page first — it's what our existing scraper uses.
-    [$html, $httpCode, $curlErr] = tg_lookup_fetch('https://t.me/s/' . urlencode($username));
-    $fetchedUrl = 'https://t.me/s/' . $username;
+    // Fetch the canonical channel page FIRST — it has reliable info markers
+    // (tgme_page_photo, tgme_channel_info_header_title) for every real
+    // public channel, even ones without visible messages.
+    [$html, $httpCode, $curlErr] = tg_lookup_fetch('https://t.me/' . urlencode($username));
+    $fetchedUrl = 'https://t.me/' . $username;
 
-    // Fallback: canonical channel page (no /s/) if /s/ gave us nothing useful.
-    if ($httpCode >= 400 || $html === '' ||
-        (strpos($html, 'tgme_channel_info') === false &&
-         strpos($html, 'tgme_widget_message') === false &&
-         strpos($html, 'tgme_page_title') === false &&
-         strpos($html, 'og:title') === false)) {
-        [$html, $httpCode, $curlErr] = tg_lookup_fetch('https://t.me/' . urlencode($username));
-        $fetchedUrl = 'https://t.me/' . $username;
+    // Fallback to the /s/ preview page if the canonical page failed.
+    if ($httpCode >= 400 || $html === '' || strlen($html) < 500) {
+        [$html2, $httpCode2, $curlErr2] = tg_lookup_fetch('https://t.me/s/' . urlencode($username));
+        if ($httpCode2 === 200 && is_string($html2) && strlen($html2) > 500) {
+            $html = $html2; $httpCode = $httpCode2; $curlErr = $curlErr2;
+            $fetchedUrl = 'https://t.me/s/' . $username;
+        }
     }
 
     if ($debug) {
@@ -162,27 +163,53 @@ try {
         $ogDescription = html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
     }
 
-    // A non-existent or private channel typically has og:title = "Telegram: Contact @..."
-    // or an empty/missing og:title, or no channel markup at all.
-    $titleIsGeneric = ($ogTitle === '' || stripos($ogTitle, 'Telegram: Contact') !== false);
-    $hasChannelMarkup = (strpos($html, 'tgme_channel_info') !== false)
-                     || (strpos($html, 'tgme_widget_message') !== false)
-                     || (strpos($html, 'tgme_page_title') !== false);
-
-    if ($titleIsGeneric && !$hasChannelMarkup) {
-        tg_json_exit(['ok' => false, 'error' => 'لم يتم العثور على قناة بهذا الاسم، أو أنها غير عامة.']);
+    // Accept the channel if ANY reliable marker of a real public channel is
+    // present. Non-existent usernames on Telegram render a stub page with only
+    // the generic "Telegram: Contact" og:title and the default logo image —
+    // they never include tgme_page_photo, tgme_channel_info, or a
+    // cdn-telegram.org avatar.
+    $channelExists = false;
+    $markers = [
+        'tgme_page_photo',              // channel avatar block
+        'tgme_channel_info',            // canonical page info block
+        'tgme_channel_info_header',     // ditto
+        'tgme_widget_message_wrap',     // preview messages
+        'tgme_page_title',              // canonical title
+    ];
+    foreach ($markers as $mrk) {
+        if (strpos($html, $mrk) !== false) { $channelExists = true; break; }
+    }
+    // A cdn-telegram.org og:image means Telegram is serving a real avatar.
+    if (!$channelExists && $ogImage !== '' && stripos($ogImage, 'cdn-telegram.org') !== false) {
+        $channelExists = true;
+    }
+    // A specific (non-generic) og:title also counts.
+    if (!$channelExists && $ogTitle !== '' && stripos($ogTitle, 'Telegram: Contact') === false) {
+        $channelExists = true;
     }
 
-    // Display name: prefer og:title, fall back to page title or the username.
-    $displayName = $ogTitle !== '' ? $ogTitle : $username;
-    if (stripos($displayName, 'Telegram: Contact') !== false) {
-        if (preg_match('#tgme_page_title[^>]*>\s*<span[^>]*>([^<]+)</span>#', $html, $m)) {
-            $displayName = trim(html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'));
-        } elseif (preg_match('#tgme_channel_info_header_title[^>]*>\s*<span[^>]*>([^<]+)</span>#', $html, $m)) {
-            $displayName = trim(html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'));
-        } else {
-            $displayName = $username;
-        }
+    if (!$channelExists) {
+        tg_json_exit([
+            'ok'    => false,
+            'error' => 'لم يتم العثور على قناة @' . $username . '. تأكد من اليوزرنيم، أو افتح ' . $fetchedUrl . ' للتحقق.',
+            'tried' => $fetchedUrl,
+        ]);
+    }
+
+    // Display name: prefer og:title when it's specific, otherwise parse the
+    // page title element, finally fall back to the username.
+    $displayName = '';
+    if ($ogTitle !== '' && stripos($ogTitle, 'Telegram: Contact') === false) {
+        $displayName = $ogTitle;
+    }
+    if ($displayName === '' && preg_match('#tgme_channel_info_header_title[^>]*>\s*<span[^>]*>([^<]+)</span>#', $html, $m)) {
+        $displayName = trim(html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    }
+    if ($displayName === '' && preg_match('#tgme_page_title[^>]*>\s*<span[^>]*>([^<]+)</span>#', $html, $m)) {
+        $displayName = trim(html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    }
+    if ($displayName === '') {
+        $displayName = $username;
     }
 
     // Avatar
