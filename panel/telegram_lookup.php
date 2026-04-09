@@ -13,6 +13,8 @@ require_once __DIR__ . '/../includes/functions.php';
 requireAdmin();
 
 header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store, no-cache, must-revalidate');
+header('Pragma: no-cache');
 
 $q = trim($_GET['q'] ?? '');
 if ($q === '') {
@@ -46,56 +48,93 @@ if (!$username) {
     exit;
 }
 
-$url = 'https://t.me/s/' . urlencode($username);
-$ch = curl_init($url);
-curl_setopt_array($ch, [
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_FOLLOWLOCATION => true,
-    CURLOPT_TIMEOUT => 12,
-    CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; NewsFlowBot/1.0)',
-    CURLOPT_SSL_VERIFYPEER => false,
-]);
-$html = curl_exec($ch);
-$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-curl_close($ch);
+/**
+ * Fetch a t.me URL with a browser-ish user agent. Returns [html, httpCode].
+ */
+function tg_lookup_fetch(string $url): array {
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_MAXREDIRS      => 5,
+        CURLOPT_TIMEOUT        => 12,
+        CURLOPT_CONNECTTIMEOUT => 8,
+        CURLOPT_USERAGENT      => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+        CURLOPT_HTTPHEADER     => [
+            'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language: en-US,en;q=0.9,ar;q=0.8',
+        ],
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => 0,
+    ]);
+    $html = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    return [$html ?: '', $code];
+}
 
-if (!$html || $httpCode >= 400) {
+// Try the public message-stream page first — it's what our existing scraper uses.
+[$html, $httpCode] = tg_lookup_fetch('https://t.me/s/' . urlencode($username));
+
+// Fallback: canonical channel page (no /s/). This works for channels without
+// visible messages on the preview page.
+if ($httpCode >= 400 || $html === '' || (strpos($html, 'og:title') === false && strpos($html, 'tgme_channel_info') === false)) {
+    [$html, $httpCode] = tg_lookup_fetch('https://t.me/' . urlencode($username));
+}
+
+if ($httpCode >= 500 || $html === '') {
     echo json_encode(['ok' => false, 'error' => 'تعذر الاتصال بـ Telegram. حاول لاحقاً.']);
     exit;
 }
 
-// Telegram returns 200 even for non-existent channels; detect by content.
-// A real public channel has `tgme_channel_info` or `tgme_page_title`.
-$exists = (strpos($html, 'tgme_channel_info') !== false)
-       || (strpos($html, 'tgme_widget_message') !== false);
-if (!$exists) {
+// Pull OG meta tags first — this is the most reliable detection across both page variants.
+$ogTitle = '';
+if (preg_match('~<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']+)["\']~i', $html, $m)) {
+    $ogTitle = html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+}
+$ogImage = '';
+if (preg_match('~<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']~i', $html, $m)) {
+    $ogImage = $m[1];
+}
+$ogDescription = '';
+if (preg_match('~<meta[^>]+property=["\']og:description["\'][^>]+content=["\']([^"\']+)["\']~i', $html, $m)) {
+    $ogDescription = html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+}
+
+// A non-existent or private channel typically has og:title = "Telegram: Contact @..."
+// or an empty/missing og:title, or no og:image (default Telegram logo).
+$titleIsGeneric = ($ogTitle === '' || stripos($ogTitle, 'Telegram: Contact') !== false);
+$hasChannelMarkup = (strpos($html, 'tgme_channel_info') !== false)
+                 || (strpos($html, 'tgme_widget_message') !== false)
+                 || (strpos($html, 'tgme_page_title') !== false);
+
+if ($titleIsGeneric && !$hasChannelMarkup) {
     echo json_encode(['ok' => false, 'error' => 'لم يتم العثور على قناة بهذا الاسم، أو أنها غير عامة.']);
     exit;
 }
 
-// Extract display name (prefer og:title, fallback to tgme_channel_info .tgme_channel_info_header_title)
-$displayName = $username;
-if (preg_match('#<meta property="og:title" content="([^"]+)"#', $html, $m)) {
-    $displayName = html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
-} elseif (preg_match('#tgme_channel_info_header_title[^>]*>\s*<span[^>]*>([^<]+)</span>#', $html, $m)) {
-    $displayName = html_entity_decode(trim($m[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+// Display name: prefer og:title, fall back to the page title or the username.
+$displayName = $ogTitle !== '' ? $ogTitle : $username;
+// Some og:titles come through as "Channel Name" — good. Others as "Telegram: Contact @name" — skip that.
+if (stripos($displayName, 'Telegram: Contact') !== false) {
+    if (preg_match('#tgme_page_title[^>]*>\s*<span[^>]*>([^<]+)</span>#', $html, $m)) {
+        $displayName = trim(html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    } elseif (preg_match('#tgme_channel_info_header_title[^>]*>\s*<span[^>]*>([^<]+)</span>#', $html, $m)) {
+        $displayName = trim(html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    } else {
+        $displayName = $username;
+    }
 }
 
-// Extract avatar URL (og:image first, fallback to first tgme_page_photo_image)
-$avatar = '';
-if (preg_match('#<meta property="og:image" content="([^"]+)"#', $html, $m)) {
+// Avatar
+$avatar = $ogImage;
+if ($avatar === '' && preg_match('#tgme_page_photo_image[^>]*src="([^"]+)"#', $html, $m)) {
     $avatar = $m[1];
-} elseif (preg_match('#tgme_page_photo_image"[^>]*src="([^"]+)"#', $html, $m)) {
-    $avatar = $m[1];
 }
 
-// Extract description
-$description = '';
-if (preg_match('#<meta property="og:description" content="([^"]+)"#', $html, $m)) {
-    $description = html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
-}
+$description = $ogDescription;
 
-// Extract subscriber count (from channel header counters)
+// Subscriber count — parse from channel info counters if present
 $subscribers = '';
 if (preg_match_all('#tgme_channel_info_counter"[^>]*>\s*<span class="counter_value"[^>]*>([^<]+)</span>\s*<span class="counter_type"[^>]*>([^<]+)</span>#', $html, $mm, PREG_SET_ORDER)) {
     foreach ($mm as $row) {
@@ -104,6 +143,10 @@ if (preg_match_all('#tgme_channel_info_counter"[^>]*>\s*<span class="counter_val
             break;
         }
     }
+}
+// Fallback: the non-/s/ page uses .tgme_page_extra for subscriber count
+if ($subscribers === '' && preg_match('#tgme_page_extra[^>]*>([^<]+)</div>#', $html, $m)) {
+    $subscribers = trim($m[1]);
 }
 
 echo json_encode([
