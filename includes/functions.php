@@ -51,8 +51,9 @@ function getPalestineNews($limit = 6) {
     });
 }
 
-function getBreakingNews() {
-    return cache_remember('breaking_news', HOMEPAGE_CACHE_TTL, function() {
+function getBreakingNews($limit = 5) {
+    $limit = max(1, (int)$limit);
+    return cache_remember('breaking_news_' . $limit, HOMEPAGE_CACHE_TTL, function() use ($limit) {
         $db = getDB();
         // Prefer flagged breaking news from the last 24h
         $stmt = $db->query("SELECT a.*, c.name as cat_name, c.css_class,
@@ -62,18 +63,18 @@ function getBreakingNews() {
                              LEFT JOIN sources s ON a.source_id = s.id
                              WHERE a.is_breaking = 1 AND a.status = 'published'
                              AND a.published_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
-                             ORDER BY a.published_at DESC LIMIT 5");
+                             ORDER BY a.published_at DESC LIMIT " . $limit);
         $rows = $stmt->fetchAll();
         if (count($rows) >= 3) return $rows;
 
-        // Fallback: latest 5 published articles so the section stays fresh
+        // Fallback: latest published articles so the section stays fresh
         $stmt = $db->query("SELECT a.*, c.name as cat_name, c.css_class,
                              s.name as source_name
                              FROM articles a
                              LEFT JOIN categories c ON a.category_id = c.id
                              LEFT JOIN sources s ON a.source_id = s.id
                              WHERE a.status = 'published'
-                             ORDER BY a.published_at DESC LIMIT 5");
+                             ORDER BY a.published_at DESC LIMIT " . $limit);
         return $stmt->fetchAll();
     });
 }

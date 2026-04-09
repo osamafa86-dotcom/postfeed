@@ -18,7 +18,7 @@ $userUnread = $viewerId ? user_unread_notifications_count($viewerId) : 0;
 $heroArticles = getHeroArticles();
 // Fetch generous pools so dedup (by id + fuzzy title) still leaves enough visible items.
 $palestineNews = getPalestineNews(20);
-$breakingNews = getBreakingNews();
+$breakingNews = getBreakingNews(20);
 $latestArticles = getLatestArticles(40);
 $categories = getCategories();
 $notifications = getNotifications(6);
@@ -133,7 +133,7 @@ $dedup = function(array $list, int $keep) use (&$usedIds, &$usedTitleTokens, $nf
 // Order matters: palestine first so it keeps its featured stories; latest
 // then fills in around them without repeating palestine items.
 $palestineNews  = $dedup($palestineNews, 4);
-$breakingNews   = $dedup($breakingNews, 5);
+$breakingNews   = $dedup($breakingNews, 4);
 $latestArticles = $dedup($latestArticles, 12);
 $politicalNews  = $dedup($politicalNews, 4);
 $economyNews    = $dedup($economyNews, 4);
