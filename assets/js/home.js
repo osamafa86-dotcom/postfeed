@@ -168,3 +168,26 @@ document.querySelectorAll('.mr2-range-opt input').forEach(inp => {
     this.closest('.mr2-range-opt').classList.add('active');
   });
 });
+
+// CLICK-TO-LOAD INSTAGRAM REELS
+// The reel cards ship as lightweight thumbnails; the real Instagram
+// iframe (which pulls Instagram's embed SDK and is heavy) is only
+// injected when the user actually clicks a card.
+document.querySelectorAll('.reel-card-lazy').forEach(function(card){
+  card.addEventListener('click', function(){
+    if (card.dataset.reelLoaded === '1') return;
+    var sc = card.dataset.reelShortcode;
+    if (!sc) return;
+    card.dataset.reelLoaded = '1';
+    var iframe = document.createElement('iframe');
+    iframe.src = 'https://www.instagram.com/reel/' + encodeURIComponent(sc) + '/embed/';
+    iframe.setAttribute('scrolling', 'no');
+    iframe.setAttribute('allowtransparency', 'true');
+    iframe.setAttribute('allow', 'autoplay; encrypted-media');
+    iframe.setAttribute('allowfullscreen', '');
+    iframe.style.cssText = 'position:absolute!important;top:-54px!important;left:0!important;width:300px!important;height:800px!important;border:0!important;z-index:2;';
+    // Remove the thumbnail/play overlay so the iframe has the stage.
+    card.querySelectorAll('img,div').forEach(function(el){ el.remove(); });
+    card.appendChild(iframe);
+  });
+});

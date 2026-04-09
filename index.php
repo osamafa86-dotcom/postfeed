@@ -183,7 +183,8 @@ $homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
 <title><?php echo e(getSetting('site_name', SITE_NAME)); ?> - <?php echo e(getSetting('site_tagline', SITE_TAGLINE)); ?></title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap"></noscript>
 <meta name="description" content="مجمع الأخبار العربية الأول - أحدث الأخبار من مصادر موثوقة في السياسة، الاقتصاد، الرياضة، والتكنولوجيا">
 <link rel="stylesheet" href="assets/css/site-header.css?v=1">
 <link rel="stylesheet" href="assets/css/home.css?v=15">
@@ -544,8 +545,26 @@ $__featRest  = array_slice($latestArticles, 7);
       </div>
       <div class="reels-scroll">
         <?php foreach ($homeReels as $reel): ?>
-          <div class="reel-card" style="width:300px!important;min-width:300px!important;max-width:300px!important;height:533px!important;min-height:533px!important;max-height:533px!important;overflow:hidden!important;position:relative!important;background:#000;border-radius:18px;flex:0 0 300px;align-self:flex-start;" title="<?php echo e($reel['caption'] ?? ''); ?>">
-            <iframe style="position:absolute!important;top:-54px!important;left:0!important;width:300px!important;height:800px!important;border:0!important;" src="https://www.instagram.com/reel/<?php echo e($reel['shortcode']); ?>/embed/" scrolling="no" allowtransparency="true" allow="autoplay; encrypted-media" allowfullscreen loading="lazy" decoding="async"></iframe>
+          <?php
+            // Click-to-load reel: we only ship a lightweight thumbnail
+            // + play button in the initial HTML. The Instagram iframe
+            // is injected on click so the ~8 embeds below the fold
+            // don't each fetch Instagram's embed SDK on page load.
+            $reelThumb = $reel['thumbnail_url'] ?? '';
+            if (!$reelThumb) $reelThumb = placeholderImage(300, 533);
+          ?>
+          <div class="reel-card reel-card-lazy"
+               data-reel-shortcode="<?php echo e($reel['shortcode']); ?>"
+               style="width:300px!important;min-width:300px!important;max-width:300px!important;height:533px!important;min-height:533px!important;max-height:533px!important;overflow:hidden!important;position:relative!important;background:#000;border-radius:18px;flex:0 0 300px;align-self:flex-start;cursor:pointer;"
+               title="<?php echo e($reel['caption'] ?? ''); ?>">
+            <img src="<?php echo e($reelThumb); ?>" alt="<?php echo e($reel['caption'] ?? ''); ?>" loading="lazy" decoding="async"
+                 style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">
+            <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,0) 55%,rgba(0,0,0,.75) 100%);pointer-events:none;"></div>
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:64px;height:64px;border-radius:50%;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;backdrop-filter:blur(4px);">▶</div>
+            <div style="position:absolute;left:12px;right:12px;bottom:10px;color:#fff;font-size:12px;font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,.8);display:flex;align-items:center;gap:6px;">
+              <span style="background:linear-gradient(135deg,#fd1d1d,#833ab4);padding:2px 6px;border-radius:4px;">Reel</span>
+              <?php if (!empty($reel['display_name'])): ?><span>@<?php echo e($reel['username'] ?? ''); ?></span><?php endif; ?>
+            </div>
           </div>
         <?php endforeach; ?>
       </div>
@@ -994,7 +1013,7 @@ $__featRest  = array_slice($latestArticles, 7);
 </div>
 
 <div class="nf-toast" id="nfToast"></div>
-<script src="assets/js/home.js?v=3" defer></script>
+<script src="assets/js/home.js?v=4" defer></script>
 <script src="assets/js/user.js?v=4" defer></script>
 <script src="assets/js/telegram-live.js?v=2" defer></script>
 

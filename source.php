@@ -78,7 +78,8 @@ if ($viewerId && !empty($articles)) {
 <link rel="canonical" href="<?php echo e(SITE_URL . '/source.php?id=' . (int)$source['id']); ?>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap"></noscript>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:'Tajawal',sans-serif; background:#faf6ec; color:#1a1a2e; line-height:1.6; }
