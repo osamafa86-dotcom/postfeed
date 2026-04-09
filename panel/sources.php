@@ -129,7 +129,22 @@ include __DIR__ . '/includes/panel_layout_head.php';
         </div>
 
         <div class="form-card">
-            <form method="POST">
+            <?php if ($action === 'add'): ?>
+                <!-- === Auto-discover: type a name or URL and we'll find the RSS === -->
+                <div id="rssDiscover" style="background:linear-gradient(135deg,#eff6ff,#ede9fe);border:1px solid #c7d2fe;border-right:4px solid #4f46e5;border-radius:12px;padding:16px 18px;margin-bottom:20px;">
+                    <div style="display:flex;align-items:center;gap:8px;font-weight:800;color:#4338ca;margin-bottom:6px;font-size:14px;">
+                        🔍 البحث التلقائي عن RSS
+                    </div>
+                    <p style="font-size:12.5px;color:#475569;margin:0 0 12px;">اكتب اسم الموقع (مثل "الجزيرة") أو رابطه، والنظام راح يدوّر على رابط الـ RSS ويعبّي البيانات تلقائياً.</p>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <input type="text" id="discoverQuery" class="form-control" placeholder="مثلاً: aljazeera.net أو الجزيرة" style="flex:1;min-width:200px;">
+                        <button type="button" id="discoverBtn" class="btn-primary" style="white-space:nowrap;">🔎 ابحث وعبّي</button>
+                    </div>
+                    <div id="discoverStatus" style="margin-top:10px;font-size:13px;display:none;"></div>
+                </div>
+            <?php endif; ?>
+
+            <form method="POST" id="sourceForm">
                 <?php echo csrf_field(); ?>
                 <?php if ($source): ?>
                     <input type="hidden" name="id" value="<?php echo $source['id']; ?>">
@@ -256,5 +271,79 @@ include __DIR__ . '/includes/panel_layout_head.php';
         </div>
     <?php endif; ?>
 </div>
+
+<?php if ($action === 'add'): ?>
+<script>
+(function(){
+    const btn    = document.getElementById('discoverBtn');
+    const input  = document.getElementById('discoverQuery');
+    const status = document.getElementById('discoverStatus');
+    const form   = document.getElementById('sourceForm');
+    if (!btn || !form) return;
+
+    const csrf = form.querySelector('input[name="_csrf"]').value;
+
+    const setField = (id, val) => {
+        const el = form.querySelector('#' + id);
+        if (el && val != null && val !== '') el.value = val;
+    };
+
+    const showStatus = (html, color) => {
+        status.style.display = 'block';
+        status.style.color = color || '#475569';
+        status.innerHTML = html;
+    };
+
+    async function run() {
+        const q = input.value.trim();
+        if (!q) { input.focus(); return; }
+
+        btn.disabled = true;
+        const origText = btn.textContent;
+        btn.textContent = '⏳ جاري البحث...';
+        showStatus('جاري فحص الموقع واستخراج رابط RSS...', '#4338ca');
+
+        try {
+            const fd = new FormData();
+            fd.append('query', q);
+            fd.append('_csrf', csrf);
+            const res = await fetch('ajax/discover_rss.php', { method: 'POST', body: fd });
+            const data = await res.json();
+
+            if (data.ok) {
+                setField('name', data.name);
+                setField('slug', data.slug);
+                setField('logo_letter', data.logo_letter);
+                setField('url', data.site_url);
+                setField('rss_url', data.feed_url);
+                showStatus(
+                    '✓ <b>تم بنجاح</b><br>' +
+                    '<span style="font-size:12px;color:#475569;">الموقع: ' + (data.site_url || '—') + '</span><br>' +
+                    '<span style="font-size:12px;color:#475569;">RSS: ' + (data.feed_url || '—') + '</span>',
+                    '#16a34a'
+                );
+            } else {
+                // Populate partial data even on failure
+                if (data.site_url)    setField('url', data.site_url);
+                if (data.name)        setField('name', data.name);
+                if (data.slug)        setField('slug', data.slug);
+                if (data.logo_letter) setField('logo_letter', data.logo_letter);
+                showStatus('⚠ ' + (data.error || 'لم نتمكن من إيجاد رابط RSS'), '#dc2626');
+            }
+        } catch (e) {
+            showStatus('⚠ خطأ في الاتصال: ' + e.message, '#dc2626');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = origText;
+        }
+    }
+
+    btn.addEventListener('click', run);
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); run(); }
+    });
+})();
+</script>
+<?php endif; ?>
 
 <?php include __DIR__ . '/includes/panel_layout_foot.php'; ?>
