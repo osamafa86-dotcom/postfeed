@@ -239,6 +239,139 @@ function tg_page_url(int $p): string {
   .footer-links a:hover { color:#60a5fa; }
   .footer-copy { font-size:11px; color:rgba(255,255,255,.3); }
 
+  /* ============ AI NEWS SUMMARIES ============ */
+  .summary-btn {
+    display:inline-flex; align-items:center; gap:8px;
+    padding:8px 16px; border-radius:999px;
+    background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 60%,#c026d3 100%);
+    color:#fff; font-size:12.5px; font-weight:800;
+    border:0; cursor:pointer;
+    box-shadow:0 4px 14px rgba(124,58,237,.35);
+    transition:all .2s ease;
+    font-family:inherit;
+  }
+  .summary-btn:hover {
+    transform:translateY(-1px);
+    box-shadow:0 8px 22px rgba(124,58,237,.5);
+  }
+  .summary-btn.loading { opacity:.7; cursor:wait; }
+  .summary-btn-icon { font-size:14px; animation:sparkTwinkle 2.5s ease-in-out infinite; }
+  @keyframes sparkTwinkle {
+    0%,100% { transform:rotate(0deg) scale(1); opacity:1; }
+    50%     { transform:rotate(12deg) scale(1.15); opacity:.85; }
+  }
+
+  .tg-summary {
+    margin:4px 0 22px;
+    background:linear-gradient(135deg,#faf7ff 0%,#f3f0ff 100%);
+    border:1px solid #e4defb;
+    border-radius:16px;
+    padding:0;
+    overflow:hidden;
+    max-height:0;
+    opacity:0;
+    transition:max-height .35s ease, opacity .25s ease, margin .25s ease;
+  }
+  .tg-summary.open {
+    max-height:2000px;
+    opacity:1;
+    box-shadow:0 10px 30px rgba(79,70,229,.12);
+  }
+  .tg-summary-head {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 20px;
+    border-bottom:1px solid rgba(79,70,229,.12);
+    background:rgba(255,255,255,.55);
+    flex-wrap:wrap; gap:10px;
+  }
+  .tg-summary-title {
+    display:flex; align-items:center; gap:10px;
+    font-weight:900; font-size:15px; color:#4f46e5;
+  }
+  .tg-summary-spark { font-size:18px; }
+  .tg-summary-meta { display:flex; align-items:center; gap:10px; font-size:12px; color:var(--muted); }
+  .tg-summary-badge {
+    background:#dcfce7; color:#166534;
+    padding:3px 10px; border-radius:999px;
+    font-weight:800; font-size:11px;
+  }
+  .tg-summary-ts { font-variant-numeric:tabular-nums; }
+  .tg-summary-refresh,
+  .tg-summary-close {
+    width:30px; height:30px;
+    border:1px solid rgba(79,70,229,.25);
+    background:#fff; color:#4f46e5;
+    border-radius:8px; cursor:pointer;
+    font-size:16px; font-weight:900; line-height:1;
+    display:inline-flex; align-items:center; justify-content:center;
+    font-family:inherit;
+    transition:all .2s;
+  }
+  .tg-summary-refresh:hover,
+  .tg-summary-close:hover {
+    background:#4f46e5; color:#fff;
+    transform:translateY(-1px);
+  }
+  .tg-summary-refresh.spinning { animation:spinRefresh .9s linear infinite; }
+  @keyframes spinRefresh { to { transform:rotate(360deg); } }
+
+  .tg-summary-body { padding:20px 22px; min-height:120px; }
+  .tg-summary-loading {
+    display:flex; align-items:center; justify-content:center; gap:14px;
+    padding:30px 20px; color:var(--muted); font-size:14px;
+  }
+  .tg-summary-spinner {
+    width:22px; height:22px; border-radius:50%;
+    border:3px solid #ede9fe; border-top-color:#7c3aed;
+    animation:spinRefresh .8s linear infinite;
+  }
+  .tg-summary-error {
+    padding:20px; text-align:center;
+    background:#fef2f2; border:1px solid #fee2e2; border-radius:10px;
+    color:#b91c1c; font-size:13.5px; font-weight:600;
+  }
+  .tg-summary-headline {
+    font-size:18px; font-weight:900; color:var(--text);
+    margin-bottom:10px; line-height:1.5;
+  }
+  .tg-summary-text {
+    font-size:14.5px; line-height:1.85; color:#374151;
+    margin-bottom:16px;
+  }
+  .tg-summary-bullets {
+    list-style:none; padding:0; margin:0 0 14px;
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .tg-summary-bullets li {
+    position:relative;
+    padding:10px 40px 10px 14px;
+    background:#fff;
+    border:1px solid #e4defb;
+    border-radius:10px;
+    font-size:13.5px; line-height:1.75; color:#1f2937;
+    font-weight:500;
+  }
+  .tg-summary-bullets li::before {
+    content:'▸';
+    position:absolute; right:14px; top:10px;
+    color:#7c3aed; font-weight:900; font-size:15px;
+  }
+  .tg-summary-topics {
+    display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;
+  }
+  .tg-summary-topic {
+    background:#ede9fe; color:#5b21b6;
+    padding:5px 12px; border-radius:999px;
+    font-size:11.5px; font-weight:800;
+  }
+  .tg-summary-foot {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 20px 14px; font-size:11.5px; color:var(--muted);
+    border-top:1px dashed rgba(79,70,229,.15);
+    background:rgba(255,255,255,.4);
+    flex-wrap:wrap; gap:8px;
+  }
+
   @media (max-width:900px) {
     .tg-grid { grid-template-columns:1fr; }
     .page-title { font-size:22px; }
@@ -248,6 +381,10 @@ function tg_page_url(int $p): string {
     .tg-item { padding:12px; gap:10px; }
     .tg-item-img { flex:0 0 80px; height:80px; }
     .tg-item-text { font-size:13px; -webkit-line-clamp:4; }
+    .tg-summary-body { padding:16px; }
+    .tg-summary-head { padding:12px 14px; }
+    .tg-summary-headline { font-size:16px; }
+    .tg-summary-text { font-size:13.5px; }
   }
 </style>
 </head>
@@ -275,10 +412,40 @@ include __DIR__ . '/includes/components/site_header.php';
           <span class="live-dot"></span>
           <span id="tgLiveLabel">مباشر</span>
         </span>
+        <button type="button" class="summary-btn" id="tgSummaryBtn" title="ملخص ذكي لآخر نصف ساعة من رسائل القنوات">
+          <span class="summary-btn-icon">✨</span>
+          <span>ملخصات إخبارية</span>
+        </button>
         <div class="page-count"><span id="tgTotalCount"><?php echo number_format($totalCount); ?></span> تحديث</div>
       </div>
     </div>
   </div>
+
+  <!-- AI News summary panel (collapsed by default, expanded on click) -->
+  <section class="tg-summary" id="tgSummary" aria-hidden="true">
+    <div class="tg-summary-head">
+      <div class="tg-summary-title">
+        <span class="tg-summary-spark">✨</span>
+        <span>ملخص إخباري لآخر <span id="tgSummaryWindow">30</span> دقيقة</span>
+      </div>
+      <div class="tg-summary-meta">
+        <span class="tg-summary-badge" id="tgSummaryBadge" hidden>محدَّث</span>
+        <span class="tg-summary-ts" id="tgSummaryTs"></span>
+        <button type="button" class="tg-summary-refresh" id="tgSummaryRefresh" title="تحديث الملخص">↻</button>
+        <button type="button" class="tg-summary-close" id="tgSummaryClose" aria-label="إغلاق">×</button>
+      </div>
+    </div>
+    <div class="tg-summary-body" id="tgSummaryBody">
+      <div class="tg-summary-loading">
+        <div class="tg-summary-spinner"></div>
+        <span>جارٍ توليد الملخص من آخر الرسائل...</span>
+      </div>
+    </div>
+    <div class="tg-summary-foot" id="tgSummaryFoot" hidden>
+      <span id="tgSummaryCount"></span>
+      <span class="tg-summary-next" id="tgSummaryNext"></span>
+    </div>
+  </section>
 
   <?php if (empty($messages)): ?>
     <div class="empty-state">
@@ -349,5 +516,152 @@ include __DIR__ . '/includes/components/site_header.php';
 </footer>
 
 <script src="assets/js/telegram-live.js?v=2" defer></script>
+<script>
+/**
+ * AI news summary panel on /telegram.php.
+ *
+ * Clicking "ملخصات إخبارية" opens the panel and requests a summary
+ * from /telegram_summary.php. The server caches per half-hour bucket
+ * across visitors, so the first viewer of a new bucket pays the
+ * Claude call and everyone else gets it from disk cache.
+ *
+ * The refresh (↻) button also hits the endpoint with force=1 to
+ * explicitly regenerate, but the server throttles that path so
+ * rapid clicks won't burn API calls.
+ */
+(function(){
+  var btn      = document.getElementById('tgSummaryBtn');
+  var panel    = document.getElementById('tgSummary');
+  var body     = document.getElementById('tgSummaryBody');
+  var footEl   = document.getElementById('tgSummaryFoot');
+  var tsEl     = document.getElementById('tgSummaryTs');
+  var badge    = document.getElementById('tgSummaryBadge');
+  var nextEl   = document.getElementById('tgSummaryNext');
+  var countEl  = document.getElementById('tgSummaryCount');
+  var winEl    = document.getElementById('tgSummaryWindow');
+  var closeBtn = document.getElementById('tgSummaryClose');
+  var refBtn   = document.getElementById('tgSummaryRefresh');
+  if (!btn || !panel) return;
+
+  var inFlight = false;
+  var loaded   = false;
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function fmtTime(iso) {
+    if (!iso) return '';
+    try {
+      var d = new Date(iso);
+      return d.toLocaleTimeString('ar-EG', { hour:'2-digit', minute:'2-digit' });
+    } catch (e) { return ''; }
+  }
+
+  function openPanel() {
+    panel.classList.add('open');
+    panel.setAttribute('aria-hidden', 'false');
+  }
+
+  function closePanel() {
+    panel.classList.remove('open');
+    panel.setAttribute('aria-hidden', 'true');
+  }
+
+  function showLoading() {
+    body.innerHTML = '<div class="tg-summary-loading"><div class="tg-summary-spinner"></div><span>جارٍ توليد الملخص من آخر الرسائل...</span></div>';
+    footEl.hidden = true;
+    badge.hidden  = true;
+    tsEl.textContent = '';
+  }
+
+  function showError(msg) {
+    body.innerHTML = '<div class="tg-summary-error">' + escapeHtml(msg || 'تعذّر توليد الملخص.') + '</div>';
+    footEl.hidden = true;
+    badge.hidden  = true;
+    tsEl.textContent = '';
+  }
+
+  function render(payload) {
+    if (!payload || !payload.ok) {
+      showError(payload && payload.error);
+      return;
+    }
+    if (winEl) winEl.textContent = payload.window_mins || 30;
+
+    var html = '';
+    if (payload.headline) {
+      html += '<div class="tg-summary-headline">' + escapeHtml(payload.headline) + '</div>';
+    }
+    if (payload.summary) {
+      html += '<div class="tg-summary-text">' + escapeHtml(payload.summary) + '</div>';
+    }
+    if (payload.bullets && payload.bullets.length) {
+      html += '<ul class="tg-summary-bullets">';
+      for (var i = 0; i < payload.bullets.length; i++) {
+        html += '<li>' + escapeHtml(payload.bullets[i]) + '</li>';
+      }
+      html += '</ul>';
+    }
+    if (payload.topics && payload.topics.length) {
+      html += '<div class="tg-summary-topics">';
+      for (var j = 0; j < payload.topics.length; j++) {
+        html += '<span class="tg-summary-topic">#' + escapeHtml(payload.topics[j]) + '</span>';
+      }
+      html += '</div>';
+    }
+    body.innerHTML = html || '<div class="tg-summary-error">الرد فارغ — لا توجد رسائل كافية للتلخيص.</div>';
+
+    // Footer: message count + next refresh time.
+    if (countEl) {
+      var cnt = payload.message_count || 0;
+      countEl.textContent = 'مبني على ' + cnt.toLocaleString('ar-EG') + ' رسالة';
+    }
+    if (nextEl && payload.next_refresh) {
+      nextEl.textContent = 'تحديث تلقائي الساعة ' + fmtTime(payload.next_refresh);
+    }
+    footEl.hidden = false;
+
+    // "محدَّث" badge when server returned a fresh (non-cached) result.
+    if (badge) badge.hidden = !!payload.cached;
+    if (tsEl)  tsEl.textContent  = payload.generated_at ? fmtTime(payload.generated_at) : '';
+  }
+
+  function fetchSummary(force) {
+    if (inFlight) return;
+    inFlight = true;
+    btn.classList.add('loading');
+    if (force && refBtn) refBtn.classList.add('spinning');
+    if (!loaded || force) showLoading();
+
+    var url = 'telegram_summary.php?window=30' + (force ? '&force=1' : '') + '&_=' + Date.now();
+    fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+      .then(function(r){ return r.json(); })
+      .catch(function(){ return { ok:false, error:'خطأ في الاتصال بالخادم.' }; })
+      .then(function(data){
+        inFlight = false;
+        loaded = true;
+        btn.classList.remove('loading');
+        if (refBtn) refBtn.classList.remove('spinning');
+        render(data);
+      });
+  }
+
+  btn.addEventListener('click', function(){
+    var isOpen = panel.classList.contains('open');
+    if (isOpen) {
+      closePanel();
+      return;
+    }
+    openPanel();
+    if (!loaded) fetchSummary(false);
+  });
+
+  if (closeBtn) closeBtn.addEventListener('click', closePanel);
+  if (refBtn)   refBtn.addEventListener('click', function(){ fetchSummary(true); });
+})();
+</script>
 </body>
 </html>
