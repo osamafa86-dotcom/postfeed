@@ -844,7 +844,7 @@ if ($article['cat_slug']) {
             .source-cta { flex-direction: column; text-align: center; padding: 18px; }
         }
     </style>
-    <link rel="stylesheet" href="assets/css/user.css?v=11">
+    <link rel="stylesheet" href="assets/css/user.css?v=12">
     <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>
