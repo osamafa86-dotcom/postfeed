@@ -43,7 +43,7 @@ const TG_SUMMARY_MIN_WINDOW     = 5;
 const TG_SUMMARY_MAX_WINDOW     = 240;
 const TG_SUMMARY_BUCKET_SECS    = 1800; // 30 minutes
 const TG_SUMMARY_MIN_MSGS       = 3;
-const TG_SUMMARY_MAX_MSGS       = 60;
+const TG_SUMMARY_MAX_MSGS       = 250;  // Claude Haiku has plenty of context, use it
 const TG_SUMMARY_CACHE_TTL      = 7200; // keep stale result for 2h as fallback
 const TG_SUMMARY_MIN_REGEN_SECS = 120;  // minimum gap between forced regenerations
 
@@ -158,6 +158,7 @@ try {
         'ok'           => true,
         'headline'     => $ai['headline'] ?? '',
         'summary'      => $ai['summary']  ?? '',
+        'sections'     => $ai['sections'] ?? [],
         'bullets'      => $ai['bullets']  ?? [],
         'topics'       => $ai['topics']   ?? [],
         'window_mins'  => $window,
