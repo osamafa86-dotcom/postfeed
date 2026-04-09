@@ -1,27 +1,25 @@
 <?php
 /**
- * AI-generated news briefing for the Telegram page.
- *
- * Pulls the Telegram messages that arrived in the last N minutes
- * (default 30) and hands them to Claude for a compact Arabic news
- * summary (headline + paragraph + bullets + topics).
+ * Read-only endpoint for the Telegram news briefings stored in the
+ * telegram_summaries table. All generation is now handled offline by
+ * cron_tg_summary.php, so this file never calls Claude on a normal
+ * request — which is the whole point of moving to scheduled
+ * generation: cost stays flat at one briefing per hour regardless
+ * of how many visitors open the panel.
  *
  * Query params:
- *   window  — lookback window in minutes. Default 30, clamped 5..240.
- *   force   — if "1", bypass the cache and regenerate. Useful for a
- *             "تحديث" button. Throttled by a minimum regeneration gap.
+ *   id   — fetch a specific stored briefing by id (archive pill click).
+ *   list — "1" to return recent briefings metadata (for the archive pills).
+ *   (default) — latest briefing.
  *
- * Caching model:
- *   Summaries are cached under a half-hour "bucket" key derived from
- *   floor(now / 30min). All visitors landing in the same half-hour see
- *   the same summary, so Claude is only called once per bucket. The
- *   bucket rolls forward automatically every 30 minutes.
- *
- *   On top of that, we also respect a minimum regeneration gap
- *   (MIN_REGEN_SECS) against abusive ?force=1 use.
+ * Cold-start seed:
+ *   If the table is completely empty (fresh deploy, cron hasn't run
+ *   yet) we do a single inline generation so the first visitor sees
+ *   a briefing instead of a placeholder. That seed is throttled so
+ *   a broken cron can't fall back to per-visitor generation.
  *
  * Contract:
- *   Always returns application/json. Any fatal/warning/exception is
+ *   Always returns application/json. Fatals and exceptions are
  *   caught and turned into {"ok":false,"error":"..."}.
  */
 
@@ -38,14 +36,9 @@ require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/cache.php';
 require_once __DIR__ . '/includes/ai_helper.php';
 
-const TG_SUMMARY_DEFAULT_WINDOW = 30;   // minutes
-const TG_SUMMARY_MIN_WINDOW     = 5;
-const TG_SUMMARY_MAX_WINDOW     = 240;
-const TG_SUMMARY_BUCKET_SECS    = 1800; // 30 minutes
-const TG_SUMMARY_MIN_MSGS       = 3;
-const TG_SUMMARY_MAX_MSGS       = 250;  // Claude Haiku has plenty of context, use it
-const TG_SUMMARY_CACHE_TTL      = 7200; // keep stale result for 2h as fallback
-const TG_SUMMARY_MIN_REGEN_SECS = 120;  // minimum gap between forced regenerations
+const TG_SUMMARY_LIST_DEFAULT    = 12;
+const TG_SUMMARY_LIST_MAX        = 48;
+const TG_SUMMARY_SEED_THROTTLE   = 600; // seconds between cold-start seed attempts
 
 /** Emit a JSON response and exit, clearing any stray output. */
 function tgs_json_exit(array $payload, int $code = 200): void {
@@ -64,115 +57,97 @@ register_shutdown_function(function() {
     }
 });
 
-try {
-    $window = (int)($_GET['window'] ?? TG_SUMMARY_DEFAULT_WINDOW);
-    if ($window < TG_SUMMARY_MIN_WINDOW) $window = TG_SUMMARY_MIN_WINDOW;
-    if ($window > TG_SUMMARY_MAX_WINDOW) $window = TG_SUMMARY_MAX_WINDOW;
+/** Decorate a DB briefing row with the fields the UI expects. */
+function tgs_render_payload(array $row): array {
+    return [
+        'ok'            => true,
+        'id'            => $row['id'],
+        'headline'      => $row['headline'],
+        'summary'       => $row['summary'],
+        'sections'      => $row['sections'],
+        'bullets'       => [], // legacy fallback slot, unused now
+        'topics'        => $row['topics'],
+        'window_mins'   => $row['window_mins'],
+        'message_count' => $row['message_count'],
+        'generated_at'  => $row['generated_at'],
+    ];
+}
 
-    $force = isset($_GET['force']) && $_GET['force'] == '1';
-
-    // Half-hour bucket id. Same id → shared cache entry across viewers.
-    $bucket    = (int)floor(time() / TG_SUMMARY_BUCKET_SECS);
-    $cacheKey  = 'tg_summary_w' . $window . '_b' . $bucket;
-    $throttleKey = 'tg_summary_last_regen_w' . $window;
-
-    // Serve the cached summary unless an uncontested force was passed.
-    if (!$force) {
-        $hit = cache_get($cacheKey);
-        if (is_array($hit) && !empty($hit['ok'])) {
-            $hit['cached'] = true;
-            tgs_json_exit($hit);
-        }
-    } else {
-        // Throttle ?force=1 so a hot-reload loop can't run up the API bill.
-        $lastAt = (int)(cache_get($throttleKey) ?: 0);
-        if ($lastAt > 0 && (time() - $lastAt) < TG_SUMMARY_MIN_REGEN_SECS) {
-            $hit = cache_get($cacheKey);
-            if (is_array($hit) && !empty($hit['ok'])) {
-                $hit['cached']   = true;
-                $hit['throttled'] = true;
-                tgs_json_exit($hit);
-            }
-        }
+/**
+ * Generate ONE briefing inline and save it. Used only when the
+ * telegram_summaries table is completely empty, so the very first
+ * visitor after deploy sees a briefing instead of an empty state.
+ * Guarded by a short cache throttle so a broken cron can't cause
+ * per-visitor generation.
+ */
+function tgs_seed_if_empty(): ?array {
+    $throttleKey = 'tg_summary_seed_attempt';
+    $lastAt = (int)(cache_get($throttleKey) ?: 0);
+    if ($lastAt > 0 && (time() - $lastAt) < TG_SUMMARY_SEED_THROTTLE) {
+        return null;
     }
+    cache_set($throttleKey, time(), TG_SUMMARY_SEED_THROTTLE * 2);
 
-    $db = getDB();
-
-    // Pull the newest messages within the window, limited so the AI
-    // prompt stays small. We select the source handle too so Claude
-    // can attribute context when needed.
-    $stmt = $db->prepare("SELECT m.id, m.text, m.posted_at, s.username, s.display_name
-                          FROM telegram_messages m
-                          JOIN telegram_sources s ON m.source_id = s.id
-                          WHERE m.is_active = 1
-                            AND s.is_active = 1
-                            AND m.text IS NOT NULL
-                            AND m.text <> ''
-                            AND m.posted_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
-                          ORDER BY m.posted_at DESC, m.id DESC
-                          LIMIT " . (int)TG_SUMMARY_MAX_MSGS);
-    $stmt->execute([$window]);
-    $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // If this window is quiet, widen the lookback to the most recent N
-    // messages so the user always sees something useful on first click.
-    if (count($messages) < TG_SUMMARY_MIN_MSGS) {
-        $stmt = $db->query("SELECT m.id, m.text, m.posted_at, s.username, s.display_name
-                            FROM telegram_messages m
-                            JOIN telegram_sources s ON m.source_id = s.id
-                            WHERE m.is_active = 1
-                              AND s.is_active = 1
-                              AND m.text IS NOT NULL
-                              AND m.text <> ''
-                            ORDER BY m.posted_at DESC, m.id DESC
-                            LIMIT " . (int)TG_SUMMARY_MAX_MSGS);
-        $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    if (count($messages) < TG_SUMMARY_MIN_MSGS) {
-        tgs_json_exit([
-            'ok'    => false,
-            'error' => 'لا توجد رسائل كافية للتلخيص بعد. حاول مرة أخرى بعد قليل.',
-        ]);
-    }
+    $messages = tg_summary_collect_messages(60, 250);
+    if (count($messages) < 3) return null;
 
     $ai = ai_summarize_telegram($messages);
-    if (empty($ai['ok'])) {
-        // If the AI failed but we still have a stale cached payload, fall
-        // back to it so the UI isn't empty.
-        $stale = cache_get($cacheKey);
-        if (is_array($stale) && !empty($stale['ok'])) {
-            $stale['cached'] = true;
-            $stale['stale']  = true;
-            tgs_json_exit($stale);
-        }
+    if (empty($ai['ok'])) return null;
+
+    $id = tg_summary_save($ai, count($messages), 60);
+    if (!$id) return null;
+
+    return tg_summary_get_by_id($id);
+}
+
+try {
+    // ---- list mode: archive pill bar data --------------------------
+    if (isset($_GET['list'])) {
+        $limit = (int)($_GET['list'] ?: TG_SUMMARY_LIST_DEFAULT);
+        if ($limit < 1) $limit = TG_SUMMARY_LIST_DEFAULT;
+        if ($limit > TG_SUMMARY_LIST_MAX) $limit = TG_SUMMARY_LIST_MAX;
+        $items = tg_summary_list($limit);
         tgs_json_exit([
-            'ok'    => false,
-            'error' => $ai['error'] ?? 'تعذّر توليد الملخص حالياً.',
+            'ok'    => true,
+            'items' => array_map(function($r) {
+                return [
+                    'id'            => (int)$r['id'],
+                    'headline'      => (string)$r['headline'],
+                    'generated_at'  => (string)$r['generated_at'],
+                    'message_count' => (int)$r['message_count'],
+                    'window_mins'   => (int)$r['window_mins'],
+                ];
+            }, $items),
         ]);
     }
 
-    // Attach generation metadata that the UI needs to render the card.
-    $bucketStart = $bucket * TG_SUMMARY_BUCKET_SECS;
-    $payload = [
-        'ok'           => true,
-        'headline'     => $ai['headline'] ?? '',
-        'summary'      => $ai['summary']  ?? '',
-        'sections'     => $ai['sections'] ?? [],
-        'bullets'      => $ai['bullets']  ?? [],
-        'topics'       => $ai['topics']   ?? [],
-        'window_mins'  => $window,
-        'message_count'=> count($messages),
-        'generated_at' => date('c'),
-        'bucket_start' => date('c', $bucketStart),
-        'next_refresh' => date('c', $bucketStart + TG_SUMMARY_BUCKET_SECS),
-        'cached'       => false,
-    ];
+    // ---- specific briefing by id -----------------------------------
+    if (isset($_GET['id'])) {
+        $id = (int)$_GET['id'];
+        if ($id <= 0) {
+            tgs_json_exit(['ok' => false, 'error' => 'معرّف غير صالح']);
+        }
+        $row = tg_summary_get_by_id($id);
+        if (!$row) {
+            tgs_json_exit(['ok' => false, 'error' => 'لم يُعثر على الملخص']);
+        }
+        tgs_json_exit(tgs_render_payload($row));
+    }
 
-    cache_set($cacheKey, $payload, TG_SUMMARY_CACHE_TTL);
-    cache_set($throttleKey, time(), TG_SUMMARY_CACHE_TTL);
+    // ---- default: latest briefing ----------------------------------
+    $latest = tg_summary_get_latest();
+    if (!$latest) {
+        $latest = tgs_seed_if_empty();
+    }
+    if (!$latest) {
+        tgs_json_exit([
+            'ok'    => false,
+            'error' => 'لم يتم توليد أي ملخص بعد. يتم التوليد التلقائي كل ساعة.',
+        ]);
+    }
 
-    tgs_json_exit($payload);
+    tgs_json_exit(tgs_render_payload($latest));
 } catch (Throwable $e) {
+    error_log('[telegram_summary] ' . $e->getMessage());
     tgs_json_exit(['ok' => false, 'error' => 'server error'], 500);
 }

@@ -428,6 +428,70 @@ function tg_page_url(int $p): string {
     flex-wrap:wrap; gap:8px;
   }
 
+  /* Toolbar: print / pdf / share icons next to the refresh+close buttons. */
+  .tg-summary-tools {
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  .tg-summary-tool {
+    width:30px; height:30px;
+    border:1px solid rgba(79,70,229,.25);
+    background:#fff; color:#4f46e5;
+    border-radius:8px; cursor:pointer;
+    font-size:14px; font-weight:900; line-height:1;
+    display:inline-flex; align-items:center; justify-content:center;
+    font-family:inherit;
+    transition:all .2s;
+  }
+  .tg-summary-tool:hover {
+    background:#4f46e5; color:#fff;
+    transform:translateY(-1px);
+  }
+  .tg-summary-tool.copied {
+    background:#16a34a; border-color:#16a34a; color:#fff;
+  }
+
+  /* Archive strip: horizontal pill selector for previous briefings. */
+  .tg-summary-archive {
+    display:flex; gap:8px;
+    padding:12px 20px;
+    overflow-x:auto;
+    border-bottom:1px dashed rgba(79,70,229,.18);
+    background:rgba(255,255,255,.35);
+    scrollbar-width:thin;
+  }
+  .tg-summary-archive::-webkit-scrollbar { height:6px; }
+  .tg-summary-archive::-webkit-scrollbar-thumb {
+    background:rgba(124,58,237,.3); border-radius:3px;
+  }
+  .tg-summary-archive-chip {
+    flex:0 0 auto;
+    padding:7px 14px;
+    background:#fff;
+    border:1px solid #e4defb;
+    border-radius:999px;
+    font-size:12px; font-weight:700;
+    color:#4c1d95;
+    cursor:pointer;
+    white-space:nowrap;
+    font-family:inherit;
+    transition:all .2s;
+    font-variant-numeric:tabular-nums;
+  }
+  .tg-summary-archive-chip:hover {
+    background:#ede9fe; border-color:#c4b5fd;
+  }
+  .tg-summary-archive-chip.active {
+    background:linear-gradient(135deg,#7c3aed,#4f46e5);
+    border-color:transparent;
+    color:#fff;
+    box-shadow:0 4px 12px rgba(124,58,237,.35);
+  }
+  .tg-summary-archive-chip .chip-dot {
+    display:inline-block; width:6px; height:6px; border-radius:50%;
+    background:#16a34a; margin-left:6px; vertical-align:middle;
+  }
+  .tg-summary-archive-chip.active .chip-dot { background:#fff; }
+
   @media (max-width:900px) {
     .tg-grid { grid-template-columns:1fr; }
     .page-title { font-size:22px; }
@@ -441,6 +505,43 @@ function tg_page_url(int $p): string {
     .tg-summary-head { padding:12px 14px; }
     .tg-summary-headline { font-size:16px; }
     .tg-summary-text { font-size:13.5px; }
+    .tg-summary-archive { padding:10px 14px; }
+  }
+
+  /* Print / PDF mode: hide the whole page chrome and print just the
+     summary card as a clean, full-width document. */
+  @media print {
+    body.tg-printing > *:not(.tg-summary-print-host) { display:none !important; }
+    body.tg-printing .tg-summary-print-host { display:block !important; }
+    body.tg-printing .tg-summary {
+      max-height:none !important;
+      opacity:1 !important;
+      box-shadow:none !important;
+      border:none !important;
+      margin:0 !important;
+      padding:0 !important;
+      background:#fff !important;
+    }
+    body.tg-printing .tg-summary-head .tg-summary-meta,
+    body.tg-printing .tg-summary-refresh,
+    body.tg-printing .tg-summary-close,
+    body.tg-printing .tg-summary-tools,
+    body.tg-printing .tg-summary-archive { display:none !important; }
+    body.tg-printing .tg-summary-head {
+      background:#fff !important;
+      border-bottom:2px solid #4f46e5 !important;
+      padding:10px 0 !important;
+    }
+    body.tg-printing .tg-summary-body { padding:16px 0 !important; }
+    body.tg-printing .tg-summary-section {
+      break-inside:avoid;
+      box-shadow:none !important;
+    }
+    body.tg-printing .tg-summary-foot {
+      background:#fff !important;
+      border-top:1px dashed #c4b5fd !important;
+      padding:10px 0 !important;
+    }
   }
 </style>
 </head>
@@ -477,24 +578,32 @@ include __DIR__ . '/includes/components/site_header.php';
     </div>
   </div>
 
-  <!-- AI News summary panel (collapsed by default, expanded on click) -->
-  <section class="tg-summary" id="tgSummary" aria-hidden="true">
+  <!-- AI News summary panel (collapsed by default, expanded on click).
+       Content is read from telegram_summary.php which pulls from the
+       telegram_summaries table (populated hourly by cron_tg_summary.php). -->
+  <section class="tg-summary tg-summary-print-host" id="tgSummary" aria-hidden="true">
     <div class="tg-summary-head">
       <div class="tg-summary-title">
         <span class="tg-summary-spark">✨</span>
-        <span>ملخص إخباري لآخر <span id="tgSummaryWindow">30</span> دقيقة</span>
+        <span>ملخص إخباري لآخر <span id="tgSummaryWindow">60</span> دقيقة</span>
       </div>
       <div class="tg-summary-meta">
         <span class="tg-summary-badge" id="tgSummaryBadge" hidden>محدَّث</span>
         <span class="tg-summary-ts" id="tgSummaryTs"></span>
-        <button type="button" class="tg-summary-refresh" id="tgSummaryRefresh" title="تحديث الملخص">↻</button>
+        <div class="tg-summary-tools">
+          <button type="button" class="tg-summary-tool" id="tgSummaryPrint" title="طباعة">🖨</button>
+          <button type="button" class="tg-summary-tool" id="tgSummaryPdf" title="تصدير PDF">📄</button>
+          <button type="button" class="tg-summary-tool" id="tgSummaryShare" title="مشاركة">↗</button>
+        </div>
+        <button type="button" class="tg-summary-refresh" id="tgSummaryRefresh" title="تحديث الأرشيف">↻</button>
         <button type="button" class="tg-summary-close" id="tgSummaryClose" aria-label="إغلاق">×</button>
       </div>
     </div>
+    <div class="tg-summary-archive" id="tgSummaryArchive" hidden></div>
     <div class="tg-summary-body" id="tgSummaryBody">
       <div class="tg-summary-loading">
         <div class="tg-summary-spinner"></div>
-        <span>جارٍ توليد الملخص من آخر الرسائل...</span>
+        <span>جارٍ تحميل الملخص الأخير...</span>
       </div>
     </div>
     <div class="tg-summary-foot" id="tgSummaryFoot" hidden>
@@ -574,33 +683,36 @@ include __DIR__ . '/includes/components/site_header.php';
 <script src="assets/js/telegram-live.js?v=2" defer></script>
 <script>
 /**
- * AI news summary panel on /telegram.php.
+ * News briefing panel on /telegram.php.
  *
- * Clicking "ملخصات إخبارية" opens the panel and requests a summary
- * from /telegram_summary.php. The server caches per half-hour bucket
- * across visitors, so the first viewer of a new bucket pays the
- * Claude call and everyone else gets it from disk cache.
- *
- * The refresh (↻) button also hits the endpoint with force=1 to
- * explicitly regenerate, but the server throttles that path so
- * rapid clicks won't burn API calls.
+ * Briefings are generated offline every hour by cron_tg_summary.php
+ * and stored in the telegram_summaries table. This UI just reads
+ * /telegram_summary.php which is now a cheap DB lookup — no per-visitor
+ * Claude call. The archive pills at the top let users jump between
+ * recent briefings; the toolbar offers print, PDF export, and share.
  */
 (function(){
-  var btn      = document.getElementById('tgSummaryBtn');
-  var panel    = document.getElementById('tgSummary');
-  var body     = document.getElementById('tgSummaryBody');
-  var footEl   = document.getElementById('tgSummaryFoot');
-  var tsEl     = document.getElementById('tgSummaryTs');
-  var badge    = document.getElementById('tgSummaryBadge');
-  var nextEl   = document.getElementById('tgSummaryNext');
-  var countEl  = document.getElementById('tgSummaryCount');
-  var winEl    = document.getElementById('tgSummaryWindow');
-  var closeBtn = document.getElementById('tgSummaryClose');
-  var refBtn   = document.getElementById('tgSummaryRefresh');
+  var btn        = document.getElementById('tgSummaryBtn');
+  var panel      = document.getElementById('tgSummary');
+  var body       = document.getElementById('tgSummaryBody');
+  var footEl     = document.getElementById('tgSummaryFoot');
+  var tsEl       = document.getElementById('tgSummaryTs');
+  var badge      = document.getElementById('tgSummaryBadge');
+  var nextEl     = document.getElementById('tgSummaryNext');
+  var countEl    = document.getElementById('tgSummaryCount');
+  var winEl      = document.getElementById('tgSummaryWindow');
+  var closeBtn   = document.getElementById('tgSummaryClose');
+  var refBtn     = document.getElementById('tgSummaryRefresh');
+  var printBtn   = document.getElementById('tgSummaryPrint');
+  var pdfBtn     = document.getElementById('tgSummaryPdf');
+  var shareBtn   = document.getElementById('tgSummaryShare');
+  var archiveEl  = document.getElementById('tgSummaryArchive');
   if (!btn || !panel) return;
 
-  var inFlight = false;
-  var loaded   = false;
+  var inFlight       = false;
+  var loaded         = false;
+  var currentPayload = null;   // latest rendered briefing (for share/print)
+  var archiveItems   = [];     // cached list of briefings in the archive strip
 
   function escapeHtml(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
@@ -616,6 +728,14 @@ include __DIR__ . '/includes/components/site_header.php';
     } catch (e) { return ''; }
   }
 
+  function fmtDate(iso) {
+    if (!iso) return '';
+    try {
+      var d = new Date(iso);
+      return d.toLocaleDateString('ar-EG', { day:'2-digit', month:'short' });
+    } catch (e) { return ''; }
+  }
+
   function openPanel() {
     panel.classList.add('open');
     panel.setAttribute('aria-hidden', 'false');
@@ -626,26 +746,60 @@ include __DIR__ . '/includes/components/site_header.php';
     panel.setAttribute('aria-hidden', 'true');
   }
 
-  function showLoading() {
-    body.innerHTML = '<div class="tg-summary-loading"><div class="tg-summary-spinner"></div><span>جارٍ توليد الملخص من آخر الرسائل...</span></div>';
+  function showLoading(msg) {
+    body.innerHTML = '<div class="tg-summary-loading"><div class="tg-summary-spinner"></div><span>' + escapeHtml(msg || 'جارٍ تحميل الملخص...') + '</span></div>';
     footEl.hidden = true;
     badge.hidden  = true;
     tsEl.textContent = '';
   }
 
   function showError(msg) {
-    body.innerHTML = '<div class="tg-summary-error">' + escapeHtml(msg || 'تعذّر توليد الملخص.') + '</div>';
+    body.innerHTML = '<div class="tg-summary-error">' + escapeHtml(msg || 'تعذّر تحميل الملخص.') + '</div>';
     footEl.hidden = true;
     badge.hidden  = true;
     tsEl.textContent = '';
   }
 
+  function renderArchive(items, activeId) {
+    archiveEl.innerHTML = '';
+    if (!items || !items.length) {
+      archiveEl.hidden = true;
+      return;
+    }
+    archiveEl.hidden = false;
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      var label = (i === 0 ? 'الأحدث • ' : '') + fmtTime(it.generated_at);
+      var chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'tg-summary-archive-chip' + (it.id === activeId ? ' active' : '');
+      chip.setAttribute('data-id', String(it.id));
+      chip.title = (it.headline || '') + ' — ' + fmtDate(it.generated_at) + ' ' + fmtTime(it.generated_at);
+      chip.innerHTML = escapeHtml(label) + (i === 0 ? '<span class="chip-dot"></span>' : '');
+      chip.addEventListener('click', function(ev){
+        var id = parseInt(ev.currentTarget.getAttribute('data-id'), 10);
+        if (id) loadSummary(id);
+      });
+      archiveEl.appendChild(chip);
+    }
+  }
+
+  function setActiveChip(id) {
+    var chips = archiveEl.querySelectorAll('.tg-summary-archive-chip');
+    for (var i = 0; i < chips.length; i++) {
+      var cid = parseInt(chips[i].getAttribute('data-id'), 10);
+      chips[i].classList.toggle('active', cid === id);
+    }
+  }
+
   function render(payload) {
     if (!payload || !payload.ok) {
+      currentPayload = null;
       showError(payload && payload.error);
       return;
     }
-    if (winEl) winEl.textContent = payload.window_mins || 30;
+    currentPayload = payload;
+    if (winEl) winEl.textContent = payload.window_mins || 60;
 
     var html = '';
     if (payload.headline) {
@@ -655,8 +809,6 @@ include __DIR__ . '/includes/components/site_header.php';
       html += '<div class="tg-summary-text">' + escapeHtml(payload.summary) + '</div>';
     }
 
-    // Preferred layout: structured sections (file-style report).
-    // Fall back to the legacy flat bullets if Claude returned the old shape.
     if (payload.sections && payload.sections.length) {
       html += '<div class="tg-summary-sections">';
       for (var s = 0; s < payload.sections.length; s++) {
@@ -691,55 +843,134 @@ include __DIR__ . '/includes/components/site_header.php';
       }
       html += '</div>';
     }
-    body.innerHTML = html || '<div class="tg-summary-error">الرد فارغ — لا توجد رسائل كافية للتلخيص.</div>';
+    body.innerHTML = html || '<div class="tg-summary-error">لا توجد بيانات للعرض.</div>';
 
-    // Footer: message count + next refresh time.
     if (countEl) {
       var cnt = payload.message_count || 0;
       countEl.textContent = 'مبني على ' + cnt.toLocaleString('ar-EG') + ' رسالة';
     }
-    if (nextEl && payload.next_refresh) {
-      nextEl.textContent = 'تحديث تلقائي الساعة ' + fmtTime(payload.next_refresh);
+    if (nextEl && payload.generated_at) {
+      nextEl.textContent = 'وُلّد الساعة ' + fmtTime(payload.generated_at);
     }
     footEl.hidden = false;
+    if (badge) badge.hidden = true;
+    if (tsEl)  tsEl.textContent = payload.generated_at ? fmtTime(payload.generated_at) : '';
 
-    // "محدَّث" badge when server returned a fresh (non-cached) result.
-    if (badge) badge.hidden = !!payload.cached;
-    if (tsEl)  tsEl.textContent  = payload.generated_at ? fmtTime(payload.generated_at) : '';
+    if (payload.id) setActiveChip(payload.id);
   }
 
-  function fetchSummary(force) {
+  function loadArchive(thenLoadLatest) {
+    fetch('telegram_summary.php?list=12&_=' + Date.now(), { credentials:'same-origin', cache:'no-store' })
+      .then(function(r){ return r.json(); })
+      .catch(function(){ return { ok:false }; })
+      .then(function(data){
+        if (data && data.ok && data.items) {
+          archiveItems = data.items;
+          renderArchive(archiveItems, currentPayload ? currentPayload.id : 0);
+        }
+        if (thenLoadLatest) loadSummary(0);
+      });
+  }
+
+  function loadSummary(id) {
     if (inFlight) return;
     inFlight = true;
     btn.classList.add('loading');
-    if (force && refBtn) refBtn.classList.add('spinning');
-    if (!loaded || force) showLoading();
+    showLoading();
 
-    var url = 'telegram_summary.php?window=30' + (force ? '&force=1' : '') + '&_=' + Date.now();
-    fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+    var url = 'telegram_summary.php' + (id ? ('?id=' + id) : '') + (id ? '&' : '?') + '_=' + Date.now();
+    fetch(url, { credentials:'same-origin', cache:'no-store' })
       .then(function(r){ return r.json(); })
       .catch(function(){ return { ok:false, error:'خطأ في الاتصال بالخادم.' }; })
       .then(function(data){
         inFlight = false;
-        loaded = true;
+        loaded   = true;
         btn.classList.remove('loading');
-        if (refBtn) refBtn.classList.remove('spinning');
         render(data);
       });
   }
 
+  // ----- toolbar: print, PDF, share ---------------------------------
+
+  function printSummary() {
+    if (!currentPayload) return;
+    document.body.classList.add('tg-printing');
+    var cleanup = function() {
+      document.body.classList.remove('tg-printing');
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+    setTimeout(function(){ window.print(); }, 50);
+  }
+
+  function buildShareText(p) {
+    if (!p) return '';
+    var lines = [];
+    if (p.headline) lines.push('📢 ' + p.headline);
+    if (p.summary)  lines.push('', p.summary);
+    if (p.sections && p.sections.length) {
+      for (var i = 0; i < p.sections.length; i++) {
+        var sec = p.sections[i] || {};
+        if (!sec.items || !sec.items.length) continue;
+        lines.push('', (sec.icon || '▸') + ' ' + (sec.title || ''));
+        for (var k = 0; k < sec.items.length; k++) {
+          lines.push('  • ' + sec.items[k]);
+        }
+      }
+    }
+    if (p.topics && p.topics.length) {
+      lines.push('', p.topics.map(function(t){ return '#' + t; }).join(' '));
+    }
+    lines.push('', '— ' + (window.location.origin + window.location.pathname));
+    return lines.join('\n');
+  }
+
+  function shareSummary() {
+    if (!currentPayload) return;
+    var text  = buildShareText(currentPayload);
+    var title = currentPayload.headline || 'ملخص أخبار تليغرام';
+
+    if (navigator.share) {
+      navigator.share({ title: title, text: text }).catch(function(){});
+      return;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function(){
+        if (shareBtn) {
+          shareBtn.classList.add('copied');
+          var orig = shareBtn.textContent;
+          shareBtn.textContent = '✓';
+          setTimeout(function(){
+            shareBtn.classList.remove('copied');
+            shareBtn.textContent = orig;
+          }, 1600);
+        }
+      });
+    }
+  }
+
+  // ----- wiring -----------------------------------------------------
+
   btn.addEventListener('click', function(){
-    var isOpen = panel.classList.contains('open');
-    if (isOpen) {
+    if (panel.classList.contains('open')) {
       closePanel();
       return;
     }
     openPanel();
-    if (!loaded) fetchSummary(false);
+    if (!loaded) {
+      loadArchive(true);
+    }
   });
 
   if (closeBtn) closeBtn.addEventListener('click', closePanel);
-  if (refBtn)   refBtn.addEventListener('click', function(){ fetchSummary(true); });
+  if (refBtn)   refBtn.addEventListener('click', function(){
+    refBtn.classList.add('spinning');
+    loadArchive(true);
+    setTimeout(function(){ refBtn.classList.remove('spinning'); }, 700);
+  });
+  if (printBtn) printBtn.addEventListener('click', printSummary);
+  if (pdfBtn)   pdfBtn.addEventListener('click', printSummary); // browser handles "save as PDF"
+  if (shareBtn) shareBtn.addEventListener('click', shareSummary);
 })();
 </script>
 </body>
