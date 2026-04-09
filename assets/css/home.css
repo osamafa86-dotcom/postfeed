@@ -1411,7 +1411,7 @@
     .icon-btn-wide span { display:none; }
     .icon-btn-wide { min-width:40px; padding:0; }
     .mr-grid { grid-template-columns:1fr; gap:16px; }
-    .bn-grid { grid-template-columns:1fr; gap:12px; }
+    /* keep bn-grid at 2 columns on tablets — only collapse on phones (see below) */
     .mr2-grid { grid-template-columns:1fr; }
     .mr2-grid .mr2-item { border-bottom:1px solid #f1f3f7 !important; }
     .mr2-grid .mr2-item:last-child { border-bottom:none !important; }
@@ -1465,6 +1465,9 @@
     .ps-card .img-wrap { height:200px; }
     .ps-hero-text h3 { font-size:18px; }
     .ps-hero-text { padding:20px; }
+    .bn-grid { grid-template-columns:1fr; gap:12px; }
+    .bn-thumb { flex:0 0 72px; width:72px; height:72px; }
+    .bn-title { font-size:14px; }
     .main-layout { padding:16px 12px; }
     .stats-bar { padding:12px 16px; }
     .user-panel { width:100%; }
