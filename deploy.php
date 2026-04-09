@@ -32,7 +32,15 @@ $logEntry = date('Y-m-d H:i:s') . " - Deploy triggered from " . ($_SERVER['REMOT
 // Run git pull
 $output = shell_exec('cd ' . escapeshellarg(__DIR__) . ' && git pull origin main 2>&1');
 
-$logEntry .= $output . "\n---\n";
+// Invalidate opcache so newly-pulled PHP files take effect immediately
+$opcacheMsg = '';
+if (function_exists('opcache_reset')) {
+    $opcacheMsg = opcache_reset() ? 'opcache reset ok' : 'opcache reset failed';
+} else {
+    $opcacheMsg = 'opcache not available';
+}
+
+$logEntry .= $output . "\n" . $opcacheMsg . "\n---\n";
 file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
 
-echo "Deploy done:\n" . $output;
+echo "Deploy done:\n" . $output . "\n" . $opcacheMsg;
