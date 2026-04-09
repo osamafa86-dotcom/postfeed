@@ -185,7 +185,7 @@ $homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
 <meta name="description" content="مجمع الأخبار العربية الأول - أحدث الأخبار من مصادر موثوقة في السياسة، الاقتصاد، الرياضة، والتكنولوجيا">
-<link rel="stylesheet" href="assets/css/home.css?v=13">
+<link rel="stylesheet" href="assets/css/home.css?v=14">
 <link rel="stylesheet" href="assets/css/user.css?v=17">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
@@ -278,44 +278,27 @@ $homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
   </div>
 </div>
 
-<!-- STATS BAR -->
-<div class="stats-bar">
-  <div class="stats-bar-inner">
-    <div class="stat-card stat-card-blue">
-      <span class="stat-icon">📰</span>
-      <div class="stat-body">
-        <div class="stat-val"><?php echo number_format($totalArticles); ?></div>
-        <div class="stat-label">خبر</div>
-      </div>
-    </div>
-    <div class="stat-card stat-card-teal">
-      <span class="stat-icon">🌐</span>
-      <div class="stat-body">
-        <div class="stat-val"><?php echo $totalSources; ?></div>
-        <div class="stat-label">مصدر نشط</div>
-      </div>
-    </div>
-    <div class="stat-card stat-card-purple">
-      <span class="stat-icon">👁</span>
-      <div class="stat-body">
-        <div class="stat-val">3.2M</div>
-        <div class="stat-label">مشاهدة اليوم</div>
-      </div>
-    </div>
-    <div class="stat-card stat-card-orange">
-      <span class="stat-icon">🔥</span>
-      <div class="stat-body">
-        <div class="stat-val">سياسة</div>
-        <div class="stat-label">الأكثر تداولاً</div>
-      </div>
-    </div>
-    <div class="stat-card stat-card-red">
-      <span class="stat-icon">⏱</span>
-      <div class="stat-body">
-        <div class="stat-val">منذ 2 دق</div>
-        <div class="stat-label">آخر تحديث</div>
-      </div>
-    </div>
+<!-- STATS STRIP (compact) -->
+<div class="stats-strip">
+  <div class="stats-strip-inner">
+    <span class="stat-chip stat-chip-blue"><span class="stat-chip-ico">📰</span><b><?php echo number_format($totalArticles); ?></b><em>خبر</em></span>
+    <span class="stat-chip stat-chip-teal"><span class="stat-chip-ico">🌐</span><b><?php echo $totalSources; ?></b><em>مصدر نشط</em></span>
+    <span class="stat-chip stat-chip-purple"><span class="stat-chip-ico">👁</span><b>3.2M</b><em>مشاهدة اليوم</em></span>
+    <span class="stat-chip stat-chip-orange"><span class="stat-chip-ico">🔥</span><b>سياسة</b><em>الأكثر تداولاً</em></span>
+    <span class="stat-chip stat-chip-red"><span class="stat-chip-ico">⏱</span><b>منذ 2 دق</b><em>آخر تحديث</em></span>
+  </div>
+</div>
+
+<!-- SECTIONS NAV (homepage anchors) -->
+<div class="sections-nav">
+  <div class="sections-nav-inner">
+    <button type="button" class="sec-pill active" data-sec="all" onclick="scrollToHomeSection(this,'all')"><span class="sec-pill-ico">📰</span>الكل</button>
+    <button type="button" class="sec-pill" data-sec="breaking" onclick="scrollToHomeSection(this,'breaking')"><span class="sec-pill-ico">🔴</span>عاجل</button>
+    <button type="button" class="sec-pill" data-sec="latest" onclick="scrollToHomeSection(this,'latest')"><span class="sec-pill-ico">⏱</span>آخر الأخبار</button>
+    <button type="button" class="sec-pill" data-sec="palestine" onclick="scrollToHomeSection(this,'palestine')"><span class="sec-pill-ico">🇵🇸</span>فلسطين</button>
+    <button type="button" class="sec-pill" data-sec="trending" onclick="scrollToHomeSection(this,'trending')"><span class="sec-pill-ico">🔥</span>الأكثر تداولاً</button>
+    <button type="button" class="sec-pill" data-sec="media" onclick="scrollToHomeSection(this,'media')"><span class="sec-pill-ico">🎥</span>ميديا</button>
+    <button type="button" class="sec-pill" data-sec="reels" onclick="scrollToHomeSection(this,'reels')"><span class="sec-pill-ico">🎬</span>ريلز</button>
   </div>
 </div>
 
@@ -378,7 +361,7 @@ $__featRest  = array_slice($latestArticles, 7);
   <div class="main-col">
 
     <!-- PALESTINE NEWS -->
-    <div class="section-header">
+    <div id="palestine" class="section-header">
       <div class="section-title"><div class="line" style="background:#16a34a"></div>🇵🇸 أحدث الأخبار الفلسطينية</div>
     </div>
     <?php if (!empty($palestineNews)): ?>
@@ -640,7 +623,7 @@ $__featRest  = array_slice($latestArticles, 7);
 
     <!-- MOST READ / TRENDING TABBED SECTION -->
     <?php if (!empty($mostRead) || !empty($trends)): ?>
-    <div class="mr2-section">
+    <div id="trending" class="mr2-section">
       <div class="mr2-head">
         <div class="mr2-tabs">
           <button type="button" class="mr2-tab active" data-mr2-tab="read">
@@ -920,6 +903,20 @@ $__featRest  = array_slice($latestArticles, 7);
   function scrollToSection(id) {
     const el = document.getElementById(id);
     if(el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+
+  // Homepage section pills
+  function scrollToHomeSection(pill, id) {
+    document.querySelectorAll('.sec-pill').forEach(p => p.classList.toggle('active', p === pill));
+    if (id === 'all') {
+      window.scrollTo({ top:0, behavior:'smooth' });
+      return;
+    }
+    const el = document.getElementById(id);
+    if (el) {
+      const y = el.getBoundingClientRect().top + window.pageYOffset - 80;
+      window.scrollTo({ top:y, behavior:'smooth' });
+    }
   }
 
   // LIVE CLOCK (24h)
