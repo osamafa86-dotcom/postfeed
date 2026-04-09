@@ -231,10 +231,11 @@ function getMediaItems($limit = 4) {
 // دوال الأكثر قراءة
 // ============================================
 
-function getMostRead() {
-    return cache_remember('most_read', HOMEPAGE_CACHE_TTL, function() {
+function getMostRead($limit = 5) {
+    $limit = max(1, (int)$limit);
+    return cache_remember('most_read_' . $limit, HOMEPAGE_CACHE_TTL, function() use ($limit) {
         $db = getDB();
-        return $db->query("SELECT * FROM most_read ORDER BY sort_order LIMIT 5")->fetchAll();
+        return $db->query("SELECT * FROM most_read ORDER BY sort_order LIMIT " . $limit)->fetchAll();
     });
 }
 
