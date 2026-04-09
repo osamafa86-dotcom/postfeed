@@ -471,28 +471,65 @@ if ($article['cat_slug']) {
             box-shadow: 0 0 8px rgba(26,115,232,.5);
         }
 
-        /* === Top source card (above title) === */
+        /* === Source card (under hero image) === */
         .source-top {
+            position: relative;
             display: flex;
             align-items: center;
-            gap: 14px;
-            padding: 14px 18px;
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            margin: 2rem 0 1.25rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,.04);
+            gap: 16px;
+            padding: 16px 20px;
+            background:
+                linear-gradient(135deg, rgba(26,115,232,.05), rgba(79,70,229,.03)),
+                var(--card);
+            border: 1px solid rgba(26,115,232,.12);
+            border-radius: 18px;
+            margin: 1.25rem 0 1.5rem;
+            box-shadow: 0 4px 18px rgba(26,115,232,.06), 0 1px 2px rgba(0,0,0,.03);
+            transition: box-shadow .25s ease, transform .25s ease;
         }
-        .source-top .source-logo { width:52px; height:52px; font-size:1.4rem; flex-shrink:0; }
+        .source-top:hover {
+            box-shadow: 0 8px 28px rgba(26,115,232,.1), 0 2px 4px rgba(0,0,0,.04);
+        }
+        .source-top-logo-link {
+            display: inline-flex;
+            flex-shrink: 0;
+            text-decoration: none;
+            border-radius: 14px;
+            transition: transform .2s ease;
+        }
+        .source-top-logo-link:hover { transform: scale(1.05); }
+        .source-top .source-logo {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+            box-shadow: 0 6px 16px rgba(0,0,0,.08), inset 0 -2px 4px rgba(0,0,0,.08);
+        }
         .source-top-info { flex: 1; min-width: 0; }
         .source-top-info h3 {
-            font-size: 1rem;
+            font-size: 1.05rem;
             font-weight: 800;
-            margin: 0 0 2px;
+            margin: 0 0 4px;
             color: var(--dark);
+            line-height: 1.3;
+        }
+        .source-top-name {
+            color: inherit;
+            text-decoration: none;
+            background-image: linear-gradient(var(--primary), var(--primary));
+            background-size: 0% 2px;
+            background-repeat: no-repeat;
+            background-position: right 100%;
+            transition: background-size .25s ease, color .2s ease;
+            padding-bottom: 2px;
+        }
+        .source-top-name:hover {
+            color: var(--primary);
+            background-size: 100% 2px;
         }
         .source-top-meta {
-            font-size: .8rem;
+            font-size: .82rem;
             color: var(--gray);
             display: flex;
             gap: 10px;
@@ -504,20 +541,23 @@ if ($article['cat_slug']) {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 8px 14px;
-            background: var(--primary-light);
+            padding: 10px 18px;
+            background: #fff;
             color: var(--primary);
-            border-radius: 10px;
-            font-size: .8rem;
+            border-radius: 12px;
+            font-size: .85rem;
             font-weight: 700;
-            border: 1px solid rgba(26,115,232,.2);
-            transition: all .2s;
+            border: 1px solid rgba(26,115,232,.25);
+            box-shadow: 0 2px 8px rgba(26,115,232,.08);
+            transition: all .25s ease;
             white-space: nowrap;
         }
         .source-top-visit:hover {
             background: var(--primary);
             color: #fff;
-            transform: translateY(-1px);
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(26,115,232,.28);
         }
 
         /* === Article toolbar (TTS, font, share, save, print) === */
@@ -834,7 +874,8 @@ if ($article['cat_slug']) {
             .article-hero { height: 250px; border-radius: 12px; }
             .articles-grid { grid-template-columns: 1fr; }
             .article-footer { padding: 1.5rem; }
-            .source-top { flex-wrap: wrap; padding: 12px 14px; }
+            .source-top { flex-wrap: wrap; padding: 14px 16px; gap: 12px; }
+            .source-top-info { flex-basis: calc(100% - 72px); }
             .source-top-visit { width: 100%; justify-content: center; }
             .article-toolbar { padding: 8px 10px; gap: 6px; }
             .tool-btn { padding: 7px 10px; font-size: .8rem; }
@@ -844,7 +885,7 @@ if ($article['cat_slug']) {
             .source-cta { flex-direction: column; text-align: center; padding: 18px; }
         }
     </style>
-    <link rel="stylesheet" href="assets/css/user.css?v=12">
+    <link rel="stylesheet" href="assets/css/user.css?v=13">
     <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>
@@ -873,14 +914,31 @@ if ($article['cat_slug']) {
     <!-- Main Content -->
     <main class="container">
 
-        <!-- === SOURCE AT TOP (above title) === -->
-        <?php if ($article['source_name']): ?>
+        <!-- Article Hero Image -->
+        <?php if ($article['image_url']): ?>
+            <img src="<?php echo e($article['image_url']); ?>" alt="<?php echo e($article['title']); ?>" class="article-hero" decoding="async" fetchpriority="high">
+        <?php endif; ?>
+
+        <!-- === SOURCE CARD (under hero image) === -->
+        <?php if ($article['source_name']):
+            $sourceProfileUrl = !empty($article['source_id']) ? sourceUrl((int)$article['source_id']) : '';
+        ?>
             <div class="source-top">
-                <div class="source-logo" style="background: <?php echo e($article['logo_bg'] ?: '#3b82f6'); ?>; color: <?php echo e($article['logo_color'] ?: 'white'); ?>;">
-                    <?php echo e(strtoupper(mb_substr($article['source_name'], 0, 1))); ?>
-                </div>
+                <?php if ($sourceProfileUrl): ?>
+                    <a class="source-top-logo-link" href="<?php echo e($sourceProfileUrl); ?>" title="<?php echo e('بروفايل ' . $article['source_name']); ?>">
+                <?php endif; ?>
+                    <div class="source-logo" style="background: <?php echo e($article['logo_bg'] ?: '#3b82f6'); ?>; color: <?php echo e($article['logo_color'] ?: 'white'); ?>;">
+                        <?php echo e(strtoupper(mb_substr($article['source_name'], 0, 1))); ?>
+                    </div>
+                <?php if ($sourceProfileUrl): ?>
+                    </a>
+                <?php endif; ?>
                 <div class="source-top-info">
-                    <h3><?php echo e($article['source_name']); ?></h3>
+                    <?php if ($sourceProfileUrl): ?>
+                        <h3><a class="source-top-name" href="<?php echo e($sourceProfileUrl); ?>"><?php echo e($article['source_name']); ?></a></h3>
+                    <?php else: ?>
+                        <h3><?php echo e($article['source_name']); ?></h3>
+                    <?php endif; ?>
                     <div class="source-top-meta">
                         <?php if ($article['cat_name']): ?>
                             <span class="category-badge <?php echo e($article['css_class'] ?? ''); ?>"><?php echo e($article['cat_name']); ?></span>
@@ -901,11 +959,6 @@ if ($article['cat_slug']) {
                     </a>
                 <?php endif; ?>
             </div>
-        <?php endif; ?>
-
-        <!-- Article Hero Image -->
-        <?php if ($article['image_url']): ?>
-            <img src="<?php echo e($article['image_url']); ?>" alt="<?php echo e($article['title']); ?>" class="article-hero" decoding="async" fetchpriority="high">
         <?php endif; ?>
 
         <!-- Article Header -->
