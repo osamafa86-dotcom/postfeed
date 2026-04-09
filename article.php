@@ -1069,6 +1069,20 @@ if ($article['cat_slug']) {
                         <?php endforeach; ?>
                     </ul>
                 <?php endif; ?>
+                <?php
+                // Topic chips: turn the comma-separated ai_keywords into
+                // clickable links to /topic/{kw}. Lets readers jump from
+                // one article to every related story we've ingested.
+                $__kwList = !empty($article['ai_keywords'])
+                    ? array_filter(array_map('trim', explode(',', (string)$article['ai_keywords'])), fn($s) => $s !== '')
+                    : [];
+                if (!empty($__kwList)): ?>
+                    <div class="ai-topics" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;padding-top:14px;border-top:1px dashed rgba(0,0,0,.08);">
+                        <?php foreach (array_slice($__kwList, 0, 8) as $__kw): ?>
+                            <a href="/topic/<?php echo rawurlencode($__kw); ?>" style="display:inline-flex;align-items:center;gap:4px;background:rgba(13,148,136,.08);color:#0d9488;border:1px solid rgba(13,148,136,.2);padding:5px 12px;border-radius:999px;font-size:12px;font-weight:700;text-decoration:none;transition:all .2s;" onmouseover="this.style.background='#0d9488';this.style.color='#fff';" onmouseout="this.style.background='rgba(13,148,136,.08)';this.style.color='#0d9488';">#<?php echo e($__kw); ?></a>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
             </div>
         <?php endif; ?>
 
