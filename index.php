@@ -53,59 +53,6 @@ $mediaItems = getMediaItems(4);
 $trendingNow      = trending_get_top(8);
 $trendingReaders  = trending_active_readers();
 
-// Ongoing Stories — clusters with enough multi-day coverage to warrant a
-// Guardian-Live-style timeline. We merge: (a) stories that already have a
-// stored timeline, plus (b) fresh candidate clusters that don't have one
-// yet but will lazy-generate on the first click. Cached for 10 min so
-// the homepage stays fast.
-$ongoingStories = cache_remember('home_ongoing_stories_v1', 600, function() {
-    $out = [];
-    $seen = [];
-    // 1) Stored timelines first — they have an AI-written headline.
-    foreach (story_timeline_list(6) as $t) {
-        $ck = (string)$t['cluster_key'];
-        if ($ck === '' || isset($seen[$ck])) continue;
-        $seen[$ck] = true;
-        $out[] = [
-            'cluster_key'   => $ck,
-            'headline'      => (string)$t['headline'],
-            'intro'         => (string)$t['intro'],
-            'article_count' => (int)$t['article_count'],
-            'source_count'  => (int)$t['source_count'],
-            'has_timeline'  => true,
-            'generated_at'  => (string)$t['generated_at'],
-        ];
-    }
-    // 2) Pad with candidate clusters that don't yet have a timeline.
-    if (count($out) < 6) {
-        foreach (story_timeline_candidates(7, 4, 12) as $cand) {
-            $ck = (string)$cand['cluster_key'];
-            if ($ck === '' || isset($seen[$ck])) continue;
-            $seen[$ck] = true;
-            // Fetch one representative article to get a headline and image.
-            $db = getDB();
-            $stmt = $db->prepare("SELECT id, title, image_url, published_at
-                                    FROM articles
-                                   WHERE cluster_key = ? AND status='published'
-                                   ORDER BY published_at DESC LIMIT 1");
-            $stmt->execute([$ck]);
-            $rep = $stmt->fetch(PDO::FETCH_ASSOC);
-            if (!$rep) continue;
-            $out[] = [
-                'cluster_key'   => $ck,
-                'headline'      => (string)$rep['title'],
-                'intro'         => '',
-                'image_url'     => (string)($rep['image_url'] ?? ''),
-                'article_count' => (int)$cand['article_count'],
-                'source_count'  => (int)$cand['source_count'],
-                'has_timeline'  => false,
-                'generated_at'  => (string)$cand['last_seen'],
-            ];
-            if (count($out) >= 6) break;
-        }
-    }
-    return $out;
-});
 // Ticker pulls from the latest Palestine news stream so the "عاجل" strip
 // mirrors the Palestine section headlines.
 $tickerItems = array_slice($palestineNews, 0, 10);
@@ -230,6 +177,7 @@ $GLOBALS['__nf_saved_ids']       = [];
 $GLOBALS['__nf_reaction_counts'] = [];
 $GLOBALS['__nf_user_reactions']  = [];
 $GLOBALS['__nf_cluster_counts']  = [];
+$GLOBALS['__nf_timeline_keys']   = [];
 $__allIds = [];
 $__allClusterKeys = [];
 foreach ([$heroArticles, $personalFeed, $palestineNews, $breakingNews, $latestArticles,
@@ -252,6 +200,9 @@ if ($__allIds) {
 // clusters are dropped server-side so the badge stays meaningful.
 if ($__allClusterKeys) {
     $GLOBALS['__nf_cluster_counts'] = cluster_counts_for($__allClusterKeys);
+    // Second lookup: which of those clusters already have a stored
+    // smart timeline. Used by renderTimelineBadge on each card.
+    $GLOBALS['__nf_timeline_keys']  = story_timeline_keys_for($__allClusterKeys);
 }
 
 // جلب الريلز للعرض في الصفحة الرئيسية
@@ -285,7 +236,7 @@ $homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#1a5c5c">
 <link rel="stylesheet" href="assets/css/site-header.css?v=1">
-<link rel="stylesheet" href="assets/css/home.css?v=25">
+<link rel="stylesheet" href="assets/css/home.css?v=26">
 <link rel="stylesheet" href="assets/css/user.css?v=17">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 <script>
@@ -332,9 +283,6 @@ include __DIR__ . '/includes/components/site_header.php';
     <button type="button" class="sec-pill" data-sec="latest" onclick="scrollToHomeSection(this,'latest')"><span class="sec-pill-ico">⏱</span>آخر الأخبار</button>
     <button type="button" class="sec-pill" data-sec="palestine" onclick="scrollToHomeSection(this,'palestine')"><span class="sec-pill-ico">🇵🇸</span>فلسطين</button>
     <button type="button" class="sec-pill" data-sec="trending" onclick="scrollToHomeSection(this,'trending')"><span class="sec-pill-ico">🔥</span>الأكثر تداولاً</button>
-    <?php if (!empty($ongoingStories)): ?>
-    <button type="button" class="sec-pill" data-sec="stories" onclick="scrollToHomeSection(this,'stories')"><span class="sec-pill-ico">📅</span>قصص متطوّرة</button>
-    <?php endif; ?>
     <button type="button" class="sec-pill" data-sec="media" onclick="scrollToHomeSection(this,'media')"><span class="sec-pill-ico">🎥</span>ميديا</button>
     <button type="button" class="sec-pill" data-sec="reels" onclick="scrollToHomeSection(this,'reels')"><span class="sec-pill-ico">🎬</span>ريلز</button>
   </div>
@@ -402,50 +350,6 @@ include __DIR__ . '/includes/components/site_header.php';
 </div>
 <?php endif; ?>
 
-<?php if (!empty($ongoingStories)): ?>
-<!-- 📅 ONGOING STORIES — Smart timelines for stories still unfolding -->
-<div id="stories" class="stories-section">
-  <div class="stories-head">
-    <div class="stories-head-title">
-      <span class="stories-ico">📅</span>
-      <div>
-        <h2>قصص متطوّرة — خطوط زمنية ذكية</h2>
-        <p class="stories-sub">كيف تطوّرت أبرز القصص عبر الزمن — ملخّصات مُولَّدة بالذكاء الاصطناعي</p>
-      </div>
-    </div>
-  </div>
-  <div class="stories-grid">
-    <?php foreach ($ongoingStories as $st):
-      $stKey  = (string)$st['cluster_key'];
-      $stImg  = !empty($st['image_url']) ? $st['image_url'] : placeholderImage(400, 240);
-      $stHref = '/timeline/' . $stKey;
-    ?>
-      <a class="story-card" href="<?php echo e($stHref); ?>">
-        <div class="story-card-img" style="background-image:url('<?php echo e($stImg); ?>');">
-          <?php if (!empty($st['has_timeline'])): ?>
-            <span class="story-badge story-badge-live"><span class="live-dot"></span> خط زمني جاهز</span>
-          <?php else: ?>
-            <span class="story-badge">✨ جديد</span>
-          <?php endif; ?>
-          <span class="story-badge-count">📅 <?php echo (int)$st['article_count']; ?> تقرير</span>
-        </div>
-        <div class="story-card-body">
-          <h3 class="story-card-title"><?php echo e(mb_substr((string)$st['headline'], 0, 110)); ?></h3>
-          <?php if (!empty($st['intro'])): ?>
-            <p class="story-card-intro"><?php echo e(mb_substr((string)$st['intro'], 0, 140)); ?>…</p>
-          <?php endif; ?>
-          <div class="story-card-meta">
-            <span>🌐 <?php echo (int)$st['source_count']; ?> مصدر</span>
-            <span class="sep">·</span>
-            <span>↻ <?php echo e(timeAgo($st['generated_at'])); ?></span>
-          </div>
-        </div>
-      </a>
-    <?php endforeach; ?>
-  </div>
-</div>
-<?php endif; ?>
-
 <!-- LATEST NEWS (Featured 3-column layout) — full-width above main-layout -->
 <?php
 // Split: 1 center + 3 left + 3 right (7 items total), remainder spills into main news-grid
@@ -473,7 +377,7 @@ $__featRest  = array_slice($latestArticles, 7);
       <a class="nf-feature-main-link" href="<?php echo articleUrl($__featMain); ?>">
         <div class="nf-feature-main-img" style="background-image:url('<?php echo e($__featMain['image_url'] ?? placeholderImage(1200,800)); ?>');"></div>
         <div class="nf-feature-main-body">
-          <?php echo renderClusterBadge($__featMain); ?>
+          <?php echo renderClusterBadge($__featMain); if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($__featMain); ?>
           <h3 class="nf-feature-main-title"><?php echo e($__featMain['title']); ?></h3>
           <div class="nf-feature-main-meta">
             <?php if (!empty($__featMain['source_name'])): ?>
@@ -514,7 +418,7 @@ $__featRest  = array_slice($latestArticles, 7);
       <div class="ps-hero">
         <a class="ps-hero-link" href="<?php echo articleUrl($psFirst); ?>">
           <div class="ps-hero-text">
-            <?php echo renderClusterBadge($psFirst); ?>
+            <?php echo renderClusterBadge($psFirst); if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($psFirst); ?>
             <h3><?php echo e($psFirst['title']); ?></h3>
             <div class="ps-hero-excerpt"><?php echo e(mb_substr(strip_tags($psFirst['content'] ?? $psFirst['excerpt'] ?? ''), 0, 200)); ?></div>
             <div class="ps-hero-meta">
@@ -542,7 +446,7 @@ $__featRest  = array_slice($latestArticles, 7);
                 <div class="img-date"><?php echo timeAgo($article['published_at']); ?></div>
               </div>
               <div class="ps-card-body">
-                <?php echo renderClusterBadge($article); ?>
+                <?php echo renderClusterBadge($article); if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($article); ?>
                 <h3><?php echo e($article['title']); ?></h3>
                 <div class="ps-card-footer">
                   <span class="source-dot"><?php echo e(mb_substr($article['source_name'], 0, 1)); ?></span>
@@ -569,7 +473,7 @@ $__featRest  = array_slice($latestArticles, 7);
           </div>
           <div class="bn-body">
             <span class="bn-badge"><span class="bn-dot"></span>عاجل</span>
-            <?php echo renderClusterBadge($article); ?>
+            <?php echo renderClusterBadge($article); if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($article); ?>
             <div class="bn-title"><?php echo e($article['title']); ?></div>
             <div class="bn-meta">
               <span class="bn-source"><?php echo e($article['source_name']); ?></span>
@@ -630,7 +534,7 @@ $__featRest  = array_slice($latestArticles, 7);
             <div class="card-img"><img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
             <div class="card-body">
               <span class="card-cat cat-political">سياسة</span>
-              <?php echo renderClusterBadge($article); ?>
+              <?php echo renderClusterBadge($article); if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($article); ?>
               <div class="card-title"><?php echo e($article['title']); ?></div>
               <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
               <div class="card-meta">
@@ -656,7 +560,7 @@ $__featRest  = array_slice($latestArticles, 7);
             <div class="card-img"><img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
             <div class="card-body">
               <span class="card-cat cat-economic">اقتصاد</span>
-              <?php echo renderClusterBadge($article); ?>
+              <?php echo renderClusterBadge($article); if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($article); ?>
               <div class="card-title"><?php echo e($article['title']); ?></div>
               <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
               <div class="card-meta">
@@ -682,7 +586,7 @@ $__featRest  = array_slice($latestArticles, 7);
             <div class="card-img"><img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
             <div class="card-body">
               <span class="card-cat cat-sports">رياضة</span>
-              <?php echo renderClusterBadge($article); ?>
+              <?php echo renderClusterBadge($article); if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($article); ?>
               <div class="card-title"><?php echo e($article['title']); ?></div>
               <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
               <div class="card-meta">
@@ -708,7 +612,7 @@ $__featRest  = array_slice($latestArticles, 7);
             <div class="card-img"><img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
             <div class="card-body">
               <span class="card-cat cat-arts">فنون</span>
-              <?php echo renderClusterBadge($article); ?>
+              <?php echo renderClusterBadge($article); if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($article); ?>
               <div class="card-title"><?php echo e($article['title']); ?></div>
               <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
               <div class="card-meta">
@@ -752,7 +656,7 @@ $__featRest  = array_slice($latestArticles, 7);
             <div class="card-img"><img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
             <div class="card-body">
               <span class="card-cat cat-reports">تقرير</span>
-              <?php echo renderClusterBadge($article); ?>
+              <?php echo renderClusterBadge($article); if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($article); ?>
               <div class="card-title"><?php echo e($article['title']); ?></div>
               <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
               <div class="card-meta">

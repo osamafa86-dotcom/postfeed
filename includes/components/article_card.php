@@ -16,7 +16,15 @@ $__isSaved = !empty($GLOBALS['__nf_saved_ids']) && isset($GLOBALS['__nf_saved_id
   <div class="card-img"><img src="<?php echo e($imgUrl); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
   <div class="card-body">
     <span class="card-cat <?php echo e($catClass); ?>"><?php echo e($catLabel); ?></span>
-    <?php echo renderClusterBadge($article); ?>
+    <?php
+      // Two complementary badges:
+      //  • renderClusterBadge  → "📰 3 مصادر"   (same news, multiple sources)
+      //  • renderTimelineBadge → "📅 قصة متطوّرة" (part of an evolving story arc)
+      // Only the second appears when the page pre-populated the
+      // __nf_timeline_keys global, so most pages show nothing extra.
+      echo renderClusterBadge($article);
+      if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($article);
+    ?>
     <div class="card-title"><?php echo e($article['title'] ?? ''); ?></div>
     <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
     <div class="card-meta">
