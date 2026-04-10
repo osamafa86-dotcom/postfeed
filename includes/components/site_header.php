@@ -41,9 +41,15 @@ $nf_nav_link_class = function (string $type, string $slug = '') use ($activeType
     </a>
 
     <div class="header-center">
-      <div class="search-box">
+      <div class="search-box" id="nfSearchBox">
         <span class="search-icon">&#x1F50D;</span>
-        <input type="text" placeholder="ابحث عن خبر، مصدر، أو موضوع...">
+        <input type="text" id="nfSearchInput" placeholder="ابحث عن خبر، مصدر، أو موضوع..." autocomplete="off">
+        <kbd class="search-kbd">/</kbd>
+        <div class="search-dropdown" id="nfSearchDropdown">
+          <div class="search-dropdown-loading" id="nfSearchLoading">جاري البحث…</div>
+          <div class="search-dropdown-results" id="nfSearchResults"></div>
+          <a class="search-dropdown-all" id="nfSearchAllLink" href="#">عرض كل النتائج ←</a>
+        </div>
       </div>
     </div>
 

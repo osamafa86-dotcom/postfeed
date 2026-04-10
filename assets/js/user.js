@@ -382,10 +382,120 @@
     }
   };
 
+  // --------------- Smart Search (autocomplete) ---------------
+  NF.initSearch = () => {
+    const input = document.getElementById('nfSearchInput');
+    const dropdown = document.getElementById('nfSearchDropdown');
+    const results = document.getElementById('nfSearchResults');
+    const loading = document.getElementById('nfSearchLoading');
+    const allLink = document.getElementById('nfSearchAllLink');
+    if (!input || !dropdown) return;
+
+    let timer = null;
+    let activeIdx = -1;
+    let items = [];
+    let lastQ = '';
+
+    const close = () => { dropdown.classList.remove('open'); activeIdx = -1; };
+    const open = () => { dropdown.classList.add('open'); };
+
+    const highlight = (idx) => {
+      items.forEach((el, i) => el.classList.toggle('active', i === idx));
+      activeIdx = idx;
+    };
+
+    const doSearch = async (q) => {
+      if (q.length < 2) { close(); return; }
+      lastQ = q;
+      loading.classList.add('show');
+      results.innerHTML = '';
+      allLink.style.display = 'none';
+      open();
+      try {
+        const res = await fetch(NF.apiBase + 'search.php?q=' + encodeURIComponent(q));
+        const data = await res.json();
+        loading.classList.remove('show');
+        if (q !== lastQ) return; // stale
+        if (!data.success || !data.data.length) {
+          results.innerHTML = '<div class="search-dropdown-empty">لا توجد نتائج لـ "' + q.replace(/</g,'&lt;') + '"</div>';
+          allLink.style.display = 'none';
+          return;
+        }
+        results.innerHTML = data.data.slice(0, 7).map((a) => {
+          const img = a.image_url ? '<img src="' + a.image_url.replace(/"/g,'&quot;') + '" alt="" loading="lazy">' : '';
+          const cat = a.category && a.category.name ? '<span class="cat-dot" style="background:#1a73e8"></span>' + a.category.name : '';
+          const src = a.source || '';
+          return '<a class="search-dropdown-item" href="/' + a.url + '">'
+            + img
+            + '<div class="search-dropdown-item-body">'
+            + '<div class="search-dropdown-item-title">' + a.title.replace(/</g,'&lt;') + '</div>'
+            + '<div class="search-dropdown-item-meta">' + cat + (cat && src ? ' · ' : '') + src + '</div>'
+            + '</div></a>';
+        }).join('');
+        items = Array.from(results.querySelectorAll('.search-dropdown-item'));
+        activeIdx = -1;
+        allLink.href = '/search?q=' + encodeURIComponent(q);
+        allLink.style.display = data.count > 7 ? 'block' : 'none';
+      } catch (e) {
+        loading.classList.remove('show');
+        results.innerHTML = '<div class="search-dropdown-empty">خطأ في البحث</div>';
+      }
+    };
+
+    input.addEventListener('input', () => {
+      clearTimeout(timer);
+      const q = input.value.trim();
+      if (q.length < 2) { close(); return; }
+      timer = setTimeout(() => doSearch(q), 300);
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (!dropdown.classList.contains('open') || !items.length) {
+        if (e.key === 'Enter') {
+          const q = input.value.trim();
+          if (q.length >= 2) { window.location.href = '/search?q=' + encodeURIComponent(q); e.preventDefault(); }
+        }
+        return;
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        highlight(activeIdx < items.length - 1 ? activeIdx + 1 : 0);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        highlight(activeIdx > 0 ? activeIdx - 1 : items.length - 1);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (activeIdx >= 0 && items[activeIdx]) {
+          window.location.href = items[activeIdx].href;
+        } else {
+          const q = input.value.trim();
+          if (q.length >= 2) window.location.href = '/search?q=' + encodeURIComponent(q);
+        }
+      } else if (e.key === 'Escape') {
+        close();
+        input.blur();
+      }
+    });
+
+    // Close on click outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#nfSearchBox')) close();
+    });
+
+    // "/" shortcut to focus search
+    document.addEventListener('keydown', (e) => {
+      if (e.key === '/' && !e.ctrlKey && !e.metaKey && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) {
+        e.preventDefault();
+        input.focus();
+      }
+    });
+  };
+
   // --------------- Boot ---------------
   window.NF = NF;
   document.addEventListener('DOMContentLoaded', () => {
     NF.initReorder();
     NF.initThemeSelect();
+    NF.initSearch();
   });
 })();
