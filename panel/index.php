@@ -48,7 +48,7 @@ $thumbGrads = [
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>لوحة التحكم - نيوزفلو</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap');
 
   :root {
     --primary:       #4a7fcb;
