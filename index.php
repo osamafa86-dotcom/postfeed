@@ -283,7 +283,6 @@ include __DIR__ . '/includes/components/site_header.php';
     <button type="button" class="sec-pill" data-sec="latest" onclick="scrollToHomeSection(this,'latest')"><span class="sec-pill-ico">⏱</span>آخر الأخبار</button>
     <button type="button" class="sec-pill" data-sec="palestine" onclick="scrollToHomeSection(this,'palestine')"><span class="sec-pill-ico">🇵🇸</span>فلسطين</button>
     <button type="button" class="sec-pill" data-sec="trending" onclick="scrollToHomeSection(this,'trending')"><span class="sec-pill-ico">🔥</span>الأكثر تداولاً</button>
-    <button type="button" class="sec-pill" data-sec="media" onclick="scrollToHomeSection(this,'media')"><span class="sec-pill-ico">🎥</span>ميديا</button>
     <button type="button" class="sec-pill" data-sec="reels" onclick="scrollToHomeSection(this,'reels')"><span class="sec-pill-ico">🎬</span>ريلز</button>
   </div>
 </div>
@@ -623,24 +622,6 @@ $__featRest  = array_slice($latestArticles, 7);
           </a>
           <?php include __DIR__ . '/includes/components/action_bar.php'; ?>
         </div>
-      <?php endforeach; ?>
-    </div>
-
-    <!-- MEDIA SECTION (Video reels style) -->
-    <div id="media" class="section-header">
-      <div class="section-title"><div class="line" style="background:#1a73e8"></div>🎥 الأخبار بالفيديو</div>
-      <a class="see-all" href="category/media">عرض الكل ›</a>
-    </div>
-    <div class="video-reels">
-      <?php foreach ($mediaItems as $i => $media): ?>
-        <a class="vreel" href="<?php echo articleUrl($media); ?>">
-          <div class="vreel-thumb">
-            <img src="<?php echo e($media['image_url'] ?? placeholderImage(400,600)); ?>" alt="<?php echo e($media['title'] ?? ''); ?>" loading="lazy" decoding="async">
-            <div class="vreel-play">▶</div>
-          </div>
-          <div class="vreel-title"><?php echo e($media['title']); ?></div>
-          <div class="vreel-meta">▶ 1 دق</div>
-        </a>
       <?php endforeach; ?>
     </div>
 

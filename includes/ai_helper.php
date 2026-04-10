@@ -298,6 +298,180 @@ function ai_summarize_telegram(array $messages, int $maxTokens = 3500): array {
 }
 
 /**
+ * Comprehensive daily news summary — called once at noon.
+ *
+ * Uses the same tool-use approach as ai_summarize_telegram() but with
+ * a wider message window (24 h), a richer editorial prompt, and more
+ * sections (up to 8). The output is saved to the same
+ * telegram_summaries table so the UI picks it up transparently.
+ */
+function ai_summarize_telegram_daily(array $messages, int $maxTokens = 5000): array {
+    $apiKey = trim((string)getSetting('anthropic_api_key', ''));
+    if ($apiKey === '') $apiKey = trim((string)env('ANTHROPIC_API_KEY', ''));
+    if ($apiKey === '') {
+        return ['ok' => false, 'error' => 'مفتاح Anthropic API غير مُعدّ.'];
+    }
+    if (!$messages) {
+        return ['ok' => false, 'error' => 'لا توجد رسائل للتلخيص'];
+    }
+
+    $lines  = [];
+    $budget = 60000;
+    $used   = 0;
+    foreach ($messages as $m) {
+        $text = trim((string)($m['text'] ?? ''));
+        if ($text === '') continue;
+        $text = preg_replace('/\s+/u', ' ', $text);
+        if (mb_strlen($text) > 400) $text = mb_substr($text, 0, 400) . '…';
+        $handle = '@' . ($m['username'] ?? 'tg');
+        $when   = !empty($m['posted_at']) ? date('H:i', strtotime($m['posted_at'])) : '';
+        $line   = '- [' . $handle . ' ' . $when . '] ' . $text;
+        $len    = mb_strlen($line);
+        if ($used + $len > $budget) break;
+        $lines[] = $line;
+        $used += $len + 1;
+    }
+    if (!$lines) {
+        return ['ok' => false, 'error' => 'لا توجد رسائل نصية كافية للتلخيص'];
+    }
+
+    $corpus = implode("\n", $lines);
+    $count  = count($lines);
+
+    $prompt = "أنت رئيس تحرير كبير في غرفة أخبار عربية مرموقة. لديك قائمة بآخر {$count} رسالة وصلت "
+            . "من قنوات تيليغرام إخبارية خلال الـ 24 ساعة الماضية. مهمتك: إعداد ملخص شامل لأخبار اليوم "
+            . "بأسلوب نشرة الأخبار الرئيسية، كأنه التقرير اليومي الختامي الذي يُبث في الساعة 12 ظهراً.\n\n"
+            . "قواعد التحرير:\n"
+            . "- هذا ملخص شامل لليوم كاملاً، وليس تحديثاً سريعاً. اعطه عمقاً وسياقاً أكبر.\n"
+            . "- اجمع الرسائل المتعلقة بنفس الحدث في عنصر واحد مع إبراز تطوّره عبر اليوم.\n"
+            . "- تجاهل الإعلانات والرسائل غير الإخبارية وروابط الاشتراك.\n"
+            . "- نظّم المحتوى في محاور رئيسية (بين 4 و 8 محاور)، مرتبة من الأهم إلى الأقل أهمية.\n"
+            . "- استخدم لغة عربية فصحى، محايدة، بنبرة صحفية رسمية.\n"
+            . "- كل تفصيلة إخبارية يجب أن تكون جملة كاملة وواضحة.\n"
+            . "- أضف سياقاً حيث أمكن: لماذا هذا الخبر مهم؟ ما تداعياته المحتملة؟\n"
+            . "- لا تخترع أي معلومة غير موجودة في الرسائل.\n"
+            . "- كل محور يحتوي على 3 إلى 6 تفاصيل إخبارية.\n"
+            . "- استخدم رمز emoji واحد فقط لكل محور.\n"
+            . "- العنوان الرئيسي يعكس أبرز حدث في اليوم بأسلوب صحفي جذاب.\n"
+            . "- الفقرة الافتتاحية (summary) يجب أن تكون 5-8 جمل تعطي صورة شاملة عن مجريات اليوم.\n\n"
+            . "الرسائل:\n" . $corpus;
+
+    $tool = [
+        'name'        => 'submit_news_briefing',
+        'description' => 'Submit a comprehensive daily Arabic news summary.',
+        'input_schema' => [
+            'type'     => 'object',
+            'properties' => [
+                'headline' => [
+                    'type'        => 'string',
+                    'description' => 'عنوان رئيسي قوي يلخّص أبرز حدث في اليوم (أقل من 90 حرفاً).',
+                ],
+                'summary' => [
+                    'type'        => 'string',
+                    'description' => 'فقرة افتتاحية شاملة من 5-8 جمل تعطي المشهد العام لأخبار اليوم.',
+                ],
+                'sections' => [
+                    'type'        => 'array',
+                    'description' => 'المحاور الإخبارية، بين 4 و 8 محاور.',
+                    'items' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'title' => ['type' => 'string', 'description' => 'عنوان المحور.'],
+                            'icon'  => ['type' => 'string', 'description' => 'رمز emoji واحد فقط.'],
+                            'items' => [
+                                'type'  => 'array',
+                                'description' => 'بين 3 و 6 تفاصيل إخبارية كاملة.',
+                                'items' => ['type' => 'string'],
+                            ],
+                        ],
+                        'required' => ['title', 'items'],
+                    ],
+                ],
+                'topics' => [
+                    'type'  => 'array',
+                    'description' => 'وسوم قصيرة للمواضيع البارزة، 4-8 وسوم.',
+                    'items' => ['type' => 'string'],
+                ],
+            ],
+            'required' => ['headline', 'summary', 'sections', 'topics'],
+        ],
+    ];
+
+    $body = json_encode([
+        'model'       => 'claude-haiku-4-5-20251001',
+        'max_tokens'  => $maxTokens,
+        'tools'       => [$tool],
+        'tool_choice' => ['type' => 'tool', 'name' => 'submit_news_briefing'],
+        'messages'    => [['role' => 'user', 'content' => $prompt]],
+    ], JSON_UNESCAPED_UNICODE);
+
+    $ch = curl_init('https://api.anthropic.com/v1/messages');
+    curl_setopt_array($ch, [
+        CURLOPT_POST            => true,
+        CURLOPT_POSTFIELDS      => $body,
+        CURLOPT_RETURNTRANSFER  => true,
+        CURLOPT_TIMEOUT         => 90,
+        CURLOPT_HTTPHEADER      => [
+            'Content-Type: application/json',
+            'x-api-key: ' . $apiKey,
+            'anthropic-version: 2023-06-01',
+        ],
+    ]);
+    $resp = curl_exec($ch);
+    $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err  = curl_error($ch);
+    curl_close($ch);
+
+    if ($http !== 200) {
+        if ($http === 429) return ['ok' => false, 'error' => 'تم تجاوز حد الطلبات حالياً.'];
+        if ($http === 0 || $http >= 500) return ['ok' => false, 'error' => 'تعذّر الاتصال بخدمة الملخصات.'];
+        return ['ok' => false, 'error' => "HTTP $http: " . ($err ?: mb_substr((string)$resp, 0, 200))];
+    }
+
+    $data = json_decode($resp, true);
+    if (!is_array($data)) return ['ok' => false, 'error' => 'تعذّر قراءة رد خدمة الملخصات.'];
+
+    $parsed = null;
+    foreach ((array)($data['content'] ?? []) as $block) {
+        if (!is_array($block)) continue;
+        if (($block['type'] ?? '') === 'tool_use'
+            && ($block['name'] ?? '') === 'submit_news_briefing'
+            && is_array($block['input'] ?? null)) {
+            $parsed = $block['input'];
+            break;
+        }
+    }
+
+    if (!is_array($parsed) || empty($parsed['summary'])) {
+        $stopReason = (string)($data['stop_reason'] ?? '');
+        if ($stopReason === 'max_tokens') return ['ok' => false, 'error' => 'الرد طويل جداً ولم يكتمل.'];
+        return ['ok' => false, 'error' => 'تعذّر توليد الملخص اليومي.'];
+    }
+
+    $sections = [];
+    foreach ((array)($parsed['sections'] ?? []) as $sec) {
+        if (!is_array($sec)) continue;
+        $title = trim((string)($sec['title'] ?? ''));
+        $icon  = trim((string)($sec['icon']  ?? ''));
+        $items = array_values(array_filter(array_map(
+            function($v) { return trim((string)$v); },
+            (array)($sec['items'] ?? [])
+        )));
+        if (!$items) continue;
+        $sections[] = ['title' => $title, 'icon' => $icon, 'items' => $items];
+    }
+
+    return [
+        'ok'       => true,
+        'headline' => (string)($parsed['headline'] ?? ''),
+        'summary'  => (string)$parsed['summary'],
+        'sections' => $sections,
+        'bullets'  => [],
+        'topics'   => array_values(array_filter(array_map('strval', (array)($parsed['topics'] ?? [])))),
+    ];
+}
+
+/**
  * Persistent store for generated Telegram news briefings.
  *
  * The live summary card on /telegram.php used to call Claude on every
