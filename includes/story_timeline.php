@@ -217,6 +217,13 @@ function story_timeline_is_stale(array $stored, int $currentArticleCount): bool 
     $ent = $stored['entities'] ?? [];
     $hasEntities = !empty($ent['people']) || !empty($ent['places']) || !empty($ent['organizations']);
     if (!$hasEntities) return true;
+    // Schema upgrade: rows from before Tier 2 shipped have no severity
+    // field on their events. Look at the first event — if it lacks
+    // severity, the row was generated before Tier 2 and we regenerate.
+    $events = $stored['events'] ?? [];
+    if (is_array($events) && !empty($events) && empty($events[0]['severity'])) {
+        return true;
+    }
     return false;
 }
 
@@ -290,6 +297,21 @@ function story_timeline_generate(array $articles): array {
             . "- استخدم لغة عربية فصحى محايدة، لا تستعمل صيغاً متحيزة.\n"
             . "- لا تخترع معلومات غير موجودة في التقارير؛ التزم بما ورد حرفياً.\n"
             . "- اختر 3-6 وسوم (topics) قصيرة تُمثّل القصة بدون رمز #.\n\n"
+            . "ديناميكية القصة (severity / trajectory / whats_new) — مهم جداً:\n"
+            . "- severity: صنّف أهمية كل حدث ضمن أربع درجات بدقة:\n"
+            . "    breaking = حدث عاجل/تحوّل كبير وجوهري في القصة (بداية حرب، اغتيال، قرار تاريخي…).\n"
+            . "    major    = تطور مهم لكن ليس انقلاباً جذرياً (قرار رسمي، جولة مفاوضات حاسمة…).\n"
+            . "    update   = تحديث رقمي/إضافة على ما سبق (ارتفاع حصيلة، تصريح ثانوي…).\n"
+            . "    context  = حدث سياقي/خلفية تاريخية لفهم القصة وليس تطوراً جديداً.\n"
+            . "- trajectory: من الحدث الثاني فصاعداً، حدّد اتجاه القصة مقارنة بالحدث السابق:\n"
+            . "    escalation    = تصعيد، الأمور تتجه نحو الأسوأ.\n"
+            . "    de-escalation = تهدئة، انفراج، خطوة نحو الحل.\n"
+            . "    steady        = استمرار على نفس الوتيرة دون تغيّر يُذكر.\n"
+            . "    shift         = تحوّل نوعي في طبيعة القصة (فاعل جديد، ساحة جديدة، أولوية مختلفة).\n"
+            . "    اترك الحقل فارغاً للحدث الأول فقط.\n"
+            . "- whats_new: من الحدث الثاني فصاعداً، اكتب جملة قصيرة جداً (أقل من 80 حرفاً) تُلخّص ما الجديد في هذا الحدث "
+            . "مقارنة بالحدث السابق مباشرة، تبدأ غالباً بفعل ('أعلنت'، 'ارتفعت'، 'انضمت'…). اترك الحقل فارغاً للحدث الأول، "
+            . "ولا تكرّر العنوان نفسه.\n\n"
             . "استخراج الكيانات (entities) — مهم جداً:\n"
             . "- people: قائمة الأشخاص المحوريين في القصة (رؤساء، وزراء، قادة، ضحايا بارزين…). "
             . "لكل شخص اسمه الكامل كما ورد في التقارير، ودوره/منصبه باختصار شديد (مثل \"رئيس الوزراء الإسرائيلي\").\n"
@@ -348,8 +370,22 @@ function story_timeline_generate(array $articles): array {
                                     'speaker' => ['type' => 'string', 'description' => 'اسم قائل الاقتباس ومنصبه إن وُجد.'],
                                 ],
                             ],
+                            'severity' => [
+                                'type'        => 'string',
+                                'enum'        => ['breaking', 'major', 'update', 'context'],
+                                'description' => 'درجة أهمية الحدث في سياق القصة.',
+                            ],
+                            'trajectory' => [
+                                'type'        => 'string',
+                                'enum'        => ['escalation', 'de-escalation', 'steady', 'shift', ''],
+                                'description' => 'اتجاه تطور القصة مقارنة بالحدث السابق. اتركه فارغاً للحدث الأول.',
+                            ],
+                            'whats_new' => [
+                                'type'        => 'string',
+                                'description' => 'جملة واحدة قصيرة تُلخّص ما الجديد مقارنة بالحدث السابق (< 80 حرفاً). اتركها فارغة للحدث الأول.',
+                            ],
                         ],
-                        'required' => ['date', 'title', 'summary'],
+                        'required' => ['date', 'title', 'summary', 'severity'],
                     ],
                 ],
                 'entities' => [
@@ -467,6 +503,8 @@ function story_timeline_generate(array $articles): array {
 
     // Normalize events and resolve source labels (A1…) to article ids
     // so the frontend can render links directly without another query.
+    $allowedSeverity   = ['breaking', 'major', 'update', 'context'];
+    $allowedTrajectory = ['escalation', 'de-escalation', 'steady', 'shift'];
     $events = [];
     foreach ((array)$parsed['events'] as $ev) {
         if (!is_array($ev)) continue;
@@ -492,6 +530,26 @@ function story_timeline_generate(array $articles): array {
             }
         }
 
+        // Tier 2 — severity / trajectory / whats_new. Severity defaults
+        // to 'update' (the most neutral bucket) when Claude returns
+        // something unexpected so the UI never shows a missing badge.
+        $severity = strtolower(trim((string)($ev['severity'] ?? '')));
+        if (!in_array($severity, $allowedSeverity, true)) {
+            $severity = 'update';
+        }
+        $trajectory = strtolower(trim((string)($ev['trajectory'] ?? '')));
+        if (!in_array($trajectory, $allowedTrajectory, true)) {
+            $trajectory = '';
+        }
+        $whatsNew = trim((string)($ev['whats_new'] ?? ''));
+        // Drop "diff" copy that just echoes the title — adds no value.
+        if ($whatsNew !== '' && mb_stripos($whatsNew, $title) !== false) {
+            $whatsNew = '';
+        }
+        if (mb_strlen($whatsNew) > 140) {
+            $whatsNew = mb_substr($whatsNew, 0, 138) . '…';
+        }
+
         $events[] = [
             'date'        => trim((string)($ev['date']  ?? '')),
             'icon'        => trim((string)($ev['icon']  ?? '')),
@@ -499,8 +557,19 @@ function story_timeline_generate(array $articles): array {
             'summary'     => $summary,
             'source_ids'  => array_values(array_unique($sourceIds)),
             'quote'       => $quote,
+            'severity'    => $severity,
+            'trajectory'  => $trajectory,
+            'whats_new'   => $whatsNew,
             'entity_refs' => [], // filled in by post-processing below
         ];
+    }
+
+    // The very first event should never carry a trajectory or
+    // whats_new (nothing came before it). Force-clear in case Claude
+    // ignored the prompt.
+    if (!empty($events)) {
+        $events[0]['trajectory'] = '';
+        $events[0]['whats_new']  = '';
     }
 
     if (!$events) {
