@@ -999,7 +999,7 @@ if ($article['cat_slug']) {
             .source-cta { flex-direction: column; text-align: center; padding: 18px; }
         }
     </style>
-    <link rel="stylesheet" href="assets/css/user.css?v=17">
+    <link rel="stylesheet" href="assets/css/user.min.css?v=m1">
     <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>
@@ -1323,7 +1323,7 @@ if ($article['cat_slug']) {
         </div>
     </footer>
     <div class="nf-toast" id="nfToast"></div>
-    <script src="assets/js/user.js?v=4"></script>
+    <script src="assets/js/user.min.js?v=m1"></script>
     <script>
     (function(){
         // ====== Reading progress bar ======

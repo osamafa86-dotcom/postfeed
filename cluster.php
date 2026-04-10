@@ -240,8 +240,8 @@ $pageUrl = SITE_URL . '/cluster/' . $key;
     .cluster-hero { padding:22px 18px; }
   }
 </style>
-<link rel="stylesheet" href="assets/css/site-header.css?v=1">
-<link rel="stylesheet" href="assets/css/user.css?v=17">
+<link rel="stylesheet" href="assets/css/site-header.min.css?v=m1">
+<link rel="stylesheet" href="assets/css/user.min.css?v=m1">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>
@@ -346,6 +346,6 @@ include __DIR__ . '/includes/components/site_header.php';
 
 </div>
 
-<script src="assets/js/user.js?v=17" defer></script>
+<script src="assets/js/user.min.js?v=m1" defer></script>
 </body>
 </html>

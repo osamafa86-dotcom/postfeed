@@ -46,9 +46,9 @@ $metaDesc = 'الأكثر تداولاً الآن على نيوزفلو — أع
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap"></noscript>
-<link rel="stylesheet" href="assets/css/site-header.css?v=1">
-<link rel="stylesheet" href="assets/css/home.css?v=19">
-<link rel="stylesheet" href="assets/css/user.css?v=17">
+<link rel="stylesheet" href="assets/css/site-header.min.css?v=m1">
+<link rel="stylesheet" href="assets/css/home.min.css?v=m1">
+<link rel="stylesheet" href="assets/css/user.min.css?v=m1">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>
@@ -132,6 +132,6 @@ include __DIR__ . '/includes/components/site_header.php';
 </footer>
 
 <div class="nf-toast" id="nfToast"></div>
-<script src="assets/js/user.js?v=4" defer></script>
+<script src="assets/js/user.min.js?v=m1" defer></script>
 </body>
 </html>

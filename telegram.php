@@ -92,8 +92,8 @@ function tg_page_url(int $p): string {
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap"></noscript>
-<link rel="stylesheet" href="assets/css/site-header.css?v=1">
-<link rel="stylesheet" href="assets/css/user.css?v=17">
+<link rel="stylesheet" href="assets/css/site-header.min.css?v=m1">
+<link rel="stylesheet" href="assets/css/user.min.css?v=m1">
 <style>
   :root {
     --bg: #faf6ec;
@@ -680,7 +680,7 @@ include __DIR__ . '/includes/components/site_header.php';
   <div class="footer-copy">&copy; <?php echo date('Y'); ?> <?php echo e(getSetting('site_name', SITE_NAME)); ?></div>
 </footer>
 
-<script src="assets/js/telegram-live.js?v=2" defer></script>
+<script src="assets/js/telegram-live.min.js?v=m1" defer></script>
 <script>
 /**
  * News briefing panel on /telegram.php.

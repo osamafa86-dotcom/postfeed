@@ -235,9 +235,10 @@ $homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
 <link rel="alternate" type="application/rss+xml" title="<?php echo e(getSetting('site_name', SITE_NAME)); ?> RSS" href="/rss.xml">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#1a5c5c">
-<link rel="stylesheet" href="assets/css/site-header.css?v=1">
-<link rel="stylesheet" href="assets/css/home.css?v=26">
-<link rel="stylesheet" href="assets/css/user.css?v=17">
+<style><?php readfile(__DIR__ . '/assets/css/site-header.min.css'); ?></style>
+<link rel="preload" as="style" href="assets/css/home.min.css?v=m1" onload="this.onload=null;this.rel='stylesheet'">
+<link rel="preload" as="style" href="assets/css/user.min.css?v=m1" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="assets/css/home.min.css?v=m1"><link rel="stylesheet" href="assets/css/user.min.css?v=m1"></noscript>
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 <script>
 // Register the service worker for the PWA shell. Wrapped in a load
@@ -1210,9 +1211,9 @@ $__featRest  = array_slice($latestArticles, 7);
 </div>
 
 <div class="nf-toast" id="nfToast"></div>
-<script src="assets/js/home.js?v=5" defer></script>
-<script src="assets/js/user.js?v=4" defer></script>
-<script src="assets/js/telegram-live.js?v=2" defer></script>
+<script src="assets/js/home.min.js?v=m1" defer></script>
+<script src="assets/js/user.min.js?v=m1" defer></script>
+<script src="assets/js/telegram-live.min.js?v=m1" defer></script>
 <script>
 // Footer newsletter signup — simple fetch + status feedback.
 function nfSubscribeNewsletter(e) {
