@@ -52,20 +52,85 @@ $comments = article_comments($articleId, $viewerId ?: null);
 $commentsCount = count($comments);
 $pageTheme = current_theme();
 
-// Get related articles (same category)
+// Get related articles — 3-tier: same cluster → keyword match → same category
 $relatedArticles = [];
-if ($article['cat_slug']) {
-    $db = getDB();
-    $stmt = $db->prepare("SELECT a.id, a.title, a.image_url, a.excerpt, a.published_at,
-                          c.name as cat_name, c.slug as cat_slug, c.css_class,
-                          s.name as source_name
-                          FROM articles a
-                          LEFT JOIN categories c ON a.category_id = c.id
-                          LEFT JOIN sources s ON a.source_id = s.id
-                          WHERE c.slug = ? AND a.id != ? AND a.status = 'published'
-                          ORDER BY a.published_at DESC LIMIT 4");
-    $stmt->execute([$article['cat_slug'], $articleId]);
-    $relatedArticles = $stmt->fetchAll();
+$seenIds = [$articleId => true];
+$relatedLimit = 6;
+$db = getDB();
+
+// Tier 1: same cluster (most relevant — same story, different sources)
+$__ck = (string)($article['cluster_key'] ?? '');
+if ($__ck !== '' && $__ck !== '-' && count($relatedArticles) < $relatedLimit) {
+    try {
+        $stmt = $db->prepare("SELECT a.id, a.title, a.slug, a.image_url, a.excerpt, a.published_at,
+                              c.name as cat_name, c.slug as cat_slug, c.css_class,
+                              s.name as source_name
+                              FROM articles a
+                              LEFT JOIN categories c ON a.category_id = c.id
+                              LEFT JOIN sources s ON a.source_id = s.id
+                              WHERE a.cluster_key = ? AND a.id != ? AND a.status = 'published'
+                              ORDER BY a.published_at DESC LIMIT ?");
+        $stmt->execute([$__ck, $articleId, $relatedLimit]);
+        foreach ($stmt->fetchAll() as $r) {
+            if (isset($seenIds[(int)$r['id']])) continue;
+            $seenIds[(int)$r['id']] = true;
+            $relatedArticles[] = $r;
+        }
+    } catch (Throwable $e) {}
+}
+
+// Tier 2: keyword match (articles sharing AI-extracted keywords)
+$__kwList = !empty($article['ai_keywords'])
+    ? array_filter(array_map('trim', explode(',', (string)$article['ai_keywords'])), fn($s) => $s !== '')
+    : [];
+if (!empty($__kwList) && count($relatedArticles) < $relatedLimit) {
+    try {
+        $kwConditions = [];
+        $kwParams = [];
+        foreach (array_slice($__kwList, 0, 4) as $kw) {
+            $kwConditions[] = "a.ai_keywords LIKE ?";
+            $kwParams[] = '%' . $kw . '%';
+        }
+        $kwWhere = '(' . implode(' OR ', $kwConditions) . ')';
+        $excludeIds = implode(',', array_map('intval', array_keys($seenIds)));
+        $need = $relatedLimit - count($relatedArticles);
+        $stmt = $db->prepare("SELECT a.id, a.title, a.slug, a.image_url, a.excerpt, a.published_at,
+                              c.name as cat_name, c.slug as cat_slug, c.css_class,
+                              s.name as source_name
+                              FROM articles a
+                              LEFT JOIN categories c ON a.category_id = c.id
+                              LEFT JOIN sources s ON a.source_id = s.id
+                              WHERE {$kwWhere} AND a.id NOT IN ({$excludeIds}) AND a.status = 'published'
+                              ORDER BY a.published_at DESC LIMIT {$need}");
+        $stmt->execute($kwParams);
+        foreach ($stmt->fetchAll() as $r) {
+            if (isset($seenIds[(int)$r['id']])) continue;
+            $seenIds[(int)$r['id']] = true;
+            $relatedArticles[] = $r;
+        }
+    } catch (Throwable $e) {}
+}
+
+// Tier 3: same category fallback
+if (!empty($article['cat_slug']) && count($relatedArticles) < $relatedLimit) {
+    try {
+        $excludeIds = implode(',', array_map('intval', array_keys($seenIds)));
+        $need = $relatedLimit - count($relatedArticles);
+        $stmt = $db->prepare("SELECT a.id, a.title, a.slug, a.image_url, a.excerpt, a.published_at,
+                              c.name as cat_name, c.slug as cat_slug, c.css_class,
+                              s.name as source_name
+                              FROM articles a
+                              LEFT JOIN categories c ON a.category_id = c.id
+                              LEFT JOIN sources s ON a.source_id = s.id
+                              WHERE c.slug = ? AND a.id NOT IN ({$excludeIds}) AND a.status = 'published'
+                              ORDER BY a.published_at DESC LIMIT {$need}");
+        $stmt->execute([$article['cat_slug']]);
+        foreach ($stmt->fetchAll() as $r) {
+            if (isset($seenIds[(int)$r['id']])) continue;
+            $seenIds[(int)$r['id']] = true;
+            $relatedArticles[] = $r;
+        }
+    } catch (Throwable $e) {}
 }
 
 ?>
@@ -161,6 +226,7 @@ if ($article['cat_slug']) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap"></noscript>
+    <link rel="stylesheet" href="assets/css/site-header.min.css?v=m1">
     <style>
         :root {
             --primary: #1a73e8;
@@ -192,56 +258,10 @@ if ($article['cat_slug']) {
 
         a { text-decoration: none; color: inherit; }
 
-        .header {
-            background: var(--dark);
-            padding: 0;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            height: 64px;
-            display: flex;
-            align-items: center;
-        }
-
         .container {
             max-width: 820px;
             margin: 0 auto;
             padding: 0 1.25rem;
-        }
-
-        .header .container {
-            max-width: 1200px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 100%;
-        }
-
-        .logo {
-            font-size: 1.5rem;
-            font-weight: 900;
-            color: #fff;
-            text-decoration: none;
-        }
-        .logo span { color: #60a5fa; }
-
-        .back-btn {
-            color: rgba(255,255,255,.6);
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            transition: all 0.2s;
-            font-weight: 500;
-            font-size: 0.9rem;
-        }
-
-        .back-btn:hover {
-            background: rgba(255,255,255,.08);
-            color: #fff;
         }
 
         .article-hero {
@@ -394,61 +414,6 @@ if ($article['cat_slug']) {
             border-color: var(--primary);
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(26,115,232,.3);
-        }
-
-        .related-articles { margin: 3rem 0; }
-        .related-articles h2 { font-size: 1.5rem; margin-bottom: 1.5rem; color: var(--dark); font-weight: 800; }
-
-        .articles-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1.25rem;
-        }
-
-        .article-card {
-            background: var(--card);
-            border-radius: 12px;
-            overflow: hidden;
-            transition: all 0.3s;
-            text-decoration: none;
-            color: inherit;
-            display: flex;
-            flex-direction: column;
-            border: 1px solid var(--border);
-            box-shadow: 0 1px 3px rgba(0,0,0,.04);
-        }
-
-        .article-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            border-color: rgba(26,115,232,.2);
-        }
-
-        .article-card-image {
-            width: 100%;
-            height: 160px;
-            object-fit: cover;
-            background: #e5e7eb;
-        }
-
-        .article-card-body {
-            padding: 1.1rem;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .article-card-title {
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            font-size: 0.95rem;
-            line-height: 1.5;
-        }
-
-        .article-card-meta {
-            font-size: 0.8rem;
-            color: var(--gray);
-            font-weight: 500;
         }
 
         .footer {
@@ -974,7 +939,7 @@ if ($article['cat_slug']) {
         @media print {
             .header, .footer, .article-toolbar, .tts-player, .source-cta,
             .source-top-visit, .article-save-btn, .share-btn, .sharing,
-            .comments-wrap, .related-articles, .read-progress { display: none !important; }
+            .comments-wrap, .related-section, .read-progress, .sticky-share, .breadcrumb { display: none !important; }
             body { background: #fff !important; color: #000 !important; }
             .article-content, .article-header, .source-top, .ai-summary-card {
                 border: none !important; box-shadow: none !important; background: #fff !important;
@@ -982,11 +947,144 @@ if ($article['cat_slug']) {
             .article-hero { max-height: 300px; }
         }
 
+        /* === Breadcrumb === */
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 0 0;
+            font-size: .82rem;
+            color: var(--gray);
+            font-weight: 500;
+            flex-wrap: wrap;
+        }
+        .breadcrumb a {
+            color: var(--gray);
+            transition: color .2s;
+        }
+        .breadcrumb a:hover { color: var(--primary); }
+        .breadcrumb .sep { opacity: .4; font-size: .7rem; }
+        .breadcrumb .current { color: var(--dark); font-weight: 700; }
+
+        /* === Sticky floating share bar (desktop) === */
+        .sticky-share {
+            position: fixed;
+            top: 50%;
+            left: 24px;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 50;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .3s;
+        }
+        .sticky-share.visible { opacity: 1; pointer-events: auto; }
+        .sticky-share a, .sticky-share button {
+            width: 42px; height: 42px;
+            border-radius: 50%;
+            background: var(--card);
+            border: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem; color: var(--gray);
+            cursor: pointer; transition: all .25s;
+            text-decoration: none;
+            font-family: inherit;
+            box-shadow: 0 2px 8px rgba(0,0,0,.06);
+        }
+        .sticky-share a:hover, .sticky-share button:hover {
+            background: var(--primary); color: #fff;
+            border-color: var(--primary);
+            transform: scale(1.1);
+            box-shadow: 0 4px 16px rgba(26,115,232,.3);
+        }
+        .sticky-share .ss-divider {
+            width: 24px; height: 1px;
+            background: var(--border); margin: 2px auto;
+        }
+
+        /* === Related articles — 3 col grid, modern cards === */
+        .related-section {
+            margin: 3rem 0;
+            padding-top: 2rem;
+            border-top: 2px solid var(--border);
+        }
+        .related-section h2 {
+            font-size: 1.4rem;
+            font-weight: 900;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .related-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.25rem;
+        }
+        .rel-card {
+            background: var(--card);
+            border-radius: 14px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            transition: all .3s;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 1px 3px rgba(0,0,0,.04);
+        }
+        .rel-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 30px rgba(0,0,0,.1);
+            border-color: rgba(26,115,232,.2);
+        }
+        .rel-card-img {
+            width: 100%; height: 150px;
+            object-fit: cover; background: #e5e7eb;
+        }
+        .rel-card-body {
+            padding: 14px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .rel-card-cat {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: .7rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 8px;
+            width: fit-content;
+        }
+        .rel-card-title {
+            font-weight: 700;
+            font-size: .92rem;
+            line-height: 1.55;
+            margin-bottom: 8px;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .rel-card-meta {
+            font-size: .75rem;
+            color: var(--gray);
+            font-weight: 500;
+            margin-top: auto;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .rel-card-meta .dot { width:3px; height:3px; border-radius:50%; background:var(--gray); opacity:.4; }
+
         @media (max-width: 768px) {
             h1 { font-size: 1.6rem; }
             .article-content { padding: 1.25rem; font-size: 1rem; }
             .article-hero { height: 250px; border-radius: 12px; }
-            .articles-grid { grid-template-columns: 1fr; }
             .article-footer { padding: 1.5rem; }
             .source-top { flex-wrap: wrap; padding: 10px 12px; gap: 10px; }
             .source-top-info { flex-basis: calc(100% - 54px); }
@@ -997,6 +1095,11 @@ if ($article['cat_slug']) {
             .tool-spacer { display: none; }
             .ai-summary-card { padding: 18px; }
             .source-cta { flex-direction: column; text-align: center; padding: 18px; }
+            .sticky-share { display: none; }
+            .related-grid { grid-template-columns: 1fr; }
+        }
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .related-grid { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
     <link rel="stylesheet" href="assets/css/user.min.css?v=m1">
@@ -1007,12 +1110,22 @@ if ($article['cat_slug']) {
     <div class="read-progress" aria-hidden="true"><div class="read-progress-bar" id="readProgressBar"></div></div>
 
     <!-- Header -->
-    <header class="header">
-        <div class="container">
-            <a href="/" class="logo">نيوز<span>فلو</span></a>
-            <a href="/" class="back-btn">&larr; العودة للرئيسية</a>
-        </div>
-    </header>
+    <?php
+    $activeType = '';
+    $activeSlug = $article['cat_slug'] ?? '';
+    $showTicker = false;
+    $userUnread = $viewerId ? user_unread_notifications_count($viewerId) : 0;
+    include __DIR__ . '/includes/components/site_header.php';
+    ?>
+
+    <!-- Sticky floating share bar (desktop) -->
+    <div class="sticky-share" id="stickyShare">
+        <a href="https://www.facebook.com/sharer/sharer.php?u=<?php echo urlencode(SITE_URL . '/article.php?id=' . $article['id']); ?>" target="_blank" title="فيسبوك">f</a>
+        <a href="https://twitter.com/intent/tweet?text=<?php echo urlencode($article['title']); ?>&url=<?php echo urlencode(SITE_URL . '/article.php?id=' . $article['id']); ?>" target="_blank" title="تويتر">𝕏</a>
+        <a href="https://wa.me/?text=<?php echo urlencode($article['title'] . ' ' . SITE_URL . '/article.php?id=' . $article['id']); ?>" target="_blank" title="واتس آب">W</a>
+        <div class="ss-divider"></div>
+        <button type="button" title="نسخ الرابط" onclick="navigator.clipboard.writeText(window.location.href).then(()=>{if(window.NF&&NF.toast)NF.toast('تم نسخ الرابط ✓')})">🔗</button>
+    </div>
 
     <?php
         // Estimate read time: ~180 Arabic words/min
@@ -1027,6 +1140,17 @@ if ($article['cat_slug']) {
 
     <!-- Main Content -->
     <main class="container">
+
+        <!-- Breadcrumb -->
+        <nav class="breadcrumb" aria-label="شريط التنقل">
+            <a href="/">الرئيسية</a>
+            <span class="sep">‹</span>
+            <?php if (!empty($article['cat_name']) && !empty($article['cat_slug'])): ?>
+                <a href="/category/<?php echo e($article['cat_slug']); ?>"><?php echo e($article['cat_name']); ?></a>
+                <span class="sep">‹</span>
+            <?php endif; ?>
+            <span class="current"><?php echo e(mb_substr($article['title'], 0, 60)); ?><?php echo mb_strlen($article['title']) > 60 ? '…' : ''; ?></span>
+        </nav>
 
         <!-- Article Hero Image -->
         <?php if ($article['image_url']): ?>
@@ -1294,19 +1418,24 @@ if ($article['cat_slug']) {
 
         <!-- Related Articles -->
         <?php if (!empty($relatedArticles)): ?>
-            <section class="related-articles">
-                <h2>مقالات ذات صلة من <?php echo e($article['cat_name']); ?></h2>
-                <div class="articles-grid">
+            <section class="related-section">
+                <h2>📰 مقالات ذات صلة</h2>
+                <div class="related-grid">
                     <?php foreach ($relatedArticles as $related): ?>
-                        <a href="article.php?id=<?php echo $related['id']; ?>" class="article-card">
-                            <?php if ($related['image_url']): ?>
-                                <img src="<?php echo e($related['image_url']); ?>" alt="<?php echo e($related['title']); ?>" class="article-card-image" loading="lazy" decoding="async">
+                        <a href="<?php echo articleUrl($related); ?>" class="rel-card">
+                            <?php if (!empty($related['image_url'])): ?>
+                                <img src="<?php echo e($related['image_url']); ?>" alt="" class="rel-card-img" loading="lazy" decoding="async">
                             <?php endif; ?>
-                            <div class="article-card-body">
-                                <h3 class="article-card-title"><?php echo e($related['title']); ?></h3>
-                                <p class="article-card-meta">
-                                    <?php echo timeAgo($related['published_at']); ?> • <?php echo e($related['source_name']); ?>
-                                </p>
+                            <div class="rel-card-body">
+                                <?php if (!empty($related['cat_name'])): ?>
+                                    <span class="rel-card-cat <?php echo e($related['css_class'] ?? ''); ?>"><?php echo e($related['cat_name']); ?></span>
+                                <?php endif; ?>
+                                <h3 class="rel-card-title"><?php echo e($related['title']); ?></h3>
+                                <div class="rel-card-meta">
+                                    <span><?php echo e($related['source_name'] ?? ''); ?></span>
+                                    <span class="dot"></span>
+                                    <span><?php echo timeAgo($related['published_at']); ?></span>
+                                </div>
                             </div>
                         </a>
                     <?php endforeach; ?>
@@ -1326,19 +1455,19 @@ if ($article['cat_slug']) {
     <script src="assets/js/user.min.js?v=m1"></script>
     <script>
     (function(){
-        // ====== Reading progress bar ======
+        // ====== Reading progress bar + sticky share ======
         const bar = document.getElementById('readProgressBar');
-        if (bar) {
-            const update = () => {
-                const h = document.documentElement;
-                const scrolled = h.scrollTop;
-                const max = h.scrollHeight - h.clientHeight;
-                bar.style.width = (max > 0 ? Math.min(100, (scrolled / max) * 100) : 0) + '%';
-            };
-            update();
-            window.addEventListener('scroll', update, { passive: true });
-            window.addEventListener('resize', update);
-        }
+        const stickyShare = document.getElementById('stickyShare');
+        const onScroll = () => {
+            const h = document.documentElement;
+            const scrolled = h.scrollTop;
+            const max = h.scrollHeight - h.clientHeight;
+            if (bar) bar.style.width = (max > 0 ? Math.min(100, (scrolled / max) * 100) : 0) + '%';
+            if (stickyShare) stickyShare.classList.toggle('visible', scrolled > 300);
+        };
+        onScroll();
+        window.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('resize', onScroll);
 
         // ====== Font size controls ======
         const root = document.documentElement;
