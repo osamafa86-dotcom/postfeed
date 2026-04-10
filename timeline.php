@@ -730,6 +730,137 @@ $metaDesc = $timeline && !empty($timeline['intro'])
     .tl-event-quote { padding:12px 14px 12px 36px; }
     .tl-event-quote::before { font-size:36px; }
   }
+
+  /* ============ READER MODE ============
+     Activated by the 📖 toggle button in the hero. Strips away every
+     "chrome" element (site header, search bar, sidebar, date rail,
+     sources footer, topic tags) and narrows the rail to a comfortable
+     reading width with a warmer sepia background — leaving just the
+     story narrative (title, intro, events, quotes, whats-new). All
+     the Tier 2 signals (severity chips, trajectory, whats-new) stay
+     because they *are* the story, they're not chrome. */
+
+  /* Toggle button in the hero — subtle teal outline, top-left corner. */
+  .tl-reader-toggle {
+    position:absolute;
+    top:16px; left:16px;
+    display:inline-flex; align-items:center; gap:6px;
+    padding:7px 13px;
+    background:rgba(255,255,255,.8);
+    border:1px solid rgba(13,148,136,.28);
+    border-radius:999px;
+    font-size:12px; font-weight:800;
+    color:var(--accent2);
+    cursor:pointer;
+    z-index:2;
+    transition:all .2s;
+    backdrop-filter:blur(4px);
+  }
+  .tl-reader-toggle:hover {
+    background:var(--accent2);
+    color:#fff;
+    border-color:var(--accent2);
+    transform:translateY(-1px);
+  }
+  .tl-reader-toggle .tl-reader-icon { font-size:14px; line-height:1; }
+  body.tl-reader-mode .tl-reader-toggle {
+    position:fixed;
+    top:18px; left:18px;
+    background:var(--accent2);
+    color:#fff;
+    border-color:var(--accent2);
+    box-shadow:0 8px 24px -10px rgba(13,148,136,.55);
+  }
+
+  /* Reader-mode global adjustments */
+  body.tl-reader-mode {
+    background:#fbf5e6; /* soft sepia */
+  }
+  body.tl-reader-mode .site-header,
+  body.tl-reader-mode .tl-toolbar,
+  body.tl-reader-mode .tl-sidebar,
+  body.tl-reader-mode .tl-date-nav,
+  body.tl-reader-mode .tl-progress-bar,
+  body.tl-reader-mode .tl-current-date-pill,
+  body.tl-reader-mode .tl-topics,
+  body.tl-reader-mode .tl-event-sources,
+  body.tl-reader-mode .tl-meta {
+    display:none !important;
+  }
+  body.tl-reader-mode .container { max-width:780px; }
+  body.tl-reader-mode .tl-layout {
+    grid-template-columns:1fr;
+    gap:0;
+  }
+  body.tl-reader-mode .tl-hero {
+    background:transparent;
+    border:none;
+    box-shadow:none;
+    padding:44px 28px 20px;
+    margin-top:8px;
+  }
+  body.tl-reader-mode .tl-hero::before { display:none; }
+  body.tl-reader-mode .tl-eyebrow {
+    background:transparent;
+    border:none;
+    padding:0;
+    color:#8a6d1f;
+    margin-bottom:18px;
+  }
+  body.tl-reader-mode .tl-title {
+    font-size:34px;
+    line-height:1.35;
+    color:#2a2516;
+  }
+  body.tl-reader-mode .tl-intro {
+    font-size:17px;
+    line-height:2;
+    color:#46402d;
+    max-width:none;
+  }
+  body.tl-reader-mode .tl-rail {
+    padding-right:36px;
+  }
+  body.tl-reader-mode .tl-rail::before {
+    background:linear-gradient(180deg, rgba(13,148,136,.35), rgba(245,158,11,.35));
+  }
+  body.tl-reader-mode .tl-event {
+    background:rgba(255,253,246,.8);
+    border-color:rgba(148,128,68,.22);
+    box-shadow:none;
+    padding:22px 24px;
+  }
+  body.tl-reader-mode .tl-event:hover {
+    transform:none;
+    box-shadow:0 8px 24px -14px rgba(70,50,10,.18);
+  }
+  body.tl-reader-mode .tl-event-title {
+    font-size:20px;
+    color:#2a2516;
+  }
+  body.tl-reader-mode .tl-event-summary {
+    font-size:15.5px;
+    line-height:2;
+    color:#46402d;
+    margin-bottom:0;
+  }
+  body.tl-reader-mode .tl-event-quote {
+    background:rgba(254,243,199,.45);
+    border-right-color:#b68500;
+  }
+  body.tl-reader-mode .tl-event-quote p {
+    color:#4b3f15;
+  }
+  body.tl-reader-mode .tl-whats-new {
+    background:linear-gradient(90deg, rgba(13,148,136,.12), transparent);
+    color:#0f5a55;
+  }
+
+  @media(max-width:760px) {
+    .tl-reader-toggle { top:12px; left:12px; padding:5px 10px; font-size:11px; }
+    body.tl-reader-mode .tl-title { font-size:24px; }
+    body.tl-reader-mode .tl-hero { padding:36px 18px 14px; }
+  }
 </style>
 <link rel="stylesheet" href="assets/css/site-header.css?v=1">
 <link rel="stylesheet" href="assets/css/user.css?v=17">
@@ -793,6 +924,11 @@ include __DIR__ . '/includes/components/site_header.php';
 
     <!-- HERO -->
     <div class="tl-hero">
+      <button type="button" class="tl-reader-toggle" id="tlReaderToggle" aria-pressed="false"
+              title="وضع القارئ — إخفاء كل شيء إلا القصة">
+        <span class="tl-reader-icon" aria-hidden="true">📖</span>
+        <span class="tl-reader-label">وضع القارئ</span>
+      </button>
       <span class="tl-eyebrow"><span class="live-dot"></span> خط زمني ذكي — قصة متطوّرة</span>
       <h1 class="tl-title"><?php echo e($timeline['headline'] ?: $canonicalTitle); ?></h1>
       <?php if (!empty($timeline['intro'])): ?>
@@ -1313,6 +1449,51 @@ include __DIR__ . '/includes/components/site_header.php';
   // Escape key clears the filter too.
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape' && activeEntity) clearFilter();
+  });
+})();
+
+/* =========================================================
+   Reader Mode — strips chrome and gives the reader a quiet,
+   sepia-tinted, single-column view of just the story.
+   The choice persists across visits via localStorage so the
+   reader doesn't have to re-enable it on every timeline.
+   Keyboard shortcut: "r" toggles (when not typing in a field).
+   ========================================================= */
+(function() {
+  var btn = document.getElementById('tlReaderToggle');
+  if (!btn) return;
+
+  var KEY      = 'pf_tl_reader_mode';
+  var labelEl  = btn.querySelector('.tl-reader-label');
+  var iconEl   = btn.querySelector('.tl-reader-icon');
+
+  function setMode(on) {
+    document.body.classList.toggle('tl-reader-mode', !!on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    if (labelEl) labelEl.textContent = on ? 'إنهاء وضع القارئ' : 'وضع القارئ';
+    if (iconEl)  iconEl.textContent  = on ? '✕' : '📖';
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch (e) {}
+  }
+
+  // Restore preference (use try/catch — safari private mode throws).
+  try {
+    if (localStorage.getItem(KEY) === '1') setMode(true);
+  } catch (e) {}
+
+  btn.addEventListener('click', function() {
+    setMode(!document.body.classList.contains('tl-reader-mode'));
+  });
+
+  // "r" toggles, "Esc" exits — but only when the user isn't focused
+  // on an input/textarea (so we don't fight the search box).
+  document.addEventListener('keydown', function(e) {
+    var t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    if (e.key === 'r' || e.key === 'R') {
+      setMode(!document.body.classList.contains('tl-reader-mode'));
+    } else if (e.key === 'Escape' && document.body.classList.contains('tl-reader-mode')) {
+      setMode(false);
+    }
   });
 })();
 </script>
