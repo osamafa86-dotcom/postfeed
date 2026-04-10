@@ -32,6 +32,11 @@ const STORY_TIMELINE_LIST_DEFAULT   = 12;
  * Lazy-create the story_timelines table. Returns true on success.
  * Keyed by cluster_key (unique) so INSERT…ON DUPLICATE KEY UPDATE
  * is the natural upsert path.
+ *
+ * Also runs a narrow ALTER to add the `entities` column on existing
+ * deployments that were created before Tier 1 shipped. A stored row
+ * without entities will also be treated as stale by is_stale() so the
+ * next visit regenerates it against the new schema.
  */
 function story_timeline_ensure_table(): void {
     static $ensured = false;
@@ -45,12 +50,20 @@ function story_timeline_ensure_table(): void {
             intro TEXT,
             events LONGTEXT,
             topics TEXT,
+            entities LONGTEXT NULL,
             article_count SMALLINT UNSIGNED NOT NULL DEFAULT 0,
             source_count SMALLINT UNSIGNED NOT NULL DEFAULT 0,
             generated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             UNIQUE KEY uniq_cluster (cluster_key),
             INDEX idx_generated_at (generated_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        // Narrow auto-migration for tables created before Tier 1 shipped.
+        $col = $db->query("SHOW COLUMNS FROM story_timelines LIKE 'entities'")->fetch();
+        if (!$col) {
+            $db->exec("ALTER TABLE story_timelines ADD COLUMN entities LONGTEXT NULL AFTER topics");
+        }
+
         $ensured = true;
     } catch (Throwable $e) {
         error_log('[story_timeline] ensure_table: ' . $e->getMessage());
@@ -107,11 +120,18 @@ function story_timeline_source_count(string $clusterKey): int {
 }
 
 /**
- * Decode a DB row into the shape timeline.php expects.
+ * Decode a DB row into the shape timeline.php expects. Entities
+ * default to an empty structure when the column is missing so older
+ * rows stay renderable during the regeneration window.
  */
 function story_timeline_hydrate(array $row): array {
-    $events = json_decode((string)($row['events'] ?? '[]'), true);
-    $topics = json_decode((string)($row['topics'] ?? '[]'), true);
+    $events   = json_decode((string)($row['events']   ?? '[]'), true);
+    $topics   = json_decode((string)($row['topics']   ?? '[]'), true);
+    $entities = json_decode((string)($row['entities'] ?? '[]'), true);
+    if (!is_array($entities)) $entities = [];
+    // Ensure the three named buckets always exist so template code
+    // doesn't have to null-check every access path.
+    $entities += ['people' => [], 'places' => [], 'organizations' => []];
     return [
         'id'            => (int)$row['id'],
         'cluster_key'   => (string)$row['cluster_key'],
@@ -119,6 +139,7 @@ function story_timeline_hydrate(array $row): array {
         'intro'         => (string)($row['intro'] ?? ''),
         'events'        => is_array($events) ? $events : [],
         'topics'        => is_array($topics) ? $topics : [],
+        'entities'      => $entities,
         'article_count' => (int)$row['article_count'],
         'source_count'  => (int)$row['source_count'],
         'generated_at'  => (string)$row['generated_at'],
@@ -152,13 +173,14 @@ function story_timeline_save(string $clusterKey, array $ai, int $articleCount, i
     try {
         $db = getDB();
         $stmt = $db->prepare("INSERT INTO story_timelines
-            (cluster_key, headline, intro, events, topics, article_count, source_count, generated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+            (cluster_key, headline, intro, events, topics, entities, article_count, source_count, generated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
             ON DUPLICATE KEY UPDATE
                 headline=VALUES(headline),
                 intro=VALUES(intro),
                 events=VALUES(events),
                 topics=VALUES(topics),
+                entities=VALUES(entities),
                 article_count=VALUES(article_count),
                 source_count=VALUES(source_count),
                 generated_at=NOW()");
@@ -166,8 +188,9 @@ function story_timeline_save(string $clusterKey, array $ai, int $articleCount, i
             $clusterKey,
             (string)($ai['headline'] ?? ''),
             (string)($ai['intro']    ?? ''),
-            json_encode($ai['events'] ?? [], JSON_UNESCAPED_UNICODE),
-            json_encode($ai['topics'] ?? [], JSON_UNESCAPED_UNICODE),
+            json_encode($ai['events']   ?? [], JSON_UNESCAPED_UNICODE),
+            json_encode($ai['topics']   ?? [], JSON_UNESCAPED_UNICODE),
+            json_encode($ai['entities'] ?? new stdClass(), JSON_UNESCAPED_UNICODE),
             $articleCount,
             $sourceCount,
         ]);
@@ -180,13 +203,20 @@ function story_timeline_save(string $clusterKey, array $ai, int $articleCount, i
 
 /**
  * Is the stored timeline stale? Stale means: older than
- * STORY_TIMELINE_MAX_AGE_HOURS, or the cluster has acquired new
- * articles since the last generation.
+ * STORY_TIMELINE_MAX_AGE_HOURS, the cluster has acquired new
+ * articles since the last generation, or the stored row is from an
+ * older schema version (no entities yet) and needs upgrading.
  */
 function story_timeline_is_stale(array $stored, int $currentArticleCount): bool {
     if ((int)$stored['article_count'] !== $currentArticleCount) return true;
     $ageSecs = time() - (strtotime($stored['generated_at'] ?? '') ?: 0);
     if ($ageSecs > STORY_TIMELINE_MAX_AGE_HOURS * 3600) return true;
+    // Schema upgrade: rows from before Tier 1 shipped have no
+    // entities. Force a regeneration on next visit so the richer UI
+    // actually has data to display.
+    $ent = $stored['entities'] ?? [];
+    $hasEntities = !empty($ent['people']) || !empty($ent['places']) || !empty($ent['organizations']);
+    if (!$hasEntities) return true;
     return false;
 }
 
@@ -254,14 +284,24 @@ function story_timeline_generate(array $articles): array {
             . "- حقل date يجب أن يكون بصيغة YYYY-MM-DD مأخوذاً من أقدم تقرير يغطي الحدث.\n"
             . "- حقل sources قائمة برموز التقارير (A1, A2…) التي استندت إليها في صياغة الحدث.\n"
             . "- استخدم رمز emoji واحد واقعي لكل حدث (مثل 🛰️ 🏛️ ⚔️ 📢 🤝 🚨 🩺 🗳️ 📉).\n"
+            . "- لكل حدث، إن وُجد في التقارير اقتباس مباشر مميّز (تصريح مسؤول، جملة مفتاحية) "
+            . "استخرجه في الحقل quote مع اسم قائله في speaker. **لا تخترع** اقتباساً لم يرد نصّاً في التقرير — "
+            . "إن لم يوجد اقتباس فعلي، اترك quote فارغاً.\n"
             . "- استخدم لغة عربية فصحى محايدة، لا تستعمل صيغاً متحيزة.\n"
             . "- لا تخترع معلومات غير موجودة في التقارير؛ التزم بما ورد حرفياً.\n"
             . "- اختر 3-6 وسوم (topics) قصيرة تُمثّل القصة بدون رمز #.\n\n"
+            . "استخراج الكيانات (entities) — مهم جداً:\n"
+            . "- people: قائمة الأشخاص المحوريين في القصة (رؤساء، وزراء، قادة، ضحايا بارزين…). "
+            . "لكل شخص اسمه الكامل كما ورد في التقارير، ودوره/منصبه باختصار شديد (مثل \"رئيس الوزراء الإسرائيلي\").\n"
+            . "- places: الأماكن الجغرافية البارزة في القصة (مدن، دول، مواقع حدث). "
+            . "لكل مكان اسمه وسياقه المختصر (مثل \"العاصمة حيث وقعت الضربة\").\n"
+            . "- organizations: المنظمات/الأحزاب/المؤسسات المذكورة (حماس، الأمم المتحدة، حزب معين…) مع سياقها.\n"
+            . "- لا تُضمّن في entities إلا من ورد فعلياً في التقارير. الحد الأقصى: 8 أشخاص، 6 أماكن، 6 منظمات.\n\n"
             . "التقارير:\n" . $corpus;
 
     $tool = [
         'name'        => 'submit_story_timeline',
-        'description' => 'Submit a structured Arabic story timeline with headline, intro, chronological events, and topic tags.',
+        'description' => 'Submit a structured Arabic story timeline with headline, intro, chronological events, key entities, and topic tags.',
         'input_schema' => [
             'type'     => 'object',
             'properties' => [
@@ -300,8 +340,58 @@ function story_timeline_generate(array $articles): array {
                                 'description' => 'رموز التقارير المرجعية التي استند إليها الحدث (مثل A1, A3).',
                                 'items'       => ['type' => 'string'],
                             ],
+                            'quote' => [
+                                'type'        => 'object',
+                                'description' => 'اقتباس مباشر مميز ورد حرفياً في التقارير. اتركه فارغاً إن لم يوجد اقتباس فعلي.',
+                                'properties'  => [
+                                    'text'    => ['type' => 'string', 'description' => 'نص الاقتباس بدون علامات تنصيص.'],
+                                    'speaker' => ['type' => 'string', 'description' => 'اسم قائل الاقتباس ومنصبه إن وُجد.'],
+                                ],
+                            ],
                         ],
                         'required' => ['date', 'title', 'summary'],
+                    ],
+                ],
+                'entities' => [
+                    'type'        => 'object',
+                    'description' => 'الكيانات المحورية في القصة — الأشخاص والأماكن والمنظمات.',
+                    'properties'  => [
+                        'people' => [
+                            'type'        => 'array',
+                            'description' => 'الأشخاص المحوريون. الحد الأقصى 8.',
+                            'items'       => [
+                                'type'       => 'object',
+                                'properties' => [
+                                    'name' => ['type' => 'string', 'description' => 'الاسم الكامل كما ورد.'],
+                                    'role' => ['type' => 'string', 'description' => 'المنصب أو الدور باختصار.'],
+                                ],
+                                'required' => ['name'],
+                            ],
+                        ],
+                        'places' => [
+                            'type'        => 'array',
+                            'description' => 'الأماكن الجغرافية البارزة. الحد الأقصى 6.',
+                            'items'       => [
+                                'type'       => 'object',
+                                'properties' => [
+                                    'name'    => ['type' => 'string', 'description' => 'اسم المكان.'],
+                                    'context' => ['type' => 'string', 'description' => 'سياقه المختصر في القصة.'],
+                                ],
+                                'required' => ['name'],
+                            ],
+                        ],
+                        'organizations' => [
+                            'type'        => 'array',
+                            'description' => 'المنظمات/الأحزاب/المؤسسات المذكورة. الحد الأقصى 6.',
+                            'items'       => [
+                                'type'       => 'object',
+                                'properties' => [
+                                    'name'    => ['type' => 'string', 'description' => 'اسم المنظمة.'],
+                                    'context' => ['type' => 'string', 'description' => 'دورها في القصة باختصار.'],
+                                ],
+                                'required' => ['name'],
+                            ],
+                        ],
                     ],
                 ],
                 'topics' => [
@@ -316,7 +406,9 @@ function story_timeline_generate(array $articles): array {
 
     $body = json_encode([
         'model'       => 'claude-haiku-4-5-20251001',
-        'max_tokens'  => 4000,
+        // Bumped from 4000 → 6000 to accommodate the richer schema
+        // (entities + per-event quotes) without truncating the response.
+        'max_tokens'  => 6000,
         'tools'       => [$tool],
         'tool_choice' => ['type' => 'tool', 'name' => 'submit_story_timeline'],
         'messages'    => [['role' => 'user', 'content' => $prompt]],
@@ -389,12 +481,25 @@ function story_timeline_generate(array $articles): array {
             if (isset($labels[$label])) $sourceIds[] = $labels[$label];
         }
 
+        // Key quote — only keep when both the text and speaker fields
+        // look substantive. Claude was explicitly told not to invent.
+        $quote = null;
+        if (isset($ev['quote']) && is_array($ev['quote'])) {
+            $qText    = trim((string)($ev['quote']['text']    ?? ''));
+            $qSpeaker = trim((string)($ev['quote']['speaker'] ?? ''));
+            if (mb_strlen($qText) >= 12) {
+                $quote = ['text' => $qText, 'speaker' => $qSpeaker];
+            }
+        }
+
         $events[] = [
-            'date'       => trim((string)($ev['date']  ?? '')),
-            'icon'       => trim((string)($ev['icon']  ?? '')),
-            'title'      => $title,
-            'summary'    => $summary,
-            'source_ids' => array_values(array_unique($sourceIds)),
+            'date'        => trim((string)($ev['date']  ?? '')),
+            'icon'        => trim((string)($ev['icon']  ?? '')),
+            'title'       => $title,
+            'summary'     => $summary,
+            'source_ids'  => array_values(array_unique($sourceIds)),
+            'quote'       => $quote,
+            'entity_refs' => [], // filled in by post-processing below
         ];
     }
 
@@ -402,11 +507,59 @@ function story_timeline_generate(array $articles): array {
         return ['ok' => false, 'error' => 'لم يتم توليد أي حدث صالح.'];
     }
 
+    // Normalize entities. Each bucket keeps at most the top N items
+    // and drops any rows without a name (schema allows loose input).
+    $normBucket = function(array $rows, int $cap): array {
+        $out = [];
+        foreach ($rows as $r) {
+            if (!is_array($r)) continue;
+            $name = trim((string)($r['name'] ?? ''));
+            if ($name === '' || mb_strlen($name) < 2) continue;
+            $item = ['name' => $name];
+            if (!empty($r['role']))    $item['role']    = trim((string)$r['role']);
+            if (!empty($r['context'])) $item['context'] = trim((string)$r['context']);
+            $out[] = $item;
+            if (count($out) >= $cap) break;
+        }
+        return $out;
+    };
+    $rawEnt  = is_array($parsed['entities'] ?? null) ? $parsed['entities'] : [];
+    $entities = [
+        'people'        => $normBucket((array)($rawEnt['people']        ?? []), 8),
+        'places'        => $normBucket((array)($rawEnt['places']        ?? []), 6),
+        'organizations' => $normBucket((array)($rawEnt['organizations'] ?? []), 6),
+    ];
+
+    // Cross-reference: for each event, scan title+summary for any
+    // entity name (case-insensitive, whitespace-trimmed) and record
+    // which entities that event mentions. This powers the "click an
+    // entity to highlight matching events" interaction in the UI
+    // without needing another Claude call.
+    $allEntityNames = [];
+    foreach (['people', 'places', 'organizations'] as $bucket) {
+        foreach ($entities[$bucket] as $e) {
+            $allEntityNames[] = $e['name'];
+        }
+    }
+    foreach ($events as &$ev) {
+        $hay  = mb_strtolower($ev['title'] . ' ' . $ev['summary']);
+        $refs = [];
+        foreach ($allEntityNames as $name) {
+            if ($name === '') continue;
+            if (mb_strpos($hay, mb_strtolower($name)) !== false) {
+                $refs[] = $name;
+            }
+        }
+        $ev['entity_refs'] = array_values(array_unique($refs));
+    }
+    unset($ev);
+
     return [
         'ok'       => true,
         'headline' => (string)($parsed['headline'] ?? ''),
         'intro'    => (string)($parsed['intro']    ?? ''),
         'events'   => $events,
+        'entities' => $entities,
         'topics'   => array_values(array_filter(array_map('strval', (array)($parsed['topics'] ?? [])))),
     ];
 }

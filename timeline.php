@@ -371,6 +371,279 @@ $metaDesc = $timeline && !empty($timeline['intro'])
   .empty-state h3 { font-size:20px; margin-bottom:8px; color:var(--text); font-weight:800; }
   .empty-state a { color:var(--accent2); font-weight:700; }
 
+  /* ============ PROGRESS BAR (top of viewport) ============
+     Shows how far the reader has scrolled through the events rail,
+     not the whole page — so it stays at 0% above the rail and 100%
+     once the final event is fully in view. */
+  .tl-progress-bar {
+    position:fixed; top:0; left:0; right:0;
+    height:3px; background:rgba(13,148,136,.08);
+    z-index:1000; pointer-events:none;
+  }
+  .tl-progress-fill {
+    height:100%; width:0%;
+    background:linear-gradient(90deg, var(--accent2) 0%, var(--gold) 50%, var(--red) 100%);
+    transition:width .08s linear;
+    box-shadow:0 0 10px rgba(13,148,136,.5);
+  }
+
+  /* ============ STICKY DATE RAIL (left edge in RTL = start) ============
+     A thin floating strip of date dots; the dot for the date currently
+     in the viewport is enlarged and labeled. Hidden on mobile. */
+  .tl-date-nav {
+    position:fixed;
+    top:50%; transform:translateY(-50%);
+    left:18px;
+    z-index:900;
+    background:rgba(255,255,255,.92);
+    backdrop-filter:blur(10px);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:14px 10px;
+    box-shadow:0 10px 30px -12px rgba(15,23,42,.15);
+    max-height:min(70vh, 540px);
+    overflow-y:auto;
+  }
+  .tl-date-nav::-webkit-scrollbar { width:4px; }
+  .tl-date-nav::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+  .tl-date-nav-title {
+    font-size:10px; font-weight:800; color:var(--muted);
+    text-align:center; margin-bottom:10px;
+    text-transform:uppercase; letter-spacing:.5px;
+  }
+  .tl-date-nav ul {
+    list-style:none; padding:0; margin:0;
+    display:flex; flex-direction:column; gap:2px;
+  }
+  .tl-date-nav li { position:relative; }
+  .tl-date-nav a {
+    display:flex; align-items:center; gap:8px;
+    padding:6px 8px; border-radius:8px;
+    font-size:11px; font-weight:700;
+    color:var(--muted); text-decoration:none;
+    transition:all .2s;
+    white-space:nowrap;
+  }
+  .tl-date-nav a::before {
+    content:''; width:8px; height:8px;
+    border-radius:50%; background:var(--border);
+    flex-shrink:0; transition:all .2s;
+  }
+  .tl-date-nav a:hover {
+    background:var(--bg2); color:var(--text);
+  }
+  .tl-date-nav a:hover::before {
+    background:var(--accent2);
+  }
+  .tl-date-nav a.active {
+    background:var(--accent2); color:#fff;
+    box-shadow:0 4px 12px -4px rgba(13,148,136,.5);
+  }
+  .tl-date-nav a.active::before {
+    background:#fff;
+    box-shadow:0 0 0 3px rgba(255,255,255,.35);
+  }
+
+  @media(max-width:1100px) {
+    .tl-date-nav { display:none; }
+  }
+
+  /* ============ STICKY CURRENT-DATE PILL (mobile alternative) ============ */
+  .tl-current-date-pill {
+    position:sticky; top:60px; z-index:50;
+    display:none;
+    margin:0 auto 14px;
+    width:fit-content;
+    padding:8px 16px;
+    background:var(--accent2); color:#fff;
+    font-size:12px; font-weight:800;
+    border-radius:999px;
+    box-shadow:0 6px 18px -6px rgba(13,148,136,.5);
+  }
+  @media(max-width:1100px) {
+    .tl-current-date-pill { display:block; }
+  }
+
+  /* ============ KEY QUOTE BLOCK ============ */
+  .tl-event-quote {
+    position:relative;
+    margin:14px 0 10px;
+    padding:14px 18px 14px 44px;
+    background:linear-gradient(135deg, rgba(245,158,11,.08) 0%, rgba(245,158,11,.02) 100%);
+    border-right:4px solid var(--gold);
+    border-radius:10px;
+    font-style:italic;
+  }
+  .tl-event-quote::before {
+    content:'"';
+    position:absolute;
+    top:4px; right:10px;
+    font-size:44px;
+    line-height:1;
+    color:var(--gold);
+    font-family:Georgia, 'Times New Roman', serif;
+    font-style:normal;
+    font-weight:700;
+    opacity:.7;
+  }
+  .tl-event-quote p {
+    margin:0 0 6px;
+    font-size:14.5px; line-height:1.85;
+    color:#3a3a52; font-weight:500;
+  }
+  .tl-event-quote cite {
+    display:block;
+    font-size:12px; font-weight:700;
+    color:var(--gold-text);
+    font-style:normal;
+  }
+
+  /* ============ ENTITIES PANEL ============ */
+  .tl-entities-card {
+    padding:0 !important;
+  }
+  .tl-entities-head {
+    padding:14px 18px 10px;
+    border-bottom:1px solid var(--border);
+  }
+  .tl-entities-head h3 {
+    margin:0; padding:0; border:0;
+    font-size:14px; font-weight:800; color:var(--text);
+    display:flex; align-items:center; gap:8px;
+  }
+  .tl-entities-sub {
+    margin:4px 0 0;
+    font-size:10.5px; color:var(--muted);
+    font-weight:500;
+  }
+  .tl-entity-tabs {
+    display:flex;
+    padding:0 10px; gap:4px;
+    border-bottom:1px solid var(--border);
+    background:var(--bg2);
+  }
+  .tl-entity-tab {
+    flex:1;
+    background:transparent;
+    border:none; cursor:pointer;
+    padding:10px 6px;
+    font:inherit;
+    font-size:11.5px; font-weight:700;
+    color:var(--muted);
+    border-bottom:2px solid transparent;
+    transition:all .2s;
+  }
+  .tl-entity-tab:hover { color:var(--text); }
+  .tl-entity-tab.active {
+    color:var(--accent2);
+    border-bottom-color:var(--accent2);
+  }
+  .tl-entity-panel {
+    padding:12px 14px;
+    max-height:400px;
+    overflow-y:auto;
+  }
+  .tl-entity-panel::-webkit-scrollbar { width:4px; }
+  .tl-entity-panel::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+  .tl-entity-panel[hidden] { display:none; }
+  .tl-entity-chip {
+    display:block; width:100%;
+    text-align:right;
+    margin-bottom:8px; padding:10px 12px;
+    background:var(--bg2);
+    border:1px solid var(--border);
+    border-radius:10px;
+    cursor:pointer;
+    font:inherit;
+    color:var(--text);
+    transition:all .2s;
+  }
+  .tl-entity-chip:last-child { margin-bottom:0; }
+  .tl-entity-chip:hover {
+    border-color:var(--accent2);
+    background:#fff;
+  }
+  .tl-entity-chip.active {
+    background:var(--accent2);
+    border-color:var(--accent2);
+    color:#fff;
+    box-shadow:0 6px 18px -6px rgba(13,148,136,.45);
+  }
+  .tl-entity-chip .ent-name {
+    display:block;
+    font-size:13px; font-weight:800;
+    margin-bottom:2px;
+  }
+  .tl-entity-chip .ent-desc {
+    display:block;
+    font-size:11px;
+    color:var(--muted);
+    font-weight:500;
+    line-height:1.5;
+  }
+  .tl-entity-chip.active .ent-desc {
+    color:rgba(255,255,255,.85);
+  }
+  .tl-entity-count {
+    display:inline-block;
+    margin-right:6px;
+    padding:1px 7px;
+    background:var(--border);
+    color:var(--muted);
+    border-radius:999px;
+    font-size:10px;
+    font-weight:700;
+  }
+  .tl-entity-panel-empty {
+    padding:18px 10px;
+    text-align:center;
+    color:var(--muted);
+    font-size:12px;
+    font-weight:600;
+  }
+
+  /* ============ ENTITY FILTER MODE ============
+     Active when the reader clicks an entity chip. Events that don't
+     reference the selected entity dim out; matching ones gain a gold
+     glow. Clicking the chip again (or any other chip) clears it. */
+  body.tl-entity-filter .tl-event:not(.entity-match) {
+    opacity:.25;
+    filter:grayscale(.6);
+  }
+  body.tl-entity-filter .tl-event.entity-match {
+    border-color:var(--gold);
+    box-shadow:0 14px 32px -14px rgba(245,158,11,.45);
+  }
+  body.tl-entity-filter .tl-event.entity-match::before {
+    border-color:var(--gold);
+  }
+  .tl-entity-clear {
+    position:sticky; top:0;
+    margin:-12px -14px 10px;
+    padding:8px 14px;
+    background:linear-gradient(90deg, var(--gold-bg), transparent);
+    border-bottom:1px solid var(--gold2);
+    font-size:11px; font-weight:800;
+    color:var(--gold-text);
+    display:none;
+    cursor:pointer;
+    text-align:center;
+  }
+  .tl-entity-clear:hover { background:var(--gold-bg); }
+  body.tl-entity-filter .tl-entity-clear { display:block; }
+
+  /* Brief flash when a date-rail link smooth-scrolls to an event —
+     lets the reader see *which* event the click landed on. */
+  @keyframes tlFlash {
+    0%   { box-shadow:0 0 0 0 rgba(13,148,136,.55); }
+    60%  { box-shadow:0 0 0 10px rgba(13,148,136,0); }
+    100% { box-shadow:0 0 0 0 rgba(13,148,136,0); }
+  }
+  .tl-event.tl-flash {
+    animation:tlFlash 1.1s ease-out;
+    border-color:var(--teal);
+  }
+
   @media(max-width:760px) {
     .tl-title { font-size:22px; }
     .tl-hero { padding:22px 18px; }
@@ -380,6 +653,8 @@ $metaDesc = $timeline && !empty($timeline['intro'])
     .tl-event { padding:16px 18px; }
     .tl-event-title { font-size:16px; }
     .tl-side-card { position:static; }
+    .tl-event-quote { padding:12px 14px 12px 36px; }
+    .tl-event-quote::before { font-size:36px; }
   }
 </style>
 <link rel="stylesheet" href="assets/css/site-header.css?v=1">
@@ -406,6 +681,41 @@ include __DIR__ . '/includes/components/site_header.php';
         عُد إلى <a href="/">الصفحة الرئيسية</a> لتصفّح آخر الأخبار.</p>
     </div>
   <?php else: ?>
+
+    <!-- PROGRESS BAR (top of viewport) -->
+    <div class="tl-progress-bar" aria-hidden="true">
+      <div class="tl-progress-fill" id="tlProgressFill"></div>
+    </div>
+
+    <!-- STICKY DATE RAIL (desktop) — one entry per unique date -->
+    <?php
+      $uniqueDates = [];
+      foreach ($timeline['events'] as $evIdx => $ev) {
+          $d = substr((string)($ev['date'] ?? ''), 0, 10);
+          if ($d === '') continue;
+          if (!isset($uniqueDates[$d])) {
+              $uniqueDates[$d] = $evIdx + 1; // first event that lives on this date
+          }
+      }
+    ?>
+    <?php if (count($uniqueDates) > 1): ?>
+      <nav class="tl-date-nav" id="tlDateNav" aria-label="الخط الزمني حسب التاريخ">
+        <div class="tl-date-nav-title">📅 تنقّل</div>
+        <ul>
+          <?php foreach ($uniqueDates as $d => $firstIdx):
+            $ts = strtotime($d);
+            $short = $ts ? date('d/m', $ts) : $d;
+            $long  = $ts ? date('Y/m/d', $ts) : $d;
+          ?>
+            <li>
+              <a href="#tl-event-<?php echo (int)$firstIdx; ?>"
+                 data-date="<?php echo e($d); ?>"
+                 title="<?php echo e($long); ?>"><?php echo e($short); ?></a>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+      </nav>
+    <?php endif; ?>
 
     <!-- HERO -->
     <div class="tl-hero">
@@ -443,6 +753,9 @@ include __DIR__ . '/includes/components/site_header.php';
           <span id="tlResultCount" class="tl-result-count"></span>
         </div>
 
+        <!-- STICKY CURRENT-DATE PILL (mobile; hidden on desktop by CSS) -->
+        <div id="tlCurrentDatePill" class="tl-current-date-pill">📅 —</div>
+
         <!-- TIMELINE RAIL -->
         <div class="tl-rail" id="tlRail">
           <?php
@@ -452,12 +765,26 @@ include __DIR__ . '/includes/components/site_header.php';
               if ($idx === 0) $klass .= ' first';
               if ($idx === $totalEvents - 1) $klass .= ' last';
               $dateLabel = '';
+              $dateKey   = '';
               if (!empty($event['date'])) {
                   $ts = strtotime((string)$event['date']);
-                  if ($ts) $dateLabel = date('Y/m/d', $ts);
+                  if ($ts) {
+                      $dateLabel = date('Y/m/d', $ts);
+                      $dateKey   = date('Y-m-d', $ts);
+                  }
+              }
+              // Build entity-refs attribute (pipe-separated) so the JS
+              // can do a single string-match per event.
+              $entityAttr = '';
+              if (!empty($event['entity_refs'])) {
+                  $entityAttr = implode('|', array_map('strval', (array)$event['entity_refs']));
               }
           ?>
-            <article class="<?php echo $klass; ?>" data-idx="<?php echo $idx + 1; ?>">
+            <article id="tl-event-<?php echo $idx + 1; ?>"
+                     class="<?php echo $klass; ?>"
+                     data-idx="<?php echo $idx + 1; ?>"
+                     data-date="<?php echo e($dateKey); ?>"
+                     data-entities="<?php echo e($entityAttr); ?>">
               <div class="tl-event-head">
                 <?php if ($dateLabel !== ''): ?>
                   <span class="tl-event-date">📅 <?php echo e($dateLabel); ?></span>
@@ -468,6 +795,16 @@ include __DIR__ . '/includes/components/site_header.php';
               </div>
               <h2 class="tl-event-title"><?php echo e($event['title']); ?></h2>
               <p class="tl-event-summary"><?php echo e($event['summary']); ?></p>
+
+              <?php if (!empty($event['quote']) && !empty($event['quote']['text'])): ?>
+                <blockquote class="tl-event-quote">
+                  <p><?php echo e($event['quote']['text']); ?></p>
+                  <?php if (!empty($event['quote']['speaker'])): ?>
+                    <cite>— <?php echo e($event['quote']['speaker']); ?></cite>
+                  <?php endif; ?>
+                </blockquote>
+              <?php endif; ?>
+
               <?php if (!empty($event['source_ids'])): ?>
                 <div class="tl-event-sources">
                   <span class="label">📰 المصادر:</span>
@@ -491,6 +828,78 @@ include __DIR__ . '/includes/components/site_header.php';
 
       <!-- SIDEBAR -->
       <aside class="tl-sidebar">
+
+        <?php
+          // Entities panel — only rendered when Claude actually returned
+          // entities for this timeline. Safely skipped otherwise.
+          $ent = $timeline['entities'] ?? [];
+          $people = $ent['people'] ?? [];
+          $places = $ent['places'] ?? [];
+          $orgs   = $ent['organizations'] ?? [];
+          $hasEntities = !empty($people) || !empty($places) || !empty($orgs);
+        ?>
+        <?php if ($hasEntities): ?>
+          <div class="tl-side-card tl-entities-card" id="tlEntitiesCard">
+            <div class="tl-entities-head">
+              <h3>🎭 من في القصة؟</h3>
+              <p class="tl-entities-sub">اضغط على أي اسم لتصفية الأحداث المرتبطة به</p>
+            </div>
+            <div class="tl-entity-tabs">
+              <button type="button" class="tl-entity-tab active" data-ent-tab="people">
+                👤 أشخاص <span class="tl-entity-count"><?php echo count($people); ?></span>
+              </button>
+              <button type="button" class="tl-entity-tab" data-ent-tab="places">
+                📍 أماكن <span class="tl-entity-count"><?php echo count($places); ?></span>
+              </button>
+              <button type="button" class="tl-entity-tab" data-ent-tab="orgs">
+                🏛 منظمات <span class="tl-entity-count"><?php echo count($orgs); ?></span>
+              </button>
+            </div>
+
+            <div class="tl-entity-panel" data-ent-panel="people">
+              <div class="tl-entity-clear" data-ent-clear>✕ أزل التصفية — اعرض كل الأحداث</div>
+              <?php if (empty($people)): ?>
+                <div class="tl-entity-panel-empty">لم يُحدَّد أشخاص لهذه القصة.</div>
+              <?php else: foreach ($people as $p): ?>
+                <button type="button" class="tl-entity-chip" data-entity="<?php echo e($p['name']); ?>">
+                  <span class="ent-name"><?php echo e($p['name']); ?></span>
+                  <?php if (!empty($p['role'])): ?>
+                    <span class="ent-desc"><?php echo e($p['role']); ?></span>
+                  <?php endif; ?>
+                </button>
+              <?php endforeach; endif; ?>
+            </div>
+
+            <div class="tl-entity-panel" data-ent-panel="places" hidden>
+              <div class="tl-entity-clear" data-ent-clear>✕ أزل التصفية — اعرض كل الأحداث</div>
+              <?php if (empty($places)): ?>
+                <div class="tl-entity-panel-empty">لم تُحدَّد أماكن لهذه القصة.</div>
+              <?php else: foreach ($places as $p): ?>
+                <button type="button" class="tl-entity-chip" data-entity="<?php echo e($p['name']); ?>">
+                  <span class="ent-name"><?php echo e($p['name']); ?></span>
+                  <?php if (!empty($p['context'])): ?>
+                    <span class="ent-desc"><?php echo e($p['context']); ?></span>
+                  <?php endif; ?>
+                </button>
+              <?php endforeach; endif; ?>
+            </div>
+
+            <div class="tl-entity-panel" data-ent-panel="orgs" hidden>
+              <div class="tl-entity-clear" data-ent-clear>✕ أزل التصفية — اعرض كل الأحداث</div>
+              <?php if (empty($orgs)): ?>
+                <div class="tl-entity-panel-empty">لم تُحدَّد منظمات لهذه القصة.</div>
+              <?php else: foreach ($orgs as $o): ?>
+                <button type="button" class="tl-entity-chip" data-entity="<?php echo e($o['name']); ?>">
+                  <span class="ent-name"><?php echo e($o['name']); ?></span>
+                  <?php if (!empty($o['context'])): ?>
+                    <span class="ent-desc"><?php echo e($o['context']); ?></span>
+                  <?php endif; ?>
+                </button>
+              <?php endforeach; endif; ?>
+            </div>
+          </div>
+        <?php endif; ?>
+
         <div class="tl-side-card">
           <h3>📰 كل التقارير (<?php echo number_format(count($articles)); ?>)</h3>
           <div class="tl-side-list">
@@ -579,6 +988,221 @@ include __DIR__ . '/includes/components/site_header.php';
     input.value = '';
     apply('');
     input.focus();
+  });
+})();
+
+/* =========================================================
+   Tier 1 — sticky date rail + scroll progress + current pill
+   Uses IntersectionObserver to track which event is currently
+   in view, and updates the progress bar + active date link +
+   mobile date pill in lock-step. Falls back gracefully when
+   IntersectionObserver is unavailable (very old browsers).
+   ========================================================= */
+(function() {
+  var rail = document.getElementById('tlRail');
+  if (!rail) return;
+
+  var events      = Array.prototype.slice.call(rail.querySelectorAll('.tl-event'));
+  if (!events.length) return;
+
+  var progressEl  = document.getElementById('tlProgressFill');
+  var datePill    = document.getElementById('tlCurrentDatePill');
+  var dateNav     = document.getElementById('tlDateNav');
+  var dateLinks   = dateNav
+    ? Array.prototype.slice.call(dateNav.querySelectorAll('a[data-date]'))
+    : [];
+
+  // Pretty-format a YYYY-MM-DD date into Arabic-friendly "YYYY/MM/DD".
+  function prettyDate(iso) {
+    if (!iso) return '—';
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+    return m ? (m[1] + '/' + m[2] + '/' + m[3]) : iso;
+  }
+
+  function setActiveDate(iso) {
+    if (datePill) {
+      datePill.textContent = '📅 ' + prettyDate(iso);
+    }
+    if (!dateLinks.length) return;
+    dateLinks.forEach(function(a) {
+      if (a.getAttribute('data-date') === iso) {
+        a.classList.add('active');
+      } else {
+        a.classList.remove('active');
+      }
+    });
+  }
+
+  // Scroll progress — updates on scroll using rAF throttling.
+  var ticking = false;
+  function updateProgress() {
+    if (!progressEl) return;
+    var rect = rail.getBoundingClientRect();
+    var vh   = window.innerHeight || document.documentElement.clientHeight;
+    var total = rect.height + vh * 0.4; // start filling a bit before rail top
+    var scrolled = (vh - rect.top);
+    var pct = Math.max(0, Math.min(1, scrolled / total));
+    progressEl.style.width = (pct * 100).toFixed(2) + '%';
+    ticking = false;
+  }
+  function onScroll() {
+    if (ticking) return;
+    ticking = true;
+    (window.requestAnimationFrame || function(cb){ setTimeout(cb, 16); })(updateProgress);
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll);
+  updateProgress();
+
+  // Active-event tracking via IntersectionObserver. The event that
+  // is closest to the 30% line of the viewport wins — that avoids
+  // flicker when two events are both partially visible.
+  if ('IntersectionObserver' in window) {
+    var visible = {};
+    var io = new IntersectionObserver(function(entries) {
+      entries.forEach(function(ent) {
+        var id = ent.target.getAttribute('data-idx');
+        if (ent.isIntersecting) {
+          visible[id] = {
+            el: ent.target,
+            top: ent.boundingClientRect.top,
+          };
+        } else {
+          delete visible[id];
+        }
+      });
+      // Pick the visible event whose top is closest to (but above) 30% of viewport.
+      var vh = window.innerHeight || document.documentElement.clientHeight;
+      var anchor = vh * 0.3;
+      var best = null, bestDist = Infinity;
+      Object.keys(visible).forEach(function(k) {
+        var v = visible[k];
+        var dist = Math.abs(v.top - anchor);
+        if (dist < bestDist) { bestDist = dist; best = v.el; }
+      });
+      if (best) {
+        var iso = best.getAttribute('data-date') || '';
+        setActiveDate(iso);
+      }
+    }, {
+      // Shrink the top/bottom of the viewport so we only "activate"
+      // events that are truly in the reading zone.
+      rootMargin: '-20% 0px -55% 0px',
+      threshold: [0, 0.25, 0.5, 0.75, 1],
+    });
+    events.forEach(function(el) { io.observe(el); });
+  } else {
+    // Fallback — just use the first event's date.
+    var first = events[0];
+    if (first) setActiveDate(first.getAttribute('data-date') || '');
+  }
+
+  // Smooth scroll + briefly flash the target event when a date
+  // link is clicked.
+  dateLinks.forEach(function(a) {
+    a.addEventListener('click', function(e) {
+      var href = a.getAttribute('href') || '';
+      if (href.charAt(0) !== '#') return;
+      var target = document.querySelector(href);
+      if (!target) return;
+      e.preventDefault();
+      var y = target.getBoundingClientRect().top + window.pageYOffset - 80;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+      target.classList.add('tl-flash');
+      setTimeout(function() { target.classList.remove('tl-flash'); }, 1200);
+    });
+  });
+})();
+
+/* =========================================================
+   Tier 1 — entities panel: tab switcher + click-to-filter
+   Clicking a chip adds `body.tl-entity-filter` and marks every
+   event whose data-entities contains the chip name with
+   `.entity-match`. Re-clicking the same chip, or clicking the
+   clear button, removes the filter.
+   ========================================================= */
+(function() {
+  var card = document.getElementById('tlEntitiesCard');
+  if (!card) return;
+
+  var rail    = document.getElementById('tlRail');
+  if (!rail) return;
+  var events  = Array.prototype.slice.call(rail.querySelectorAll('.tl-event'));
+
+  // --- Tab switcher ---
+  var tabs   = Array.prototype.slice.call(card.querySelectorAll('.tl-entity-tab'));
+  var panels = Array.prototype.slice.call(card.querySelectorAll('[data-ent-panel]'));
+  tabs.forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      var key = tab.getAttribute('data-ent-tab');
+      tabs.forEach(function(t) { t.classList.toggle('active', t === tab); });
+      panels.forEach(function(p) {
+        if (p.getAttribute('data-ent-panel') === key) {
+          p.removeAttribute('hidden');
+        } else {
+          p.setAttribute('hidden', '');
+        }
+      });
+    });
+  });
+
+  // --- Chip filter ---
+  var chips = Array.prototype.slice.call(card.querySelectorAll('.tl-entity-chip'));
+  var activeEntity = null;
+
+  function clearFilter() {
+    activeEntity = null;
+    document.body.classList.remove('tl-entity-filter');
+    chips.forEach(function(c) { c.classList.remove('active'); });
+    events.forEach(function(el) { el.classList.remove('entity-match'); });
+  }
+
+  function applyFilter(name) {
+    if (!name) return clearFilter();
+    activeEntity = name;
+    document.body.classList.add('tl-entity-filter');
+    chips.forEach(function(c) {
+      c.classList.toggle('active', c.getAttribute('data-entity') === name);
+    });
+    var needle = name.toLowerCase();
+    var matched = 0;
+    events.forEach(function(el) {
+      var raw = (el.getAttribute('data-entities') || '').toLowerCase();
+      if (!raw) {
+        el.classList.remove('entity-match');
+        return;
+      }
+      var parts = raw.split('|');
+      var hit = false;
+      for (var i = 0; i < parts.length; i++) {
+        if (parts[i] === needle) { hit = true; break; }
+      }
+      el.classList.toggle('entity-match', hit);
+      if (hit) matched++;
+    });
+    // If nothing matched, still show the filter state — the clear
+    // button will be visible so the user can escape the empty view.
+  }
+
+  chips.forEach(function(chip) {
+    chip.addEventListener('click', function() {
+      var name = chip.getAttribute('data-entity') || '';
+      if (activeEntity === name) {
+        clearFilter();
+      } else {
+        applyFilter(name);
+      }
+    });
+  });
+
+  var clearBtns = Array.prototype.slice.call(card.querySelectorAll('[data-ent-clear]'));
+  clearBtns.forEach(function(btn) {
+    btn.addEventListener('click', clearFilter);
+  });
+
+  // Escape key clears the filter too.
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && activeEntity) clearFilter();
   });
 })();
 </script>
