@@ -243,7 +243,8 @@ if ($__heroImg): ?>
 <link rel="preload" as="image" href="<?php echo e($__heroImg); ?>">
 <?php endif; ?>
 <style><?php readfile(__DIR__ . '/assets/css/site-header.min.css'); ?></style>
-<link rel="stylesheet" href="assets/css/home.min.css?v=m1">
+<link rel="stylesheet" href="assets/css/home.min.css?v=m2">
+<link rel="stylesheet" href="assets/css/home-index.min.css?v=m1">
 <link rel="stylesheet" href="assets/css/user.min.css?v=m1">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 <script>
