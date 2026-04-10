@@ -236,9 +236,8 @@ $homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#1a5c5c">
 <style><?php readfile(__DIR__ . '/assets/css/site-header.min.css'); ?></style>
-<link rel="preload" as="style" href="assets/css/home.min.css?v=m1" onload="this.onload=null;this.rel='stylesheet'">
-<link rel="preload" as="style" href="assets/css/user.min.css?v=m1" onload="this.onload=null;this.rel='stylesheet'">
-<noscript><link rel="stylesheet" href="assets/css/home.min.css?v=m1"><link rel="stylesheet" href="assets/css/user.min.css?v=m1"></noscript>
+<link rel="stylesheet" href="assets/css/home.min.css?v=m1">
+<link rel="stylesheet" href="assets/css/user.min.css?v=m1">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 <script>
 // Register the service worker for the PWA shell. Wrapped in a load
