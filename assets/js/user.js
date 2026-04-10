@@ -216,7 +216,7 @@
 
   NF.cycleTheme = () => {
     const cur = document.documentElement.getAttribute('data-theme') || 'auto';
-    const order = { auto: 'light', light: 'dark', dark: 'auto' };
+    const order = { auto: 'dark', dark: 'light', light: 'auto' };
     NF.setTheme(order[cur] || 'auto');
   };
 
