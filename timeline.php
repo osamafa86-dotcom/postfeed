@@ -309,6 +309,80 @@ $metaDesc = $timeline && !empty($timeline['intro'])
     border-color:var(--gold);
   }
 
+  /* ============ TIER 2 — STORY DYNAMICS ============
+     Three things layered into the existing event card:
+       1. severity chip in the head (.tl-sev-*)
+       2. trajectory arrow rail dot variants (.tl-event[data-traj=...])
+       3. "what's new" inline diff line (.tl-whats-new)
+     The first event never carries a trajectory or whats_new, so the
+     arrow + diff only appear from event 2 onward. */
+  .tl-event-sev {
+    display:inline-flex; align-items:center; gap:5px;
+    padding:4px 11px; border-radius:999px;
+    font-size:11px; font-weight:800;
+    border:1px solid transparent;
+    text-transform:uppercase; letter-spacing:.3px;
+  }
+  .tl-event-sev.tl-sev-breaking {
+    background:#fef2f2; color:#991b1b; border-color:#fecaca;
+    animation:tlSevPulse 2.4s ease-in-out infinite;
+  }
+  .tl-event-sev.tl-sev-major {
+    background:#fff7ed; color:#9a3412; border-color:#fed7aa;
+  }
+  .tl-event-sev.tl-sev-update {
+    background:#ecfeff; color:#155e75; border-color:#a5f3fc;
+  }
+  .tl-event-sev.tl-sev-context {
+    background:#f3f4f6; color:#4b5563; border-color:#d1d5db;
+  }
+  @keyframes tlSevPulse {
+    0%, 100% { box-shadow:0 0 0 0 rgba(220,38,38,.35); }
+    50%      { box-shadow:0 0 0 6px rgba(220,38,38,0); }
+  }
+
+  /* Severity colors the rail dot too — strongest visual signal of
+     where the breaking moments are when scanning the rail. */
+  .tl-event[data-sev="breaking"]::before {
+    border-color:var(--red); background:#fff;
+    box-shadow:0 0 0 4px var(--bg), 0 0 0 8px rgba(220,38,38,.18);
+  }
+  .tl-event[data-sev="major"]::before { border-color:#f97316; }
+  .tl-event[data-sev="context"]::before { border-color:#9ca3af; }
+
+  /* "What's new" diff line — shows up between the title and summary.
+     Visually a soft teal callout so it never competes with the title
+     but is impossible to miss when skimming. */
+  .tl-whats-new {
+    display:flex; align-items:flex-start; gap:8px;
+    margin:-4px 0 12px;
+    padding:8px 12px;
+    background:linear-gradient(90deg, rgba(13,148,136,.08), transparent);
+    border-right:3px solid var(--accent2);
+    border-radius:0 8px 8px 0;
+    font-size:12.5px; font-weight:600;
+    color:#155e63;
+    line-height:1.55;
+  }
+  .tl-whats-new .tl-whats-new-icon {
+    flex-shrink:0; font-size:14px; line-height:1.4;
+  }
+
+  /* Trajectory pill appears INSIDE the event head, right after the
+     date chip — keeps the rail itself uncluttered while still telling
+     the story arc at a glance. */
+  .tl-event-traj {
+    display:inline-flex; align-items:center; gap:5px;
+    padding:3px 10px; border-radius:999px;
+    font-size:11px; font-weight:800;
+    border:1px solid var(--border);
+    background:#fff;
+  }
+  .tl-event-traj.tl-traj-escalation    { color:#b91c1c; border-color:#fecaca; background:#fef2f2; }
+  .tl-event-traj.tl-traj-de-escalation { color:#15803d; border-color:#bbf7d0; background:#f0fdf4; }
+  .tl-event-traj.tl-traj-steady        { color:#475569; border-color:#e2e8f0; background:#f8fafc; }
+  .tl-event-traj.tl-traj-shift         { color:#7c3aed; border-color:#ddd6fe; background:#f5f3ff; }
+
   /* ============ SIDEBAR (full coverage) ============ */
   .tl-side-card {
     background:var(--card); border:1px solid var(--border);
@@ -780,20 +854,56 @@ include __DIR__ . '/includes/components/site_header.php';
                   $entityAttr = implode('|', array_map('strval', (array)$event['entity_refs']));
               }
           ?>
+            <?php
+              // Tier 2 — severity / trajectory / whats_new presentation.
+              $sev = (string)($event['severity'] ?? 'update');
+              $sevLabels = [
+                  'breaking' => '🔥 عاجل',
+                  'major'    => '⚡ كبير',
+                  'update'   => '📌 تحديث',
+                  'context'  => '📚 سياق',
+              ];
+              $sevLabel = $sevLabels[$sev] ?? $sevLabels['update'];
+
+              $traj = (string)($event['trajectory'] ?? '');
+              $trajLabels = [
+                  'escalation'    => ['↑', 'تصعيد'],
+                  'de-escalation' => ['↓', 'تهدئة'],
+                  'steady'        => ['→', 'استمرار'],
+                  'shift'         => ['⇄', 'تحوّل'],
+              ];
+              $trajLabel = $trajLabels[$traj] ?? null;
+
+              $whatsNew = trim((string)($event['whats_new'] ?? ''));
+            ?>
             <article id="tl-event-<?php echo $idx + 1; ?>"
                      class="<?php echo $klass; ?>"
                      data-idx="<?php echo $idx + 1; ?>"
                      data-date="<?php echo e($dateKey); ?>"
+                     data-sev="<?php echo e($sev); ?>"
+                     data-traj="<?php echo e($traj); ?>"
                      data-entities="<?php echo e($entityAttr); ?>">
               <div class="tl-event-head">
+                <span class="tl-event-sev tl-sev-<?php echo e($sev); ?>"><?php echo e($sevLabel); ?></span>
                 <?php if ($dateLabel !== ''): ?>
                   <span class="tl-event-date">📅 <?php echo e($dateLabel); ?></span>
+                <?php endif; ?>
+                <?php if ($trajLabel): ?>
+                  <span class="tl-event-traj tl-traj-<?php echo e($traj); ?>" title="<?php echo e($trajLabel[1]); ?> مقارنة بالحدث السابق">
+                    <?php echo e($trajLabel[0]); ?> <?php echo e($trajLabel[1]); ?>
+                  </span>
                 <?php endif; ?>
                 <?php if (!empty($event['icon'])): ?>
                   <span class="tl-event-icon"><?php echo e($event['icon']); ?></span>
                 <?php endif; ?>
               </div>
               <h2 class="tl-event-title"><?php echo e($event['title']); ?></h2>
+              <?php if ($whatsNew !== ''): ?>
+                <div class="tl-whats-new">
+                  <span class="tl-whats-new-icon">✨</span>
+                  <span><b>الجديد:</b> <?php echo e($whatsNew); ?></span>
+                </div>
+              <?php endif; ?>
               <p class="tl-event-summary"><?php echo e($event['summary']); ?></p>
 
               <?php if (!empty($event['quote']) && !empty($event['quote']['text'])): ?>
