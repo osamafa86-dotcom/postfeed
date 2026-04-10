@@ -355,6 +355,42 @@
   .bn-body .cluster-badge { margin:4px 0 2px; padding:2px 7px; font-size:10px; }
   .nf-side-card-body .cluster-badge { margin:4px 0 0; padding:2px 7px; font-size:10px; }
 
+  /* Evolving-story pill — sibling to .cluster-badge.
+     Rendered only when the current article is part of a cluster that
+     already has a stored Smart Timeline. Teal tone differentiates it
+     from the amber "multiple sources" pill so the two can sit side
+     by side without visual clash. */
+  .timeline-badge {
+    display:inline-flex; align-items:center; gap:4px;
+    margin:6px 0 4px;
+    padding:3px 9px;
+    background:linear-gradient(135deg,#ccfbf1,#a7f3d0);
+    color:#0f766e;
+    border:1px solid #5eead4;
+    border-radius:999px;
+    font-size:11px; font-weight:800; line-height:1.4;
+    white-space:nowrap;
+    text-decoration:none;
+    cursor:pointer;
+    transition:all .18s ease;
+  }
+  .timeline-badge + .cluster-badge,
+  .cluster-badge + .timeline-badge { margin-right:6px; }
+  .timeline-badge:hover {
+    background:linear-gradient(135deg,#a7f3d0,#5eead4);
+    border-color:#14b8a6;
+    transform:translateY(-1px);
+    box-shadow:0 3px 8px rgba(13,148,136,.28);
+  }
+  .timeline-badge:focus-visible {
+    outline:2px solid #0d9488;
+    outline-offset:2px;
+  }
+  .nf-feature-main-body .timeline-badge,
+  .ps-hero-text .timeline-badge { font-size:12px; }
+  .bn-body .timeline-badge { margin:4px 0 2px; padding:2px 7px; font-size:10px; }
+  .nf-side-card-body .timeline-badge { margin:4px 0 0; padding:2px 7px; font-size:10px; }
+
   /* ROWS STYLE (Sky News–like) */
   .news-rows { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:32px; }
   .news-rows .news-card {

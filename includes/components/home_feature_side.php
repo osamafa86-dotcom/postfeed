@@ -18,7 +18,7 @@ $__imgUrl = $article['image_url'] ?? placeholderImage(200, 160);
           <span class="cat"><?php echo e($article['cat_name'] ?? ''); ?></span>
         </div>
         <div class="nf-side-card-title"><?php echo e($article['title'] ?? ''); ?></div>
-        <?php echo renderClusterBadge($article); ?>
+        <?php echo renderClusterBadge($article); if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($article); ?>
         <?php if (!empty($article['source_name'])): ?>
           <div class="nf-side-card-source">
             <span class="src-dot" style="background:<?php echo e($article['logo_color'] ?? '#6b9fd4'); ?>"><?php echo e(mb_substr($article['source_name'], 0, 1)); ?></span>

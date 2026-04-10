@@ -737,3 +737,66 @@ function story_timeline_candidates(int $days = 7, int $minArticles = 4, int $lim
         return [];
     }
 }
+
+/**
+ * Batch lookup: given a list of cluster keys (from a page worth of
+ * article cards), return an assoc array [cluster_key => true] for
+ * the keys that already have a stored story timeline. Designed to be
+ * called once per page-load and stashed in a global, so the card
+ * renderer doesn't hit the DB per card.
+ *
+ * Used by renderTimelineBadge() below and by any listing page that
+ * wants to highlight "evolving story" articles inline instead of in
+ * a separate discovery rail.
+ */
+function story_timeline_keys_for(array $clusterKeys): array {
+    $clusterKeys = array_values(array_unique(array_filter(
+        $clusterKeys,
+        fn($k) => is_string($k) && preg_match('/^[a-f0-9]{40}$/', $k)
+    )));
+    if (!$clusterKeys) return [];
+    try {
+        story_timeline_ensure_table();
+        $db    = getDB();
+        $place = implode(',', array_fill(0, count($clusterKeys), '?'));
+        $stmt  = $db->prepare("SELECT cluster_key FROM story_timelines
+                                WHERE cluster_key IN ($place)");
+        $stmt->execute($clusterKeys);
+        $out = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $k) {
+            $out[(string)$k] = true;
+        }
+        return $out;
+    } catch (Throwable $e) {
+        // Table missing or migration still pending — degrade quietly.
+        return [];
+    }
+}
+
+/**
+ * Inline badge for an article card. Returns '' when the article's
+ * cluster does not have a timeline yet, or when the page didn't
+ * pre-populate the `$GLOBALS['__nf_timeline_keys']` lookup (no fallback
+ * per-article DB hit — the batch helper is the only supported path).
+ *
+ * Rendered as a <span role="link"> for the same reason as the cluster
+ * badge: the card is already wrapped in an outer <a>, and nested
+ * anchors are forbidden in HTML5. Keyboard users still get role +
+ * tabindex so it stays accessible.
+ */
+if (!function_exists('renderTimelineBadge')) {
+    function renderTimelineBadge(array $article): string {
+        $key = (string)($article['cluster_key'] ?? '');
+        if ($key === '' || !preg_match('/^[a-f0-9]{40}$/', $key)) return '';
+        $lookup = $GLOBALS['__nf_timeline_keys'] ?? null;
+        if (!is_array($lookup) || empty($lookup[$key])) return '';
+        $href = '/timeline/' . $key;
+        $hrefAttr = htmlspecialchars($href, ENT_QUOTES);
+        return '<span class="timeline-badge" role="link" tabindex="0"'
+             . ' data-href="' . $hrefAttr . '"'
+             . ' title="هذا الخبر جزء من قصة متطوّرة — اعرض الخط الزمني الكامل"'
+             . ' onclick="event.preventDefault();event.stopPropagation();window.location.href=\'' . $hrefAttr . '\';"'
+             . ' onkeydown="if(event.key===\'Enter\'){event.preventDefault();window.location.href=\'' . $hrefAttr . '\';}"'
+             . '>📅 قصة متطوّرة ›</span>';
+    }
+}
