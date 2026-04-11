@@ -82,7 +82,8 @@ $nf_nav_link_class = function (string $type, string $slug = '') use ($activeType
       <a href="category.php?type=breaking" class="<?php echo $nf_nav_link_class('breaking'); ?>"><span class="nav-dot"></span>عاجل</a>
       <a href="index.php" class="<?php echo $nf_nav_link_class('home'); ?>">الرئيسية</a>
       <a href="category.php?type=latest" class="<?php echo $nf_nav_link_class('latest'); ?>">آخر الأخبار</a>
-      <a href="timelines" class="<?php echo $nf_nav_link_class('timelines'); ?>">📅 قصص متطوّرة</a>
+      <a href="evolving-stories" class="<?php echo $nf_nav_link_class('evolving'); ?>">📅 قصص متطوّرة</a>
+      <a href="timelines" class="<?php echo $nf_nav_link_class('timelines'); ?>">🧠 خطوط زمنية</a>
       <a href="category/political" class="<?php echo $nf_nav_link_class('category', 'political'); ?>">سياسة</a>
       <a href="category/economy" class="<?php echo $nf_nav_link_class('category', 'economy'); ?>">اقتصاد</a>
       <a href="category/sports" class="<?php echo $nf_nav_link_class('category', 'sports'); ?>">رياضة</a>
@@ -102,7 +103,8 @@ $nf_nav_link_class = function (string $type, string $slug = '') use ($activeType
   <a href="index.php"<?php echo $activeType === 'home' ? ' class="active"' : ''; ?>>🏠 الرئيسية</a>
   <a href="category.php?type=breaking"<?php echo $activeType === 'breaking' ? ' class="active"' : ''; ?>>🔴 عاجل</a>
   <a href="category.php?type=latest"<?php echo $activeType === 'latest' ? ' class="active"' : ''; ?>>⏱ آخر الأخبار</a>
-  <a href="timelines"<?php echo $activeType === 'timelines' ? ' class="active"' : ''; ?>>📅 قصص متطوّرة</a>
+  <a href="evolving-stories"<?php echo $activeType === 'evolving' ? ' class="active"' : ''; ?>>📅 قصص متطوّرة</a>
+  <a href="timelines"<?php echo $activeType === 'timelines' ? ' class="active"' : ''; ?>>🧠 خطوط زمنية</a>
   <a href="category/political"<?php echo $activeSlug === 'political' ? ' class="active"' : ''; ?>>🏛 سياسة</a>
   <a href="category/economy"<?php echo $activeSlug === 'economy' ? ' class="active"' : ''; ?>>💹 اقتصاد</a>
   <a href="category/sports"<?php echo $activeSlug === 'sports' ? ' class="active"' : ''; ?>>⚽ رياضة</a>
