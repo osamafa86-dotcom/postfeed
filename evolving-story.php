@@ -280,6 +280,20 @@ $canonicalUrl = $pageUrl;
     font-size:13px; color:#e5e7eb; font-weight:600;
   }
   .es1-hero-stats b { color:#fff; font-weight:900; }
+  .es1-hero-actions { margin-top:16px; }
+  .es1-hero-pdf {
+    display:inline-flex; align-items:center; gap:8px;
+    padding:9px 18px; border-radius:999px;
+    background:rgba(255,255,255,.14);
+    border:1px solid rgba(255,255,255,.3);
+    color:#fff; font-size:12.5px; font-weight:800;
+    backdrop-filter:blur(6px);
+    transition:all .2s ease;
+  }
+  .es1-hero-pdf:hover {
+    background:#fff; color:var(--text); border-color:#fff;
+    transform:translateY(-1px);
+  }
 
   /* ============ Time Machine ⏰ ============ */
   .es1-tm {
@@ -670,6 +684,15 @@ include __DIR__ . '/includes/components/site_header.php';
               <span>↻ آخر تحديث <b><?php echo e(timeAgo($story['last_matched_at'])); ?></b></span>
             <?php endif; ?>
           </div>
+          <?php if (!$isTimeTravel): ?>
+            <div class="es1-hero-actions">
+              <a class="es1-hero-pdf"
+                 href="/evolving-story/<?php echo e((string)$story['slug']); ?>/book?print=1"
+                 target="_blank" rel="noopener">
+                📖 صدِّر ككتاب PDF
+              </a>
+            </div>
+          <?php endif; ?>
         </div>
       </div>
     </div>
