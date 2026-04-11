@@ -203,6 +203,17 @@ try {
     $applied[] = "! cluster backfill skipped: " . $e->getMessage();
 }
 
+// --- FULLTEXT index on articles for search ---
+try {
+    $hasIdx = $db->query("SHOW INDEX FROM articles WHERE Key_name = 'ft_title_excerpt'")->fetch();
+    if (!$hasIdx) {
+        $db->exec("ALTER TABLE articles ADD FULLTEXT INDEX ft_title_excerpt (title, excerpt)");
+        $applied[] = "+ added FULLTEXT index ft_title_excerpt on articles(title, excerpt)";
+    }
+} catch (Throwable $e) {
+    $applied[] = "! FULLTEXT index skipped: " . $e->getMessage();
+}
+
 if (empty($applied)) {
     echo "✓ لا تغييرات — قاعدة البيانات محدّثة\n";
 } else {

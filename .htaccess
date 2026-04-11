@@ -70,6 +70,7 @@ FileETag None
     RewriteRule ^topic/([^/]+)/?$ topic.php?slug=$1 [L,QSA]
     RewriteRule ^cluster/([a-f0-9]{40})/?$ cluster.php?key=$1 [L,QSA]
     RewriteRule ^timeline/([a-f0-9]{40})/?$ timeline.php?key=$1 [L,QSA]
+    RewriteRule ^search/?$ search.php [L,QSA]
     RewriteRule ^timelines/?$ timelines.php [L,QSA]
     RewriteRule ^trending/?$ trending.php [L,QSA]
     RewriteRule ^ask/?$ ask.php [L,QSA]

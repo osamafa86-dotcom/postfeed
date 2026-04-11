@@ -35,29 +35,41 @@ try {
     // Limit search term length to prevent abuse
     $query = substr($query, 0, 100);
 
-    // Prepare search term with wildcards (safe parameter binding)
-    $searchTerm = '%' . trim($query) . '%';
+    // Try FULLTEXT search first (faster, better relevance), fall back to LIKE
+    $hasFulltext = false;
+    try {
+        $idx = $db->query("SHOW INDEX FROM articles WHERE Key_name = 'ft_title_excerpt'")->fetch();
+        if ($idx) $hasFulltext = true;
+    } catch (Throwable $e) {}
 
-    // Search articles
-    $sql = "SELECT
-            a.id,
-            a.title,
-            a.excerpt,
-            a.image_url,
-            a.published_at,
-            a.view_count,
-            c.name as category_name,
-            c.slug as category_slug,
-            s.name as source_name
-            FROM articles a
-            LEFT JOIN categories c ON a.category_id = c.id
-            LEFT JOIN sources s ON a.source_id = s.id
-            WHERE a.status = 'published' AND (a.title LIKE ? OR a.excerpt LIKE ?)
-            ORDER BY a.published_at DESC
-            LIMIT 20";
+    $fields = "a.id, a.title, a.slug, a.excerpt, a.image_url, a.published_at,
+               a.view_count, c.name as category_name, c.slug as category_slug,
+               c.css_class, s.name as source_name";
 
-    $stmt = $db->prepare($sql);
-    $stmt->execute([$searchTerm, $searchTerm]);
+    if ($hasFulltext) {
+        $sql = "SELECT {$fields}
+                FROM articles a
+                LEFT JOIN categories c ON a.category_id = c.id
+                LEFT JOIN sources s ON a.source_id = s.id
+                WHERE a.status = 'published' AND MATCH(a.title, a.excerpt) AGAINST(? IN BOOLEAN MODE)
+                ORDER BY a.published_at DESC
+                LIMIT 20";
+        // Append wildcard for partial matching in BOOLEAN MODE
+        $ftQuery = trim($query) . '*';
+        $stmt = $db->prepare($sql);
+        $stmt->execute([$ftQuery]);
+    } else {
+        $searchTerm = '%' . trim($query) . '%';
+        $sql = "SELECT {$fields}
+                FROM articles a
+                LEFT JOIN categories c ON a.category_id = c.id
+                LEFT JOIN sources s ON a.source_id = s.id
+                WHERE a.status = 'published' AND (a.title LIKE ? OR a.excerpt LIKE ?)
+                ORDER BY a.published_at DESC
+                LIMIT 20";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([$searchTerm, $searchTerm]);
+    }
     $articles = $stmt->fetchAll();
 
     // Format response
@@ -66,16 +78,27 @@ try {
         'query' => htmlspecialchars($query, ENT_QUOTES, 'UTF-8'),
         'count' => count($articles),
         'data' => array_map(function($article) {
+            // Build friendly URL: article/{id}/{slug}
+            $slug = $article['slug'] ?? '';
+            if ($slug) {
+                $slug = preg_replace('/[^a-zA-Z0-9\x{0600}-\x{06FF}-]+/u', '-', $slug);
+                $slug = trim($slug, '-');
+                $slug = mb_substr($slug, 0, 80);
+            }
+            $url = $slug ? 'article/' . (int)$article['id'] . '/' . rawurlencode($slug)
+                         : 'article/' . (int)$article['id'];
             return [
                 'id' => (int)$article['id'],
                 'title' => $article['title'],
                 'excerpt' => $article['excerpt'],
                 'image_url' => $article['image_url'],
+                'url' => $url,
                 'published_at' => $article['published_at'],
                 'view_count' => (int)$article['view_count'],
                 'category' => [
                     'name' => $article['category_name'],
-                    'slug' => $article['category_slug']
+                    'slug' => $article['category_slug'],
+                    'css_class' => $article['css_class'] ?? ''
                 ],
                 'source' => $article['source_name']
             ];
