@@ -24,16 +24,26 @@ try {
 $success = '';
 $error = '';
 
-// Save API key
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['api_key'])) {
-    $key = trim($_POST['api_key']);
-    $stmt = $db->prepare("INSERT INTO settings (setting_key, setting_value) VALUES ('anthropic_api_key', ?) ON DUPLICATE KEY UPDATE setting_value = ?");
-    $stmt->execute([$key, $key]);
+// Save AI provider settings: both keys + the active provider dropdown.
+// Stored in the same `settings` table so rotations from here take
+// effect immediately after the settings_all cache bust below.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_ai_settings'])) {
+    $saveStmt = $db->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");
+
+    $anthKey  = trim((string)($_POST['anthropic_api_key'] ?? ''));
+    $geminiKey = trim((string)($_POST['gemini_api_key']   ?? ''));
+    $provider = strtolower(trim((string)($_POST['ai_provider'] ?? 'gemini')));
+    if (!in_array($provider, ['anthropic', 'gemini'], true)) $provider = 'gemini';
+
+    $saveStmt->execute(['anthropic_api_key', $anthKey]);
+    $saveStmt->execute(['gemini_api_key',    $geminiKey]);
+    $saveStmt->execute(['ai_provider',       $provider]);
+
     // getSetting() caches the whole settings table under 'settings_all'
     // for an hour. Without busting that key here, the panel would keep
-    // handing the OLD invalid key to ai_helper.php until the cache expires.
+    // handing the OLD values to ai_provider.php until the cache expires.
     cache_forget('settings_all');
-    $success = 'تم حفظ المفتاح';
+    $success = 'تم حفظ إعدادات الذكاء الاصطناعي';
 }
 
 // Generate / rotate the cron key used by cron_tg_summary.php and friends
@@ -92,7 +102,10 @@ if (($_GET['action'] ?? '') === 'bulk') {
     $success = "تم تلخيص $done خبر، فشل $fail" . ($errors ? '<br><small>' . e(implode(' | ', array_slice($errors, 0, 3))) . '</small>' : '');
 }
 
-$apiKey = getSetting('anthropic_api_key', '');
+$anthKey    = (string)getSetting('anthropic_api_key', '');
+$geminiKey  = (string)getSetting('gemini_api_key', '');
+$aiProvider = strtolower((string)getSetting('ai_provider', 'gemini'));
+if (!in_array($aiProvider, ['anthropic', 'gemini'], true)) $aiProvider = 'gemini';
 $totalArticles = (int)$db->query("SELECT COUNT(*) FROM articles")->fetchColumn();
 $summarized = (int)$db->query("SELECT COUNT(*) FROM articles WHERE ai_summary IS NOT NULL")->fetchColumn();
 $pending = $totalArticles - $summarized;
@@ -118,15 +131,39 @@ include __DIR__ . '/includes/panel_layout_head.php';
   <?php if ($error): ?><div class="alert alert-danger"><?php echo e($error); ?></div><?php endif; ?>
 
   <div class="form-card">
-    <h3 style="font-size:16px;font-weight:700;margin-bottom:14px;">⚙️ إعدادات API</h3>
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:14px;">⚙️ إعدادات الذكاء الاصطناعي</h3>
     <form method="POST">
-                <?php echo csrf_field(); ?>
+      <?php echo csrf_field(); ?>
+      <input type="hidden" name="save_ai_settings" value="1">
+
       <div class="form-group">
-        <label>Anthropic API Key</label>
-        <input type="password" name="api_key" class="form-control" value="<?php echo e($apiKey); ?>" placeholder="sk-ant-api03-...">
-        <small style="color:var(--text-muted);font-size:11px;">احصل عليه من <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a></small>
+        <label>المزوّد النشط (AI Provider)</label>
+        <select name="ai_provider" class="form-control">
+          <option value="gemini"    <?php echo $aiProvider === 'gemini'    ? 'selected' : ''; ?>>Google Gemini 2.5 Flash — مجاني</option>
+          <option value="anthropic" <?php echo $aiProvider === 'anthropic' ? 'selected' : ''; ?>>Anthropic Claude Haiku 4.5 — مدفوع</option>
+        </select>
+        <small style="color:var(--text-muted);font-size:11px;">
+          التبديل فوري. Gemini 2.5 Flash مجاني ضمن ~15 طلب/دقيقة و ~1500 طلب/يوم — يكفي لكل ميزات نيوزفلو.
+        </small>
       </div>
-      <button type="submit" class="btn-primary">💾 حفظ</button>
+
+      <div class="form-group">
+        <label>🟢 Google Gemini API Key</label>
+        <input type="password" name="gemini_api_key" class="form-control" value="<?php echo e($geminiKey); ?>" placeholder="AIza...">
+        <small style="color:var(--text-muted);font-size:11px;">
+          احصل عليه مجاناً من <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com/app/apikey</a>
+        </small>
+      </div>
+
+      <div class="form-group">
+        <label>🟠 Anthropic API Key (احتياطي)</label>
+        <input type="password" name="anthropic_api_key" class="form-control" value="<?php echo e($anthKey); ?>" placeholder="sk-ant-api03-...">
+        <small style="color:var(--text-muted);font-size:11px;">
+          يُستخدم فقط إذا كان المزوّد المحدّد أعلاه هو Anthropic. احصل عليه من <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>
+        </small>
+      </div>
+
+      <button type="submit" class="btn-primary">💾 حفظ الإعدادات</button>
     </form>
   </div>
 

@@ -35,9 +35,15 @@ try {
     }
 } catch (Exception $e) {}
 
-$apiKey = env('ANTHROPIC_API_KEY', '') ?: getSetting('anthropic_api_key', '');
-if (empty($apiKey)) {
-    echo "API key not configured\n";
+// Provider gate: require the key for whichever provider is active so
+// the cron bails out cleanly instead of hammering N articles × 500ms
+// of curl failures.
+$provider = strtolower((string)getSetting('ai_provider', 'gemini'));
+$providerKey = $provider === 'anthropic'
+    ? (env('ANTHROPIC_API_KEY', '') ?: getSetting('anthropic_api_key', ''))
+    : (env('GEMINI_API_KEY',    '') ?: getSetting('gemini_api_key',    ''));
+if (empty($providerKey)) {
+    echo "AI provider '{$provider}' key not configured\n";
     exit;
 }
 

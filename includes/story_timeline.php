@@ -20,6 +20,7 @@
  */
 
 require_once __DIR__ . '/ai_helper.php';
+require_once __DIR__ . '/ai_provider.php';
 require_once __DIR__ . '/cache.php';
 
 const STORY_TIMELINE_MIN_ARTICLES   = 3;     // below this we redirect to cluster.php
@@ -237,11 +238,6 @@ function story_timeline_is_stale(array $stored, int $currentArticleCount): bool 
  * link back to the original article cards.
  */
 function story_timeline_generate(array $articles): array {
-    $apiKey = trim((string)getSetting('anthropic_api_key', ''));
-    if ($apiKey === '') $apiKey = trim((string)env('ANTHROPIC_API_KEY', ''));
-    if ($apiKey === '') {
-        return ['ok' => false, 'error' => 'مفتاح Anthropic API غير مُعدّ.'];
-    }
     if (count($articles) < STORY_TIMELINE_MIN_ARTICLES) {
         return ['ok' => false, 'error' => 'لا توجد مقالات كافية لتوليد خط زمني.'];
     }
@@ -440,64 +436,15 @@ function story_timeline_generate(array $articles): array {
         ],
     ];
 
-    $body = json_encode([
-        'model'       => 'claude-haiku-4-5-20251001',
-        // Bumped from 4000 → 6000 to accommodate the richer schema
-        // (entities + per-event quotes) without truncating the response.
-        'max_tokens'  => 6000,
-        'tools'       => [$tool],
-        'tool_choice' => ['type' => 'tool', 'name' => 'submit_story_timeline'],
-        'messages'    => [['role' => 'user', 'content' => $prompt]],
-    ], JSON_UNESCAPED_UNICODE);
-
-    $ch = curl_init('https://api.anthropic.com/v1/messages');
-    curl_setopt_array($ch, [
-        CURLOPT_POST            => true,
-        CURLOPT_POSTFIELDS      => $body,
-        CURLOPT_RETURNTRANSFER  => true,
-        CURLOPT_TIMEOUT         => 90,
-        CURLOPT_HTTPHEADER      => [
-            'Content-Type: application/json',
-            'x-api-key: ' . $apiKey,
-            'anthropic-version: 2023-06-01',
-        ],
-    ]);
-    $resp = curl_exec($ch);
-    $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $err  = curl_error($ch);
-    curl_close($ch);
-
-    if ($http !== 200) {
-        if ($http === 401 || $http === 403) {
-            return ['ok' => false, 'error' => 'مفتاح Anthropic API غير صالح.'];
-        }
-        if ($http === 429) {
-            return ['ok' => false, 'error' => 'تم تجاوز حد الطلبات. حاول لاحقاً.'];
-        }
-        if ($http === 0 || $http >= 500) {
-            return ['ok' => false, 'error' => 'تعذّر الاتصال بخدمة الذكاء الاصطناعي.'];
-        }
-        return ['ok' => false, 'error' => "HTTP $http: " . ($err ?: mb_substr((string)$resp, 0, 200))];
+    // 6000-token cap leaves room for the richer schema (entities +
+    // per-event quotes) without truncation on long stories.
+    $call = ai_provider_tool_call($prompt, $tool, 6000);
+    if (empty($call['ok'])) {
+        return ['ok' => false, 'error' => (string)($call['error'] ?? 'تعذّر توليد الخط الزمني.')];
     }
-
-    $data = json_decode($resp, true);
-    if (!is_array($data)) {
-        return ['ok' => false, 'error' => 'رد غير صالح من خدمة الذكاء الاصطناعي.'];
-    }
-
-    $parsed = null;
-    foreach ((array)($data['content'] ?? []) as $block) {
-        if (!is_array($block)) continue;
-        if (($block['type'] ?? '') === 'tool_use'
-            && ($block['name'] ?? '') === 'submit_story_timeline'
-            && is_array($block['input'] ?? null)) {
-            $parsed = $block['input'];
-            break;
-        }
-    }
-
+    $parsed = $call['input'];
     if (!is_array($parsed) || empty($parsed['events'])) {
-        error_log('[story_timeline] parse failed: ' . mb_substr(json_encode($data, JSON_UNESCAPED_UNICODE), 0, 1500));
+        error_log('[story_timeline] parse failed: ' . mb_substr(json_encode($parsed, JSON_UNESCAPED_UNICODE), 0, 1500));
         return ['ok' => false, 'error' => 'تعذّر توليد الخط الزمني — رد غير مكتمل.'];
     }
 

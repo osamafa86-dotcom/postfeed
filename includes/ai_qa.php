@@ -26,6 +26,7 @@
 
 require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/cache.php';
+require_once __DIR__ . '/ai_provider.php';
 
 // ---------------------------------------------------------------------
 // Arabic stopwords — pruned so only content words feed the LIKE search
@@ -227,12 +228,6 @@ function qa_build_context(array $rows): array {
 // ---------------------------------------------------------------------
 
 function qa_call_claude(string $question, string $context, array $id_map): array {
-    $apiKey = trim((string)getSetting('anthropic_api_key', ''));
-    if ($apiKey === '') $apiKey = trim((string)env('ANTHROPIC_API_KEY', ''));
-    if ($apiKey === '') {
-        return ['ok' => false, 'error' => 'مفتاح Anthropic API غير مُعدّ. يرجى إضافته من لوحة التحكم.'];
-    }
-
     if (trim($context) === '') {
         return [
             'ok'       => true,
@@ -284,60 +279,12 @@ function qa_call_claude(string $question, string $context, array $id_map): array
         ],
     ];
 
-    $body = json_encode([
-        'model'       => 'claude-sonnet-4-6',
-        'max_tokens'  => 1500,
-        'tools'       => [$tool],
-        'tool_choice' => ['type' => 'tool', 'name' => 'submit_answer'],
-        'messages'    => [['role' => 'user', 'content' => $prompt]],
-    ], JSON_UNESCAPED_UNICODE);
-
-    $ch = curl_init('https://api.anthropic.com/v1/messages');
-    curl_setopt_array($ch, [
-        CURLOPT_POST           => true,
-        CURLOPT_POSTFIELDS     => $body,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 60,
-        CURLOPT_HTTPHEADER     => [
-            'Content-Type: application/json',
-            'x-api-key: ' . $apiKey,
-            'anthropic-version: 2023-06-01',
-        ],
-    ]);
-    $resp = curl_exec($ch);
-    $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $err  = curl_error($ch);
-    curl_close($ch);
-
-    if ($http !== 200) {
-        if ($http === 401 || $http === 403) {
-            return ['ok' => false, 'error' => 'مفتاح Anthropic API غير صالح أو منتهي الصلاحية.'];
-        }
-        if ($http === 429) {
-            return ['ok' => false, 'error' => 'تم تجاوز حد الطلبات مؤقتاً. حاول مرة أخرى بعد قليل.'];
-        }
-        if ($http === 0 || $http >= 500) {
-            return ['ok' => false, 'error' => 'تعذّر الاتصال بخدمة المساعد الآن. حاول لاحقاً.'];
-        }
-        return ['ok' => false, 'error' => "HTTP {$http}: " . ($err ?: mb_substr((string)$resp, 0, 200))];
+    $call = ai_provider_tool_call($prompt, $tool, 1500);
+    if (empty($call['ok'])) {
+        return ['ok' => false, 'error' => (string)($call['error'] ?? 'تعذّر توليد الإجابة.')];
     }
-
-    $data = json_decode($resp, true);
-    if (!is_array($data)) {
-        return ['ok' => false, 'error' => 'تعذّر قراءة رد المساعد.'];
-    }
-
-    $parsed = null;
-    foreach ((array)($data['content'] ?? []) as $block) {
-        if (!is_array($block)) continue;
-        if (($block['type'] ?? '') === 'tool_use'
-            && ($block['name'] ?? '') === 'submit_answer'
-            && is_array($block['input'] ?? null)) {
-            $parsed = $block['input'];
-            break;
-        }
-    }
-    if (!$parsed || empty($parsed['answer'])) {
+    $parsed = $call['input'];
+    if (!is_array($parsed) || empty($parsed['answer'])) {
         return ['ok' => false, 'error' => 'لم أتمكّن من توليد إجابة الآن.'];
     }
 

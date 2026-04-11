@@ -267,7 +267,13 @@ echo "\nالمجموع: {$totalNew} خبر جديد | أخطاء: {$totalErr} | 
 if ($totalNew > 0) {
     require_once __DIR__ . '/includes/functions.php';
     require_once __DIR__ . '/includes/ai_helper.php';
-    $apiKey = env('ANTHROPIC_API_KEY', '') ?: getSetting('anthropic_api_key', '');
+    // Gate on the active provider's key so a missing Anthropic key no
+    // longer blocks the ingest path when Gemini is the configured
+    // provider (and vice versa).
+    $provider = strtolower((string)getSetting('ai_provider', 'gemini'));
+    $apiKey = $provider === 'anthropic'
+        ? (env('ANTHROPIC_API_KEY', '') ?: getSetting('anthropic_api_key', ''))
+        : (env('GEMINI_API_KEY',    '') ?: getSetting('gemini_api_key',    ''));
     if (!empty($apiKey)) {
         try {
             $cols = $db->query("SHOW COLUMNS FROM articles LIKE 'ai_summary'")->fetch();

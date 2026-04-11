@@ -1,56 +1,28 @@
 <?php
 /**
- * Claude AI helper for article summarization.
- * API key is read from settings table (anthropic_api_key).
+ * AI helper for article + Telegram summarization.
+ *
+ * All provider-specific HTTP lives in includes/ai_provider.php; this
+ * file just builds prompts, schemas, and handles response shaping.
  */
 
-function ai_summarize_article($title, $content, $maxTokens = 500) {
-    // Prefer the key saved through the admin panel so rotations from
-    // panel/ai.php take effect immediately. Fall back to the env var
-    // only if the DB setting is empty.
-    $apiKey = trim((string)getSetting('anthropic_api_key', ''));
-    if ($apiKey === '') $apiKey = trim((string)env('ANTHROPIC_API_KEY', ''));
-    if ($apiKey === '') {
-        return ['ok' => false, 'error' => 'API key not configured'];
-    }
+require_once __DIR__ . '/ai_provider.php';
 
+function ai_summarize_article($title, $content, $maxTokens = 500) {
     $prompt = "أنت محرر أخبار محترف. لخّص الخبر التالي بالعربية بأسلوب صحفي محايد.\n\n"
             . "العنوان: $title\n\n"
             . "النص:\n" . mb_substr(strip_tags($content), 0, 6000) . "\n\n"
             . "أعطني رداً بصيغة JSON فقط (بدون أي شرح إضافي) بالشكل:\n"
             . '{"summary":"ملخص في 3-4 جمل","key_points":["نقطة 1","نقطة 2","نقطة 3"],"keywords":["كلمة1","كلمة2","كلمة3"]}';
 
-    $body = json_encode([
-        'model' => 'claude-haiku-4-5-20251001',
-        'max_tokens' => $maxTokens,
-        'messages' => [['role' => 'user', 'content' => $prompt]],
-    ]);
-
-    $ch = curl_init('https://api.anthropic.com/v1/messages');
-    curl_setopt_array($ch, [
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => $body,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 60,
-        CURLOPT_HTTPHEADER => [
-            'Content-Type: application/json',
-            'x-api-key: ' . $apiKey,
-            'anthropic-version: 2023-06-01',
-        ],
-    ]);
-    $resp = curl_exec($ch);
-    $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $err = curl_error($ch);
-    curl_close($ch);
-
-    if ($http !== 200) {
-        return ['ok' => false, 'error' => "HTTP $http: " . ($err ?: $resp)];
+    $call = ai_provider_text_call($prompt, (int)$maxTokens);
+    if (empty($call['ok'])) {
+        return ['ok' => false, 'error' => (string)($call['error'] ?? 'AI call failed')];
     }
+    $text = (string)$call['text'];
 
-    $data = json_decode($resp, true);
-    $text = $data['content'][0]['text'] ?? '';
-
-    // Extract JSON from response
+    // Extract JSON from response (the prompt asks for raw JSON but
+    // models sometimes wrap it in prose or markdown fences).
     if (preg_match('/\{.*\}/s', $text, $m)) {
         $parsed = json_decode($m[0], true);
         if ($parsed && isset($parsed['summary'])) {
@@ -78,14 +50,6 @@ function ai_summarize_article($title, $content, $maxTokens = 500) {
  *                           or ['ok'=>false, 'error'=>string].
  */
 function ai_summarize_telegram(array $messages, int $maxTokens = 3500): array {
-    // Prefer the key saved through the admin panel so rotations from
-    // panel/ai.php take effect immediately. Fall back to the env var
-    // only if the DB setting is empty.
-    $apiKey = trim((string)getSetting('anthropic_api_key', ''));
-    if ($apiKey === '') $apiKey = trim((string)env('ANTHROPIC_API_KEY', ''));
-    if ($apiKey === '') {
-        return ['ok' => false, 'error' => 'مفتاح Anthropic API غير مُعدّ. يرجى إضافته من لوحة التحكم.'];
-    }
     if (!$messages) {
         return ['ok' => false, 'error' => 'لا توجد رسائل للتلخيص'];
     }
@@ -185,82 +149,17 @@ function ai_summarize_telegram(array $messages, int $maxTokens = 3500): array {
         ],
     ];
 
-    $body = json_encode([
-        'model'       => 'claude-haiku-4-5-20251001',
-        'max_tokens'  => $maxTokens,
-        'tools'       => [$tool],
-        'tool_choice' => ['type' => 'tool', 'name' => 'submit_news_briefing'],
-        'messages'    => [['role' => 'user', 'content' => $prompt]],
-    ], JSON_UNESCAPED_UNICODE);
-
-    $ch = curl_init('https://api.anthropic.com/v1/messages');
-    curl_setopt_array($ch, [
-        CURLOPT_POST            => true,
-        CURLOPT_POSTFIELDS      => $body,
-        CURLOPT_RETURNTRANSFER  => true,
-        CURLOPT_TIMEOUT         => 60,
-        CURLOPT_HTTPHEADER      => [
-            'Content-Type: application/json',
-            'x-api-key: ' . $apiKey,
-            'anthropic-version: 2023-06-01',
-        ],
-    ]);
-    $resp = curl_exec($ch);
-    $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $err  = curl_error($ch);
-    curl_close($ch);
-
-    if ($http !== 200) {
-        // Surface a friendly Arabic message for the common failure modes so the
-        // UI doesn't show a raw HTTP dump to end users.
-        if ($http === 401 || $http === 403) {
-            return [
-                'ok'    => false,
-                'error' => 'مفتاح Anthropic API غير صالح أو منتهي الصلاحية. يرجى تحديثه من لوحة التحكم.',
-            ];
-        }
-        if ($http === 429) {
-            return [
-                'ok'    => false,
-                'error' => 'تم تجاوز حد الطلبات لخدمة الملخصات حالياً. حاول مرة أخرى بعد قليل.',
-            ];
-        }
-        if ($http === 0 || $http >= 500) {
-            return [
-                'ok'    => false,
-                'error' => 'تعذّر الاتصال بخدمة الملخصات حالياً. حاول مرة أخرى بعد قليل.',
-            ];
-        }
-        return ['ok' => false, 'error' => "HTTP $http: " . ($err ?: mb_substr((string)$resp, 0, 200))];
-    }
-
-    $data = json_decode($resp, true);
-    if (!is_array($data)) {
-        return ['ok' => false, 'error' => 'تعذّر قراءة رد خدمة الملخصات.'];
-    }
-
-    // With tool_choice forced, Claude returns one or more content blocks
-    // and the briefing arrives as a tool_use block whose `input` is
-    // already a structured array matching our schema — no JSON parsing,
+    // Force structured output via the provider-agnostic abstraction.
+    // Both Anthropic tool_use and Gemini functionCall return the tool
+    // `input` as a ready-to-use associative array — no JSON parsing,
     // no stray prose, no markdown fences.
-    $parsed = null;
-    foreach ((array)($data['content'] ?? []) as $block) {
-        if (!is_array($block)) continue;
-        if (($block['type'] ?? '') === 'tool_use'
-            && ($block['name'] ?? '') === 'submit_news_briefing'
-            && is_array($block['input'] ?? null)) {
-            $parsed = $block['input'];
-            break;
-        }
+    $call = ai_provider_tool_call($prompt, $tool, $maxTokens);
+    if (empty($call['ok'])) {
+        return ['ok' => false, 'error' => (string)($call['error'] ?? 'تعذّر توليد الملخص.')];
     }
-
+    $parsed = $call['input'];
     if (!is_array($parsed) || empty($parsed['summary'])) {
-        // Stop-reason diagnostics help explain max-tokens truncation.
-        $stopReason = (string)($data['stop_reason'] ?? '');
-        if ($stopReason === 'max_tokens') {
-            return ['ok' => false, 'error' => 'الرد طويل جداً ولم يكتمل. سنقلّل حجم الرسائل وتحاول مرة أخرى.'];
-        }
-        error_log('[tg_summary] Failed to parse AI response. stop_reason=' . $stopReason . ' raw=' . mb_substr(json_encode($data, JSON_UNESCAPED_UNICODE), 0, 2000));
+        error_log('[tg_summary] parsed missing summary: ' . mb_substr(json_encode($parsed, JSON_UNESCAPED_UNICODE), 0, 1500));
         return ['ok' => false, 'error' => 'تعذّر توليد الملخص — الرد غير مكتمل.'];
     }
 
@@ -306,11 +205,6 @@ function ai_summarize_telegram(array $messages, int $maxTokens = 3500): array {
  * telegram_summaries table so the UI picks it up transparently.
  */
 function ai_summarize_telegram_daily(array $messages, int $maxTokens = 5000): array {
-    $apiKey = trim((string)getSetting('anthropic_api_key', ''));
-    if ($apiKey === '') $apiKey = trim((string)env('ANTHROPIC_API_KEY', ''));
-    if ($apiKey === '') {
-        return ['ok' => false, 'error' => 'مفتاح Anthropic API غير مُعدّ.'];
-    }
     if (!$messages) {
         return ['ok' => false, 'error' => 'لا توجد رسائل للتلخيص'];
     }
@@ -397,54 +291,12 @@ function ai_summarize_telegram_daily(array $messages, int $maxTokens = 5000): ar
         ],
     ];
 
-    $body = json_encode([
-        'model'       => 'claude-haiku-4-5-20251001',
-        'max_tokens'  => $maxTokens,
-        'tools'       => [$tool],
-        'tool_choice' => ['type' => 'tool', 'name' => 'submit_news_briefing'],
-        'messages'    => [['role' => 'user', 'content' => $prompt]],
-    ], JSON_UNESCAPED_UNICODE);
-
-    $ch = curl_init('https://api.anthropic.com/v1/messages');
-    curl_setopt_array($ch, [
-        CURLOPT_POST            => true,
-        CURLOPT_POSTFIELDS      => $body,
-        CURLOPT_RETURNTRANSFER  => true,
-        CURLOPT_TIMEOUT         => 90,
-        CURLOPT_HTTPHEADER      => [
-            'Content-Type: application/json',
-            'x-api-key: ' . $apiKey,
-            'anthropic-version: 2023-06-01',
-        ],
-    ]);
-    $resp = curl_exec($ch);
-    $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $err  = curl_error($ch);
-    curl_close($ch);
-
-    if ($http !== 200) {
-        if ($http === 429) return ['ok' => false, 'error' => 'تم تجاوز حد الطلبات حالياً.'];
-        if ($http === 0 || $http >= 500) return ['ok' => false, 'error' => 'تعذّر الاتصال بخدمة الملخصات.'];
-        return ['ok' => false, 'error' => "HTTP $http: " . ($err ?: mb_substr((string)$resp, 0, 200))];
+    $call = ai_provider_tool_call($prompt, $tool, $maxTokens);
+    if (empty($call['ok'])) {
+        return ['ok' => false, 'error' => (string)($call['error'] ?? 'تعذّر توليد الملخص اليومي.')];
     }
-
-    $data = json_decode($resp, true);
-    if (!is_array($data)) return ['ok' => false, 'error' => 'تعذّر قراءة رد خدمة الملخصات.'];
-
-    $parsed = null;
-    foreach ((array)($data['content'] ?? []) as $block) {
-        if (!is_array($block)) continue;
-        if (($block['type'] ?? '') === 'tool_use'
-            && ($block['name'] ?? '') === 'submit_news_briefing'
-            && is_array($block['input'] ?? null)) {
-            $parsed = $block['input'];
-            break;
-        }
-    }
-
+    $parsed = $call['input'];
     if (!is_array($parsed) || empty($parsed['summary'])) {
-        $stopReason = (string)($data['stop_reason'] ?? '');
-        if ($stopReason === 'max_tokens') return ['ok' => false, 'error' => 'الرد طويل جداً ولم يكتمل.'];
         return ['ok' => false, 'error' => 'تعذّر توليد الملخص اليومي.'];
     }
 
