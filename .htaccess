@@ -73,7 +73,7 @@ FileETag None
     RewriteRule ^search/?$ search.php [L,QSA]
     RewriteRule ^timelines/?$ timelines.php [L,QSA]
     RewriteRule ^evolving-stories/?$ evolving-stories.php [L,QSA]
-    RewriteRule ^evolving-story/([a-zA-Z0-9\-_%\x{0600}-\x{06FF}]+)/?$ evolving-story.php?slug=$1 [L,QSA]
+    RewriteRule ^evolving-story/([^/]+)/?$ evolving-story.php?slug=$1 [L,QSA]
     RewriteRule ^trending/?$ trending.php [L,QSA]
     RewriteRule ^ask/?$ ask.php [L,QSA]
     RewriteRule ^newsletter/confirm/([a-f0-9]{48})/?$ newsletter_confirm.php?token=$1 [L,QSA]
