@@ -18,6 +18,7 @@ require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/user_auth.php';
 require_once __DIR__ . '/includes/user_functions.php';
 require_once __DIR__ . '/includes/evolving_stories.php';
+require_once __DIR__ . '/includes/evolving_stories_ai.php';
 require_once __DIR__ . '/includes/story_timeline.php';
 require_once __DIR__ . '/includes/cache.php';
 
@@ -129,6 +130,48 @@ if (!$notFound) {
 $articlesById = [];
 foreach ($articles as $a) {
     $articlesById[(int)$a['id']] = $a;
+}
+
+// ------------------------------------------------------------------
+// Phase 2 — Story by Numbers (#3) + top quotes preview (#6)
+// ------------------------------------------------------------------
+// The dashboard pulls the pre-extracted entity + quote totals from
+// the phase-2 tables. Cached for 10 min so reader traffic can't hit
+// the DB every page-view. Time-travel mode deliberately skips this
+// section: entities/quotes in the tables represent the *current*
+// extraction state, not a per-date snapshot, and showing them next
+// to an old article list would be misleading.
+$storyDashboard = ['people'=>[], 'locations'=>[], 'organizations'=>[], 'terms'=>[],
+                   'totals' => ['entities' => 0, 'quotes' => 0]];
+$storyTopQuotes = [];
+if (!$notFound && !$isTimeTravel) {
+    $dashKey = 'evolving_story_dashboard_' . (int)$story['id'];
+    $cached  = cache_get($dashKey);
+    if (is_array($cached)) {
+        $storyDashboard = $cached;
+    } else {
+        $storyDashboard = evolving_stories_ai_dashboard((int)$story['id'], 8);
+        cache_set($dashKey, $storyDashboard, 600);
+    }
+
+    $qKey  = 'evolving_story_top_quotes_' . (int)$story['id'];
+    $cachedQ = cache_get($qKey);
+    if (is_array($cachedQ)) {
+        $storyTopQuotes = $cachedQ;
+    } else {
+        $storyTopQuotes = evolving_stories_ai_quotes((int)$story['id'], 4, 0);
+        cache_set($qKey, $storyTopQuotes, 600);
+    }
+}
+
+// Aggregate stat chips for the dashboard header — cheap to recompute.
+$storyDaysActive = 0;
+if (!empty($dateRange['first']) && !empty($dateRange['last'])) {
+    $d1 = strtotime($dateRange['first']);
+    $d2 = strtotime($dateRange['last']);
+    if ($d1 && $d2) {
+        $storyDaysActive = max(1, (int)ceil(($d2 - $d1) / 86400));
+    }
 }
 
 $pageName = $notFound ? 'قصة غير موجودة' : (string)$story['name'];
@@ -430,6 +473,142 @@ $canonicalUrl = $pageUrl;
   }
   .es1-empty .icon { font-size:48px; margin-bottom:12px; }
 
+  /* ============ Story by Numbers dashboard (Phase 2 #3) ============ */
+  .es1-dash {
+    background:linear-gradient(135deg, #1a1a2e 0%, #2d2d44 100%);
+    border-radius:20px; padding:26px 28px; margin-bottom:24px;
+    color:#f8fafc; position:relative; overflow:hidden;
+    box-shadow:0 10px 36px -18px rgba(0,0,0,.45);
+  }
+  .es1-dash::before {
+    content:''; position:absolute; top:0; right:0; left:0; height:4px;
+    background:linear-gradient(90deg, var(--es-accent), var(--gold));
+  }
+  .es1-dash-head {
+    display:flex; align-items:center; gap:10px; margin-bottom:18px;
+    flex-wrap:wrap;
+  }
+  .es1-dash-badge {
+    background:var(--es-accent); color:#fff;
+    padding:5px 12px; border-radius:999px;
+    font-size:11px; font-weight:800;
+  }
+  .es1-dash-title {
+    font-size:22px; font-weight:900; color:#fff; line-height:1.4;
+  }
+  .es1-dash-stats {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+    gap:14px; margin-bottom:22px;
+  }
+  .es1-dash-stat {
+    background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08);
+    border-radius:14px; padding:14px 16px;
+    backdrop-filter:blur(6px);
+  }
+  .es1-dash-stat .n {
+    font-size:28px; font-weight:900; color:#fff; line-height:1; margin-bottom:6px;
+    font-variant-numeric:tabular-nums;
+  }
+  .es1-dash-stat .l { font-size:11.5px; color:#cbd5e1; font-weight:700; }
+
+  .es1-dash-groups {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+    gap:16px;
+  }
+  .es1-dash-group {
+    background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:14px; padding:14px 16px;
+  }
+  .es1-dash-group-head {
+    display:flex; align-items:center; gap:8px;
+    font-size:12px; font-weight:800; color:#cbd5e1;
+    text-transform:uppercase; letter-spacing:.5px;
+    margin-bottom:12px;
+  }
+  .es1-dash-group-head .ico {
+    width:26px; height:26px; border-radius:8px;
+    background:rgba(255,255,255,.08);
+    display:flex; align-items:center; justify-content:center;
+    font-size:14px;
+  }
+  .es1-dash-chips {
+    display:flex; flex-wrap:wrap; gap:6px;
+  }
+  .es1-dash-chip {
+    display:inline-flex; align-items:center; gap:6px;
+    background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12);
+    padding:5px 11px; border-radius:999px;
+    font-size:12.5px; font-weight:700; color:#f8fafc;
+    max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .es1-dash-chip .n {
+    background:rgba(255,255,255,.18); color:#fff;
+    padding:1px 7px; border-radius:999px;
+    font-size:10.5px; font-weight:900;
+  }
+  .es1-dash-empty {
+    color:#cbd5e1; font-size:13px; padding:4px 0 2px;
+  }
+
+  /* ============ Quote Wall preview (Phase 2 #6) ============ */
+  .es1-quotes-preview {
+    margin-bottom:28px;
+  }
+  .es1-quotes-grid {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(290px,1fr));
+    gap:14px; margin-bottom:16px;
+  }
+  .es1-quote {
+    background:#fff; border:1px solid var(--border); border-radius:16px;
+    padding:20px 22px 18px; position:relative;
+    box-shadow:0 3px 14px -10px rgba(0,0,0,.1);
+    display:flex; flex-direction:column; gap:12px;
+  }
+  .es1-quote::before {
+    content:'\201C'; position:absolute;
+    top:-8px; right:14px;
+    font-size:62px; font-weight:900; color:var(--es-accent);
+    font-family:'Georgia',serif; line-height:1;
+    opacity:.85;
+  }
+  .es1-quote-text {
+    font-size:15px; line-height:1.85; color:var(--text);
+    padding-top:8px; font-weight:500;
+    display:-webkit-box; -webkit-line-clamp:5; -webkit-box-orient:vertical; overflow:hidden;
+  }
+  .es1-quote-attr {
+    display:flex; align-items:center; gap:10px;
+    padding-top:10px; border-top:1px dashed var(--border);
+  }
+  .es1-quote-avatar {
+    width:36px; height:36px; border-radius:50%;
+    background:linear-gradient(135deg, var(--es-accent), var(--gold));
+    color:#fff; font-weight:900; font-size:15px;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+  .es1-quote-meta { flex:1; min-width:0; }
+  .es1-quote-speaker {
+    font-size:13.5px; font-weight:900; color:var(--text);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .es1-quote-role {
+    font-size:11px; color:var(--muted); font-weight:700;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .es1-quote-cta {
+    display:inline-flex; align-items:center; gap:8px;
+    padding:12px 22px; border-radius:999px;
+    background:var(--es-accent); color:#fff;
+    font-weight:800; font-size:13.5px;
+    transition:transform .2s ease, box-shadow .2s ease;
+  }
+  .es1-quote-cta:hover {
+    transform:translateY(-2px);
+    box-shadow:0 8px 24px -12px rgba(13,148,136,.5);
+  }
+
   @media(max-width:760px) {
     .es1-hero-content { flex-direction:column; padding:28px 22px 26px; }
     .es1-hero-icon { width:60px; height:60px; font-size:32px; }
@@ -536,6 +715,112 @@ include __DIR__ . '/includes/components/site_header.php';
         </div>
         <div class="es1-tm-readout" id="es1TmReadout">
           <?php echo e(date('l، j F Y', strtotime($activeDay))); ?>
+        </div>
+      </div>
+    <?php endif; ?>
+
+    <!-- STORY BY NUMBERS 🔢 (Phase 2 #3) — entity + quote dashboard -->
+    <?php
+      $hasDashData = !$isTimeTravel && (
+        !empty($storyDashboard['people'])
+        || !empty($storyDashboard['locations'])
+        || !empty($storyDashboard['organizations'])
+        || !empty($storyDashboard['terms'])
+      );
+      if ($hasDashData):
+    ?>
+      <div class="es1-dash">
+        <div class="es1-dash-head">
+          <span class="es1-dash-badge">🔢 القصة بالأرقام</span>
+          <span style="color:#cbd5e1;font-size:12px;">استخرِج تلقائياً من تقارير القصة</span>
+        </div>
+        <div class="es1-dash-stats">
+          <div class="es1-dash-stat">
+            <div class="n"><?php echo number_format((int)$story['article_count']); ?></div>
+            <div class="l">📰 تقرير في القصة</div>
+          </div>
+          <div class="es1-dash-stat">
+            <div class="n"><?php echo number_format((int)$sourceCount); ?></div>
+            <div class="l">🌐 مصدر إخباري</div>
+          </div>
+          <?php if ($storyDaysActive > 0): ?>
+          <div class="es1-dash-stat">
+            <div class="n"><?php echo number_format($storyDaysActive); ?></div>
+            <div class="l">📅 يوم من التغطية</div>
+          </div>
+          <?php endif; ?>
+          <div class="es1-dash-stat">
+            <div class="n"><?php echo number_format((int)$storyDashboard['totals']['entities']); ?></div>
+            <div class="l">🏷️ كيان مُستخرج</div>
+          </div>
+          <div class="es1-dash-stat">
+            <div class="n"><?php echo number_format((int)$storyDashboard['totals']['quotes']); ?></div>
+            <div class="l">💬 اقتباس مباشر</div>
+          </div>
+        </div>
+
+        <div class="es1-dash-groups">
+          <?php
+            $groups = [
+              ['key'=>'people',        'icon'=>'🧑', 'label'=>'الأشخاص'],
+              ['key'=>'locations',     'icon'=>'📍', 'label'=>'الأماكن'],
+              ['key'=>'organizations', 'icon'=>'🏛', 'label'=>'المنظمات'],
+              ['key'=>'terms',         'icon'=>'🔑', 'label'=>'المصطلحات'],
+            ];
+            foreach ($groups as $g):
+              $items = $storyDashboard[$g['key']] ?? [];
+              if (empty($items)) continue;
+          ?>
+            <div class="es1-dash-group">
+              <div class="es1-dash-group-head">
+                <span class="ico"><?php echo e($g['icon']); ?></span>
+                <span><?php echo e($g['label']); ?></span>
+              </div>
+              <div class="es1-dash-chips">
+                <?php foreach ($items as $it): ?>
+                  <span class="es1-dash-chip">
+                    <span><?php echo e(mb_substr((string)$it['entity_name'], 0, 40)); ?></span>
+                    <span class="n"><?php echo number_format((int)$it['mention_count']); ?></span>
+                  </span>
+                <?php endforeach; ?>
+              </div>
+            </div>
+          <?php endforeach; ?>
+        </div>
+      </div>
+    <?php endif; ?>
+
+    <!-- QUOTE WALL preview 💬 (Phase 2 #6) -->
+    <?php if (!$isTimeTravel && !empty($storyTopQuotes)): ?>
+      <div class="es1-quotes-preview">
+        <div class="es1-section-head">
+          <h2>💬 من أبرز الأقوال</h2>
+          <span class="count"><?php echo number_format((int)$storyDashboard['totals']['quotes']); ?> اقتباس في الأرشيف</span>
+        </div>
+        <div class="es1-quotes-grid">
+          <?php foreach ($storyTopQuotes as $q):
+            $speaker = trim((string)($q['speaker'] ?? ''));
+            $initial = $speaker !== '' ? mb_substr($speaker, 0, 1) : '؟';
+          ?>
+            <figure class="es1-quote">
+              <blockquote class="es1-quote-text"><?php echo e((string)$q['quote_text']); ?></blockquote>
+              <figcaption class="es1-quote-attr">
+                <div class="es1-quote-avatar"><?php echo e($initial); ?></div>
+                <div class="es1-quote-meta">
+                  <div class="es1-quote-speaker"><?php echo e($speaker ?: '—'); ?></div>
+                  <?php if (!empty($q['speaker_role'])): ?>
+                    <div class="es1-quote-role"><?php echo e((string)$q['speaker_role']); ?></div>
+                  <?php endif; ?>
+                </div>
+              </figcaption>
+            </figure>
+          <?php endforeach; ?>
+        </div>
+        <div style="text-align:center;">
+          <a class="es1-quote-cta"
+             href="/evolving-story/<?php echo e((string)$story['slug']); ?>/quotes">
+            💬 جدار الاقتباسات الكامل ←
+          </a>
         </div>
       </div>
     <?php endif; ?>

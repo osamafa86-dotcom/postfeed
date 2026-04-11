@@ -20,6 +20,7 @@
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/evolving_stories.php';
+require_once __DIR__ . '/../includes/evolving_stories_ai.php';
 requireRole('editor');
 
 $db = getDB();
@@ -58,6 +59,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['op'] ?? '') === 'unlink') 
         $success = 'تم فك ربط المقال من القصة';
     }
     header('Location: evolving_stories.php?action=edit&id=' . $sid);
+    exit;
+}
+
+// ------------------------------------------------------------------
+// AI Extract (POST) — pump pending articles through Claude Haiku to
+// populate evolving_story_entities + evolving_story_quotes. Caps at a
+// small budget so a manual click never burns the API quota.
+// ------------------------------------------------------------------
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['op'] ?? '') === 'ai_extract') {
+    $sid    = (int)($_POST['story_id'] ?? 0);
+    $budget = max(1, min(30, (int)($_POST['budget'] ?? 8)));
+    if ($sid > 0) {
+        $res = evolving_stories_ai_extract_story($sid, $budget);
+        $success = 'تم الاستخراج — ' . (int)$res['processed'] . ' مقال · '
+                 . (int)$res['entities'] . ' كيان · '
+                 . (int)$res['quotes']   . ' اقتباس'
+                 . ((int)$res['failed'] > 0 ? ' (' . (int)$res['failed'] . ' فشل)' : '');
+    }
+    header('Location: evolving_stories.php?action=edit&id=' . $sid . '&msg=' . urlencode($success));
     exit;
 }
 
@@ -326,6 +346,41 @@ include __DIR__ . '/includes/panel_layout_head.php';
                     </div>
                     <button type="submit" class="btn-primary">ابدأ المسح</button>
                 </form>
+            </div>
+
+            <?php
+                // Show a live counter of how many linked articles have NOT
+                // yet been through the AI extractor, so the editor can
+                // decide whether it's worth clicking.
+                $aiPending = count(evolving_stories_ai_pending((int)$story['id'], 500));
+                $aiDash    = evolving_stories_ai_dashboard((int)$story['id'], 1);
+            ?>
+            <div class="form-card" style="margin-top:20px;">
+                <h3 style="margin-bottom:12px;">🧠 استخراج AI (كيانات + اقتباسات)</h3>
+                <p style="color:var(--text-muted);font-size:13px;margin-bottom:12px;">
+                    يمرّر آخر المقالات إلى Claude Haiku لاستخراج الأشخاص والأماكن والمنظمات والاقتباسات المباشرة.
+                    تظهر نتائج هذا الاستخراج في لوحة "القصة بالأرقام" وصفحة "جدار الاقتباسات".
+                </p>
+                <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);margin-bottom:14px;">
+                    <span>⏳ <b><?php echo number_format($aiPending); ?></b> مقال في قائمة الانتظار</span>
+                    <span>🏷️ <b><?php echo number_format((int)$aiDash['totals']['entities']); ?></b> كيان مخزّن</span>
+                    <span>💬 <b><?php echo number_format((int)$aiDash['totals']['quotes']); ?></b> اقتباس مخزّن</span>
+                </div>
+                <form method="POST" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+                    <?php echo csrf_field(); ?>
+                    <input type="hidden" name="op" value="ai_extract">
+                    <input type="hidden" name="story_id" value="<?php echo (int)$story['id']; ?>">
+                    <div class="form-group" style="margin:0;">
+                        <label for="budget">عدد المقالات (هذه المرّة)</label>
+                        <input type="number" id="budget" name="budget" class="form-control" min="1" max="30" value="8" style="width:120px;">
+                    </div>
+                    <button type="submit" class="btn-primary"<?php echo $aiPending === 0 ? ' disabled title="لا يوجد مقالات جديدة للاستخراج"' : ''; ?>>
+                        🧠 استخرج الآن
+                    </button>
+                </form>
+                <small style="display:block;margin-top:10px;color:var(--text-muted);font-size:11.5px;">
+                    cron_evolving_ai.php يُشغَّل تلقائياً أيضاً — استخدم هذا الزر فقط عندما تحتاج نتيجة فورية.
+                </small>
             </div>
 
             <div class="form-card" style="margin-top:20px;">

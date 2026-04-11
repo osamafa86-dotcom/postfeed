@@ -74,6 +74,7 @@ FileETag None
     RewriteRule ^timelines/?$ timelines.php [L,QSA]
     RewriteRule ^evolving-stories/network/?$ evolving-stories-network.php [L,QSA]
     RewriteRule ^evolving-stories/?$ evolving-stories.php [L,QSA]
+    RewriteRule ^evolving-story/([^/]+)/quotes/?$ evolving-story-quotes.php?slug=$1 [L,QSA]
     RewriteRule ^evolving-story/([^/]+)/?$ evolving-story.php?slug=$1 [L,QSA]
     RewriteRule ^trending/?$ trending.php [L,QSA]
     RewriteRule ^ask/?$ ask.php [L,QSA]
