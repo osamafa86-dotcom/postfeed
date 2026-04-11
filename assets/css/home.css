@@ -1416,7 +1416,15 @@
     .icon-btn-wide span { display:none; }
     .icon-btn-wide { min-width:40px; padding:0; }
     .mr-grid { grid-template-columns:1fr; gap:16px; }
-    /* keep bn-grid at 2 columns on tablets — only collapse on phones (see below) */
+    /* One full-width breaking card per row from tablet down */
+    .bn-grid { grid-template-columns:1fr; gap:12px; }
+    /* Stack ps-hero image above text from tablet down so the title has
+       the full row width — avoids heavy line-wrapping on narrow columns */
+    .ps-hero-link { grid-template-columns:1fr; }
+    .ps-hero-img { min-height:220px; }
+    .ps-hero-text { padding:22px 20px; }
+    .ps-hero-text h3 { font-size:20px; line-height:1.55; margin-bottom:12px; }
+    .ps-hero-text .ps-hero-excerpt { font-size:14px; margin-bottom:16px; -webkit-line-clamp:3; }
     .mr2-grid { grid-template-columns:1fr; }
     .mr2-grid .mr2-item { border-bottom:1px solid #f1f3f7 !important; }
     .mr2-grid .mr2-item:last-child { border-bottom:none !important; }
@@ -1433,11 +1441,7 @@
     .hero-grid { grid-template-columns:1fr; height:auto; }
     .hero-main { min-height:300px; grid-row:auto; }
     .hero-side { min-height:200px; }
-    .ps-hero-link { grid-template-columns:1fr; }
-    .ps-hero-img { min-height:240px; }
-    .ps-hero-text { padding:22px 20px; }
-    .ps-hero-text h3 { font-size:19px; margin-bottom:12px; }
-    .ps-hero-text .ps-hero-excerpt { font-size:13.5px; margin-bottom:16px; }
+    /* ps-hero stacking + bn-grid collapse now live in the 1100px block above */
     .palestine-grid { grid-template-columns:repeat(2,1fr); gap:16px; }
     .ps-card .img-wrap { height:180px; }
     .news-grid { grid-template-columns:repeat(2,1fr); }
@@ -1472,7 +1476,7 @@
     .ps-card .img-wrap { height:200px; }
     .ps-hero-text h3 { font-size:18px; }
     .ps-hero-text { padding:20px; }
-    .bn-grid { grid-template-columns:1fr; gap:12px; }
+    /* .bn-grid collapse happens at 1100px; tighten thumb/title for phones */
     .bn-thumb { flex:0 0 72px; width:72px; height:72px; }
     .bn-title { font-size:14px; }
     .main-layout { padding:16px 12px; }
