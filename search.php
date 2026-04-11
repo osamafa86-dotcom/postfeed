@@ -122,7 +122,7 @@ include __DIR__ . '/includes/components/site_header.php';
       ?>
         <a class="sr-card" href="<?php echo e($aUrl); ?>">
           <?php if (!empty($a['image_url'])): ?>
-            <img src="<?php echo e($a['image_url']); ?>" alt="" loading="lazy" decoding="async">
+            <?php echo responsiveImg($a['image_url'], '', '(max-width:640px) 100vw, 160px', [160, 320, 480]); ?>
           <?php endif; ?>
           <div class="sr-card-body">
             <?php if (!empty($a['cat_name'])): ?>

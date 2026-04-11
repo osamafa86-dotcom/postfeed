@@ -346,6 +346,44 @@ function sourceUrl($id) {
     return '/source/' . (int)$id;
 }
 
+/**
+ * Generate a responsive <img> tag with srcset via the image proxy.
+ *
+ * @param string $url      Original image URL
+ * @param string $alt      Alt text
+ * @param string $sizes    CSS sizes attribute (e.g. "(max-width:768px) 100vw, 400px")
+ * @param array  $widths   Array of pixel widths for srcset
+ * @param string $class    Optional CSS class
+ * @param string $loading  'lazy' or 'eager'
+ * @param string $extra    Extra attributes (e.g. 'fetchpriority="high"')
+ * @return string          HTML <img> tag
+ */
+function responsiveImg(string $url, string $alt = '', string $sizes = '100vw',
+                       array $widths = [320, 640, 800], string $class = '',
+                       string $loading = 'lazy', string $extra = ''): string {
+    if (empty($url) || strpos($url, 'data:') === 0) {
+        // Placeholder SVGs — no proxy needed
+        $cls = $class ? ' class="' . e($class) . '"' : '';
+        return '<img src="' . e($url) . '" alt="' . e($alt) . '"' . $cls
+             . ' loading="' . $loading . '" decoding="async" ' . $extra . '>';
+    }
+    $srcset = [];
+    foreach ($widths as $w) {
+        $proxyUrl = '/api/img.php?url=' . rawurlencode($url) . '&w=' . (int)$w;
+        $srcset[] = e($proxyUrl) . ' ' . (int)$w . 'w';
+    }
+    // Fallback src uses the middle size
+    $midW = $widths[(int)(count($widths) / 2)] ?? $widths[0];
+    $fallback = '/api/img.php?url=' . rawurlencode($url) . '&w=' . (int)$midW;
+    $cls = $class ? ' class="' . e($class) . '"' : '';
+    return '<img src="' . e($fallback) . '"'
+         . ' srcset="' . implode(', ', $srcset) . '"'
+         . ' sizes="' . e($sizes) . '"'
+         . ' alt="' . e($alt) . '"'
+         . $cls
+         . ' loading="' . $loading . '" decoding="async" ' . $extra . '>';
+}
+
 function isAdmin() {
     return isset($_SESSION[ADMIN_SESSION_NAME]) && $_SESSION[ADMIN_SESSION_NAME] === true;
 }
