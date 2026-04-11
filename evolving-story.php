@@ -37,6 +37,35 @@ if (!$story || !$story['is_active']) {
 }
 
 // ------------------------------------------------------------------
+// Time Machine (⏰) — ?as_of=YYYY-MM-DD lets readers reconstruct how
+// the story looked on any day between its first and last article.
+// Empty/missing param → current state.
+// ------------------------------------------------------------------
+$asOf       = '';   // DB-ready datetime ("YYYY-MM-DD 23:59:59") or ''
+$asOfDate   = '';   // just the YYYY-MM-DD for the UI
+$dateRange  = ['first' => null, 'last' => null];
+$isTimeTravel = false;
+
+if (!$notFound) {
+    $dateRange = evolving_story_date_range((int)$story['id']);
+    $raw = isset($_GET['as_of']) ? trim((string)$_GET['as_of']) : '';
+    // Only accept a strict YYYY-MM-DD, and only if it's within the
+    // story's actual lifespan — otherwise silently drop the param so
+    // old links don't produce empty pages.
+    if ($raw !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw)) {
+        $ts = strtotime($raw);
+        $firstTs = !empty($dateRange['first']) ? strtotime($dateRange['first']) : 0;
+        $lastTs  = !empty($dateRange['last'])  ? strtotime($dateRange['last'])  : time();
+        if ($ts && $ts >= strtotime(date('Y-m-d', $firstTs))
+                && $ts <= strtotime(date('Y-m-d', $lastTs))) {
+            $asOfDate = $raw;
+            $asOf     = $raw . ' 23:59:59';
+            $isTimeTravel = true;
+        }
+    }
+}
+
+// ------------------------------------------------------------------
 // Data loading (only when story found)
 // ------------------------------------------------------------------
 $articles        = [];      // DESC (newest first) — used for the raw list below
@@ -47,8 +76,10 @@ $aiTimelineError = '';
 
 if (!$notFound) {
     // Pull all articles for the story (capped at 40 for perf and to
-    // keep the AI prompt size under control).
-    $articles    = evolving_story_articles((int)$story['id'], 40, 0);
+    // keep the AI prompt size under control). When time-travelling we
+    // pass $asOf so only articles published on or before that date
+    // are loaded — everything else on the page inherits that slice.
+    $articles    = evolving_story_articles((int)$story['id'], 40, 0, $asOf ?: null);
     // story_timeline_generate labels articles A1/A2/… in the order we
     // pass them, and Claude then cites those labels back at us. A
     // chronological (oldest→newest) order makes the AI narrative
@@ -67,8 +98,15 @@ if (!$notFound) {
     // Generate the AI narrative — cached for 6 hours per story. Only
     // generate if there are at least 3 articles, same threshold as
     // the cluster-based timelines.
+    //
+    // When the Time Machine is engaged we append the as_of date to
+    // the cache key so each historical snapshot gets its own cached
+    // narrative. The first time someone drags the slider to a new
+    // date the call to Claude is paid, but every subsequent reader
+    // at that date reads from cache.
     if (count($articlesAsc) >= STORY_TIMELINE_MIN_ARTICLES) {
-        $cacheKey = 'evolving_story_timeline_' . (int)$story['id'];
+        $cacheKey = 'evolving_story_timeline_' . (int)$story['id']
+                  . ($asOfDate !== '' ? '_' . $asOfDate : '');
         $aiTimeline = cache_get($cacheKey);
         if (!$aiTimeline || !is_array($aiTimeline)) {
             // story_timeline_generate() expects articles that look
@@ -98,6 +136,9 @@ $metaDesc = $notFound
     ? 'القصة المطلوبة غير متاحة.'
     : ($story['description'] ?: ('تغطية متواصلة لـ' . $story['name'] . ' على نيوزفلو.'));
 $pageUrl  = SITE_URL . '/evolving-story/' . rawurlencode($slug);
+// Canonical always points to the live view, not the time-travel slice —
+// otherwise every historical snapshot would fight for the same ranking.
+$canonicalUrl = $pageUrl;
 ?><!DOCTYPE html>
 <html lang="ar" dir="rtl" data-theme="<?php echo e($pageTheme); ?>">
 <head>
@@ -106,7 +147,10 @@ $pageUrl  = SITE_URL . '/evolving-story/' . rawurlencode($slug);
 <base href="/">
 <title><?php echo e($pageName); ?> — قصة متطوّرة · <?php echo e(getSetting('site_name', SITE_NAME)); ?></title>
 <meta name="description" content="<?php echo e($metaDesc); ?>">
-<link rel="canonical" href="<?php echo e($pageUrl); ?>">
+<link rel="canonical" href="<?php echo e($canonicalUrl); ?>">
+<?php if ($isTimeTravel): ?>
+<meta name="robots" content="noindex">
+<?php endif; ?>
 <meta property="og:title" content="<?php echo e($pageName); ?>">
 <meta property="og:description" content="<?php echo e($metaDesc); ?>">
 <meta property="og:type" content="article">
@@ -193,6 +237,91 @@ $pageUrl  = SITE_URL . '/evolving-story/' . rawurlencode($slug);
     font-size:13px; color:#e5e7eb; font-weight:600;
   }
   .es1-hero-stats b { color:#fff; font-weight:900; }
+
+  /* ============ Time Machine ⏰ ============ */
+  .es1-tm {
+    background:linear-gradient(135deg, #fff 0%, #f8fafc 100%);
+    border:1px solid var(--border); border-radius:16px;
+    padding:18px 22px; margin-bottom:20px;
+    box-shadow:0 3px 14px -8px rgba(0,0,0,.08);
+  }
+  .es1-tm.is-travelling {
+    background:linear-gradient(135deg, #fef3c7 0%, #fffbeb 100%);
+    border-color:#fcd34d;
+    box-shadow:0 6px 22px -12px rgba(217,119,6,.3);
+  }
+  .es1-tm-head {
+    display:flex; align-items:center; justify-content:space-between;
+    gap:12px; flex-wrap:wrap; margin-bottom:14px;
+  }
+  .es1-tm-title {
+    display:flex; align-items:center; gap:10px;
+    font-size:14px; font-weight:700; color:var(--text);
+  }
+  .es1-tm-title b { color:#b45309; font-weight:900; }
+  .es1-tm-icon {
+    width:36px; height:36px; border-radius:10px;
+    background:var(--es-accent); color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px; flex-shrink:0;
+  }
+  .es1-tm.is-travelling .es1-tm-icon {
+    background:#d97706;
+    animation:es1-tm-spin 3s ease-in-out infinite;
+  }
+  @keyframes es1-tm-spin {
+    0%,100% { transform:rotate(0deg); }
+    50%     { transform:rotate(-18deg); }
+  }
+  .es1-tm-reset {
+    display:inline-flex; align-items:center; gap:6px;
+    padding:7px 14px; border-radius:999px;
+    background:#fff; border:1px solid var(--border);
+    color:var(--text); font-size:12px; font-weight:800;
+    transition:all .2s ease;
+  }
+  .es1-tm-reset:hover { background:var(--es-accent); color:#fff; border-color:var(--es-accent); }
+  .es1-tm-slider-wrap {
+    display:flex; align-items:center; gap:12px;
+  }
+  .es1-tm-bound {
+    font-size:11px; font-weight:700; color:var(--muted);
+    white-space:nowrap;
+  }
+  .es1-tm-slider-wrap input[type=range] {
+    flex:1; -webkit-appearance:none; appearance:none;
+    background:transparent; height:32px; cursor:pointer; direction:ltr;
+  }
+  .es1-tm-slider-wrap input[type=range]::-webkit-slider-runnable-track {
+    height:6px; background:linear-gradient(90deg, var(--es-accent), #f59e0b);
+    border-radius:999px;
+  }
+  .es1-tm-slider-wrap input[type=range]::-moz-range-track {
+    height:6px; background:linear-gradient(90deg, var(--es-accent), #f59e0b);
+    border-radius:999px; border:none;
+  }
+  .es1-tm-slider-wrap input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance:none; appearance:none;
+    width:22px; height:22px; border-radius:50%;
+    background:#fff; border:3px solid var(--es-accent);
+    margin-top:-8px; cursor:grab;
+    box-shadow:0 4px 12px -4px rgba(0,0,0,.3);
+    transition:transform .15s ease;
+  }
+  .es1-tm-slider-wrap input[type=range]::-webkit-slider-thumb:hover { transform:scale(1.15); }
+  .es1-tm-slider-wrap input[type=range]::-webkit-slider-thumb:active { cursor:grabbing; }
+  .es1-tm-slider-wrap input[type=range]::-moz-range-thumb {
+    width:22px; height:22px; border-radius:50%;
+    background:#fff; border:3px solid var(--es-accent);
+    cursor:grab; box-shadow:0 4px 12px -4px rgba(0,0,0,.3);
+  }
+  .es1-tm-readout {
+    margin-top:12px; text-align:center;
+    font-size:13px; font-weight:800; color:var(--text);
+    padding:7px 14px; background:#fff; border:1px dashed var(--border);
+    border-radius:10px; display:inline-block;
+    position:relative; right:50%; transform:translateX(50%);
+  }
 
   /* ============ AI narrative block ============ */
   .es1-narrative {
@@ -342,7 +471,7 @@ include __DIR__ . '/includes/components/site_header.php';
       <div class="es1-hero-content">
         <div class="es1-hero-icon"><?php echo e($story['icon'] ?: '📅'); ?></div>
         <div class="es1-hero-main">
-          <?php if (!empty($story['last_matched_at']) && strtotime($story['last_matched_at']) > (time() - 7200)): ?>
+          <?php if (!$isTimeTravel && !empty($story['last_matched_at']) && strtotime($story['last_matched_at']) > (time() - 7200)): ?>
             <span class="es1-hero-live"><span class="dot"></span>متابعة حيّة</span>
           <?php endif; ?>
           <h1 class="es1-hero-title"><?php echo e($story['name']); ?></h1>
@@ -350,17 +479,66 @@ include __DIR__ . '/includes/components/site_header.php';
             <p class="es1-hero-desc"><?php echo e($story['description']); ?></p>
           <?php endif; ?>
           <div class="es1-hero-stats">
-            <span>📰 <b><?php echo number_format($story['article_count']); ?></b> تقرير</span>
+            <span>📰 <b><?php
+              echo number_format($isTimeTravel ? count($articles) : $story['article_count']);
+            ?></b> تقرير<?php echo $isTimeTravel ? ' حتى ذلك التاريخ' : ''; ?></span>
             <?php if ($sourceCount > 0): ?>
               <span>🌐 <b><?php echo number_format($sourceCount); ?></b> مصدر</span>
             <?php endif; ?>
-            <?php if (!empty($story['last_matched_at']) && $story['last_matched_at'] !== '0000-00-00 00:00:00'): ?>
+            <?php if ($isTimeTravel): ?>
+              <span>🕰️ وضع آلة الزمن</span>
+            <?php elseif (!empty($story['last_matched_at']) && $story['last_matched_at'] !== '0000-00-00 00:00:00'): ?>
               <span>↻ آخر تحديث <b><?php echo e(timeAgo($story['last_matched_at'])); ?></b></span>
             <?php endif; ?>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- TIME MACHINE ⏰ — reconstruct the story on any past date -->
+    <?php
+      $hasRange = !empty($dateRange['first']) && !empty($dateRange['last'])
+                  && $dateRange['first'] !== $dateRange['last'];
+      if ($hasRange):
+        $firstDay = date('Y-m-d', strtotime($dateRange['first']));
+        $lastDay  = date('Y-m-d', strtotime($dateRange['last']));
+        $activeDay = $asOfDate !== '' ? $asOfDate : $lastDay;
+    ?>
+      <div class="es1-tm<?php echo $isTimeTravel ? ' is-travelling' : ''; ?>" id="es1TimeMachine">
+        <div class="es1-tm-head">
+          <div class="es1-tm-title">
+            <span class="es1-tm-icon">⏰</span>
+            <span>آلة الزمن —
+              <?php if ($isTimeTravel): ?>
+                تعرض القصة كما كانت في
+                <b><?php echo e(date('j F Y', strtotime($asOfDate))); ?></b>
+              <?php else: ?>
+                اسحب المؤشر لاستعادة القصة في تاريخ معيّن
+              <?php endif; ?>
+            </span>
+          </div>
+          <?php if ($isTimeTravel): ?>
+            <a class="es1-tm-reset" href="<?php echo e(evolving_story_url($story)); ?>">↺ العودة إلى اليوم</a>
+          <?php endif; ?>
+        </div>
+        <div class="es1-tm-slider-wrap">
+          <span class="es1-tm-bound"><?php echo e(date('j F Y', strtotime($firstDay))); ?></span>
+          <input
+            type="range"
+            id="es1TmSlider"
+            min="<?php echo e((string)strtotime($firstDay)); ?>"
+            max="<?php echo e((string)strtotime($lastDay)); ?>"
+            step="86400"
+            value="<?php echo e((string)strtotime($activeDay)); ?>"
+            data-slug="<?php echo e($story['slug']); ?>"
+            aria-label="اختر تاريخاً لإعادة بناء القصة">
+          <span class="es1-tm-bound"><?php echo e(date('j F Y', strtotime($lastDay))); ?></span>
+        </div>
+        <div class="es1-tm-readout" id="es1TmReadout">
+          <?php echo e(date('l، j F Y', strtotime($activeDay))); ?>
+        </div>
+      </div>
+    <?php endif; ?>
 
     <!-- AI narrative (when available) -->
     <?php if ($aiTimeline && !empty($aiTimeline['headline'])): ?>
@@ -467,5 +645,50 @@ include __DIR__ . '/includes/components/site_header.php';
 </div>
 
 <script src="assets/js/user.min.js?v=m1" defer></script>
+<script>
+(function() {
+  // Time Machine slider — live-updates the readout label as the user
+  // drags, and on release navigates to the story URL with ?as_of set.
+  // We do a full reload rather than AJAX because the hero, narrative,
+  // timeline rail and article list all depend on the cached slice, so
+  // a server-side re-render is cheapest and keeps the URL shareable.
+  const slider = document.getElementById('es1TmSlider');
+  const readout = document.getElementById('es1TmReadout');
+  if (!slider || !readout) return;
+
+  const monthsAr = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',
+                    'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+  const daysAr   = ['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+
+  function formatAr(ts) {
+    const d = new Date(ts * 1000);
+    return daysAr[d.getDay()] + '، ' + d.getDate() + ' ' + monthsAr[d.getMonth()] + ' ' + d.getFullYear();
+  }
+  function toIso(ts) {
+    const d = new Date(ts * 1000);
+    const pad = n => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
+  const slug = slider.getAttribute('data-slug');
+  const maxTs = parseInt(slider.max, 10);
+
+  slider.addEventListener('input', () => {
+    const ts = parseInt(slider.value, 10);
+    readout.textContent = formatAr(ts);
+  });
+  slider.addEventListener('change', () => {
+    const ts = parseInt(slider.value, 10);
+    const url = '/evolving-story/' + encodeURIComponent(slug);
+    // Landing on the most-recent day is equivalent to the default
+    // view — don't pollute the URL with a redundant ?as_of.
+    if (ts >= maxTs) {
+      window.location.href = url;
+    } else {
+      window.location.href = url + '?as_of=' + toIso(ts);
+    }
+  });
+})();
+</script>
 </body>
 </html>
