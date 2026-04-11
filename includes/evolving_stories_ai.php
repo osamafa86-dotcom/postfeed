@@ -30,6 +30,7 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/cache.php';
 require_once __DIR__ . '/evolving_stories.php';
+require_once __DIR__ . '/ai_provider.php';
 
 /**
  * Create the phase-2 tables if they don't already exist. Same lazy
@@ -87,18 +88,13 @@ function evolving_stories_ai_ensure_tables(): void {
 }
 
 /**
- * Send one article's title + excerpt + summary to Claude and receive
- * back a structured {entities, quotes} object via forced tool-use.
+ * Send one article's title + excerpt + summary to the configured AI
+ * provider and receive back a structured {entities, quotes} object via
+ * forced tool-use.
  *
  * Returns ['ok'=>bool, 'entities'=>array, 'quotes'=>array, 'error'=>?]
  */
 function evolving_stories_ai_extract_article(array $article): array {
-    $apiKey = trim((string)getSetting('anthropic_api_key', ''));
-    if ($apiKey === '') $apiKey = trim((string)env('ANTHROPIC_API_KEY', ''));
-    if ($apiKey === '') {
-        return ['ok' => false, 'error' => 'API key not configured'];
-    }
-
     $title   = (string)($article['title']      ?? '');
     $excerpt = (string)($article['excerpt']    ?? '');
     $summary = (string)($article['ai_summary'] ?? '');
@@ -164,46 +160,11 @@ function evolving_stories_ai_extract_article(array $article): array {
         ],
     ];
 
-    $payload = json_encode([
-        'model'       => 'claude-haiku-4-5-20251001',
-        'max_tokens'  => 2000,
-        'tools'       => [$tool],
-        'tool_choice' => ['type' => 'tool', 'name' => 'submit_story_extraction'],
-        'messages'    => [['role' => 'user', 'content' => $prompt]],
-    ], JSON_UNESCAPED_UNICODE);
-
-    $ch = curl_init('https://api.anthropic.com/v1/messages');
-    curl_setopt_array($ch, [
-        CURLOPT_POST           => true,
-        CURLOPT_POSTFIELDS     => $payload,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 60,
-        CURLOPT_HTTPHEADER     => [
-            'Content-Type: application/json',
-            'x-api-key: ' . $apiKey,
-            'anthropic-version: 2023-06-01',
-        ],
-    ]);
-    $resp = curl_exec($ch);
-    $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $err  = curl_error($ch);
-    curl_close($ch);
-
-    if ($http !== 200) {
-        return ['ok' => false, 'error' => "HTTP $http: " . ($err ?: mb_substr((string)$resp, 0, 200))];
+    $call = ai_provider_tool_call($prompt, $tool, 2000);
+    if (empty($call['ok'])) {
+        return ['ok' => false, 'error' => (string)($call['error'] ?? 'AI call failed')];
     }
-
-    $data = json_decode($resp, true);
-    $parsed = null;
-    foreach ((array)($data['content'] ?? []) as $block) {
-        if (is_array($block)
-            && ($block['type'] ?? '') === 'tool_use'
-            && ($block['name'] ?? '') === 'submit_story_extraction'
-            && is_array($block['input'] ?? null)) {
-            $parsed = $block['input'];
-            break;
-        }
-    }
+    $parsed = $call['input'];
     if (!is_array($parsed)) {
         return ['ok' => false, 'error' => 'Failed to parse AI response'];
     }
