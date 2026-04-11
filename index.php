@@ -54,9 +54,12 @@ $trendingNow      = trending_get_top(8);
 $trendingReaders  = trending_active_readers();
 
 // Evolving stories rail — admin-defined persistent topics
-// (أخبار الأقصى، غزة، الأسرى…). Cached 5 min; sorts by freshness.
-$evolvingRail = cache_remember('home_evolving_rail_v1', 300, function() {
-    return evolving_stories_with_previews(3);
+// (أخبار الأقصى، غزة، الأسرى…). Only the single freshest story
+// is featured on the homepage; the rest live on /evolving-stories.
+// Cached 5 min; sorts by freshness inside evolving_stories_with_previews.
+$evolvingRail = cache_remember('home_evolving_rail_v2', 300, function() {
+    $stories = evolving_stories_with_previews(5);
+    return array_slice($stories, 0, 1);
 });
 
 // Ticker pulls from the latest Palestine news stream so the "عاجل" strip
@@ -500,7 +503,7 @@ $__featRest  = array_slice($latestArticles, 7);
             <div class="evrail-body">
               <?php if (!empty($st['latest'])): ?>
                 <ul class="evrail-latest">
-                  <?php foreach (array_slice($st['latest'], 0, 3) as $la): ?>
+                  <?php foreach (array_slice($st['latest'], 0, 5) as $la): ?>
                     <li>
                       <span class="bullet" style="background:<?php echo e($color); ?>;"></span>
                       <span class="txt"><?php echo e(mb_substr((string)$la['title'], 0, 75)); ?></span>
@@ -519,14 +522,17 @@ $__featRest  = array_slice($latestArticles, 7);
         <?php endforeach; ?>
       </div>
       <style>
+        /* Single featured card on the homepage: horizontal layout,
+           cover on one side, latest headlines on the other. The
+           /evolving-stories page still uses the grid version. */
         .evrail-grid {
-          display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));
+          display:grid; grid-template-columns:1fr;
           gap:16px; margin-bottom:32px;
         }
         .evrail-card {
           background:#fff; border:1px solid #e0e3e8; border-radius:16px;
           overflow:hidden; text-decoration:none; color:inherit;
-          display:flex; flex-direction:column;
+          display:grid; grid-template-columns:minmax(260px, 38%) 1fr;
           transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease;
           box-shadow:0 2px 8px -3px rgba(0,0,0,.06);
         }
@@ -536,7 +542,7 @@ $__featRest  = array_slice($latestArticles, 7);
           border-color:rgba(217,119,6,.3);
         }
         .evrail-cover {
-          height:130px; background-size:cover; background-position:center;
+          min-height:220px; background-size:cover; background-position:center;
           position:relative; background-color:#e5e7eb;
         }
         .evrail-cover::after {
@@ -592,9 +598,9 @@ $__featRest  = array_slice($latestArticles, 7);
           font-size:11.5px; color:#6b7280;
         }
         .evrail-foot b { color:#1a1a2e; font-weight:800; }
-        @media(max-width:480px) {
-          .evrail-grid { grid-template-columns:1fr; }
-          .evrail-cover { height:150px; }
+        @media(max-width:640px) {
+          .evrail-card { grid-template-columns:1fr; }
+          .evrail-cover { min-height:160px; }
         }
       </style>
     <?php endif; ?>
