@@ -531,3 +531,25 @@
   body.home-filter-foryou .stories-section {
     display:none !important;
   }
+
+  /* Mobile overrides for index-only components.
+     These MUST live in this file because home-index.css loads after
+     home.css, so putting mobile rules for .bn-grid / .ps-hero-link in
+     home.css gets cascade-clobbered by the base rules above. */
+  @media (max-width:1100px) {
+    /* One full-width breaking card per row from tablet down */
+    .bn-grid { grid-template-columns:1fr; gap:12px; }
+    /* Stack ps-hero image above text so the title spans the full row
+       width — avoids the narrow 5-line wraps on phones/small tablets */
+    .ps-hero-link { grid-template-columns:1fr; }
+    .ps-hero-img { min-height:220px; }
+    .ps-hero-text { padding:22px 20px; }
+    .ps-hero-text h3 { font-size:20px; line-height:1.55; margin-bottom:12px; }
+    .ps-hero-text .ps-hero-excerpt { font-size:14px; margin-bottom:16px; -webkit-line-clamp:3; }
+  }
+  @media (max-width:480px) {
+    .bn-thumb { flex:0 0 72px; width:72px; height:72px; }
+    .bn-title { font-size:14px; }
+    .ps-hero-text h3 { font-size:18px; }
+    .ps-hero-text { padding:20px; }
+  }
