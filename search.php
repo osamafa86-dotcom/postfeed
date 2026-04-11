@@ -55,7 +55,7 @@ if ($viewerId && !empty($results)) {
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap"></noscript>
 <link rel="stylesheet" href="assets/css/site-header.min.css?v=m2">
-<link rel="stylesheet" href="assets/css/home.min.css?v=m2">
+<link rel="stylesheet" href="assets/css/home.min.css?v=m3">
 <link rel="stylesheet" href="assets/css/user.min.css?v=m1">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 <style>
@@ -122,7 +122,7 @@ include __DIR__ . '/includes/components/site_header.php';
       ?>
         <a class="sr-card" href="<?php echo e($aUrl); ?>">
           <?php if (!empty($a['image_url'])): ?>
-            <img src="<?php echo e($a['image_url']); ?>" alt="" loading="lazy" decoding="async">
+            <?php echo responsiveImg($a['image_url'], '', '(max-width:640px) 100vw, 160px', [160, 320, 480]); ?>
           <?php endif; ?>
           <div class="sr-card-body">
             <?php if (!empty($a['cat_name'])): ?>

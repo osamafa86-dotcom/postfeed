@@ -121,7 +121,7 @@ $metaDesc = 'فهرس القصص المتطوّرة على نيوزفلو — ' 
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap"></noscript>
 <link rel="stylesheet" href="assets/css/site-header.min.css?v=m1">
-<link rel="stylesheet" href="assets/css/home.min.css?v=m2">
+<link rel="stylesheet" href="assets/css/home.min.css?v=m3">
 <link rel="stylesheet" href="assets/css/user.min.css?v=m1">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 <style>

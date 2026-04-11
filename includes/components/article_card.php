@@ -13,7 +13,7 @@ $__isSaved = !empty($GLOBALS['__nf_saved_ids']) && isset($GLOBALS['__nf_saved_id
 ?>
 <a class="news-card" href="<?php echo articleUrl($article); ?>">
   <button type="button" class="nf-bookmark-btn <?php echo $__isSaved ? 'saved' : ''; ?>" title="<?php echo $__isSaved ? 'إزالة من المحفوظات' : 'حفظ'; ?>" data-save-id="<?php echo $__aId; ?>" onclick="event.preventDefault(); event.stopPropagation(); NF.toggleSave(this)">🔖</button>
-  <div class="card-img"><img src="<?php echo e($imgUrl); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
+  <div class="card-img"><?php echo responsiveImg($imgUrl, $article['title'] ?? '', '(max-width:768px) 100vw, 320px', [320, 480, 640]); ?></div>
   <div class="card-body">
     <span class="card-cat <?php echo e($catClass); ?>"><?php echo e($catLabel); ?></span>
     <?php

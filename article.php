@@ -1154,7 +1154,7 @@ if (!empty($article['cat_slug']) && count($relatedArticles) < $relatedLimit) {
 
         <!-- Article Hero Image -->
         <?php if ($article['image_url']): ?>
-            <img src="<?php echo e($article['image_url']); ?>" alt="<?php echo e($article['title']); ?>" class="article-hero" decoding="async" fetchpriority="high">
+            <?php echo responsiveImg($article['image_url'], $article['title'], '(max-width:768px) 100vw, 820px', [480, 800, 1200], 'article-hero', 'eager', 'fetchpriority="high"'); ?>
         <?php endif; ?>
 
         <!-- === SOURCE CARD (under hero image) === -->

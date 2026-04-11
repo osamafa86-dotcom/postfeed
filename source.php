@@ -200,7 +200,7 @@ if ($viewerId && !empty($articles)) {
         <a class="article-item" href="<?php echo articleUrl($a); ?>" style="position:relative;">
           <button type="button" class="nf-bookmark-btn <?php echo $__ss ? 'saved' : ''; ?>" title="<?php echo $__ss ? 'إزالة من المحفوظات' : 'حفظ'; ?>" data-save-id="<?php echo $__sid; ?>" onclick="event.preventDefault(); event.stopPropagation(); NF.toggleSave(this)">🔖</button>
           <?php if (!empty($a['image_url'])): ?>
-            <img src="<?php echo e($a['image_url']); ?>" alt="" loading="lazy" decoding="async">
+            <?php echo responsiveImg($a['image_url'], '', '(max-width:600px) 100px, 140px', [160, 320]); ?>
           <?php endif; ?>
           <div class="article-body">
             <div class="article-title"><?php echo e($a['title']); ?></div>

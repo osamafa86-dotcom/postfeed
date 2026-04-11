@@ -9,7 +9,7 @@ $__imgUrl = $article['image_url'] ?? placeholderImage(200, 160);
   <a class="nf-side-card-link" href="<?php echo articleUrl($article); ?>">
     <div class="nf-side-card-row">
       <div class="nf-side-card-img">
-        <img src="<?php echo e($__imgUrl); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async">
+        <?php echo responsiveImg($__imgUrl, $article['title'] ?? '', '160px', [160, 320]); ?>
       </div>
       <div class="nf-side-card-body">
         <div class="nf-side-card-meta">
