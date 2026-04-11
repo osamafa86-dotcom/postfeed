@@ -234,14 +234,24 @@ function evolving_story_match_article(int $articleId, string $title, string $exc
 /**
  * Latest articles for a story, joined with source + category metadata
  * so the templates can render cards without extra queries.
+ *
+ * $asOf is an optional ISO datetime cap — used by the Time Machine
+ * slider on evolving-story.php so we can reconstruct how the story
+ * looked on any past day. When null, returns the current state.
  */
-function evolving_story_articles(int $storyId, int $limit = 30, int $offset = 0): array {
+function evolving_story_articles(int $storyId, int $limit = 30, int $offset = 0, ?string $asOf = null): array {
     evolving_stories_ensure_tables();
     if ($storyId <= 0) return [];
     $limit  = max(1, min(200, $limit));
     $offset = max(0, $offset);
     try {
         $db = getDB();
+        $where  = "WHERE esa.story_id = ? AND a.status = 'published'";
+        $params = [$storyId];
+        if ($asOf !== null && $asOf !== '') {
+            $where .= " AND a.published_at <= ?";
+            $params[] = $asOf;
+        }
         $stmt = $db->prepare("SELECT a.id, a.title, a.slug, a.excerpt, a.image_url,
                                      a.source_url, a.ai_summary, a.ai_keywords,
                                      a.view_count, a.published_at, a.cluster_key,
@@ -251,16 +261,102 @@ function evolving_story_articles(int $storyId, int $limit = 30, int $offset = 0)
                                 JOIN articles a ON a.id = esa.article_id
                            LEFT JOIN categories c ON a.category_id = c.id
                            LEFT JOIN sources    s ON a.source_id   = s.id
-                               WHERE esa.story_id = ?
-                                 AND a.status = 'published'
+                               $where
                             ORDER BY a.published_at DESC
                                LIMIT $limit OFFSET $offset");
-        $stmt->execute([$storyId]);
+        $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (Throwable $e) {
         error_log('[evolving_stories] articles: ' . $e->getMessage());
         return [];
     }
+}
+
+/**
+ * Return the earliest and latest published_at timestamps for a story.
+ * Used to set the bounds on the Time Machine slider so it only covers
+ * the actual lifespan of the story, not the default "last 30 days".
+ */
+function evolving_story_date_range(int $storyId): array {
+    evolving_stories_ensure_tables();
+    $out = ['first' => null, 'last' => null];
+    if ($storyId <= 0) return $out;
+    try {
+        $db = getDB();
+        $stmt = $db->prepare("SELECT MIN(a.published_at) AS first_at,
+                                     MAX(a.published_at) AS last_at
+                                FROM evolving_story_articles esa
+                                JOIN articles a ON a.id = esa.article_id
+                               WHERE esa.story_id = ?
+                                 AND a.status = 'published'");
+        $stmt->execute([$storyId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        $out['first'] = $row['first_at'] ?? null;
+        $out['last']  = $row['last_at']  ?? null;
+    } catch (Throwable $e) {}
+    return $out;
+}
+
+/**
+ * Build a story-to-story overlap matrix for the /evolving-stories/network
+ * graph. For every pair of active stories (a,b) counts how many articles
+ * they share in evolving_story_articles. The result shape is compact
+ * enough to stream to the frontend as JSON:
+ *
+ *   [
+ *     'nodes' => [['id'=>1,'name'=>'…','icon'=>'…','color'=>'#…','count'=>123], …],
+ *     'links' => [['source'=>1,'target'=>3,'value'=>27], …],
+ *   ]
+ *
+ * $minShared prunes noisy edges (pairs that share just 1–2 articles)
+ * so the graph stays legible on medium-size datasets.
+ */
+function evolving_stories_network_graph(int $minShared = 3): array {
+    evolving_stories_ensure_tables();
+    $stories = evolving_stories_list(true);
+    $nodes = [];
+    foreach ($stories as $s) {
+        $nodes[] = [
+            'id'    => (int)$s['id'],
+            'name'  => (string)$s['name'],
+            'slug'  => (string)$s['slug'],
+            'icon'  => (string)$s['icon'],
+            'color' => (string)$s['accent_color'],
+            'count' => (int)$s['article_count'],
+        ];
+    }
+    if (count($stories) < 2) return ['nodes' => $nodes, 'links' => []];
+
+    $links = [];
+    try {
+        $db = getDB();
+        // One query returns every story pair with its shared-article
+        // count. We join evolving_story_articles to itself on article_id
+        // and keep only pairs where story_a < story_b to avoid the
+        // mirror entries.
+        $stmt = $db->prepare("SELECT x.story_id AS a, y.story_id AS b, COUNT(*) AS shared
+                                FROM evolving_story_articles x
+                                JOIN evolving_story_articles y
+                                  ON y.article_id = x.article_id
+                                 AND y.story_id  > x.story_id
+                                JOIN articles a ON a.id = x.article_id
+                               WHERE a.status = 'published'
+                            GROUP BY x.story_id, y.story_id
+                              HAVING shared >= ?
+                            ORDER BY shared DESC");
+        $stmt->execute([max(1, $minShared)]);
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $links[] = [
+                'source' => (int)$row['a'],
+                'target' => (int)$row['b'],
+                'value'  => (int)$row['shared'],
+            ];
+        }
+    } catch (Throwable $e) {
+        error_log('[evolving_stories] network_graph: ' . $e->getMessage());
+    }
+
+    return ['nodes' => $nodes, 'links' => $links];
 }
 
 /**
