@@ -31,9 +31,9 @@ class CacheTest extends TestCase
 
     public function testExpiry(): void
     {
-        cache_set('expiring', 'value', 1);
-        $this->assertSame('value', cache_get('expiring'));
-        // Force expiry by rewriting with past timestamp
+        // Write an already-expired payload directly to the cache file.
+        // Avoids cache_set(), which would populate the in-memory memo
+        // and cause cache_get() to short-circuit past the file check.
         $file = cache_path('expiring');
         $data = ['exp' => time() - 10, 'val' => 'value'];
         file_put_contents($file, serialize($data));
