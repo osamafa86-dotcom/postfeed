@@ -372,6 +372,10 @@ $pageTitle  = $pageTitle  ?? 'نيوزفلو';
       <div class="nav-icon">📂</div>
       <span class="label">الأقسام</span>
     </a>
+    <a href="evolving_stories.php" class="nav-item<?php echo $activePage==='evolving_stories'?' active':''; ?>">
+      <div class="nav-icon">📅</div>
+      <span class="label">القصص المتطوّرة</span>
+    </a>
     <a href="sources.php" class="nav-item<?php echo $activePage==='sources'?' active':''; ?>">
       <div class="nav-icon">🌐</div>
       <span class="label">المصادر</span>

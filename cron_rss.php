@@ -8,6 +8,7 @@ require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/article_fetch.php';
 require_once __DIR__ . '/includes/article_cluster.php';
 require_once __DIR__ . '/includes/cache.php';
+require_once __DIR__ . '/includes/evolving_stories.php';
 
 $db = getDB();
 $startTime = microtime(true);
@@ -219,6 +220,18 @@ foreach ($pendingInserts as $it) {
             $it['source_id'], $clusterKey, $it['published_at'],
         ]);
         $totalNew++;
+
+        // Match the fresh article against every admin-defined
+        // evolving story. Pure keyword lookup, no AI — cheap enough
+        // to run inline on every insert.
+        try {
+            $newId = (int)$db->lastInsertId();
+            if ($newId > 0) {
+                evolving_story_match_article($newId, $it['title'], $it['excerpt']);
+            }
+        } catch (Throwable $e) {
+            error_log('[cron_rss] evolving match: ' . $e->getMessage());
+        }
     } catch (Exception $e) {
         error_log('insert fail: ' . $e->getMessage());
     }
