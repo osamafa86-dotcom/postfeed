@@ -24,6 +24,7 @@ require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/user_auth.php';
 require_once __DIR__ . '/includes/user_functions.php';
 require_once __DIR__ . '/includes/article_cluster.php';
+require_once __DIR__ . '/includes/smart_brevity.php';
 
 $viewer    = current_user();
 $viewerId  = $viewer ? (int)$viewer['id'] : 0;
@@ -228,6 +229,52 @@ $pageUrl = SITE_URL . '/cluster/' . $key;
   }
   .coverage-actions a.primary:hover { background:#0f766e; }
 
+  /* SMART BREVITY */
+  .brevity-card {
+    background:linear-gradient(135deg,#f0fdf4 0%,#ecfdf5 50%,#f0fdfa 100%);
+    border:1px solid rgba(13,148,136,.25); border-radius:16px;
+    padding:0; margin:0 0 24px; overflow:hidden;
+    box-shadow:0 2px 12px -4px rgba(13,148,136,.12);
+  }
+  .brevity-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 22px; cursor:pointer; user-select:none;
+    background:rgba(13,148,136,.06);
+    border-bottom:1px solid rgba(13,148,136,.12);
+  }
+  .brevity-header:hover { background:rgba(13,148,136,.1); }
+  .brevity-header h3 { font-size:15px; font-weight:800; color:#0f766e; margin:0; }
+  .brevity-header .toggle { font-size:18px; transition:transform .3s; }
+  .brevity-header.collapsed .toggle { transform:rotate(-90deg); }
+  .brevity-body { padding:20px 22px; display:grid; gap:18px; }
+  .brevity-body.hidden { display:none; }
+  .brevity-section { }
+  .brevity-section h4 {
+    font-size:13px; font-weight:800; color:#0f766e;
+    margin-bottom:6px; display:flex; align-items:center; gap:6px;
+  }
+  .brevity-section p, .brevity-section li {
+    font-size:14px; line-height:1.75; color:var(--text);
+  }
+  .brevity-numbers {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px;
+  }
+  .brevity-num {
+    background:#fff; border:1px solid rgba(13,148,136,.15);
+    border-radius:10px; padding:12px 14px;
+  }
+  .brevity-num .val {
+    font-size:22px; font-weight:900; color:#0f766e; line-height:1.2;
+  }
+  .brevity-num .ctx { font-size:12px; color:var(--muted); margin-top:2px; }
+  .brevity-quotes { display:grid; gap:10px; }
+  .brevity-quote {
+    background:#fff; border-right:3px solid var(--gold);
+    border-radius:0 10px 10px 0; padding:12px 16px;
+  }
+  .brevity-quote .qt { font-size:13px; line-height:1.7; color:var(--text); font-style:italic; }
+  .brevity-quote .sp { font-size:11px; color:var(--muted); font-weight:700; margin-top:4px; }
+
   .empty-state { text-align:center; padding:80px 20px; color:var(--muted); }
   .empty-state .icon { font-size:56px; margin-bottom:18px; }
   .empty-state h3 { font-size:20px; margin-bottom:8px; color:var(--text); font-weight:800; }
@@ -279,6 +326,17 @@ include __DIR__ . '/includes/components/site_header.php';
           <span>↻ آخر تحديث <b><?php echo timeAgo($latestAt); ?></b></span>
         <?php endif; ?>
       </div>
+      <?php
+        require_once __DIR__ . '/includes/trending.php';
+        $srcVel = cluster_source_velocity($key);
+        if ($srcVel['label'] !== ''):
+      ?>
+      <div style="margin-top:12px;display:inline-flex;align-items:center;gap:8px;
+                  padding:8px 16px;border-radius:10px;font-size:13px;font-weight:800;
+                  background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.2);color:#dc2626;">
+        <?php echo e($srcVel['label']); ?>
+      </div>
+      <?php endif; ?>
       <div class="cluster-timeline">
         <span>📅 الترتيب الزمني للنشر:</span>
         <?php foreach ($articles as $idx => $a): ?>
@@ -301,6 +359,76 @@ include __DIR__ . '/includes/components/site_header.php';
         </div>
       <?php endif; ?>
     </div>
+
+    <!-- SMART BREVITY -->
+    <?php
+      $brevity = null;
+      if ($totalCount >= 2) {
+          $brevity = smart_brevity_for_cluster($key, $articles);
+      }
+    ?>
+    <?php if ($brevity && !empty($brevity['why_matters'])): ?>
+    <div class="brevity-card">
+      <div class="brevity-header" onclick="var b=this.nextElementSibling;b.classList.toggle('hidden');this.classList.toggle('collapsed')">
+        <h3>⚡ الإيجاز الذكي — خلاصة القصة في 30 ثانية</h3>
+        <span class="toggle">▾</span>
+      </div>
+      <div class="brevity-body">
+        <?php if (!empty($brevity['why_matters'])): ?>
+        <div class="brevity-section">
+          <h4>🎯 لماذا يهم</h4>
+          <p><?php echo e($brevity['why_matters']); ?></p>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($brevity['big_picture'])): ?>
+        <div class="brevity-section">
+          <h4>🌍 الصورة الأكبر</h4>
+          <p><?php echo e($brevity['big_picture']); ?></p>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($brevity['by_the_numbers'])): ?>
+        <div class="brevity-section">
+          <h4>📊 بالأرقام</h4>
+          <div class="brevity-numbers">
+            <?php foreach ($brevity['by_the_numbers'] as $n): ?>
+              <?php if (is_array($n) && !empty($n['value'])): ?>
+              <div class="brevity-num">
+                <div class="val"><?php echo e($n['value']); ?></div>
+                <div class="ctx"><?php echo e($n['context'] ?? ''); ?></div>
+              </div>
+              <?php endif; ?>
+            <?php endforeach; ?>
+          </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($brevity['what_they_say'])): ?>
+        <div class="brevity-section">
+          <h4>💬 ماذا يقولون</h4>
+          <div class="brevity-quotes">
+            <?php foreach ($brevity['what_they_say'] as $q): ?>
+              <?php if (is_array($q) && !empty($q['quote'])): ?>
+              <div class="brevity-quote">
+                <div class="qt">«<?php echo e($q['quote']); ?>»</div>
+                <div class="sp">— <?php echo e($q['speaker'] ?? ''); ?></div>
+              </div>
+              <?php endif; ?>
+            <?php endforeach; ?>
+          </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($brevity['zoom_in'])): ?>
+        <div class="brevity-section">
+          <h4>🔍 تقريب العدسة</h4>
+          <p><?php echo e($brevity['zoom_in']); ?></p>
+        </div>
+        <?php endif; ?>
+      </div>
+    </div>
+    <?php endif; ?>
 
     <!-- COVERAGE LIST -->
     <div class="coverage-list">
