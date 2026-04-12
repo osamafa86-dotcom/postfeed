@@ -140,6 +140,107 @@ if (!function_exists('trending_get_top')) {
     }
 }
 
+if (!function_exists('cluster_source_velocity')) {
+    /**
+     * Source velocity for a single cluster: how fast new outlets are
+     * joining the coverage. Returns counts of distinct sources in
+     * 15-min / 1-hour / 6-hour windows plus a composite score.
+     *
+     * NewsWhip found that 79% of monster stories show outstanding
+     * source velocity in their first hour. Unlike view-based velocity,
+     * this measures editorial consensus — more meaningful for trust.
+     *
+     * Score = (sources_15min × 8) + (sources_1h × 3) + sources_6h
+     */
+    function cluster_source_velocity(string $clusterKey): array {
+        if ($clusterKey === '' || $clusterKey === '-') {
+            return ['sources_15m' => 0, 'sources_1h' => 0, 'sources_6h' => 0, 'score' => 0, 'label' => ''];
+        }
+        return cache_remember('src_vel_' . $clusterKey, 120, function () use ($clusterKey) {
+            try {
+                $db = getDB();
+                $stmt = $db->prepare(
+                    "SELECT
+                        COUNT(DISTINCT CASE WHEN a.published_at >= DATE_SUB(NOW(), INTERVAL 15 MINUTE) THEN a.source_id END) AS s15m,
+                        COUNT(DISTINCT CASE WHEN a.published_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR) THEN a.source_id END) AS s1h,
+                        COUNT(DISTINCT CASE WHEN a.published_at >= DATE_SUB(NOW(), INTERVAL 6 HOUR) THEN a.source_id END) AS s6h
+                     FROM articles a
+                     WHERE a.cluster_key = ? AND a.status = 'published'"
+                );
+                $stmt->execute([$clusterKey]);
+                $r = $stmt->fetch(PDO::FETCH_ASSOC);
+                $s15m = (int)($r['s15m'] ?? 0);
+                $s1h  = (int)($r['s1h']  ?? 0);
+                $s6h  = (int)($r['s6h']  ?? 0);
+                $score = ($s15m * 8) + ($s1h * 3) + $s6h;
+                // Human-friendly label.
+                $label = '';
+                if ($s15m >= 3)     $label = '🔴 عاجل — ' . $s15m . ' مصادر في 15 دقيقة';
+                elseif ($s1h >= 3)  $label = '🔥 قصة صاعدة — ' . $s1h . ' مصادر في ساعة';
+                elseif ($s6h >= 4)  $label = '📈 تغطية واسعة — ' . $s6h . ' مصادر في 6 ساعات';
+                return ['sources_15m' => $s15m, 'sources_1h' => $s1h, 'sources_6h' => $s6h, 'score' => $score, 'label' => $label];
+            } catch (Throwable $e) {
+                return ['sources_15m' => 0, 'sources_1h' => 0, 'sources_6h' => 0, 'score' => 0, 'label' => ''];
+            }
+        });
+    }
+}
+
+if (!function_exists('trending_by_source_velocity')) {
+    /**
+     * Top clusters ranked by source velocity (how fast outlets join).
+     * Complements the existing view-based trending_get_top(). This
+     * query looks at clusters where ≥2 distinct sources published in
+     * the last 6 hours, ranked by velocity score.
+     */
+    function trending_by_source_velocity(int $limit = 10): array {
+        $limit = max(1, min(30, $limit));
+        return cache_remember('trending_src_vel_' . $limit, 120, function () use ($limit) {
+            try {
+                $db = getDB();
+                $sql = "SELECT
+                          a.cluster_key,
+                          COUNT(DISTINCT CASE WHEN a.published_at >= DATE_SUB(NOW(), INTERVAL 15 MINUTE) THEN a.source_id END) AS s15m,
+                          COUNT(DISTINCT CASE WHEN a.published_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR) THEN a.source_id END) AS s1h,
+                          COUNT(DISTINCT CASE WHEN a.published_at >= DATE_SUB(NOW(), INTERVAL 6 HOUR) THEN a.source_id END) AS s6h,
+                          COUNT(DISTINCT a.source_id) AS total_sources,
+                          MAX(a.published_at) AS latest_at,
+                          (COUNT(DISTINCT CASE WHEN a.published_at >= DATE_SUB(NOW(), INTERVAL 15 MINUTE) THEN a.source_id END) * 8
+                           + COUNT(DISTINCT CASE WHEN a.published_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR) THEN a.source_id END) * 3
+                           + COUNT(DISTINCT CASE WHEN a.published_at >= DATE_SUB(NOW(), INTERVAL 6 HOUR) THEN a.source_id END)) AS vel_score
+                       FROM articles a
+                       WHERE a.status = 'published'
+                         AND a.cluster_key IS NOT NULL AND a.cluster_key <> '-'
+                         AND a.published_at >= DATE_SUB(NOW(), INTERVAL 6 HOUR)
+                       GROUP BY a.cluster_key
+                       HAVING COUNT(DISTINCT a.source_id) >= 2
+                       ORDER BY vel_score DESC, latest_at DESC
+                       LIMIT {$limit}";
+                $rows = $db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+                // Enrich each row with a representative article (longest title).
+                foreach ($rows as &$row) {
+                    $stmt = $db->prepare(
+                        "SELECT a.id, a.title, a.slug, a.image_url, a.published_at,
+                                s.name AS source_name, c.name AS cat_name
+                         FROM articles a
+                         LEFT JOIN sources s ON a.source_id = s.id
+                         LEFT JOIN categories c ON a.category_id = c.id
+                         WHERE a.cluster_key = ? AND a.status = 'published'
+                         ORDER BY LENGTH(a.title) DESC LIMIT 1"
+                    );
+                    $stmt->execute([$row['cluster_key']]);
+                    $rep = $stmt->fetch(PDO::FETCH_ASSOC);
+                    if ($rep) $row = array_merge($row, $rep);
+                }
+                unset($row);
+                return $rows;
+            } catch (Throwable $e) {
+                return [];
+            }
+        });
+    }
+}
+
 if (!function_exists('trending_active_readers')) {
     /**
      * Rough estimate of "people reading right now": distinct view
