@@ -257,14 +257,16 @@ function _ai_gemini_tool_call(string $prompt, array $tool, int $max_tokens): arr
 
     $geminiTool = _ai_gemini_tool_from_anthropic($tool);
 
+    // Gemini 2.5 Flash has built-in "thinking" that consumes output
+    // tokens before the actual response. For tool calls we disable
+    // thinking so all tokens go to the function call payload, and we
+    // add a generous buffer to avoid truncation.
     $payload = json_encode([
         'contents' => [[
             'role'  => 'user',
             'parts' => [['text' => $prompt]],
         ]],
         'tools' => [$geminiTool],
-        // Force Gemini to emit a function call and constrain it to the
-        // one tool we passed, mirroring Anthropic's forced tool_choice.
         'toolConfig' => [
             'functionCallingConfig' => [
                 'mode' => 'ANY',
@@ -272,10 +274,9 @@ function _ai_gemini_tool_call(string $prompt, array $tool, int $max_tokens): arr
             ],
         ],
         'generationConfig' => [
-            'maxOutputTokens' => $max_tokens,
-            // A little deterministic — structured extraction should not
-            // be creative. Matches Anthropic's default-ish behavior.
+            'maxOutputTokens' => max($max_tokens, 8192),
             'temperature'     => 0.3,
+            'thinkingConfig'  => ['thinkingBudget' => 0],
         ],
     ], JSON_UNESCAPED_UNICODE);
 
@@ -316,8 +317,22 @@ function _ai_gemini_tool_call(string $prompt, array $tool, int $max_tokens): arr
         }
     }
 
-    // Log the raw response so we can debug schema rejections without
-    // blowing up user-visible error messages.
+    // Fallback: if Gemini returned text instead of a function call,
+    // try to extract JSON from it. This handles edge cases where the
+    // model ignores the forced tool mode and responds with plain text.
+    $textFallback = '';
+    foreach ($parts as $part) {
+        if (is_array($part) && isset($part['text'])) {
+            $textFallback .= (string)$part['text'];
+        }
+    }
+    if ($textFallback !== '' && preg_match('/\{.*\}/s', $textFallback, $m)) {
+        $parsed = json_decode($m[0], true);
+        if (is_array($parsed) && count($parsed) >= 2) {
+            return ['ok' => true, 'input' => $parsed, 'error' => null];
+        }
+    }
+
     $finish = (string)($data['candidates'][0]['finishReason'] ?? '');
     if ($finish === 'MAX_TOKENS') {
         return ['ok' => false, 'input' => null, 'error' => 'الرد طويل جداً ولم يكتمل.'];
