@@ -69,6 +69,17 @@ add_idx($db, 'articles', 'idx_breaking_pub',   '`is_breaking`, `published_at` DE
 add_idx($db, 'articles', 'idx_hero_pub',       '`is_hero`, `published_at` DESC',                      $applied);
 add_idx($db, 'articles', 'idx_ai_null',        '`ai_summary`(1)',                                     $applied);
 add_idx($db, 'articles', 'idx_cluster_key',    '`cluster_key`',                                       $applied);
+// Composite variants that include `status` — the homepage/hero/breaking
+// queries all filter by status='published' alongside the flag. MySQL can
+// pick these over the flag-only indexes to avoid the extra filesort step.
+add_idx($db, 'articles', 'idx_hero_status_pub',     '`is_hero`, `status`, `published_at` DESC',      $applied);
+add_idx($db, 'articles', 'idx_breaking_status_pub', '`is_breaking`, `status`, `published_at` DESC',  $applied);
+add_idx($db, 'articles', 'idx_cluster_status_pub',  '`cluster_key`, `status`, `published_at` DESC',  $applied);
+
+// ---------- telegram_messages performance ----------
+// The Telegram feed + summary cron scan by (is_active, posted_at) very
+// frequently. A composite index avoids the full-range sort on big archives.
+add_idx($db, 'telegram_messages', 'idx_active_posted', '`is_active`, `posted_at` DESC', $applied);
 
 // ---------- telegram tables ----------
 $db->exec("CREATE TABLE IF NOT EXISTS telegram_sources (

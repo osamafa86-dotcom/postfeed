@@ -35,6 +35,14 @@ $settingSections = [
             'auto_categorize' => ['label' => 'تصنيف تلقائي', 'type' => 'checkbox', 'default' => '0'],
         ]
     ],
+    'analytics' => [
+        'title' => 'التحليلات (Google Analytics 4)',
+        'fields' => [
+            // Leave blank to disable. Expected format: G-XXXXXXXXXX
+            'ga4_measurement_id' => ['label' => 'معرّف القياس (GA4)', 'type' => 'text', 'default' => ''],
+            'analytics_enabled'  => ['label' => 'تفعيل التتبع', 'type' => 'checkbox', 'default' => '0'],
+        ]
+    ],
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

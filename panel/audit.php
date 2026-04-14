@@ -29,8 +29,16 @@ try {
     $totalStmt->execute($params);
     $total = (int)$totalStmt->fetchColumn();
 
-    $stmt = $db->prepare("SELECT * FROM audit_log $whereSql ORDER BY id DESC LIMIT $perPage OFFSET $offset");
-    $stmt->execute($params);
+    // Bind LIMIT/OFFSET as integers rather than interpolating — they come
+    // from $_GET['page'], so even though we cast to int, parameterising
+    // keeps us defensive if the derivation ever changes.
+    $stmt = $db->prepare("SELECT * FROM audit_log $whereSql ORDER BY id DESC LIMIT :limit OFFSET :offset");
+    foreach ($params as $i => $v) {
+        $stmt->bindValue($i + 1, $v);
+    }
+    $stmt->bindValue(':limit',  (int)$perPage, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', (int)$offset,  PDO::PARAM_INT);
+    $stmt->execute();
     $rows = $stmt->fetchAll();
 } catch (Exception $e) {
     $rows = [];

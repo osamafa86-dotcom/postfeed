@@ -1115,16 +1115,24 @@ if (!empty($article['cat_slug']) && count($relatedArticles) < $relatedLimit) {
     $activeSlug = $article['cat_slug'] ?? '';
     $showTicker = false;
     $userUnread = $viewerId ? user_unread_notifications_count($viewerId) : 0;
+    // Forward article context into GA4 so events can segment by article.
+    $nfAnalyticsContext = [
+        'content_type'  => 'article',
+        'article_id'    => (int)($article['id'] ?? 0),
+        'category_slug' => (string)($article['cat_slug'] ?? ''),
+        'source_id'     => (int)($article['source_id'] ?? 0),
+        'cluster_key'   => (string)($article['cluster_key'] ?? ''),
+    ];
     include __DIR__ . '/includes/components/site_header.php';
     ?>
 
     <!-- Sticky floating share bar (desktop) -->
-    <div class="sticky-share" id="stickyShare">
-        <a href="https://www.facebook.com/sharer/sharer.php?u=<?php echo urlencode(SITE_URL . '/article.php?id=' . $article['id']); ?>" target="_blank" title="فيسبوك">f</a>
-        <a href="https://twitter.com/intent/tweet?text=<?php echo urlencode($article['title']); ?>&url=<?php echo urlencode(SITE_URL . '/article.php?id=' . $article['id']); ?>" target="_blank" title="تويتر">𝕏</a>
-        <a href="https://wa.me/?text=<?php echo urlencode($article['title'] . ' ' . SITE_URL . '/article.php?id=' . $article['id']); ?>" target="_blank" title="واتس آب">W</a>
+    <div class="sticky-share" id="stickyShare" data-article-id="<?php echo (int)$article['id']; ?>">
+        <a data-share="facebook" href="https://www.facebook.com/sharer/sharer.php?u=<?php echo urlencode(SITE_URL . '/article.php?id=' . $article['id']); ?>" target="_blank" title="فيسبوك">f</a>
+        <a data-share="twitter" href="https://twitter.com/intent/tweet?text=<?php echo urlencode($article['title']); ?>&url=<?php echo urlencode(SITE_URL . '/article.php?id=' . $article['id']); ?>" target="_blank" title="تويتر">𝕏</a>
+        <a data-share="whatsapp" href="https://wa.me/?text=<?php echo urlencode($article['title'] . ' ' . SITE_URL . '/article.php?id=' . $article['id']); ?>" target="_blank" title="واتس آب">W</a>
         <div class="ss-divider"></div>
-        <button type="button" title="نسخ الرابط" onclick="navigator.clipboard.writeText(window.location.href).then(()=>{if(window.NF&&NF.toast)NF.toast('تم نسخ الرابط ✓')})">🔗</button>
+        <button type="button" data-share="copy_link" title="نسخ الرابط" onclick="navigator.clipboard.writeText(window.location.href).then(()=>{if(window.NF&&NF.toast)NF.toast('تم نسخ الرابط ✓')})">🔗</button>
     </div>
 
     <?php

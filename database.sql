@@ -282,9 +282,12 @@ CREATE TABLE IF NOT EXISTS `users` (
   UNIQUE KEY `email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- كلمة المرور الافتراضية: admin123 (مشفرة بـ bcrypt)
-INSERT INTO `users` (`name`, `email`, `password`, `role`, `avatar_letter`, `plan`) VALUES
-('أسامة المعايضة', 'osama.fa.mayadmeh@gmail.com', '$2y$12$yav/VxjG9aR.FJv1AvqPtOfxDnFGgb7VwTPc1/OaAmgbjf/1wBrPW', 'admin', 'أ', 'premium');
+-- Default admin user — generate your own bcrypt hash and email before seeding.
+-- Do NOT commit a real password hash back into this file. Example:
+--   $hash = password_hash('YOUR_STRONG_PASSWORD', PASSWORD_BCRYPT, ['cost' => 12]);
+--
+-- INSERT INTO `users` (`name`, `email`, `password`, `role`, `avatar_letter`, `plan`) VALUES
+-- ('Admin', 'admin@example.com', '<BCRYPT_HASH_HERE>', 'admin', 'A', 'premium');
 
 -- =============================================
 -- جدول إعدادات الموقع
