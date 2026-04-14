@@ -14,7 +14,7 @@
  * Bump CACHE_VERSION whenever the asset bundle changes substantially
  * to force clients to discard the previous generation of caches.
  */
-const CACHE_VERSION = 'newsflow-v2';
+const CACHE_VERSION = 'newsflow-v3';
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGES_CACHE   = `${CACHE_VERSION}-pages`;
 

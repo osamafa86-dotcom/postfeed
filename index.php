@@ -258,10 +258,27 @@ $homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
   any more — and Chrome no longer complains that the preload wasn't
   claimed in time.
 */ ?>
-<style><?php readfile(__DIR__ . '/assets/css/site-header.min.css'); ?></style>
-<link rel="stylesheet" href="assets/css/home.min.css?v=m4">
-<link rel="stylesheet" href="assets/css/home-index.min.css?v=m2">
-<link rel="stylesheet" href="assets/css/user.min.css?v=m1">
+<?php /*
+  Critical CSS pattern:
+    - site-header.min.css + critical-home.min.css are inlined so the
+      above-the-fold paint (header + hero feature block) doesn't wait
+      on the ~90KB of full bundles below.
+    - home / home-index / user bundles are loaded with media=print →
+      media=all so they're non-render-blocking but still applied by
+      the time the user scrolls past the fold.
+    - <noscript> fallback keeps them render-blocking for the rare
+      JS-disabled visitor, which is fine because they won't have a
+      worse experience than before.
+*/ ?>
+<style><?php readfile(__DIR__ . '/assets/css/site-header.min.css'); readfile(__DIR__ . '/assets/css/critical-home.min.css'); ?></style>
+<link rel="stylesheet" href="assets/css/home.min.css?v=m5" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="assets/css/home-index.min.css?v=m3" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="assets/css/user.min.css?v=m2" media="print" onload="this.media='all'">
+<noscript>
+  <link rel="stylesheet" href="assets/css/home.min.css?v=m5">
+  <link rel="stylesheet" href="assets/css/home-index.min.css?v=m3">
+  <link rel="stylesheet" href="assets/css/user.min.css?v=m2">
+</noscript>
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 <script>
 // Register the service worker for the PWA shell. Wrapped in a load
@@ -405,7 +422,22 @@ $__featRest  = array_slice($latestArticles, 7);
           .nf-feature-main-img works on either tag via attribute
           selectors / :is().
         */ ?>
-        <img class="nf-feature-main-img" src="<?php echo e($__featMain['image_url'] ?? placeholderImage(1200,800)); ?>" alt="<?php echo e($__featMain['title'] ?? ''); ?>" fetchpriority="high" decoding="async">
+        <?php /*
+          Routed through /api/img.php (see responsiveImg helper) so the
+          browser gets a right-sized WebP (Accept: image/webp → webp
+          automatically), which is ~35% lighter than the origin JPEG.
+          sizes="640px" on desktop because the feature card is ~1/3 of
+          a 1400px container; 100vw on narrower viewports.
+        */ ?>
+        <?php echo responsiveImg(
+          $__featMain['image_url'] ?? placeholderImage(1200, 800),
+          $__featMain['title'] ?? '',
+          '(max-width:1024px) 100vw, 640px',
+          [480, 800, 1200],
+          'nf-feature-main-img',
+          'eager',
+          'fetchpriority="high"'
+        ); ?>
         <div class="nf-feature-main-body">
           <?php echo renderClusterBadge($__featMain); if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($__featMain); ?>
           <h3 class="nf-feature-main-title"><?php echo e($__featMain['title']); ?></h3>
@@ -461,7 +493,14 @@ $__featRest  = array_slice($latestArticles, 7);
             </div>
           </div>
           <div class="ps-hero-img">
-            <img src="<?php echo e($psFirst['image_url'] ?? placeholderImage(800,500)); ?>" alt="<?php echo e($psFirst['title'] ?? ''); ?>" loading="lazy" decoding="async">
+            <?php echo responsiveImg(
+              $psFirst['image_url'] ?? placeholderImage(800, 500),
+              $psFirst['title'] ?? '',
+              '(max-width:768px) 100vw, 480px',
+              [320, 480, 800],
+              '',
+              'lazy'
+            ); ?>
           </div>
         </a>
         <?php $article = $psFirst; include __DIR__ . '/includes/components/action_bar.php'; ?>
