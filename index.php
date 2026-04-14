@@ -238,20 +238,26 @@ $homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
 <title><?php echo e(getSetting('site_name', SITE_NAME)); ?> - <?php echo e(getSetting('site_tagline', SITE_TAGLINE)); ?></title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<?php /*
+  Async-load Tajawal without the rel=preload+swap trick, which triggers
+  a "preloaded but not used" warning in Chrome because the CSS parser
+  doesn't claim the preloaded resource until it finishes swapping the
+  link's rel. The media=print → media=all pattern gets the same
+  non-render-blocking behaviour without the warning.
+*/ ?>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap"></noscript>
 <meta name="description" content="مجمع الأخبار العربية الأول - أحدث الأخبار من مصادر موثوقة في السياسة، الاقتصاد، الرياضة، والتكنولوجيا">
 <link rel="alternate" type="application/rss+xml" title="<?php echo e(getSetting('site_name', SITE_NAME)); ?> RSS" href="/rss.xml">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#1a5c5c">
-<?php
-// Preload the hero image so the browser starts fetching it while
-// parsing the rest of <head>, before it even discovers the
-// background-image in the CSS. Shaves ~200ms off LCP.
-$__heroImg = !empty($latestArticles[0]['image_url']) ? $latestArticles[0]['image_url'] : '';
-if ($__heroImg): ?>
-<link rel="preload" as="image" href="<?php echo e($__heroImg); ?>">
-<?php endif; ?>
+<?php /*
+  The featured image is rendered as an <img fetchpriority="high"> down
+  in the .nf-feature-main block (was a CSS background-image, switched
+  so the preload scanner picks it up naturally). No rel=preload needed
+  any more — and Chrome no longer complains that the preload wasn't
+  claimed in time.
+*/ ?>
 <style><?php readfile(__DIR__ . '/assets/css/site-header.min.css'); ?></style>
 <link rel="stylesheet" href="assets/css/home.min.css?v=m4">
 <link rel="stylesheet" href="assets/css/home-index.min.css?v=m2">
@@ -392,7 +398,14 @@ $__featRest  = array_slice($latestArticles, 7);
     <!-- Center featured -->
     <div class="nf-feature-main">
       <a class="nf-feature-main-link" href="<?php echo articleUrl($__featMain); ?>">
-        <div class="nf-feature-main-img" style="background-image:url('<?php echo e($__featMain['image_url'] ?? placeholderImage(1200,800)); ?>');"></div>
+        <?php /*
+          Rendered as <img> (not a CSS background) so the browser's
+          preload scanner discovers it at HTML parse time and the LCP
+          asset is fetched without a separate rel=preload. The CSS for
+          .nf-feature-main-img works on either tag via attribute
+          selectors / :is().
+        */ ?>
+        <img class="nf-feature-main-img" src="<?php echo e($__featMain['image_url'] ?? placeholderImage(1200,800)); ?>" alt="<?php echo e($__featMain['title'] ?? ''); ?>" fetchpriority="high" decoding="async">
         <div class="nf-feature-main-body">
           <?php echo renderClusterBadge($__featMain); if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($__featMain); ?>
           <h3 class="nf-feature-main-title"><?php echo e($__featMain['title']); ?></h3>
