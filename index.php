@@ -1265,8 +1265,11 @@ $__featRest  = array_slice($latestArticles, 7);
   // SIMULATE NEW NOTIFICATION BADGE
   let notifCount = <?php echo $unreadCount; ?>;
   setInterval(() => {
+    // Guests (or zero-count state) have no .notif-badge in the DOM —
+    // bail early instead of crashing with a null deref.
     const badge = document.querySelector('.notif-badge');
-    if(Math.random() > 0.7) {
+    if (!badge) return;
+    if (Math.random() > 0.7) {
       notifCount++;
       badge.textContent = notifCount;
       badge.style.transform = 'scale(1.4)';

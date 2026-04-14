@@ -105,10 +105,13 @@ const currencyData = [
 let exchangeRates = {};
 
 function fetchCurrency() {
-  fetch('https://api.frankfurter.app/latest?from=USD&to=ILS,JOD,EUR,GBP,SAR,EGP,TRY,AED,KWD')
+  // Frankfurter migrated the API to .dev; .app now serves a 301 that the
+  // browser refuses to follow cross-origin (CORS denies redirects that
+  // change origin), so we hit .dev directly.
+  fetch('https://api.frankfurter.dev/v1/latest?base=USD&symbols=ILS,JOD,EUR,GBP,SAR,EGP,TRY,AED,KWD')
     .then(r => r.json())
     .then(data => {
-      exchangeRates = data.rates;
+      exchangeRates = data.rates || {};
       exchangeRates['USD'] = 1;
     }).catch(() => {});
 }
