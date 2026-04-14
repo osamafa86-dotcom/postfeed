@@ -33,7 +33,30 @@ $nf_nav_link_class = function (string $type, string $slug = '') use ($activeType
 // Pages can set $nfAnalyticsContext before including this header to
 // forward content_type / article_id / etc. as default event params.
 include __DIR__ . '/analytics.php';
+
+// Build fingerprint — exposed as a <meta> tag + console banner so we
+// can verify a deploy landed without SSHing into the server.
+require_once __DIR__ . '/../version.php';
+$__nfVer = app_version();
 ?>
+<meta name="site-version" content="<?php echo e($__nfVer['full']); ?>">
+<meta name="site-deployed-at" content="<?php echo e($__nfVer['deployed_iso']); ?>">
+<script>
+(function () {
+  try {
+    var v = <?php echo json_encode($__nfVer, JSON_UNESCAPED_SLASHES); ?>;
+    var deployed = v.deployed_at ? new Date(v.deployed_at * 1000).toISOString().replace('T', ' ').slice(0, 16) : '?';
+    // Eye-catching so QA can tell which build rendered the page at a glance.
+    console.log(
+      '%c نيوزفلو %c v' + v.full + ' %c ' + deployed + ' UTC ',
+      'background:#0d9488;color:#fff;padding:2px 8px;border-radius:4px 0 0 4px;font-weight:700',
+      'background:#134e4a;color:#5eead4;padding:2px 8px;font-family:monospace',
+      'background:#1f2937;color:#d1d5db;padding:2px 8px;border-radius:0 4px 4px 0;font-family:monospace'
+    );
+    window.__NF_VERSION = v;
+  } catch (_) {}
+})();
+</script>
 <!-- HEADER -->
 <header class="site-header">
   <div class="site-header-inner">

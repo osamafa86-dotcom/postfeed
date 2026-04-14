@@ -17,6 +17,12 @@ if (!isset($breakingCount)) {
 $adminName = $_SESSION['admin_name'] ?? 'المدير';
 $activePage = $activePage ?? '';
 $pageTitle  = $pageTitle  ?? 'نيوزفلو';
+
+// Build fingerprint for the admin too — same console banner + meta
+// tag pattern as the public site, so you can confirm a deploy from
+// the dashboard without opening a second tab.
+require_once __DIR__ . '/../../includes/version.php';
+$__nfVer = app_version();
 ?>
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -24,6 +30,23 @@ $pageTitle  = $pageTitle  ?? 'نيوزفلو';
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?></title>
+<meta name="site-version" content="<?php echo htmlspecialchars($__nfVer['full'], ENT_QUOTES, 'UTF-8'); ?>">
+<meta name="site-deployed-at" content="<?php echo htmlspecialchars($__nfVer['deployed_iso'], ENT_QUOTES, 'UTF-8'); ?>">
+<script>
+(function () {
+  try {
+    var v = <?php echo json_encode($__nfVer, JSON_UNESCAPED_SLASHES); ?>;
+    var deployed = v.deployed_at ? new Date(v.deployed_at * 1000).toISOString().replace('T', ' ').slice(0, 16) : '?';
+    console.log(
+      '%c نيوزفلو — لوحة %c v' + v.full + ' %c ' + deployed + ' UTC ',
+      'background:#4a7fcb;color:#fff;padding:2px 8px;border-radius:4px 0 0 4px;font-weight:700',
+      'background:#1e3a8a;color:#bfdbfe;padding:2px 8px;font-family:monospace',
+      'background:#1f2937;color:#d1d5db;padding:2px 8px;border-radius:0 4px 4px 0;font-family:monospace'
+    );
+    window.__NF_VERSION = v;
+  } catch (_) {}
+})();
+</script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap');
 
@@ -454,6 +477,7 @@ $pageTitle  = $pageTitle  ?? 'نيوزفلو';
     </div>
     <div class="topbar-actions">
       <div class="live-badge"><span class="live-dot"></span>مباشر</div>
+      <span class="live-badge" style="background:#e0f2fe;color:#0369a1;border-color:#bae6fd;direction:ltr;font-family:monospace;" title="النسخة المنشورة · <?php echo htmlspecialchars($__nfVer['deployed_iso'], ENT_QUOTES, 'UTF-8'); ?>">v<?php echo htmlspecialchars($__nfVer['full'], ENT_QUOTES, 'UTF-8'); ?></span>
       <a href="../" class="icon-btn" title="الموقع" target="_blank">🌐</a>
       <div class="user-avatar"><?php echo mb_substr($adminName, 0, 1, 'UTF-8'); ?></div>
     </div>
