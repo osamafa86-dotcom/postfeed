@@ -64,7 +64,34 @@ define('TIMEZONE', 'Asia/Amman');
 // إعدادات الأمان
 // ============================================
 define('ADMIN_SESSION_NAME', 'newsflow_admin');
-define('SECRET_KEY', env('SECRET_KEY', '1ea153d2745ac7980bf961b78cdab5717c0ff88f5420b39ee8eca39ad20f2ebd'));
+// SECRET_KEY — prefer the .env value, then a file-based secret outside the
+// webroot, then a one-time auto-generated fallback. Never ship a hardcoded
+// default: anyone reading this source could forge CSRF/session tokens.
+define('SECRET_KEY', (function () {
+    $fromEnv = env('SECRET_KEY', '');
+    if ($fromEnv !== '') return $fromEnv;
+
+    $path = __DIR__ . '/../storage/.secret_key';
+    if (is_readable($path)) {
+        $k = trim((string)@file_get_contents($path));
+        if ($k !== '') return $k;
+    }
+
+    // Auto-provision on first run so fresh installs don't break. The file
+    // is written under /storage (blocked by .htaccess) with 0600 perms.
+    $dir = dirname($path);
+    if (!is_dir($dir)) @mkdir($dir, 0700, true);
+    $generated = bin2hex(random_bytes(32));
+    if (@file_put_contents($path, $generated, LOCK_EX) !== false) {
+        @chmod($path, 0600);
+        return $generated;
+    }
+
+    // Last-resort per-request key — CSRF tokens won't survive across
+    // requests, which is visible enough to prompt an ops fix.
+    error_log('SECRET_KEY: could not read or write ' . $path . ' — set SECRET_KEY in .env');
+    return bin2hex(random_bytes(32));
+})());
 
 // ============================================
 // إعدادات رفع الملفات
@@ -95,7 +122,10 @@ function getDB() {
             ];
             $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
         } catch (PDOException $e) {
-            error_log('DB connection failed: ' . $e->getMessage());
+            // Don't leak the full PDO message — it can contain DSN fragments
+            // (host, database, user) and, depending on the driver, the
+            // password. A SQLSTATE code + generic label is enough to debug.
+            error_log('DB connection failed: sqlstate=' . $e->getCode());
             http_response_code(500);
             die('<div style="direction:rtl;text-align:center;padding:50px;font-family:Arial"><h2>خطأ في الاتصال بقاعدة البيانات</h2></div>');
         }
