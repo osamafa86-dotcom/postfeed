@@ -28,6 +28,11 @@ $nf_nav_link_class = function (string $type, string $slug = '') use ($activeType
     if ($type === $activeType && $slug === $activeSlug) $classes[] = 'active';
     return implode(' ', $classes);
 };
+
+// GA4 / analytics snippet — no-op unless configured + enabled in panel.
+// Pages can set $nfAnalyticsContext before including this header to
+// forward content_type / article_id / etc. as default event params.
+include __DIR__ . '/analytics.php';
 ?>
 <!-- HEADER -->
 <header class="site-header">
