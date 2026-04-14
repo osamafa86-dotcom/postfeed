@@ -32,46 +32,96 @@ if ($cached) {
     exit;
 }
 
-// Try the current endpoint first, fall back to the legacy one. cURL is
-// preferred because it lets us cap the timeout tightly; if it's not
-// available we fall back to file_get_contents with a stream context.
-$symbols = 'ILS,JOD,EUR,GBP,SAR,EGP,TRY,AED,KWD';
-$urls = [
-    'https://api.frankfurter.dev/v1/latest?base=USD&symbols=' . $symbols,
-    'https://api.frankfurter.app/latest?from=USD&to=' . $symbols,
-];
-
-$body = null;
-foreach ($urls as $url) {
-    $body = fx_fetch($url, 4);
-    if ($body !== null) break;
+// Short negative cache — if every upstream was unreachable recently
+// (see the 5-min TTL set below) just serve the stub payload so we
+// don't force every visitor to eat a ~12-second triple-timeout.
+$failCached = cache_get($cacheKey . ':fail');
+if ($failCached) {
+    http_response_code(502);
+    echo $failCached;
+    exit;
 }
 
-if ($body === null) {
-    // Don't cache failures — next request will retry. Return a minimal
-    // structure so the frontend shows placeholders instead of crashing.
-    http_response_code(502);
-    echo json_encode([
+// Try multiple upstreams in order. cURL is preferred because it lets
+// us cap the timeout tightly; if it's not available we fall back to
+// file_get_contents with a stream context. Each provider returns a
+// slightly different shape, so we normalise after fetching.
+$wanted = ['ILS','JOD','EUR','GBP','SAR','EGP','TRY','AED','KWD'];
+$symbols = implode(',', $wanted);
+
+$providers = [
+    // Frankfurter (primary). Bounces between .dev and .app — both are
+    // listed so if one domain's DNS/cert is flaky we have a sibling.
+    [
+        'url' => 'https://api.frankfurter.dev/v1/latest?base=USD&symbols=' . $symbols,
+        'extract' => function(array $d) { return $d['rates'] ?? null; },
+        'date'    => function(array $d) { return $d['date'] ?? null; },
+    ],
+    [
+        'url' => 'https://api.frankfurter.app/latest?from=USD&to=' . $symbols,
+        'extract' => function(array $d) { return $d['rates'] ?? null; },
+        'date'    => function(array $d) { return $d['date'] ?? null; },
+    ],
+    // open.er-api.com (fallback). Returns all currencies in one shot —
+    // we filter down to the subset we actually render.
+    [
+        'url' => 'https://open.er-api.com/v6/latest/USD',
+        'extract' => function(array $d) use ($wanted) {
+            if (empty($d['rates']) || !is_array($d['rates'])) return null;
+            $out = [];
+            foreach ($wanted as $code) {
+                if (isset($d['rates'][$code])) $out[$code] = $d['rates'][$code];
+            }
+            return $out ?: null;
+        },
+        'date' => function(array $d) {
+            // time_last_update_utc is an RFC-822 date; convert or fall
+            // back to today if the format ever drifts.
+            if (!empty($d['time_last_update_utc'])) {
+                $ts = strtotime($d['time_last_update_utc']);
+                if ($ts) return date('Y-m-d', $ts);
+            }
+            return null;
+        },
+    ],
+];
+
+$rates = null;
+$date  = null;
+$errors = [];
+foreach ($providers as $p) {
+    $body = fx_fetch($p['url'], 4);
+    if ($body === null) { $errors[] = 'fetch_fail:' . parse_url($p['url'], PHP_URL_HOST); continue; }
+    $decoded = json_decode($body, true);
+    if (!is_array($decoded)) { $errors[] = 'bad_json:' . parse_url($p['url'], PHP_URL_HOST); continue; }
+    $r = ($p['extract'])($decoded);
+    if (!$r) { $errors[] = 'no_rates:' . parse_url($p['url'], PHP_URL_HOST); continue; }
+    $rates = $r;
+    $date  = ($p['date'])($decoded) ?: date('Y-m-d');
+    break;
+}
+
+if ($rates === null) {
+    // Cache the failure for 5 minutes so we don't hammer dead upstreams
+    // on every pageview (each attempt eats up to 4s × 3 providers).
+    error_log('currency.php: all upstreams failed — ' . implode(', ', $errors));
+    $failBody = json_encode([
         'base'  => 'USD',
         'date'  => date('Y-m-d'),
         'rates' => new stdClass(),
         'error' => 'upstream_unavailable',
-    ]);
-    exit;
-}
-
-$decoded = json_decode($body, true);
-if (!is_array($decoded) || empty($decoded['rates'])) {
+    ], JSON_UNESCAPED_UNICODE);
+    cache_set($cacheKey . ':fail', $failBody, 300);
     http_response_code(502);
-    echo json_encode(['base' => 'USD', 'date' => date('Y-m-d'), 'rates' => new stdClass(), 'error' => 'bad_upstream']);
+    echo $failBody;
     exit;
 }
 
 // Normalise to the original payload shape before caching.
 $out = json_encode([
     'base'  => 'USD',
-    'date'  => $decoded['date'] ?? date('Y-m-d'),
-    'rates' => $decoded['rates'],
+    'date'  => $date,
+    'rates' => $rates,
 ], JSON_UNESCAPED_UNICODE);
 
 cache_set($cacheKey, $out, 3600);
