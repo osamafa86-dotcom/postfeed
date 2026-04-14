@@ -181,10 +181,14 @@ if (!empty($article['cat_slug']) && count($relatedArticles) < $relatedLimit) {
     <meta property="article:section" content="<?php echo e($article['cat_name']); ?>">
 
     <!-- Twitter Card -->
+    <?php require_once __DIR__ . '/includes/seo.php'; $twSite = seo_twitter_handle(); ?>
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="<?php echo e($article['title']); ?>">
     <meta name="twitter:description" content="<?php echo e($seoDesc); ?>">
     <meta name="twitter:image" content="<?php echo e($article['image_url']); ?>">
+    <?php if ($twSite): ?>
+    <meta name="twitter:site" content="<?php echo e($twSite); ?>">
+    <?php endif; ?>
 
     <!-- JSON-LD NewsArticle -->
     <script type="application/ld+json">
@@ -197,11 +201,11 @@ if (!empty($article['cat_slug']) && count($relatedArticles) < $relatedLimit) {
         'datePublished' => $publishedISO,
         'dateModified' => $modifiedISO,
         'author' => ['@type' => 'Organization', 'name' => $article['source_name'] ?? SITE_NAME],
-        'publisher' => [
-            '@type' => 'Organization',
-            'name' => SITE_NAME,
-            'logo' => ['@type' => 'ImageObject', 'url' => SITE_URL . '/assets/logo.png']
-        ],
+        // publisher.logo used to point at /assets/logo.png which never
+        // existed — Google's validator was flagging it. Centralised in
+        // seo_publisher_organization() so it stays in sync with the
+        // Organization block on the homepage.
+        'publisher' => seo_publisher_organization(),
         'mainEntityOfPage' => ['@type' => 'WebPage', '@id' => $selfUrl],
         'articleSection' => $article['cat_name'],
         'keywords' => $seoKeywords,
@@ -211,12 +215,17 @@ if (!empty($article['cat_slug']) && count($relatedArticles) < $relatedLimit) {
 
     <!-- BreadcrumbList -->
     <script type="application/ld+json">
-    <?php echo json_encode([
+    <?php
+    // Category breadcrumb uses the friendly URL the site actually
+    // serves ("/category/foo") — the old /category.php?slug=foo was
+    // a 404 in production because of the URL rewrites.
+    $catSlug = $article['cat_slug'] ?? '';
+    echo json_encode([
         '@context' => 'https://schema.org',
         '@type' => 'BreadcrumbList',
         'itemListElement' => [
             ['@type' => 'ListItem', 'position' => 1, 'name' => SITE_NAME, 'item' => SITE_URL],
-            ['@type' => 'ListItem', 'position' => 2, 'name' => $article['cat_name'] ?? '', 'item' => SITE_URL . '/category.php?slug=' . ($article['cat_slug'] ?? '')],
+            ['@type' => 'ListItem', 'position' => 2, 'name' => $article['cat_name'] ?? '', 'item' => SITE_URL . '/category/' . rawurlencode($catSlug)],
             ['@type' => 'ListItem', 'position' => 3, 'name' => $article['title']],
         ],
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>
