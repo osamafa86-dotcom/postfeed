@@ -105,10 +105,11 @@ const currencyData = [
 let exchangeRates = {};
 
 function fetchCurrency() {
-  // Frankfurter migrated the API to .dev; .app now serves a 301 that the
-  // browser refuses to follow cross-origin (CORS denies redirects that
-  // change origin), so we hit .dev directly.
-  fetch('https://api.frankfurter.dev/v1/latest?base=USD&symbols=ILS,JOD,EUR,GBP,SAR,EGP,TRY,AED,KWD')
+  // Use our own same-origin proxy (api/currency.php) instead of hitting
+  // Frankfurter directly. Frankfurter recently bounced domains and the
+  // 301 between .app <-> .dev loses CORS headers, which made the direct
+  // fetch unreachable from browsers. The proxy also caches for an hour.
+  fetch('/api/currency.php')
     .then(r => r.json())
     .then(data => {
       exchangeRates = data.rates || {};
