@@ -224,9 +224,14 @@ if (!empty($article['cat_slug']) && count($relatedArticles) < $relatedLimit) {
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+    <?php /*
+      Unified font loading with the homepage: media=print → media=all
+      avoids the rel=preload+swap race condition that triggers Chrome's
+      "preloaded but not used" warning. Same non-blocking behaviour.
+    */ ?>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/css/site-header.min.css?v=m1">
+    <style><?php readfile(__DIR__ . '/assets/css/site-header.min.css'); ?></style>
     <style>
         :root {
             --primary: #1a73e8;
@@ -1102,7 +1107,14 @@ if (!empty($article['cat_slug']) && count($relatedArticles) < $relatedLimit) {
             .related-grid { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
-    <link rel="stylesheet" href="assets/css/user.min.css?v=m1">
+    <?php /*
+      user.min.css carries dashboard/comment/bookmark styles — almost
+      nothing above-the-fold on the article page depends on it, so
+      load it async. The inline <style> block above already covers
+      the article body layout itself.
+    */ ?>
+    <link rel="stylesheet" href="assets/css/user.min.css?v=m2" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="assets/css/user.min.css?v=m2"></noscript>
     <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
 <body>

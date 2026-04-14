@@ -57,6 +57,7 @@ if (file_exists($cachePath) && (time() - filemtime($cachePath)) < $CACHE_TTL) {
     $mime = $fmt === 'webp' ? 'image/webp' : 'image/jpeg';
     header('Content-Type: ' . $mime);
     header('Cache-Control: public, max-age=2592000, immutable');
+    header('Vary: Accept');
     header('X-Cache: HIT');
     readfile($cachePath);
     exit;
