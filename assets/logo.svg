@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 60" width="600" height="60" role="img" aria-label="نيوزفلو — Newsflow">
+  <rect width="600" height="60" fill="#ffffff"/>
+  <g transform="translate(12 10)">
+    <rect width="40" height="40" rx="8" fill="#1a73e8"/>
+    <text x="20" y="29" text-anchor="middle" font-family="Tajawal, 'Segoe UI', sans-serif" font-size="26" font-weight="900" fill="#ffffff">N</text>
+  </g>
+  <text x="64" y="40" font-family="Tajawal, 'Segoe UI', sans-serif" font-size="28" font-weight="800" fill="#1a1a2e">نيوزفلو</text>
+  <text x="200" y="38" font-family="Tajawal, 'Segoe UI', sans-serif" font-size="14" font-weight="500" fill="#6b7280">· Newsflow</text>
+</svg>

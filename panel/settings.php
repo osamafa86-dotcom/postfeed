@@ -43,6 +43,20 @@ $settingSections = [
             'analytics_enabled'  => ['label' => 'تفعيل التتبع', 'type' => 'checkbox', 'default' => '0'],
         ]
     ],
+    'social' => [
+        'title' => 'الشبكات الاجتماعية و SEO',
+        'fields' => [
+            // Twitter/X handle without the @; used for twitter:site + sameAs.
+            'twitter_handle'    => ['label' => 'معرّف تويتر/X (بدون @)', 'type' => 'text', 'default' => ''],
+            'facebook_page'     => ['label' => 'رابط صفحة فيسبوك', 'type' => 'url', 'default' => ''],
+            'instagram_handle'  => ['label' => 'معرّف إنستغرام (بدون @)', 'type' => 'text', 'default' => ''],
+            'youtube_channel'   => ['label' => 'رابط قناة يوتيوب', 'type' => 'url', 'default' => ''],
+            // Absolute URL to a 1200x630 JPG/PNG used as the default
+            // og:image on pages that have no hero image (e.g. the
+            // homepage on a slow news day).
+            'default_og_image'  => ['label' => 'صورة OG الافتراضية (URL)', 'type' => 'url', 'default' => ''],
+        ]
+    ],
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

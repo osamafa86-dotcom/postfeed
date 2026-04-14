@@ -251,6 +251,13 @@ $homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
 <link rel="alternate" type="application/rss+xml" title="<?php echo e(getSetting('site_name', SITE_NAME)); ?> RSS" href="/rss.xml">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#1a5c5c">
+<?php
+// SEO block: canonical + OG + Twitter + WebSite/Organization JSON-LD.
+// Kept in one helper (includes/seo.php) so the tag shape stays
+// consistent with article.php and future list pages.
+require_once __DIR__ . '/includes/seo.php';
+render_home_seo();
+?>
 <?php /*
   The featured image is rendered as an <img fetchpriority="high"> down
   in the .nf-feature-main block (was a CSS background-image, switched

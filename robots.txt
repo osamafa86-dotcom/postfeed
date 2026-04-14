@@ -6,5 +6,9 @@ Disallow: /cron_rss.php
 Disallow: /cron_ai.php
 Disallow: /cron_telegram.php
 Disallow: /follow_source.php
+Disallow: /api/
 
+# Main sitemap — articles + category hubs, 5k-row cap
 Sitemap: https://postfeed.emdatra.org/sitemap.php
+# Google News sitemap — rolling 48h window, <news:news> metadata
+Sitemap: https://postfeed.emdatra.org/sitemap-news.php
