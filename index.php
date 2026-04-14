@@ -1359,7 +1359,7 @@ $__featRest  = array_slice($latestArticles, 7);
 </div>
 
 <div class="nf-toast" id="nfToast"></div>
-<script src="assets/js/home.min.js?v=m1" defer></script>
+<script src="assets/js/home.min.js?v=m2" defer></script>
 <script src="assets/js/user.min.js?v=m1" defer></script>
 <script>
 // Footer newsletter signup — simple fetch + status feedback.
