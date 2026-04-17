@@ -22,6 +22,34 @@ $articlesByCategory = $db->query("SELECT c.name, c.css_class, COUNT(a.id) as cou
 $topViewed = $db->query("SELECT title, view_count FROM articles ORDER BY view_count DESC LIMIT 5")->fetchAll(PDO::FETCH_ASSOC);
 $maxViews = $db->query("SELECT COALESCE(MAX(view_count),1) FROM articles")->fetchColumn();
 $avgViews = $totalArticles > 0 ? round($totalViews / $totalArticles) : 0;
+
+$dailyArticlesRaw = $db->query(
+    "SELECT DATE(created_at) as day, COUNT(*) as cnt
+     FROM articles WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+     GROUP BY DATE(created_at) ORDER BY day"
+)->fetchAll(PDO::FETCH_ASSOC);
+$dailyViewsRaw = $db->query(
+    "SELECT DATE(published_at) as day, COALESCE(SUM(view_count),0) as views
+     FROM articles WHERE published_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+       AND status = 'published'
+     GROUP BY DATE(published_at) ORDER BY day"
+)->fetchAll(PDO::FETCH_ASSOC);
+$topViewedChart = $db->query(
+    "SELECT title, view_count FROM articles WHERE status='published' ORDER BY view_count DESC LIMIT 10"
+)->fetchAll(PDO::FETCH_ASSOC);
+
+$articlesByDayMap = array_column($dailyArticlesRaw, 'cnt', 'day');
+$viewsByDayMap   = array_column($dailyViewsRaw, 'views', 'day');
+$chartDays = []; $chartArticleSeries = []; $chartViewSeries = [];
+for ($i = 29; $i >= 0; $i--) {
+    $d = date('Y-m-d', strtotime("-{$i} days"));
+    $chartDays[]          = date('m/d', strtotime($d));
+    $chartArticleSeries[] = (int)($articlesByDayMap[$d] ?? 0);
+    $chartViewSeries[]    = (int)($viewsByDayMap[$d] ?? 0);
+}
+$last7Views    = array_slice($chartViewSeries, -7);
+$last7Articles = array_slice($chartArticleSeries, -7);
+
 $adminName = $_SESSION['admin_name'] ?? 'المدير';
 
 $maxCatCount = 1;
@@ -544,7 +572,9 @@ $thumbGrads = [
     .topbar { flex-wrap:wrap; height:auto; padding:12px; }
     .search-box { width:100%; }
   }
+  .chart-container canvas { width:100%!important; height:100%!important; }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -661,7 +691,7 @@ $thumbGrads = [
         <div class="stat-value"><?php echo number_format($totalViews); ?></div>
         <div class="stat-label">إجمالي المشاهدات</div>
         <div class="mini-chart">
-          <?php for ($i = 0; $i < 8; $i++): ?><div class="mini-bar" style="height:<?php echo rand(30, 100); ?>%"></div><?php endfor; ?>
+          <?php $mv = max(1, ...($last7Views ?: [1])); foreach ($last7Views as $v): ?><div class="mini-bar" style="height:<?php echo max(10, round($v / $mv * 100)); ?>%"></div><?php endforeach; ?>
         </div>
       </div>
 
@@ -673,7 +703,7 @@ $thumbGrads = [
         <div class="stat-value"><?php echo number_format($totalArticles); ?></div>
         <div class="stat-label">المقالات المنشورة</div>
         <div class="mini-chart">
-          <?php for ($i = 0; $i < 8; $i++): ?><div class="mini-bar" style="height:<?php echo rand(30, 100); ?>%"></div><?php endfor; ?>
+          <?php $ma = max(1, ...($last7Articles ?: [1])); foreach ($last7Articles as $v): ?><div class="mini-bar" style="height:<?php echo max(10, round($v / $ma * 100)); ?>%"></div><?php endforeach; ?>
         </div>
       </div>
 
@@ -736,39 +766,8 @@ $thumbGrads = [
               <div style="font-size:11px;color:var(--text-muted);">أخبار عاجلة</div>
             </div>
           </div>
-          <div class="chart-container">
-            <svg class="chart-svg" viewBox="0 0 600 180" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="gradBlue" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%"   style="stop-color:#4a7fcb;stop-opacity:0.18"/>
-                  <stop offset="100%" style="stop-color:#4a7fcb;stop-opacity:0"/>
-                </linearGradient>
-                <linearGradient id="gradRed" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%"   style="stop-color:#e07b6a;stop-opacity:0.14"/>
-                  <stop offset="100%" style="stop-color:#e07b6a;stop-opacity:0"/>
-                </linearGradient>
-              </defs>
-              <line x1="0" y1="36"  x2="600" y2="36"  stroke="#e4eaf5" stroke-width="1" stroke-dasharray="5,4"/>
-              <line x1="0" y1="72"  x2="600" y2="72"  stroke="#e4eaf5" stroke-width="1" stroke-dasharray="5,4"/>
-              <line x1="0" y1="108" x2="600" y2="108" stroke="#e4eaf5" stroke-width="1" stroke-dasharray="5,4"/>
-              <line x1="0" y1="144" x2="600" y2="144" stroke="#e4eaf5" stroke-width="1" stroke-dasharray="5,4"/>
-              <path d="M0,140 C60,120 110,95 160,75 C210,55 260,85 310,65 C360,45 410,35 460,22 C510,12 560,30 600,18 L600,180 L0,180Z" fill="url(#gradBlue)"/>
-              <path d="M0,158 C60,148 110,138 160,128 C210,118 260,138 310,118 C360,98 410,108 460,88 C510,68 560,78 600,58 L600,180 L0,180Z" fill="url(#gradRed)"/>
-              <path d="M0,140 C60,120 110,95 160,75 C210,55 260,85 310,65 C360,45 410,35 460,22 C510,12 560,30 600,18" fill="none" stroke="#4a7fcb" stroke-width="2.5" stroke-linecap="round"/>
-              <path d="M0,158 C60,148 110,138 160,128 C210,118 260,138 310,118 C360,98 410,108 460,88 C510,68 560,78 600,58" fill="none" stroke="#e07b6a" stroke-width="2" stroke-linecap="round" stroke-dasharray="6,4"/>
-              <circle cx="160" cy="75"  r="5" fill="#fff" stroke="#4a7fcb" stroke-width="2.5"/>
-              <circle cx="310" cy="65"  r="5" fill="#fff" stroke="#4a7fcb" stroke-width="2.5"/>
-              <circle cx="460" cy="22"  r="5" fill="#fff" stroke="#4a7fcb" stroke-width="2.5"/>
-              <circle cx="600" cy="18"  r="5" fill="#4a7fcb" stroke="#fff" stroke-width="2"/>
-            </svg>
-          </div>
-          <div style="display:flex;gap:16px;margin-top:12px;">
-            <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary);">
-              <span style="width:22px;height:3px;background:var(--primary);border-radius:2px;display:inline-block;"></span>الزيارات
-            </div>
-            <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary);">
-              <span style="width:22px;height:0;display:inline-block;border-top:2px dashed var(--secondary);"></span>المشاهدات
-            </div>
+          <div class="chart-container" style="position:relative;height:220px;">
+            <canvas id="visitsChart"></canvas>
           </div>
         </div>
       </div>
@@ -1033,56 +1032,35 @@ $thumbGrads = [
         </div>
       </div>
 
-      <!-- TOP VIEWED -->
+      <!-- TOP VIEWED CHART -->
       <div class="card">
         <div class="card-header">
           <div class="card-title"><span class="card-title-dot dot-purple"></span>الأكثر مشاهدة</div>
         </div>
-        <div class="card-body" style="padding:8px 16px;">
-          <?php foreach ($topViewed as $idx => $article):
-              $rankBg = 'var(--bg-page)';
-              $rankColor = 'var(--text-muted)';
-              if ($idx === 0) { $rankBg = 'var(--warning-light)'; $rankColor = 'var(--warning)'; }
-              elseif ($idx === 1) { $rankBg = 'var(--primary-light)'; $rankColor = 'var(--primary)'; }
-              elseif ($idx === 2) { $rankBg = 'var(--secondary-light)'; $rankColor = 'var(--secondary)'; }
-          ?>
-          <div class="notif-item">
-            <div class="notif-icon-wrap" style="background:<?php echo $rankBg; ?>;color:<?php echo $rankColor; ?>;font-weight:800;font-size:14px;"><?php echo $idx + 1; ?></div>
-            <div style="flex:1;min-width:0;">
-              <div class="notif-title" style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis;"><?php echo e($article['title']); ?></div>
-              <div class="notif-sub"><?php echo number_format($article['view_count']); ?> مشاهدة</div>
-            </div>
+        <div class="card-body">
+          <?php if (!empty($topViewedChart)): ?>
+          <div style="position:relative;height:260px;">
+            <canvas id="topViewedChart"></canvas>
           </div>
-          <?php endforeach; ?>
-          <?php if (empty($topViewed)): ?>
+          <?php else: ?>
           <div style="text-align:center;color:var(--text-muted);padding:20px 0;font-size:13px;">لا توجد مقالات بعد</div>
           <?php endif; ?>
         </div>
       </div>
 
-      <!-- SUMMARY CARD -->
+      <!-- PUBLISHING ACTIVITY -->
       <div class="card">
         <div class="card-header">
-          <div class="card-title"><span class="card-title-dot dot-teal"></span>إحصائيات سريعة</div>
+          <div class="card-title"><span class="card-title-dot dot-teal"></span>نشاط النشر — آخر 7 أيام</div>
         </div>
         <div class="card-body">
-          <div class="summary-grid">
-            <div class="summary-item">
-              <div class="val" style="color:var(--primary);"><?php echo $todayArticles; ?></div>
-              <div class="lbl">مقالات اليوم</div>
-            </div>
-            <div class="summary-item">
-              <div class="val" style="color:var(--success);"><?php echo $weekArticles; ?></div>
-              <div class="lbl">مقالات الأسبوع</div>
-            </div>
-            <div class="summary-item">
-              <div class="val" style="color:var(--danger);"><?php echo $breakingCount; ?></div>
-              <div class="lbl">أخبار عاجلة</div>
-            </div>
-            <div class="summary-item">
-              <div class="val" style="color:var(--warning);"><?php echo number_format($todayViews); ?></div>
-              <div class="lbl">مشاهدات اليوم</div>
-            </div>
+          <div style="display:flex;justify-content:space-around;text-align:center;margin-bottom:14px;">
+            <div><div style="font-size:20px;font-weight:800;color:var(--primary);"><?php echo $todayArticles; ?></div><div style="font-size:10px;color:var(--text-muted);">اليوم</div></div>
+            <div><div style="font-size:20px;font-weight:800;color:var(--success);"><?php echo $weekArticles; ?></div><div style="font-size:10px;color:var(--text-muted);">الأسبوع</div></div>
+            <div><div style="font-size:20px;font-weight:800;color:var(--danger);"><?php echo $breakingCount; ?></div><div style="font-size:10px;color:var(--text-muted);">عاجل</div></div>
+          </div>
+          <div style="position:relative;height:140px;">
+            <canvas id="weeklyActivityChart"></canvas>
           </div>
         </div>
       </div>
@@ -1100,12 +1078,154 @@ $thumbGrads = [
 </main>
 
 <script>
-  document.querySelectorAll('.chip').forEach(chip => {
+(function() {
+  const days   = <?php echo json_encode($chartDays); ?>;
+  const views  = <?php echo json_encode($chartViewSeries); ?>;
+  const arts   = <?php echo json_encode($chartArticleSeries); ?>;
+
+  Chart.defaults.font.family = "'Tajawal', sans-serif";
+
+  const visitsEl = document.getElementById('visitsChart');
+  if (visitsEl) {
+    new Chart(visitsEl, {
+      type: 'line',
+      data: {
+        labels: days,
+        datasets: [
+          {
+            label: 'المشاهدات',
+            data: views,
+            borderColor: '#4a7fcb',
+            backgroundColor: 'rgba(74,127,203,0.1)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 1,
+            pointHoverRadius: 5,
+            borderWidth: 2.5,
+          },
+          {
+            label: 'المقالات الجديدة',
+            data: arts,
+            borderColor: '#e07b6a',
+            backgroundColor: 'rgba(224,123,106,0.06)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 1,
+            pointHoverRadius: 5,
+            borderWidth: 2,
+            borderDash: [6, 4],
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'bottom', rtl: true, labels: { usePointStyle: true, padding: 16 } },
+          tooltip: {
+            rtl: true, titleAlign: 'right', bodyAlign: 'right',
+            backgroundColor: '#fff', titleColor: '#2c3a52', bodyColor: '#6b7a95',
+            borderColor: '#e4eaf5', borderWidth: 1, padding: 12, boxPadding: 4,
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { maxTicksLimit: 8, font: { size: 11 } } },
+          y: { beginAtZero: true, grid: { color: '#edf1fa' }, ticks: { precision: 0, font: { size: 11 } } }
+        }
+      }
+    });
+  }
+
+  const topLabels = <?php echo json_encode(array_map(function($a) {
+      return mb_substr($a['title'], 0, 28, 'UTF-8') . (mb_strlen($a['title'], 'UTF-8') > 28 ? '…' : '');
+  }, $topViewedChart)); ?>;
+  const topVals = <?php echo json_encode(array_map('intval', array_column($topViewedChart, 'view_count'))); ?>;
+  const barColors = ['#e8a838','#4a7fcb','#e07b6a','#52b788','#8b6fcb','#4aabaa','#f0a050','#d9534f','#6b9fe8','#80d4a8'];
+
+  const topEl = document.getElementById('topViewedChart');
+  if (topEl) {
+    new Chart(topEl, {
+      type: 'bar',
+      data: {
+        labels: topLabels,
+        datasets: [{
+          data: topVals,
+          backgroundColor: barColors.slice(0, topVals.length),
+          borderRadius: 6,
+          borderSkipped: false,
+          barThickness: 20,
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            rtl: true, titleAlign: 'right', bodyAlign: 'right',
+            backgroundColor: '#fff', titleColor: '#2c3a52', bodyColor: '#6b7a95',
+            borderColor: '#e4eaf5', borderWidth: 1,
+            callbacks: { label: function(ctx) { return ctx.raw.toLocaleString() + ' مشاهدة'; } }
+          }
+        },
+        scales: {
+          x: { beginAtZero: true, grid: { color: '#edf1fa' }, ticks: { precision: 0, font: { size: 11 } } },
+          y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+        }
+      }
+    });
+  }
+
+  const weekLabels = <?php echo json_encode(array_map(function($d) {
+      $days = ['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+      return $days[(int)date('w', strtotime("-" . (6 - $d) . " days"))];
+  }, range(0, 6))); ?>;
+  const weekArts = <?php echo json_encode($last7Articles); ?>;
+  const weekViews = <?php echo json_encode($last7Views); ?>;
+
+  const actEl = document.getElementById('weeklyActivityChart');
+  if (actEl) {
+    new Chart(actEl, {
+      type: 'bar',
+      data: {
+        labels: weekLabels,
+        datasets: [{
+          label: 'مقالات',
+          data: weekArts,
+          backgroundColor: 'rgba(74,127,203,0.7)',
+          borderRadius: 5,
+          borderSkipped: false,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            rtl: true, titleAlign: 'right', bodyAlign: 'right',
+            backgroundColor: '#fff', titleColor: '#2c3a52', bodyColor: '#6b7a95',
+            borderColor: '#e4eaf5', borderWidth: 1,
+            callbacks: { label: function(ctx) { return ctx.raw + ' مقال'; } }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+          y: { beginAtZero: true, grid: { color: '#edf1fa' }, ticks: { precision: 0, font: { size: 11 } } }
+        }
+      }
+    });
+  }
+
+  document.querySelectorAll('.chip').forEach(function(chip) {
     chip.addEventListener('click', function() {
-      this.closest('.card-actions').querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      this.closest('.card-actions').querySelectorAll('.chip').forEach(function(c) { c.classList.remove('active'); });
       this.classList.add('active');
     });
   });
+})();
 </script>
 </body>
 </html>
