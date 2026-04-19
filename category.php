@@ -414,10 +414,11 @@ include __DIR__ . '/includes/components/site_header.php';
 <footer>
   <div class="footer-logo"><?php echo e(getSetting('site_name', SITE_NAME)); ?></div>
   <div class="footer-links">
-    <a href="#">من نحن</a>
-    <a href="#">سياسة الخصوصية</a>
-    <a href="#">الشروط والأحكام</a>
-    <a href="#">اتصل بنا</a>
+    <a href="/about">من نحن</a>
+    <a href="/editorial">السياسة التحريرية</a>
+    <a href="/corrections">التصحيح</a>
+    <a href="/privacy">الخصوصية</a>
+    <a href="/contact">اتصل بنا</a>
   </div>
   <div class="footer-copy">&copy; <?php echo date('Y'); ?> <?php echo e(getSetting('site_name', SITE_NAME)); ?> &mdash; جميع الحقوق محفوظة</div>
 </footer>

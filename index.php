@@ -1053,10 +1053,11 @@ $__featRest  = array_slice($latestArticles, 7);
     </div>
     <div class="footer-col">
       <div class="footer-col-title">روابط مهمة</div>
-      <a href="#">من نحن</a>
-      <a href="#">سياسة الخصوصية</a>
-      <a href="#">الشروط والأحكام</a>
-      <a href="#">اتصل بنا</a>
+      <a href="/about">من نحن</a>
+      <a href="/editorial">السياسة التحريرية</a>
+      <a href="/corrections">سياسة التصحيح</a>
+      <a href="/privacy">سياسة الخصوصية</a>
+      <a href="/contact">اتصل بنا</a>
     </div>
   </div>
   <div class="footer-bottom">
