@@ -75,8 +75,24 @@ if ($viewerId && !empty($articles)) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <base href="/">
 <title><?php echo e($source['name']); ?> - <?php echo e(getSetting('site_name', SITE_NAME)); ?></title>
-<meta name="description" content="<?php echo e('أحدث الأخبار من ' . $source['name'] . ' على ' . getSetting('site_name', SITE_NAME)); ?>">
-<link rel="canonical" href="<?php echo e(SITE_URL . '/source.php?id=' . (int)$source['id']); ?>">
+<?php
+    require_once __DIR__ . '/includes/seo.php';
+    // Source pages have a friendly URL rewrite (/source/{id}) in
+    // .htaccess — use it so the canonical matches what the sitemap
+    // (and any future share links) emit.
+    $srcCanonical = SITE_URL . '/source/' . (int)$source['id'];
+    $srcDesc      = 'أحدث الأخبار من ' . $source['name'] . ' على ' . getSetting('site_name', SITE_NAME);
+    $srcImage     = !empty($source['cover_image']) ? $source['cover_image'] : '';
+    render_list_seo($source['name'], $srcDesc, $srcCanonical, $srcImage, 'website');
+    render_breadcrumb([
+        ['name' => getSetting('site_name', SITE_NAME), 'url' => SITE_URL . '/'],
+        ['name' => 'المصادر', 'url' => SITE_URL . '/'],
+        ['name' => $source['name']],
+    ]);
+    render_collection_ld($source['name'], $srcDesc, $srcCanonical, $articles);
+?>
+<meta name="description" content="<?php echo e($srcDesc); ?>">
+<link rel="alternate" hreflang="ar" href="<?php echo e($srcCanonical); ?>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'">

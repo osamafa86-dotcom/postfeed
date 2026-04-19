@@ -132,9 +132,30 @@ if ($viewerId && !empty($articles)) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <base href="/">
 <title><?php echo e($pageIcon . ' ' . $pageTitle); ?> — <?php echo e(getSetting('site_name', SITE_NAME)); ?></title>
-<meta name="description" content="<?php echo e('أحدث الأخبار في قسم ' . $pageTitle . ' من ' . getSetting('site_name', SITE_NAME)); ?>">
-<link rel="canonical" href="<?php echo e(SITE_URL . '/category.php?slug=' . urlencode($_GET['slug'] ?? '')); ?>">
-<link rel="alternate" hreflang="ar" href="<?php echo e(SITE_URL . '/category.php?slug=' . urlencode($_GET['slug'] ?? '')); ?>">
+<?php
+    // Friendly canonical — matches the URL rewrites in .htaccess so the
+    // sitemap entry (/category/foo) and the rendered canonical agree.
+    // The type-based pages (breaking, latest) don't have friendly URLs,
+    // so we fall back to the query-string form for them.
+    require_once __DIR__ . '/includes/seo.php';
+    if ($slug !== '') {
+        $catCanonical = SITE_URL . '/category/' . rawurlencode($slug);
+    } elseif ($type === 'breaking' || $type === 'latest') {
+        $catCanonical = SITE_URL . '/category.php?type=' . $type;
+    } else {
+        $catCanonical = SITE_URL . '/';
+    }
+    $catDesc = 'أحدث الأخبار في قسم ' . $pageTitle . ' من ' . getSetting('site_name', SITE_NAME);
+    $catImage = !empty($articles[0]['image_url']) ? $articles[0]['image_url'] : '';
+    render_list_seo($pageIcon . ' ' . $pageTitle, $catDesc, $catCanonical, $catImage, 'website');
+    render_breadcrumb([
+        ['name' => getSetting('site_name', SITE_NAME), 'url' => SITE_URL . '/'],
+        ['name' => $pageTitle],
+    ]);
+    render_collection_ld($pageIcon . ' ' . $pageTitle, $catDesc, $catCanonical, $articles);
+?>
+<meta name="description" content="<?php echo e($catDesc); ?>">
+<link rel="alternate" hreflang="ar" href="<?php echo e($catCanonical); ?>">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#1a73e8">
