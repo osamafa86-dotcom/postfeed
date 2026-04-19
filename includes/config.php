@@ -55,7 +55,11 @@ define('DB_CHARSET', 'utf8mb4');
 // ============================================
 // إعدادات عامة
 // ============================================
-define('SITE_URL', 'https://postfeed.emdatra.org');
+// SITE_URL — absolute URL of the site (no trailing slash).
+// Used to build canonical links, OG/JSON-LD metadata, sitemap entries,
+// etc. Overridable via .env so a staging copy on a different hostname
+// doesn't serve canonicals pointing at production.
+define('SITE_URL', env('SITE_URL', 'https://feedsnews.net'));
 define('SITE_NAME', 'نيوزفلو');
 define('SITE_TAGLINE', 'مجمع المصادر الإخبارية');
 define('TIMEZONE', 'Asia/Amman');

@@ -9,6 +9,6 @@ Disallow: /follow_source.php
 Disallow: /api/
 
 # Main sitemap — articles + category hubs, 5k-row cap
-Sitemap: https://postfeed.emdatra.org/sitemap.php
+Sitemap: https://feedsnews.net/sitemap.php
 # Google News sitemap — rolling 48h window, <news:news> metadata
-Sitemap: https://postfeed.emdatra.org/sitemap-news.php
+Sitemap: https://feedsnews.net/sitemap-news.php

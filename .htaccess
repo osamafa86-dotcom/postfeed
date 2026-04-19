@@ -3,6 +3,12 @@ DirectoryIndex index.php index.html
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
+    # 301 legacy domain → canonical domain. Runs before the HTTPS rule so
+    # old http://postfeed.emdatra.org/foo hits get a single hop straight
+    # to https://feedsnews.net/foo, not a double redirect.
+    RewriteCond %{HTTP_HOST} ^(www\.)?postfeed\.emdatra\.org$ [NC]
+    RewriteRule ^(.*)$ https://feedsnews.net/$1 [R=301,L]
+
     # Force HTTPS
     RewriteCond %{HTTPS} off
     RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
