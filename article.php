@@ -148,11 +148,14 @@ if (!empty($article['cat_slug']) && count($relatedArticles) < $relatedLimit) {
         $seoKeywords = !empty($article['ai_keywords'])
             ? $article['ai_keywords']
             : ($article['cat_name'] . '، أخبار، نيوزفلو');
-        // Canonical points to original source to avoid duplicate-content penalty
-        $canonical = !empty($article['source_url'])
-            ? $article['source_url']
-            : SITE_URL . '/article.php?id=' . (int)$article['id'];
-        $selfUrl = SITE_URL . '/article.php?id=' . (int)$article['id'];
+        // Canonical self-references the friendly URL on this site. We
+        // deliberately don't point at the external source_url: doing so
+        // tells Google "don't index me, index the source" — which kills
+        // our Search/News rankings even though our AI summary is distinct
+        // content. If duplicate-content risk becomes real the fix is
+        // stronger original content, not a canonical pointing off-site.
+        $selfUrl   = SITE_URL . '/' . articleUrl($article);
+        $canonical = $selfUrl;
         $publishedISO = !empty($article['published_at']) ? date('c', strtotime($article['published_at'])) : date('c');
         $modifiedISO  = !empty($article['ai_processed_at']) ? date('c', strtotime($article['ai_processed_at'])) : $publishedISO;
     ?>
