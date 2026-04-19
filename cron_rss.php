@@ -188,6 +188,11 @@ if (!empty($pageUrls)) {
 // ============ INSERT ============
 $insertStmt = $db->prepare("INSERT INTO articles (title, slug, excerpt, content, image_url, source_url, category_id, source_id, cluster_key, status, published_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'published', ?, NOW())");
 
+// Article ids inserted this run — batched to IndexNow at the end so
+// Bing/Yandex pick them up in minutes instead of waiting for the next
+// natural crawl.
+$freshArticleIds = [];
+
 // Pre-build a fuzzy-match index over the last 7 days of published
 // articles. cluster_assign() walks it for each new title and reuses
 // the cluster_key of the closest existing story (Jaccard ≥ 0.55), so
@@ -228,6 +233,10 @@ foreach ($pendingInserts as $it) {
             $newId = (int)$db->lastInsertId();
             if ($newId > 0) {
                 evolving_story_match_article($newId, $it['title'], $it['excerpt']);
+                // Collect for IndexNow submission after the whole
+                // ingest batch finishes. One batched POST is much
+                // cheaper than pinging per article.
+                $freshArticleIds[] = $newId;
             }
         } catch (Throwable $e) {
             error_log('[cron_rss] evolving match: ' . $e->getMessage());
@@ -258,6 +267,21 @@ foreach ($sources as $source) {
 // Flush homepage cache so new articles appear immediately
 if ($totalNew > 0) {
     cache_flush();
+}
+
+// ============ INDEXNOW PING ============
+// Best-effort: pings Bing + Yandex + Seznam + Naver so new URLs are
+// indexed within minutes instead of waiting for an organic crawl.
+// Failures are logged inside indexnow_submit() and intentionally don't
+// abort the cron.
+if (!empty($freshArticleIds)) {
+    require_once __DIR__ . '/includes/indexnow.php';
+    $r = indexnow_submit_article_ids($freshArticleIds);
+    if ($r['ok']) {
+        echo "IndexNow: submitted {$r['sent']} url(s)\n";
+    } else {
+        echo "IndexNow: failed — {$r['error']}\n";
+    }
 }
 
 $elapsed = round(microtime(true) - $startTime, 2);

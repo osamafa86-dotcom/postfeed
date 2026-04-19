@@ -49,7 +49,28 @@ if ($viewerId && !empty($results)) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <base href="/">
 <title>بحث: <?php echo e($q); ?> — <?php echo e(getSetting('site_name', SITE_NAME)); ?></title>
-<meta name="robots" content="noindex">
+<?php
+    // Search result pages stay out of the index (thin-content / duplicate
+    // risk), but we still want the social-share preview to look right
+    // if somebody pastes a query URL into a chat app. Canonical to /search
+    // without the query string so the bare page is the one indexed if
+    // Google overrides the noindex later.
+    require_once __DIR__ . '/includes/seo.php';
+    $searchDesc      = $q !== ''
+        ? ('نتائج البحث عن ' . $q . ' في ' . getSetting('site_name', SITE_NAME))
+        : 'ابحث في آخر الأخبار والمقالات على ' . getSetting('site_name', SITE_NAME);
+    $searchCanonical = SITE_URL . '/search';
+    $searchTitle     = $q !== '' ? ('بحث: ' . $q) : 'البحث';
+?>
+<meta name="description" content="<?php echo e($searchDesc); ?>">
+<link rel="canonical" href="<?php echo e($searchCanonical); ?>">
+<meta property="og:type" content="website">
+<meta property="og:title" content="<?php echo e($searchTitle); ?>">
+<meta property="og:description" content="<?php echo e($searchDesc); ?>">
+<meta property="og:url" content="<?php echo e($searchCanonical); ?>">
+<meta property="og:image" content="<?php echo e(seo_default_og_image()); ?>">
+<meta name="twitter:card" content="summary">
+<meta name="robots" content="noindex, follow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'">

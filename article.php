@@ -195,7 +195,17 @@ if (!empty($article['cat_slug']) && count($relatedArticles) < $relatedLimit) {
 
     <!-- JSON-LD NewsArticle -->
     <script type="application/ld+json">
-    <?php echo json_encode([
+    <?php
+    // Author is the source publication (we republish from feeds and
+    // don't have individual bylines). Represent it as Organization +
+    // URL so Google links the byline to the source profile page, which
+    // is a stronger E-E-A-T signal than a bare name string.
+    $authorName = $article['source_name'] ?? SITE_NAME;
+    $author     = ['@type' => 'Organization', 'name' => $authorName];
+    if (!empty($article['source_id'])) {
+        $author['url'] = SITE_URL . '/source/' . (int)$article['source_id'];
+    }
+    $ld = [
         '@context' => 'https://schema.org',
         '@type' => 'NewsArticle',
         'headline' => $article['title'],
@@ -203,7 +213,7 @@ if (!empty($article['cat_slug']) && count($relatedArticles) < $relatedLimit) {
         'image' => [$article['image_url']],
         'datePublished' => $publishedISO,
         'dateModified' => $modifiedISO,
-        'author' => ['@type' => 'Organization', 'name' => $article['source_name'] ?? SITE_NAME],
+        'author' => $author,
         // publisher.logo used to point at /assets/logo.png which never
         // existed — Google's validator was flagging it. Centralised in
         // seo_publisher_organization() so it stays in sync with the
@@ -213,7 +223,16 @@ if (!empty($article['cat_slug']) && count($relatedArticles) < $relatedLimit) {
         'articleSection' => $article['cat_name'],
         'keywords' => $seoKeywords,
         'inLanguage' => 'ar',
-    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>
+        // Speakable — Google Assistant / voice surfaces use these
+        // selectors to pick which parts of the page to read aloud.
+        // Points at the article title (h1#articleTitle) and the AI
+        // summary (.ai-summary-body) which is the most narratable
+        // chunk; the raw article body is often multi-paragraph source
+        // copy that sounds awkward when dictated.
+        'speakable' => seo_speakable_spec(['#articleTitle', '.ai-summary-body']),
+    ];
+    echo json_encode($ld, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    ?>
     </script>
 
     <!-- BreadcrumbList -->

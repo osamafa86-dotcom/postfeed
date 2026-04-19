@@ -127,8 +127,29 @@ $pageTitleText = $keyword !== '' ? '#' . $keyword : 'الموضوعات الأك
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <base href="/">
 <title><?php echo e($pageTitleText); ?> — <?php echo e(getSetting('site_name', SITE_NAME)); ?></title>
-<meta name="description" content="<?php echo e($keyword !== '' ? ('كل الأخبار المتعلقة بـ ' . $keyword) : 'تصفّح الموضوعات الأكثر تداولاً على نيوزفلو'); ?>">
-<link rel="canonical" href="<?php echo e(SITE_URL . ($keyword !== '' ? '/topic/' . rawurlencode($keyword) : '/topic/')); ?>">
+<?php
+    require_once __DIR__ . '/includes/seo.php';
+    $topicCanonical = SITE_URL . ($keyword !== '' ? '/topic/' . rawurlencode($keyword) : '/topic/');
+    $topicDesc      = $keyword !== ''
+        ? ('كل الأخبار المتعلقة بـ ' . $keyword . ' على ' . getSetting('site_name', SITE_NAME))
+        : 'تصفّح الموضوعات الأكثر تداولاً على ' . getSetting('site_name', SITE_NAME);
+    $topicImage     = !empty($articles[0]['image_url']) ? $articles[0]['image_url'] : '';
+    render_list_seo($pageTitleText, $topicDesc, $topicCanonical, $topicImage, 'website');
+    if ($keyword !== '') {
+        render_breadcrumb([
+            ['name' => getSetting('site_name', SITE_NAME), 'url' => SITE_URL . '/'],
+            ['name' => 'الموضوعات', 'url' => SITE_URL . '/topic/'],
+            ['name' => $keyword],
+        ]);
+        render_collection_ld($pageTitleText, $topicDesc, $topicCanonical, $articles);
+    } else {
+        render_breadcrumb([
+            ['name' => getSetting('site_name', SITE_NAME), 'url' => SITE_URL . '/'],
+            ['name' => 'الموضوعات'],
+        ]);
+    }
+?>
+<meta name="description" content="<?php echo e($topicDesc); ?>">
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#1a5c5c">

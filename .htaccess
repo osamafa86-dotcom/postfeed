@@ -92,4 +92,11 @@ FileETag None
     RewriteRule ^newsletter/confirm/([a-f0-9]{48})/?$ newsletter_confirm.php?token=$1 [L,QSA]
     RewriteRule ^newsletter/unsubscribe/([a-f0-9]{48})/?$ newsletter_unsubscribe.php?token=$1 [L,QSA]
     RewriteRule ^rss\.xml$ rss.php [L]
+    # IndexNow ownership-verification file: the protocol wants /{key}.txt
+    # at the site root. We serve it dynamically from indexnow-key.php so
+    # the key itself stays in /storage (not checked into git, not on the
+    # webroot). The pattern is tight enough that normal *.txt requests
+    # (robots.txt, ads.txt, etc.) don't get caught — key must be 8–128
+    # hex chars.
+    RewriteRule ^([a-f0-9]{8,128})\.txt$ indexnow-key.php?key=$1 [L,QSA]
 </IfModule>

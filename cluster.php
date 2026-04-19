@@ -101,6 +101,20 @@ $pageUrl = SITE_URL . '/cluster/' . $key;
 <meta property="og:image" content="<?php echo e($articles[0]['image_url']); ?>">
 <?php endif; ?>
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="<?php echo e($pageTitleText); ?>">
+<meta name="twitter:description" content="<?php echo e($metaDesc); ?>">
+<?php if (!empty($articles[0]['image_url'])): ?>
+<meta name="twitter:image" content="<?php echo e($articles[0]['image_url']); ?>">
+<?php endif; ?>
+<?php
+    require_once __DIR__ . '/includes/seo.php';
+    render_breadcrumb([
+        ['name' => getSetting('site_name', SITE_NAME), 'url' => SITE_URL . '/'],
+        ['name' => 'تغطية متعدّدة المصادر'],
+        ['name' => mb_substr($pageTitleText, 0, 80)],
+    ]);
+    render_collection_ld($pageTitleText, $metaDesc, $pageUrl, $articles);
+?>
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#1a5c5c">

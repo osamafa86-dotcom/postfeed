@@ -183,3 +183,101 @@ function render_list_seo(string $title, string $desc, string $canonical,
     <?php endif; ?>
     <?php
 }
+
+/**
+ * BreadcrumbList JSON-LD.
+ *
+ * Google uses this to render breadcrumb rows in search results instead
+ * of the raw URL. The last item should have a name but no href (it's
+ * the current page) — callers pass it that way.
+ *
+ * @param array $items  Ordered list of ['name' => ..., 'url' => ...].
+ *                      The last entry can omit 'url' (current page).
+ */
+function render_breadcrumb(array $items): void {
+    if (!$items) return;
+    $list = [];
+    foreach (array_values($items) as $i => $it) {
+        $node = [
+            '@type'    => 'ListItem',
+            'position' => $i + 1,
+            'name'     => (string)($it['name'] ?? ''),
+        ];
+        if (!empty($it['url'])) $node['item'] = abs_url((string)$it['url']);
+        $list[] = $node;
+    }
+    $payload = [
+        '@context'        => 'https://schema.org',
+        '@type'           => 'BreadcrumbList',
+        'itemListElement' => $list,
+    ];
+    ?>
+    <script type="application/ld+json"><?php echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?></script>
+    <?php
+}
+
+/**
+ * SpeakableSpecification — tells Google Assistant which CSS selectors
+ * contain the spoken-summary-worthy text. Embedded as part of an
+ * existing NewsArticle payload; callers drop the returned array into
+ * the `speakable` key before json_encode'ing the article.
+ *
+ * Defaults cover the common h1 + summary / first paragraph shape.
+ */
+function seo_speakable_spec(array $cssSelectors = ['.article-title', '.article-summary', 'article h1', 'article p:first-of-type']): array {
+    return [
+        '@type'        => 'SpeakableSpecification',
+        'cssSelector'  => array_values($cssSelectors),
+    ];
+}
+
+/**
+ * CollectionPage JSON-LD for list pages (category, source, topic,
+ * cluster). Optionally embeds an ItemList of the first N articles so
+ * Google can surface them directly.
+ *
+ * @param string $name       The page's display title
+ * @param string $desc       Meta-description-length blurb
+ * @param string $url        Canonical absolute URL
+ * @param array  $articles   Optional — rows with id/slug/title/published_at
+ */
+function render_collection_ld(string $name, string $desc, string $url, array $articles = []): void {
+    $payload = [
+        '@context'   => 'https://schema.org',
+        '@type'      => 'CollectionPage',
+        'name'       => $name,
+        'description'=> $desc,
+        'url'        => $url,
+        'inLanguage' => 'ar',
+        'isPartOf'   => [
+            '@type' => 'WebSite',
+            'name'  => getSetting('site_name', SITE_NAME),
+            'url'   => rtrim(SITE_URL, '/') . '/',
+        ],
+    ];
+    if ($articles) {
+        $items = [];
+        $i = 0;
+        foreach ($articles as $a) {
+            if (empty($a['id']) || empty($a['title'])) continue;
+            $i++;
+            if ($i > 20) break;
+            $items[] = [
+                '@type'    => 'ListItem',
+                'position' => $i,
+                'url'      => abs_url('/' . articleUrl($a)),
+                'name'     => (string)$a['title'],
+            ];
+        }
+        if ($items) {
+            $payload['mainEntity'] = [
+                '@type'           => 'ItemList',
+                'numberOfItems'   => count($items),
+                'itemListElement' => $items,
+            ];
+        }
+    }
+    ?>
+    <script type="application/ld+json"><?php echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?></script>
+    <?php
+}
