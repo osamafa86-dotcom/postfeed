@@ -91,6 +91,12 @@ FileETag None
     RewriteRule ^ask/?$ ask.php [L,QSA]
     RewriteRule ^newsletter/confirm/([a-f0-9]{48})/?$ newsletter_confirm.php?token=$1 [L,QSA]
     RewriteRule ^newsletter/unsubscribe/([a-f0-9]{48})/?$ newsletter_unsubscribe.php?token=$1 [L,QSA]
+    # Static info pages (Google News eligibility: About / Editorial / Corrections / Privacy / Contact)
+    RewriteRule ^about/?$ about.php [L]
+    RewriteRule ^privacy/?$ privacy.php [L]
+    RewriteRule ^contact/?$ contact.php [L]
+    RewriteRule ^editorial/?$ editorial.php [L]
+    RewriteRule ^corrections/?$ corrections.php [L]
     RewriteRule ^rss\.xml$ rss.php [L]
     # IndexNow ownership-verification file: the protocol wants /{key}.txt
     # at the site root. We serve it dynamically from indexnow-key.php so
