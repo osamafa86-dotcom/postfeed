@@ -49,7 +49,7 @@ echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
 ?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"
-        xmlns:image="http://www.google.com/schemas/sitemap-image/0.9">
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
 <?php foreach ($articles as $a):
     $loc      = $base . '/' . articleUrl($a);
     $pubISO   = !empty($a['published_at']) ? date('c', strtotime($a['published_at'])) : date('c');
