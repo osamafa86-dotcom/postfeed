@@ -374,9 +374,124 @@ $__nfVer = app_version();
     .topbar { flex-wrap:wrap; height:auto; padding:12px; }
     .search-box { width:100%; }
   }
+
+  /* ===== COMMAND PALETTE (Cmd+K) ===== */
+  .kbd-hint {
+    display:inline-block; padding:2px 7px; border-radius:5px;
+    background:#fff; border:1px solid var(--border);
+    font-size:10px; font-family:monospace; color:var(--text-muted);
+    font-weight:600; letter-spacing:0.5px;
+  }
+  .cmd-backdrop {
+    position:fixed; inset:0; background:rgba(15,23,42,0.55);
+    backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+    z-index:1000; display:none;
+    animation:cmdFadeIn 0.15s ease;
+  }
+  .cmd-backdrop.open { display:flex; align-items:flex-start; justify-content:center; padding-top:12vh; }
+  .cmd-panel {
+    width:560px; max-width:92vw; background:#fff;
+    border-radius:16px; overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,0,0,0.04);
+    animation:cmdSlideIn 0.2s cubic-bezier(0.4,0,0.2,1);
+  }
+  @keyframes cmdFadeIn { from{opacity:0} to{opacity:1} }
+  @keyframes cmdSlideIn { from{opacity:0;transform:translateY(-12px) scale(0.98)} to{opacity:1;transform:translateY(0) scale(1)} }
+  .cmd-input-wrap {
+    display:flex; align-items:center; gap:10px;
+    padding:14px 18px; border-bottom:1px solid var(--border-light);
+  }
+  .cmd-input-wrap .ico { font-size:18px; color:var(--text-muted); }
+  .cmd-input {
+    flex:1; border:none; outline:none;
+    font-family:'Tajawal',sans-serif; font-size:16px;
+    color:var(--text-primary); direction:rtl; background:none;
+  }
+  .cmd-input::placeholder { color:var(--text-muted); }
+  .cmd-results { max-height:52vh; overflow-y:auto; padding:6px 0; }
+  .cmd-section-label {
+    font-size:10px; font-weight:700; color:var(--text-muted);
+    padding:10px 18px 6px; text-transform:uppercase; letter-spacing:1.5px;
+  }
+  .cmd-item {
+    display:flex; align-items:center; gap:12px;
+    padding:10px 18px; cursor:pointer;
+    text-decoration:none; color:var(--text-primary);
+    transition:background 0.1s;
+  }
+  .cmd-item:hover, .cmd-item.active {
+    background:var(--primary-soft);
+  }
+  .cmd-item.active { background:var(--primary-light); }
+  .cmd-item .cmd-ico {
+    width:32px; height:32px; border-radius:8px;
+    background:var(--bg-page); display:flex;
+    align-items:center; justify-content:center; font-size:15px;
+    flex-shrink:0;
+  }
+  .cmd-item.active .cmd-ico { background:#fff; }
+  .cmd-item-body { flex:1; min-width:0; }
+  .cmd-item-title { font-size:13.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .cmd-item-sub { font-size:11px; color:var(--text-muted); margin-top:2px; }
+  .cmd-enter {
+    font-size:10px; padding:2px 7px; border-radius:5px;
+    background:var(--border-light); color:var(--text-muted);
+    font-family:monospace; opacity:0; transition:opacity 0.1s;
+  }
+  .cmd-item.active .cmd-enter { opacity:1; background:var(--primary); color:#fff; }
+  .cmd-footer {
+    padding:10px 18px; border-top:1px solid var(--border-light);
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:11px; color:var(--text-muted);
+    background:var(--bg-page);
+  }
+  .cmd-footer .kbd { background:#fff; border:1px solid var(--border); padding:2px 6px; border-radius:4px; font-family:monospace; color:var(--text-secondary); }
+  .cmd-empty { padding:40px 18px; text-align:center; color:var(--text-muted); font-size:13px; }
+
+  /* ===== TOAST NOTIFICATIONS ===== */
+  .toast-stack {
+    position:fixed; top:20px; left:20px;
+    display:flex; flex-direction:column; gap:8px;
+    z-index:1100; pointer-events:none;
+  }
+  .toast {
+    pointer-events:auto;
+    background:#fff; padding:12px 18px; border-radius:10px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04);
+    display:flex; align-items:center; gap:10px;
+    min-width:260px; max-width:400px;
+    font-size:13px; font-weight:600;
+    animation:toastIn 0.25s cubic-bezier(0.4,0,0.2,1);
+    border-right:4px solid var(--primary);
+  }
+  .toast.success { border-right-color:var(--success); color:var(--success); }
+  .toast.error   { border-right-color:var(--danger);  color:var(--danger); }
+  .toast.warn    { border-right-color:var(--warning); color:var(--warning); }
+  .toast.exit { animation:toastOut 0.2s ease forwards; }
+  @keyframes toastIn  { from{opacity:0;transform:translateX(-30px)} to{opacity:1;transform:translateX(0)} }
+  @keyframes toastOut { from{opacity:1;transform:translateX(0)} to{opacity:0;transform:translateX(-30px)} }
 </style>
 </head>
 <body>
+
+<!-- Command Palette -->
+<div class="cmd-backdrop" id="cmdBackdrop" onclick="if(event.target===this)closeCommandPalette()">
+  <div class="cmd-panel">
+    <div class="cmd-input-wrap">
+      <span class="ico">⌘</span>
+      <input type="text" class="cmd-input" id="cmdInput" placeholder="ابحث عن مقال أو صفحة أو أمر...">
+      <span class="kbd-hint">ESC</span>
+    </div>
+    <div class="cmd-results" id="cmdResults"></div>
+    <div class="cmd-footer">
+      <span>تنقّل: <span class="kbd">↑↓</span> · اختر: <span class="kbd">↵</span></span>
+      <span>⌘ Command Palette</span>
+    </div>
+  </div>
+</div>
+
+<!-- Toast stack -->
+<div class="toast-stack" id="toastStack"></div>
 
 <aside class="sidebar">
   <div class="sidebar-logo">
@@ -497,9 +612,10 @@ $__nfVer = app_version();
       <h3>مرحباً بك، <?php echo htmlspecialchars($adminName, ENT_QUOTES, 'UTF-8'); ?> 👋</h3>
       <p><?php echo date('Y/m/d H:i'); ?></p>
     </div>
-    <div class="search-box">
+    <div class="search-box" id="cmdTrigger" role="button" tabindex="0" style="cursor:pointer;" onclick="openCommandPalette()" onkeydown="if(event.key==='Enter')openCommandPalette()">
       <span class="search-icon">🔍</span>
-      <input type="text" placeholder="ابحث في لوحة التحكم..." disabled>
+      <input type="text" placeholder="ابحث أو نفّذ أمراً..." readonly style="cursor:pointer;pointer-events:none;flex:1;">
+      <span class="kbd-hint">Ctrl+K</span>
     </div>
     <div class="topbar-actions">
       <div class="live-badge"><span class="live-dot"></span>مباشر</div>
