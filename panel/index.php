@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . '/../includes/view_tracking.php';
 requireRole('viewer');
 $db = getDB();
 
@@ -9,7 +10,7 @@ $totalArticles = $db->query("SELECT COUNT(*) FROM articles")->fetchColumn();
 $totalSources = $db->query("SELECT COUNT(*) FROM sources")->fetchColumn();
 $totalCategories = $db->query("SELECT COUNT(*) FROM categories")->fetchColumn();
 $totalViews = $db->query("SELECT COALESCE(SUM(view_count),0) FROM articles")->fetchColumn();
-$todayViews = $db->query("SELECT COALESCE(SUM(view_count),0) FROM articles WHERE DATE(published_at) = CURDATE()")->fetchColumn();
+$todayViews = get_today_views();
 $todayArticles = $db->query("SELECT COUNT(*) FROM articles WHERE DATE(created_at) = CURDATE()")->fetchColumn();
 $weekArticles = $db->query("SELECT COUNT(*) FROM articles WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)")->fetchColumn();
 $lastWeekArticles = $db->query("SELECT COUNT(*) FROM articles WHERE created_at BETWEEN DATE_SUB(NOW(), INTERVAL 14 DAY) AND DATE_SUB(NOW(), INTERVAL 7 DAY)")->fetchColumn();
@@ -28,24 +29,20 @@ $dailyArticlesRaw = $db->query(
      FROM articles WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
      GROUP BY DATE(created_at) ORDER BY day"
 )->fetchAll(PDO::FETCH_ASSOC);
-$dailyViewsRaw = $db->query(
-    "SELECT DATE(published_at) as day, COALESCE(SUM(view_count),0) as views
-     FROM articles WHERE published_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-       AND status = 'published'
-     GROUP BY DATE(published_at) ORDER BY day"
-)->fetchAll(PDO::FETCH_ASSOC);
 $topViewedChart = $db->query(
     "SELECT title, view_count FROM articles WHERE status='published' ORDER BY view_count DESC LIMIT 10"
 )->fetchAll(PDO::FETCH_ASSOC);
 
+// Accurate daily view counts from the view tracking system
+$dailyViewsMap = get_daily_views(30);
+
 $articlesByDayMap = array_column($dailyArticlesRaw, 'cnt', 'day');
-$viewsByDayMap   = array_column($dailyViewsRaw, 'views', 'day');
 $chartDays = []; $chartArticleSeries = []; $chartViewSeries = [];
 for ($i = 29; $i >= 0; $i--) {
     $d = date('Y-m-d', strtotime("-{$i} days"));
     $chartDays[]          = date('m/d', strtotime($d));
     $chartArticleSeries[] = (int)($articlesByDayMap[$d] ?? 0);
-    $chartViewSeries[]    = (int)($viewsByDayMap[$d] ?? 0);
+    $chartViewSeries[]    = (int)($dailyViewsMap[$d] ?? 0);
 }
 $last7Views    = array_slice($chartViewSeries, -7);
 $last7Articles = array_slice($chartArticleSeries, -7);
