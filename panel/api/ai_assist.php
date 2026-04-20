@@ -24,7 +24,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-if (!csrf_verify()) {
+$csrfToken = $_POST['_csrf'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+if (!csrf_verify($csrfToken)) {
     http_response_code(403);
     echo json_encode(['ok' => false, 'error' => 'CSRF']);
     exit;
