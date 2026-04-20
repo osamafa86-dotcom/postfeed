@@ -13,6 +13,7 @@
     {t:'التحليلات',       s:'analytics.php',        i:'📈', k:'analytics stats statistics احصاءات'},
     {t:'الأخبار',         s:'articles.php',         i:'✍️', k:'articles news مقالات'},
     {t:'إضافة خبر جديد',  s:'articles.php?action=add', i:'➕', k:'new add article create انشاء'},
+    {t:'التقويم التحريري',s:'calendar.php',          i:'📅', k:'calendar content تقويم'},
     {t:'الأقسام',         s:'categories.php',       i:'📂', k:'categories sections تصنيفات'},
     {t:'القصص المتطوّرة',  s:'evolving_stories.php', i:'📅', k:'stories timeline'},
     {t:'المصادر',         s:'sources.php',          i:'🌐', k:'sources rss feeds خلاصات'},
@@ -188,6 +189,110 @@ window.nfToast = function(message, type) {
     setTimeout(function(){ t.remove(); }, 200);
   }, 3500);
 };
+
+/* ===== Quick Capture ===== */
+(function(){
+  var QC_KEY = 'nf_quick_captures';
+
+  window.toggleQuickCapture = function() {
+    var panel = document.getElementById('qcPanel');
+    if (!panel) return;
+    var isOpen = panel.classList.contains('open');
+    if (isOpen) {
+      panel.classList.remove('open');
+    } else {
+      panel.classList.add('open');
+      renderQcList();
+      setTimeout(function(){ document.getElementById('qcTitle').focus(); }, 50);
+    }
+  };
+
+  window.qcSaveAndCreate = function() {
+    var title = (document.getElementById('qcTitle').value || '').trim();
+    if (!title) {
+      if (window.nfToast) nfToast('اكتب عنواناً أو فكرة أولاً', 'warn');
+      return;
+    }
+    window.location.href = 'articles.php?action=add&qc_title=' + encodeURIComponent(title);
+  };
+
+  window.qcSaveLocally = function() {
+    var title = (document.getElementById('qcTitle').value || '').trim();
+    var notes = (document.getElementById('qcNotes').value || '').trim();
+    if (!title) {
+      if (window.nfToast) nfToast('اكتب عنواناً أو فكرة أولاً', 'warn');
+      return;
+    }
+    var list = getQcList();
+    list.unshift({ title: title, notes: notes, ts: Date.now() });
+    if (list.length > 20) list = list.slice(0, 20);
+    try { localStorage.setItem(QC_KEY, JSON.stringify(list)); } catch(e){}
+    document.getElementById('qcTitle').value = '';
+    document.getElementById('qcNotes').value = '';
+    renderQcList();
+    if (window.nfToast) nfToast('تم حفظ الفكرة محلياً', 'success');
+  };
+
+  window.qcDeleteItem = function(idx) {
+    var list = getQcList();
+    list.splice(idx, 1);
+    try { localStorage.setItem(QC_KEY, JSON.stringify(list)); } catch(e){}
+    renderQcList();
+  };
+
+  window.qcUseItem = function(idx) {
+    var list = getQcList();
+    var item = list[idx];
+    if (!item) return;
+    window.location.href = 'articles.php?action=add&qc_title=' + encodeURIComponent(item.title);
+  };
+
+  function getQcList() {
+    try { return JSON.parse(localStorage.getItem(QC_KEY)) || []; } catch(e){ return []; }
+  }
+
+  function renderQcList() {
+    var el = document.getElementById('qcSavedList');
+    if (!el) return;
+    var list = getQcList();
+    if (!list.length) { el.innerHTML = ''; return; }
+    var h = '';
+    list.slice(0, 5).forEach(function(item, i) {
+      var t = (item.title||'').replace(/</g,'&lt;');
+      h += '<div class="qc-saved-item" onclick="qcUseItem('+i+')" title="انقر لإنشاء خبر">'
+         + '<span>💡</span><span>' + t + '</span>'
+         + '<span class="qc-del" onclick="event.stopPropagation();qcDeleteItem('+i+')">✕</span>'
+         + '</div>';
+    });
+    el.innerHTML = h;
+  }
+
+  // Keyboard shortcut: Ctrl+Shift+N
+  document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'n') {
+      e.preventDefault();
+      toggleQuickCapture();
+    }
+  });
+
+  // Close on outside click
+  document.addEventListener('click', function(e) {
+    var panel = document.getElementById('qcPanel');
+    var fab = document.getElementById('qcFab');
+    if (!panel || !fab) return;
+    if (!panel.contains(e.target) && !fab.contains(e.target) && panel.classList.contains('open')) {
+      panel.classList.remove('open');
+    }
+  });
+
+  // Pre-fill title from qc_title URL param
+  var urlParams = new URLSearchParams(window.location.search);
+  var qcTitle = urlParams.get('qc_title');
+  if (qcTitle) {
+    var titleInput = document.getElementById('titleInput');
+    if (titleInput && !titleInput.value) titleInput.value = qcTitle;
+  }
+})();
 </script>
 
 </body>

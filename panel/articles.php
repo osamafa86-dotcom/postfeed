@@ -425,6 +425,61 @@ include __DIR__ . '/includes/panel_layout_head.php';
   }
   .ai-result-actions button:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-soft); }
 
+  /* SEO Score */
+  .seo-score-ring {
+    position:relative; width:72px; height:72px; margin:0 auto 10px;
+  }
+  .seo-score-ring svg { transform:rotate(-90deg); }
+  .seo-score-ring .ring-bg { fill:none; stroke:var(--border); stroke-width:6; }
+  .seo-score-ring .ring-fill { fill:none; stroke-width:6; stroke-linecap:round; transition:stroke-dashoffset 0.8s ease, stroke 0.3s; }
+  .seo-score-val {
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:20px; font-weight:900; color:var(--text-primary);
+  }
+  .seo-checks { display:flex; flex-direction:column; gap:6px; margin-top:12px; }
+  .seo-check {
+    display:flex; align-items:center; gap:8px;
+    font-size:12px; font-weight:600; color:var(--text-secondary);
+  }
+  .seo-check-icon { width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; flex-shrink:0; }
+  .seo-check-icon.pass { background:var(--success-light); color:var(--success); }
+  .seo-check-icon.fail { background:var(--danger-light); color:var(--danger); }
+  .seo-check-icon.warn { background:var(--warning-light); color:var(--warning); }
+  .seo-label { font-size:10px; font-weight:700; display:inline-block; padding:2px 8px; border-radius:6px; margin:0 auto; }
+  .seo-label.good { background:var(--success-light); color:var(--success); }
+  .seo-label.ok { background:var(--warning-light); color:var(--warning); }
+  .seo-label.bad { background:var(--danger-light); color:var(--danger); }
+
+  /* Trending topics */
+  .trend-item {
+    display:flex; align-items:center; gap:10px;
+    padding:9px 12px; border-radius:9px;
+    background:#fff; border:1.5px solid var(--border);
+    font-size:12px; font-weight:600; color:var(--text-primary);
+    cursor:pointer; transition:var(--transition); margin-bottom:6px;
+  }
+  .trend-item:hover { border-color:var(--primary); background:var(--primary-soft); transform:translateX(-2px); }
+  .trend-item .trend-icon { font-size:16px; }
+  .trend-item .trend-count { margin-right:auto; font-size:10px; color:var(--text-muted); background:var(--bg-page); padding:2px 8px; border-radius:6px; }
+
+  /* Version history */
+  .version-list { display:flex; flex-direction:column; gap:0; }
+  .version-item {
+    display:flex; align-items:flex-start; gap:10px;
+    padding:10px 0; border-bottom:1px solid var(--border-light);
+    font-size:12px;
+  }
+  .version-item:last-child { border:none; }
+  .version-dot {
+    width:10px; height:10px; border-radius:50%;
+    background:var(--primary); margin-top:4px; flex-shrink:0;
+    box-shadow:0 0 0 3px var(--primary-light);
+  }
+  .version-dot.old { background:var(--text-muted); box-shadow:0 0 0 3px var(--bg-page); }
+  .version-info { flex:1; }
+  .version-time { font-weight:700; color:var(--text-primary); margin-bottom:2px; }
+  .version-detail { color:var(--text-muted); }
+
   /* Templates */
   .tpl-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
   .tpl-btn {
@@ -602,6 +657,49 @@ include __DIR__ . '/includes/panel_layout_head.php';
                             <div id="aiResult" class="ai-result" style="display:none;"></div>
                         </div>
                     </div>
+
+                    <!-- SEO Score -->
+                    <div class="sidebar-panel">
+                        <div class="panel-header" onclick="togglePanel(this)">
+                            <h4>🎯 تقييم SEO</h4>
+                            <span class="panel-toggle">▼</span>
+                        </div>
+                        <div class="panel-body" style="text-align:center;">
+                            <div class="seo-score-ring" id="seoRing">
+                              <svg width="72" height="72" viewBox="0 0 72 72">
+                                <circle class="ring-bg" cx="36" cy="36" r="30"/>
+                                <circle class="ring-fill" id="seoRingFill" cx="36" cy="36" r="30"
+                                  stroke-dasharray="188.5" stroke-dashoffset="188.5"/>
+                              </svg>
+                              <div class="seo-score-val" id="seoScoreVal">0</div>
+                            </div>
+                            <div class="seo-label" id="seoLabel">—</div>
+                            <div class="seo-checks" id="seoChecks"></div>
+                        </div>
+                    </div>
+
+                    <!-- Trending Topics -->
+                    <div class="sidebar-panel" style="border:1px solid var(--cyan);background:linear-gradient(180deg,var(--cyan-light) 0%,#fff 40%);">
+                        <div class="panel-header">
+                            <h4>🔥 مواضيع رائجة</h4>
+                        </div>
+                        <div class="panel-body" id="trendingPanel">
+                            <div style="text-align:center;padding:10px;color:var(--text-muted);font-size:12px;">جارٍ التحميل...</div>
+                        </div>
+                    </div>
+
+                    <?php if ($article): ?>
+                    <!-- Version History -->
+                    <div class="sidebar-panel">
+                        <div class="panel-header" onclick="togglePanel(this)">
+                            <h4>🕐 سجل التعديلات</h4>
+                            <span class="panel-toggle">▼</span>
+                        </div>
+                        <div class="panel-body" id="versionPanel">
+                            <div style="text-align:center;padding:10px;color:var(--text-muted);font-size:12px;">جارٍ التحميل...</div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
 
                     <?php if ($action === 'add'): ?>
                     <!-- Templates -->
@@ -1037,6 +1135,210 @@ include __DIR__ . '/includes/panel_layout_head.php';
     syncContent();
     if (window.nfToast) nfToast('تم تطبيق القالب', 'success');
   };
+
+  // ===== SEO Score =====
+  var seoTimer = null;
+  function updateSeoScore() {
+    var title = (document.getElementById('titleInput').value || '').trim();
+    var text = quill.getText().trim();
+    var excerpt = (document.getElementById('excerptInput').value || '').trim();
+    var imageUrl = (document.getElementById('imageUrlInput').value || '').trim();
+    var html = quill.root.innerHTML || '';
+    var words = text ? text.split(/\s+/).length : 0;
+
+    var checks = [];
+    var score = 0;
+
+    // Title length (5-12 words ideal)
+    var titleWords = title ? title.split(/\s+/).length : 0;
+    if (titleWords >= 5 && titleWords <= 12) {
+      checks.push({pass: 'pass', text: 'طول العنوان مثالي (' + titleWords + ' كلمات)'});
+      score += 20;
+    } else if (titleWords > 0 && titleWords < 5) {
+      checks.push({pass: 'warn', text: 'العنوان قصير (' + titleWords + ' كلمات، الأفضل 5-12)'});
+      score += 10;
+    } else if (titleWords > 12) {
+      checks.push({pass: 'warn', text: 'العنوان طويل (' + titleWords + ' كلمة، الأفضل 5-12)'});
+      score += 10;
+    } else {
+      checks.push({pass: 'fail', text: 'أضف عنواناً للخبر'});
+    }
+
+    // Content length (200+ words)
+    if (words >= 300) {
+      checks.push({pass: 'pass', text: 'المحتوى غني (' + words + ' كلمة)'});
+      score += 20;
+    } else if (words >= 100) {
+      checks.push({pass: 'warn', text: 'المحتوى متوسط (' + words + ' كلمة، الأفضل 300+)'});
+      score += 12;
+    } else if (words > 0) {
+      checks.push({pass: 'fail', text: 'المحتوى قصير جداً (' + words + ' كلمة)'});
+      score += 5;
+    } else {
+      checks.push({pass: 'fail', text: 'أضف محتوى للخبر'});
+    }
+
+    // Has excerpt
+    if (excerpt.length >= 50) {
+      checks.push({pass: 'pass', text: 'الملخص موجود ومناسب'});
+      score += 15;
+    } else if (excerpt.length > 0) {
+      checks.push({pass: 'warn', text: 'الملخص قصير (الأفضل 50+ حرف)'});
+      score += 8;
+    } else {
+      checks.push({pass: 'fail', text: 'أضف ملخصاً للخبر'});
+    }
+
+    // Has image
+    if (imageUrl) {
+      checks.push({pass: 'pass', text: 'صورة رئيسية موجودة'});
+      score += 15;
+    } else {
+      checks.push({pass: 'fail', text: 'أضف صورة رئيسية'});
+    }
+
+    // Has headings (H2, H3)
+    var hasHeadings = /<h[23]/i.test(html);
+    if (hasHeadings) {
+      checks.push({pass: 'pass', text: 'يحتوي على عناوين فرعية'});
+      score += 10;
+    } else if (words > 150) {
+      checks.push({pass: 'warn', text: 'أضف عناوين فرعية لتنظيم المحتوى'});
+      score += 3;
+    }
+
+    // Has links
+    var hasLinks = /<a\s/i.test(html);
+    if (hasLinks) {
+      checks.push({pass: 'pass', text: 'يحتوي على روابط'});
+      score += 10;
+    } else if (words > 100) {
+      checks.push({pass: 'warn', text: 'أضف روابط ذات صلة'});
+    }
+
+    // Readability: paragraph length
+    var paragraphs = html.split(/<\/p>/i).filter(function(p){return p.replace(/<[^>]*>/g,'').trim().length > 0;});
+    var longParas = paragraphs.filter(function(p){return p.replace(/<[^>]*>/g,'').trim().split(/\s+/).length > 80;}).length;
+    if (paragraphs.length > 0 && longParas === 0) {
+      checks.push({pass: 'pass', text: 'فقرات مناسبة الطول'});
+      score += 10;
+    } else if (longParas > 0) {
+      checks.push({pass: 'warn', text: longParas + ' فقرة طويلة (قسّمها)'});
+      score += 5;
+    }
+
+    score = Math.min(100, score);
+
+    // Render
+    var ringFill = document.getElementById('seoRingFill');
+    var scoreVal = document.getElementById('seoScoreVal');
+    var labelEl  = document.getElementById('seoLabel');
+    var checksEl = document.getElementById('seoChecks');
+    if (!ringFill) return;
+
+    var circumference = 188.5;
+    var offset = circumference - (score / 100) * circumference;
+    ringFill.style.strokeDashoffset = offset;
+
+    var color = score >= 75 ? 'var(--success)' : (score >= 45 ? 'var(--warning)' : 'var(--danger)');
+    ringFill.style.stroke = color;
+    scoreVal.textContent = score;
+
+    if (score >= 75) {
+      labelEl.className = 'seo-label good'; labelEl.textContent = 'ممتاز';
+    } else if (score >= 45) {
+      labelEl.className = 'seo-label ok'; labelEl.textContent = 'مقبول';
+    } else {
+      labelEl.className = 'seo-label bad'; labelEl.textContent = 'يحتاج تحسين';
+    }
+
+    var html2 = '';
+    checks.forEach(function(c){
+      var icon = c.pass === 'pass' ? '✓' : (c.pass === 'warn' ? '!' : '✕');
+      html2 += '<div class="seo-check"><div class="seo-check-icon ' + c.pass + '">' + icon + '</div><span>' + c.text + '</span></div>';
+    });
+    checksEl.innerHTML = html2;
+  }
+
+  // Debounced SEO updates on content changes
+  quill.on('text-change', function() {
+    if (seoTimer) clearTimeout(seoTimer);
+    seoTimer = setTimeout(updateSeoScore, 500);
+  });
+  var titleInput = document.getElementById('titleInput');
+  var excerptInput = document.getElementById('excerptInput');
+  var imageUrlInput = document.getElementById('imageUrlInput');
+  if (titleInput) titleInput.addEventListener('input', function(){ if(seoTimer)clearTimeout(seoTimer); seoTimer=setTimeout(updateSeoScore,500); });
+  if (excerptInput) excerptInput.addEventListener('input', function(){ if(seoTimer)clearTimeout(seoTimer); seoTimer=setTimeout(updateSeoScore,500); });
+  if (imageUrlInput) imageUrlInput.addEventListener('input', function(){ if(seoTimer)clearTimeout(seoTimer); seoTimer=setTimeout(updateSeoScore,500); });
+  setTimeout(updateSeoScore, 300);
+
+  // ===== Trending Topics =====
+  (function loadTrending() {
+    var panel = document.getElementById('trendingPanel');
+    if (!panel) return;
+    fetch('../api/trending_topics.php')
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(data) {
+        if (!data || !data.topics || !data.topics.length) {
+          panel.innerHTML = '<div style="text-align:center;padding:10px;color:var(--text-muted);font-size:12px;">لا توجد مواضيع رائجة حالياً</div>';
+          return;
+        }
+        var h = '';
+        data.topics.forEach(function(t) {
+          h += '<div class="trend-item" onclick="useTrend(this)" data-keyword="' + (t.keyword||'').replace(/"/g,'&quot;') + '">'
+             + '<span class="trend-icon">' + (t.icon || '📈') + '</span>'
+             + '<span>' + (t.keyword||'').replace(/</g,'&lt;') + '</span>'
+             + '<span class="trend-count">' + (t.count||0) + ' خبر</span>'
+             + '</div>';
+        });
+        panel.innerHTML = h;
+      })
+      .catch(function() {
+        panel.innerHTML = '<div style="text-align:center;padding:10px;color:var(--text-muted);font-size:12px;">تعذر التحميل</div>';
+      });
+  })();
+
+  window.useTrend = function(el) {
+    var kw = el.getAttribute('data-keyword');
+    if (!kw) return;
+    var titleEl = document.getElementById('titleInput');
+    if (titleEl && !titleEl.value.trim()) {
+      titleEl.value = kw;
+      titleEl.focus();
+    }
+    if (window.nfToast) nfToast('تم إضافة "' + kw + '" كعنوان', 'success');
+  };
+
+  // ===== Version History =====
+  (function loadVersionHistory() {
+    var panel = document.getElementById('versionPanel');
+    if (!panel) return;
+    var artId = '<?php echo $article ? (int)$article['id'] : '0'; ?>';
+    if (artId === '0') return;
+    fetch('../api/article_versions.php?id=' + artId)
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(data) {
+        if (!data || !data.versions || !data.versions.length) {
+          panel.innerHTML = '<div style="text-align:center;padding:10px;color:var(--text-muted);font-size:12px;">لا توجد نسخ سابقة</div>';
+          return;
+        }
+        var h = '<div class="version-list">';
+        data.versions.forEach(function(v, i) {
+          h += '<div class="version-item">'
+             + '<div class="version-dot ' + (i > 0 ? 'old' : '') + '"></div>'
+             + '<div class="version-info">'
+             + '<div class="version-time">' + (v.time || '') + '</div>'
+             + '<div class="version-detail">' + (v.changes || '') + '</div>'
+             + '</div></div>';
+        });
+        h += '</div>';
+        panel.innerHTML = h;
+      })
+      .catch(function() {
+        panel.innerHTML = '<div style="text-align:center;padding:10px;color:var(--text-muted);font-size:12px;">تعذر التحميل</div>';
+      });
+  })();
 
 })();
 </script>
