@@ -161,6 +161,133 @@ include __DIR__ . '/includes/panel_layout_head.php';
 
   .editor-main { display:flex; flex-direction:column; gap:16px; }
 
+  /* Arabic font families for editor */
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Amiri:wght@400;700&family=Noto+Naskh+Arabic:wght@400;600;700&family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap');
+  .ql-font-tajawal { font-family:'Tajawal',sans-serif; }
+  .ql-font-cairo   { font-family:'Cairo',sans-serif; }
+  .ql-font-amiri   { font-family:'Amiri',serif; }
+  .ql-font-noto    { font-family:'Noto Naskh Arabic',serif; }
+  .ql-font-ibm     { font-family:'IBM Plex Sans Arabic',sans-serif; }
+  .ql-font-arial   { font-family:Arial,sans-serif; }
+
+  /* Font size classes for Quill 'size' format */
+  .ql-editor .ql-size-small  { font-size:13px !important; }
+  .ql-editor .ql-size-medium { font-size:18px !important; }
+  .ql-editor .ql-size-large  { font-size:22px !important; font-weight:600; }
+  .ql-editor .ql-size-huge   { font-size:28px !important; font-weight:700; line-height:1.4; }
+
+  /* Font selector dropdown labels show the actual font */
+  .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="tajawal"]::before,
+  .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="tajawal"]::before { content:'تجوّل'; font-family:'Tajawal'; }
+  .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="cairo"]::before,
+  .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="cairo"]::before { content:'القاهرة'; font-family:'Cairo'; }
+  .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="amiri"]::before,
+  .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="amiri"]::before { content:'أميري'; font-family:'Amiri'; }
+  .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="noto"]::before,
+  .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="noto"]::before { content:'نوتو'; font-family:'Noto Naskh Arabic'; }
+  .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="ibm"]::before,
+  .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="ibm"]::before { content:'IBM Plex'; font-family:'IBM Plex Sans Arabic'; }
+  .ql-snow .ql-picker.ql-font .ql-picker-label[data-value="arial"]::before,
+  .ql-snow .ql-picker.ql-font .ql-picker-item[data-value="arial"]::before { content:'Arial'; font-family:Arial; }
+
+  /* Size selector labels */
+  .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="small"]::before,
+  .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="small"]::before { content:'صغير'; }
+  .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="medium"]::before,
+  .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="medium"]::before { content:'متوسط'; }
+  .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="large"]::before,
+  .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="large"]::before { content:'كبير'; }
+  .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="huge"]::before,
+  .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="huge"]::before { content:'ضخم'; }
+
+  /* Custom content blocks */
+  .ql-editor .callout-box {
+    background:var(--primary-soft); border-right:4px solid var(--primary);
+    padding:14px 18px; border-radius:8px; margin:14px 0;
+    font-size:15px; line-height:1.8;
+  }
+  .ql-editor .callout-box.warning { background:var(--warning-light); border-right-color:var(--warning); }
+  .ql-editor .callout-box.danger  { background:var(--danger-light); border-right-color:var(--danger); }
+  .ql-editor .callout-box.success { background:var(--success-light); border-right-color:var(--success); }
+  .ql-editor .pullquote {
+    font-size:22px; font-weight:700; line-height:1.6;
+    color:var(--text-primary); text-align:center;
+    padding:20px 30px; margin:24px 0;
+    border-top:2px solid var(--primary); border-bottom:2px solid var(--primary);
+    position:relative;
+  }
+  .ql-editor .pullquote::before, .ql-editor .pullquote::after {
+    content:'"'; font-size:40px; color:var(--primary); opacity:0.5;
+    position:absolute; top:-8px;
+  }
+  .ql-editor .pullquote::before { right:10px; }
+  .ql-editor .pullquote::after { left:10px; content:'"'; top:auto; bottom:-30px; }
+  .ql-editor hr.editor-divider {
+    border:none; height:2px;
+    background:linear-gradient(90deg, transparent, var(--border) 20%, var(--border) 80%, transparent);
+    margin:28px 0;
+  }
+  .ql-editor .embed-iframe-wrap {
+    position:relative; padding-bottom:56.25%; height:0; overflow:hidden;
+    border-radius:10px; margin:16px 0; background:#000;
+  }
+  .ql-editor .embed-iframe-wrap iframe {
+    position:absolute; top:0; left:0; width:100%; height:100%; border:none;
+  }
+  .ql-editor table.editor-table {
+    border-collapse:collapse; width:100%; margin:14px 0;
+  }
+  .ql-editor table.editor-table th,
+  .ql-editor table.editor-table td {
+    border:1px solid var(--border); padding:10px 14px;
+    text-align:right; vertical-align:top;
+  }
+  .ql-editor table.editor-table th {
+    background:var(--bg-hover); font-weight:700;
+  }
+
+  /* Drag-drop overlay */
+  .editor-drop-overlay {
+    position:absolute; inset:0; z-index:50;
+    background:rgba(99,102,241,0.12); backdrop-filter:blur(4px);
+    border:3px dashed var(--primary); border-radius:var(--radius-lg);
+    display:none; align-items:center; justify-content:center;
+    color:var(--primary); font-weight:800; font-size:16px;
+    pointer-events:none;
+  }
+  .editor-drop-overlay.active { display:flex; }
+  #editorContentWrap { position:relative; }
+
+  /* Fullscreen mode */
+  body.editor-fullscreen #editorContentWrap {
+    position:fixed; inset:0; z-index:2000;
+    border-radius:0; background:#fff;
+    display:flex; flex-direction:column;
+  }
+  body.editor-fullscreen #editorContentWrap #quillEditor { flex:1; overflow-y:auto; }
+  body.editor-fullscreen .ql-custom-toolbar { position:sticky; top:0; }
+  body.editor-fullscreen #editorContentWrap .ql-editor { min-height:calc(100vh - 120px); }
+
+  /* Preview overlay */
+  .editor-preview-overlay {
+    position:absolute; inset:0; z-index:60;
+    background:#fff; overflow-y:auto;
+    padding:30px 40px; font-size:16px; line-height:1.9;
+    direction:rtl;
+  }
+  .editor-preview-overlay h1 { font-size:28px; font-weight:800; margin:18px 0 12px; }
+  .editor-preview-overlay h2 { font-size:22px; font-weight:700; margin:16px 0 10px; }
+  .editor-preview-overlay h3 { font-size:18px; font-weight:700; margin:14px 0 8px; }
+  .editor-preview-overlay p  { margin-bottom:14px; }
+  .editor-preview-overlay img { max-width:100%; border-radius:10px; }
+  .editor-preview-overlay blockquote {
+    border-right:4px solid var(--primary);
+    padding-right:16px; margin:12px 0;
+    color:var(--text-secondary);
+    background:var(--primary-soft); padding:12px 16px;
+    border-radius:0 8px 8px 0;
+  }
+
   .editor-title-wrap {
     background:var(--bg-card); border:1px solid var(--border);
     border-radius:var(--radius-lg); padding:20px 24px;
@@ -177,6 +304,28 @@ include __DIR__ . '/includes/panel_layout_head.php';
     background:var(--bg-card); border:1px solid var(--border);
     border-radius:var(--radius-lg); overflow:hidden;
     box-shadow:var(--shadow);
+  }
+
+  /* Custom toolbar container */
+  .ql-custom-toolbar.ql-toolbar.ql-snow {
+    position:sticky; top:64px; z-index:80;
+    display:flex; flex-wrap:wrap; align-items:center; gap:4px;
+  }
+  .ql-toolbar-actions { margin-right:auto !important; }
+
+  /* Custom toolbar buttons (non-Quill) */
+  .ql-custom-divider, .ql-custom-callout, .ql-custom-pullquote,
+  .ql-custom-upload, .ql-custom-embed, .ql-custom-table,
+  .ql-custom-preview, .ql-custom-fullscreen {
+    background:none; border:none; cursor:pointer;
+    width:28px; height:24px; padding:0 4px;
+    font-size:14px; color:var(--text-secondary);
+    border-radius:4px; transition:var(--transition);
+  }
+  .ql-custom-divider:hover, .ql-custom-callout:hover, .ql-custom-pullquote:hover,
+  .ql-custom-upload:hover, .ql-custom-embed:hover, .ql-custom-table:hover,
+  .ql-custom-preview:hover, .ql-custom-fullscreen:hover {
+    background:var(--primary-light); color:var(--primary);
   }
 
   /* Quill overrides */
@@ -533,13 +682,92 @@ include __DIR__ . '/includes/panel_layout_head.php';
                         <input type="text" name="title" id="titleInput" placeholder="عنوان الخبر..." required value="<?php echo $article ? e($article['title']) : ''; ?>">
                     </div>
 
-                    <div class="editor-content-wrap">
+                    <div class="editor-content-wrap" id="editorContentWrap">
+                        <!-- Custom Quill toolbar -->
+                        <div id="quillToolbar" class="ql-custom-toolbar">
+                            <span class="ql-formats">
+                                <select class="ql-font">
+                                    <option value="tajawal" selected>تجوّل</option>
+                                    <option value="cairo">القاهرة</option>
+                                    <option value="amiri">أميري</option>
+                                    <option value="noto">نوتو</option>
+                                    <option value="ibm">IBM Plex</option>
+                                    <option value="arial">Arial</option>
+                                </select>
+                                <select class="ql-size">
+                                    <option value="small">صغير</option>
+                                    <option selected>عادي</option>
+                                    <option value="medium">متوسط</option>
+                                    <option value="large">كبير</option>
+                                    <option value="huge">ضخم</option>
+                                </select>
+                                <select class="ql-header">
+                                    <option selected>فقرة</option>
+                                    <option value="1">عنوان 1</option>
+                                    <option value="2">عنوان 2</option>
+                                    <option value="3">عنوان 3</option>
+                                    <option value="4">عنوان 4</option>
+                                </select>
+                            </span>
+                            <span class="ql-formats">
+                                <button class="ql-bold" title="عريض (Ctrl+B)"></button>
+                                <button class="ql-italic" title="مائل (Ctrl+I)"></button>
+                                <button class="ql-underline" title="تحته خط (Ctrl+U)"></button>
+                                <button class="ql-strike" title="يتوسطه خط"></button>
+                            </span>
+                            <span class="ql-formats">
+                                <select class="ql-color" title="لون النص"></select>
+                                <select class="ql-background" title="لون الخلفية"></select>
+                            </span>
+                            <span class="ql-formats">
+                                <button class="ql-script" value="sub" title="سفلي"></button>
+                                <button class="ql-script" value="super" title="علوي"></button>
+                            </span>
+                            <span class="ql-formats">
+                                <button class="ql-list" value="ordered" title="قائمة مرقمة"></button>
+                                <button class="ql-list" value="bullet" title="قائمة نقطية"></button>
+                                <button class="ql-indent" value="-1" title="إنقاص المسافة"></button>
+                                <button class="ql-indent" value="+1" title="زيادة المسافة"></button>
+                            </span>
+                            <span class="ql-formats">
+                                <select class="ql-align" title="محاذاة"></select>
+                                <button class="ql-direction" value="rtl" title="اتجاه"></button>
+                            </span>
+                            <span class="ql-formats">
+                                <button class="ql-blockquote" title="اقتباس"></button>
+                                <button class="ql-code-block" title="كود"></button>
+                                <button type="button" class="ql-custom-divider" title="خط فاصل" onclick="insertDivider()">—</button>
+                                <button type="button" class="ql-custom-callout" title="صندوق ملاحظة" onclick="insertCallout()">💡</button>
+                                <button type="button" class="ql-custom-pullquote" title="اقتباس بارز" onclick="insertPullquote()">❝</button>
+                            </span>
+                            <span class="ql-formats">
+                                <button class="ql-link" title="رابط"></button>
+                                <button type="button" class="ql-custom-upload" title="رفع صورة من الجهاز" onclick="triggerImageUpload()">🖼</button>
+                                <button class="ql-video" title="فيديو"></button>
+                                <button type="button" class="ql-custom-embed" title="تضمين (تويتر/يوتيوب)" onclick="insertEmbed()">▶</button>
+                                <button type="button" class="ql-custom-table" title="جدول" onclick="insertTable()">⊞</button>
+                            </span>
+                            <span class="ql-formats">
+                                <button class="ql-clean" title="إزالة التنسيق"></button>
+                            </span>
+                            <span class="ql-formats ql-toolbar-actions">
+                                <button type="button" class="ql-custom-preview" title="معاينة" onclick="toggleEditorPreview()">👁</button>
+                                <button type="button" class="ql-custom-fullscreen" title="شاشة كاملة (F11)" onclick="toggleEditorFullscreen()">⛶</button>
+                            </span>
+                            <input type="file" id="editorImageUploadInput" accept="image/*" style="display:none;" onchange="handleImageUpload(this)">
+                        </div>
+
                         <div id="quillEditor"><?php echo $article ? $article['content'] : ''; ?></div>
+
+                        <!-- Preview overlay -->
+                        <div id="editorPreview" class="editor-preview-overlay" style="display:none;"></div>
+
                         <input type="hidden" name="content" id="contentInput">
                         <div class="editor-stats">
                             <div class="stat">📝 <span id="wordCount">0</span> كلمة</div>
                             <div class="stat">📖 <span id="charCount">0</span> حرف</div>
                             <div class="stat">⏱ <span id="readTime">0</span> دقيقة قراءة</div>
+                            <div class="stat" id="uploadProgress" style="display:none;color:var(--primary);">📤 جارٍ الرفع...</div>
                         </div>
                     </div>
 
@@ -628,6 +856,10 @@ include __DIR__ . '/includes/panel_layout_head.php';
                             <div class="panel-field">
                                 <input type="url" name="image_url" id="imageUrlInput" placeholder="رابط الصورة..." value="<?php echo $article ? e($article['image_url']) : ''; ?>">
                             </div>
+                            <button type="button" class="btn-publish secondary" style="padding:9px 12px;font-size:12px;margin-bottom:10px;" onclick="document.getElementById('featuredImgInput').click()">
+                                📤 رفع من الجهاز
+                            </button>
+                            <input type="file" id="featuredImgInput" accept="image/*" style="display:none;" onchange="uploadFeaturedImage(this)">
                             <div class="image-preview <?php echo ($article && !empty($article['image_url'])) ? 'active' : ''; ?>" id="imagePreview">
                                 <img id="imagePreviewImg" src="<?php echo $article && !empty($article['image_url']) ? e($article['image_url']) : ''; ?>" alt="">
                             </div>
@@ -895,23 +1127,40 @@ include __DIR__ . '/includes/panel_layout_head.php';
   var editorEl = document.getElementById('quillEditor');
   if (!editorEl) return;
 
-  // Quill init
+  // Register custom fonts + sizes with Quill
+  try {
+    var Font = Quill.import('formats/font');
+    Font.whitelist = ['tajawal','cairo','amiri','noto','ibm','arial'];
+    Quill.register(Font, true);
+
+    var Size = Quill.import('attributors/class/size');
+    Size.whitelist = ['small','medium','large','huge'];
+    Quill.register(Size, true);
+  } catch(e) { console.warn('Quill font/size register failed:', e); }
+
+  // Init Quill with custom toolbar + expanded formats
   var quill = new Quill('#quillEditor', {
     theme: 'snow',
     placeholder: 'ابدأ كتابة المحتوى هنا...',
     modules: {
-      toolbar: [
-        [{'header': [1, 2, 3, false]}],
-        ['bold', 'italic', 'underline', 'strike'],
-        [{'list': 'ordered'}, {'list': 'bullet'}],
-        ['blockquote', 'code-block'],
-        ['link', 'image', 'video'],
-        [{'align': []}],
-        [{'direction': 'rtl'}],
-        ['clean']
-      ]
-    }
+      toolbar: {
+        container: '#quillToolbar',
+        handlers: {
+          image: function() {
+            document.getElementById('editorImageUploadInput').click();
+          }
+        }
+      }
+    },
+    formats: [
+      'font','size','header','bold','italic','underline','strike',
+      'color','background','script','list','indent','align','direction',
+      'blockquote','code-block','link','image','video'
+    ]
   });
+
+  // Expose globally for helper functions
+  window._nfQuill = quill;
 
   var contentInput = document.getElementById('contentInput');
   var wordCountEl = document.getElementById('wordCount');
@@ -1308,6 +1557,217 @@ include __DIR__ . '/includes/panel_layout_head.php';
       titleEl.focus();
     }
     if (window.nfToast) nfToast('تم إضافة "' + kw + '" كعنوان', 'success');
+  };
+
+  // ===== Featured image upload =====
+  window.uploadFeaturedImage = function(input) {
+    if (!input.files || !input.files[0]) return;
+    var file = input.files[0];
+    var fd = new FormData();
+    fd.append('_csrf', '<?php echo csrf_token(); ?>');
+    fd.append('file', file);
+    if (window.nfToast) nfToast('جارٍ الرفع...', 'info');
+    fetch('api/upload_image.php', { method:'POST', body:fd })
+      .then(function(r){ return r.json(); })
+      .then(function(data) {
+        if (!data || !data.ok) {
+          if (window.nfToast) nfToast(data && data.error ? data.error : 'فشل الرفع', 'error');
+          return;
+        }
+        document.getElementById('imageUrlInput').value = data.url;
+        document.getElementById('imagePreviewImg').src = data.url;
+        document.getElementById('imagePreview').classList.add('active');
+        if (window.nfToast) nfToast('تم رفع الصورة ✨', 'success');
+      })
+      .catch(function() {
+        if (window.nfToast) nfToast('فشل الاتصال', 'error');
+      });
+    input.value = '';
+  };
+
+  // ===== Image upload (button + drag-drop + paste) =====
+  var CSRF = '<?php echo csrf_token(); ?>';
+  var progressEl = document.getElementById('uploadProgress');
+
+  window.triggerImageUpload = function() {
+    document.getElementById('editorImageUploadInput').click();
+  };
+
+  window.handleImageUpload = function(input) {
+    if (!input.files || !input.files[0]) return;
+    uploadImageFile(input.files[0]);
+    input.value = '';
+  };
+
+  function uploadImageFile(file) {
+    if (!file || !file.type || file.type.indexOf('image/') !== 0) {
+      if (window.nfToast) nfToast('الملف ليس صورة', 'error');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      if (window.nfToast) nfToast('حجم الصورة أكبر من 10 ميجا', 'error');
+      return;
+    }
+
+    if (progressEl) progressEl.style.display = 'flex';
+
+    var fd = new FormData();
+    fd.append('_csrf', CSRF);
+    fd.append('file', file);
+
+    fetch('api/upload_image.php', { method:'POST', body:fd })
+      .then(function(r){ return r.json(); })
+      .then(function(data) {
+        if (progressEl) progressEl.style.display = 'none';
+        if (!data || !data.ok) {
+          if (window.nfToast) nfToast(data && data.error ? data.error : 'فشل الرفع', 'error');
+          return;
+        }
+        var range = quill.getSelection(true) || { index: quill.getLength() };
+        quill.insertEmbed(range.index, 'image', data.url, Quill.sources.USER);
+        quill.setSelection(range.index + 1, Quill.sources.SILENT);
+        if (window.nfToast) nfToast('تم رفع الصورة ✨', 'success');
+      })
+      .catch(function() {
+        if (progressEl) progressEl.style.display = 'none';
+        if (window.nfToast) nfToast('فشل الاتصال', 'error');
+      });
+  }
+
+  // Drag-and-drop overlay
+  var wrap = document.getElementById('editorContentWrap');
+  var dropOverlay = document.createElement('div');
+  dropOverlay.className = 'editor-drop-overlay';
+  dropOverlay.textContent = '📥 أفلت الصورة لرفعها';
+  wrap.appendChild(dropOverlay);
+
+  var dragCounter = 0;
+  wrap.addEventListener('dragenter', function(e){
+    if (e.dataTransfer && Array.from(e.dataTransfer.types).indexOf('Files') !== -1) {
+      e.preventDefault();
+      dragCounter++;
+      dropOverlay.classList.add('active');
+    }
+  });
+  wrap.addEventListener('dragover', function(e){
+    if (e.dataTransfer && Array.from(e.dataTransfer.types).indexOf('Files') !== -1) {
+      e.preventDefault();
+    }
+  });
+  wrap.addEventListener('dragleave', function(e){
+    dragCounter--;
+    if (dragCounter <= 0) { dragCounter = 0; dropOverlay.classList.remove('active'); }
+  });
+  wrap.addEventListener('drop', function(e){
+    e.preventDefault();
+    dragCounter = 0;
+    dropOverlay.classList.remove('active');
+    if (!e.dataTransfer || !e.dataTransfer.files) return;
+    var files = Array.from(e.dataTransfer.files).filter(function(f){ return f.type.indexOf('image/') === 0; });
+    if (!files.length) return;
+    files.forEach(uploadImageFile);
+  });
+
+  // Paste image from clipboard
+  quill.root.addEventListener('paste', function(e){
+    if (!e.clipboardData || !e.clipboardData.items) return;
+    var items = e.clipboardData.items;
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].kind === 'file' && items[i].type.indexOf('image/') === 0) {
+        e.preventDefault();
+        var blob = items[i].getAsFile();
+        if (blob) uploadImageFile(blob);
+        break;
+      }
+    }
+  });
+
+  // ===== Custom content blocks =====
+  window.insertDivider = function() {
+    var range = quill.getSelection(true) || { index: quill.getLength() };
+    var delta = quill.clipboard.convert({ html: '<hr class="editor-divider">' });
+    quill.updateContents({ ops: [{ retain: range.index }].concat(delta.ops) }, Quill.sources.USER);
+    quill.setSelection(range.index + 1, Quill.sources.SILENT);
+  };
+
+  window.insertCallout = function() {
+    var type = prompt('نوع الصندوق:\n1 = معلومة (أزرق)\n2 = تحذير (أصفر)\n3 = خطأ (أحمر)\n4 = نجاح (أخضر)', '1');
+    var cls = '';
+    if (type === '2') cls = ' warning';
+    else if (type === '3') cls = ' danger';
+    else if (type === '4') cls = ' success';
+    var text = prompt('نص الصندوق:', 'اكتب نصاً هنا...');
+    if (!text) return;
+    var html = '<div class="callout-box' + cls + '">' + escapeHtml(text) + '</div><p><br></p>';
+    insertHtmlAtCursor(html);
+  };
+
+  window.insertPullquote = function() {
+    var text = prompt('نص الاقتباس البارز:', 'اقتباس مؤثر...');
+    if (!text) return;
+    insertHtmlAtCursor('<div class="pullquote">' + escapeHtml(text) + '</div><p><br></p>');
+  };
+
+  window.insertEmbed = function() {
+    var url = prompt('رابط التضمين (يوتيوب / تويتر / إنستغرام / فيسبوك):', 'https://www.youtube.com/watch?v=...');
+    if (!url) return;
+    var embedHtml = '';
+
+    var yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([A-Za-z0-9_-]{11})/);
+    if (yt) {
+      embedHtml = '<div class="embed-iframe-wrap"><iframe src="https://www.youtube.com/embed/' + yt[1] + '" allowfullscreen></iframe></div><p><br></p>';
+    } else if (/twitter\.com\/.*\/status\//.test(url) || /x\.com\/.*\/status\//.test(url)) {
+      embedHtml = '<blockquote class="twitter-tweet"><a href="' + url + '">' + url + '</a></blockquote><p><br></p>';
+    } else if (/(instagram\.com|facebook\.com)/.test(url)) {
+      embedHtml = '<p><a href="' + url + '" target="_blank">' + url + '</a></p>';
+      if (window.nfToast) nfToast('سيتم إدراج الرابط كنص (تضمين إنستغرام/فيسبوك يحتاج سكربت خاص)', 'warn');
+    } else {
+      embedHtml = '<div class="embed-iframe-wrap"><iframe src="' + url + '" allowfullscreen></iframe></div><p><br></p>';
+    }
+
+    insertHtmlAtCursor(embedHtml);
+  };
+
+  window.insertTable = function() {
+    var rows = parseInt(prompt('عدد الصفوف:', '3'), 10);
+    var cols = parseInt(prompt('عدد الأعمدة:', '3'), 10);
+    if (!rows || !cols || rows > 20 || cols > 10) return;
+    var html = '<table class="editor-table"><thead><tr>';
+    for (var c = 0; c < cols; c++) html += '<th>عنوان ' + (c+1) + '</th>';
+    html += '</tr></thead><tbody>';
+    for (var r = 0; r < rows; r++) {
+      html += '<tr>';
+      for (var c2 = 0; c2 < cols; c2++) html += '<td>…</td>';
+      html += '</tr>';
+    }
+    html += '</tbody></table><p><br></p>';
+    insertHtmlAtCursor(html);
+  };
+
+  function insertHtmlAtCursor(html) {
+    var range = quill.getSelection(true) || { index: quill.getLength() };
+    var delta = quill.clipboard.convert({ html: html });
+    quill.updateContents({ ops: [{ retain: range.index }].concat(delta.ops) }, Quill.sources.USER);
+    quill.setSelection(range.index + (delta.length() || 1), Quill.sources.SILENT);
+  }
+
+  function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+
+  // ===== Fullscreen mode =====
+  window.toggleEditorFullscreen = function() {
+    document.body.classList.toggle('editor-fullscreen');
+  };
+
+  // ===== Preview mode =====
+  var previewEl = document.getElementById('editorPreview');
+  window.toggleEditorPreview = function() {
+    if (!previewEl) return;
+    if (previewEl.style.display === 'block') {
+      previewEl.style.display = 'none';
+    } else {
+      previewEl.innerHTML = '<h1>' + escapeHtml(document.getElementById('titleInput').value || 'بدون عنوان') + '</h1>' + quill.root.innerHTML;
+      previewEl.style.display = 'block';
+    }
   };
 
   // ===== Version History =====
