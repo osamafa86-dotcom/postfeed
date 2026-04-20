@@ -387,6 +387,59 @@ include __DIR__ . '/includes/panel_layout_head.php';
 
   /* Keyboard hint */
   .kbd { display:inline-block; padding:1px 6px; border-radius:4px; background:var(--bg-page); border:1px solid var(--border); font-size:10px; font-family:monospace; color:var(--text-muted); }
+
+  /* AI Assistant */
+  .ai-actions { display:flex; flex-direction:column; gap:6px; }
+  .ai-btn {
+    display:flex; align-items:center; gap:9px;
+    padding:9px 12px; border-radius:9px;
+    background:#fff; border:1.5px solid var(--border);
+    font-family:'Tajawal',sans-serif; font-size:12.5px; font-weight:600;
+    color:var(--text-primary); cursor:pointer;
+    transition:var(--transition); text-align:right; width:100%;
+  }
+  .ai-btn:hover {
+    border-color:var(--primary); background:var(--primary-soft);
+    transform:translateX(-2px);
+  }
+  .ai-btn.loading { opacity:0.6; cursor:wait; }
+  .ai-btn.loading::after {
+    content:''; width:12px; height:12px; margin-right:auto;
+    border:2px solid var(--primary); border-top-color:transparent;
+    border-radius:50%; animation:spin 0.7s linear infinite;
+  }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  .ai-result {
+    margin-top:12px; padding:12px 14px; background:#fff;
+    border:1.5px solid var(--primary-light); border-radius:10px;
+    font-size:13px; line-height:1.8; color:var(--text-primary);
+    white-space:pre-wrap; max-height:280px; overflow-y:auto;
+    position:relative;
+  }
+  .ai-result-actions { display:flex; gap:6px; margin-top:8px; padding-top:8px; border-top:1px dashed var(--border-light); }
+  .ai-result-actions button {
+    padding:5px 11px; border-radius:7px; border:1px solid var(--border);
+    background:#fff; font-family:'Tajawal',sans-serif; font-size:11px;
+    font-weight:600; cursor:pointer; transition:var(--transition);
+    color:var(--text-secondary);
+  }
+  .ai-result-actions button:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-soft); }
+
+  /* Templates */
+  .tpl-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  .tpl-btn {
+    display:flex; flex-direction:column; align-items:center; gap:5px;
+    padding:14px 8px; border-radius:10px;
+    background:var(--bg-page); border:1.5px solid var(--border);
+    font-family:'Tajawal',sans-serif; font-size:12px; font-weight:600;
+    color:var(--text-primary); cursor:pointer;
+    transition:var(--transition);
+  }
+  .tpl-btn span:first-child { font-size:22px; }
+  .tpl-btn:hover {
+    border-color:var(--primary); background:var(--primary-soft);
+    transform:translateY(-2px);
+  }
 </style>
 
 <div class="content">
@@ -435,16 +488,19 @@ include __DIR__ . '/includes/panel_layout_head.php';
                         </div>
                     </div>
 
-                    <!-- Excerpt -->
+                    <!-- Excerpt + AI summarize -->
                     <div class="sidebar-panel">
                         <div class="panel-header" onclick="togglePanel(this)">
-                            <h4>📋 الملخص</h4>
+                            <h4>📋 الملخص <span style="color:var(--text-muted);font-size:11px;font-weight:500;">(يظهر في القوائم)</span></h4>
                             <span class="panel-toggle">▼</span>
                         </div>
                         <div class="panel-body">
                             <div class="panel-field">
-                                <textarea name="excerpt" placeholder="ملخص قصير يظهر في قوائم الأخبار..."><?php echo $article ? e($article['excerpt']) : ''; ?></textarea>
+                                <textarea name="excerpt" id="excerptInput" placeholder="ملخص قصير يظهر في قوائم الأخبار..."><?php echo $article ? e($article['excerpt']) : ''; ?></textarea>
                             </div>
+                            <button type="button" class="btn-publish secondary" style="padding:8px 12px;font-size:12px;" onclick="aiAction('summarize', this, 'excerptInput')">
+                                ✨ توليد ملخص بالذكاء الاصطناعي
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -522,6 +578,56 @@ include __DIR__ . '/includes/panel_layout_head.php';
                             </div>
                         </div>
                     </div>
+
+                    <!-- AI Assistant -->
+                    <div class="sidebar-panel" style="border:1px solid var(--primary);background:linear-gradient(180deg,var(--primary-soft) 0%,#fff 40%);">
+                        <div class="panel-header">
+                            <h4>✨ مساعد الذكاء الاصطناعي</h4>
+                        </div>
+                        <div class="panel-body">
+                            <div class="ai-actions">
+                                <button type="button" class="ai-btn" onclick="aiAction('title_suggestions', this)">
+                                    <span>💡</span><span>اقتراح عناوين</span>
+                                </button>
+                                <button type="button" class="ai-btn" onclick="aiAction('improve', this)">
+                                    <span>✍️</span><span>تحسين الصياغة</span>
+                                </button>
+                                <button type="button" class="ai-btn" onclick="aiAction('keywords', this)">
+                                    <span>🏷</span><span>استخراج كلمات مفتاحية</span>
+                                </button>
+                                <button type="button" class="ai-btn" onclick="aiAction('key_points', this)">
+                                    <span>📝</span><span>استخراج النقاط الرئيسية</span>
+                                </button>
+                            </div>
+                            <div id="aiResult" class="ai-result" style="display:none;"></div>
+                        </div>
+                    </div>
+
+                    <?php if ($action === 'add'): ?>
+                    <!-- Templates -->
+                    <div class="sidebar-panel">
+                        <div class="panel-header" onclick="togglePanel(this)">
+                            <h4>📄 قوالب جاهزة</h4>
+                            <span class="panel-toggle">▼</span>
+                        </div>
+                        <div class="panel-body">
+                            <div class="tpl-grid">
+                                <button type="button" class="tpl-btn" onclick="applyTemplate('breaking')">
+                                    <span>🔥</span><span>خبر عاجل</span>
+                                </button>
+                                <button type="button" class="tpl-btn" onclick="applyTemplate('report')">
+                                    <span>📊</span><span>تقرير</span>
+                                </button>
+                                <button type="button" class="tpl-btn" onclick="applyTemplate('opinion')">
+                                    <span>💭</span><span>رأي</span>
+                                </button>
+                                <button type="button" class="tpl-btn" onclick="applyTemplate('interview')">
+                                    <span>🎤</span><span>مقابلة</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
 
                     <!-- Options -->
                     <div class="sidebar-panel">
@@ -799,6 +905,137 @@ include __DIR__ . '/includes/panel_layout_head.php';
     document.getElementById('statusSelect').value = 'draft';
     syncContent();
     form.submit();
+  };
+
+  // Expose quill and helpers for AI/templates
+  window._nfQuill = quill;
+  window._nfSyncContent = syncContent;
+
+  // AI assistant
+  window.aiAction = function(task, btn, targetInputId) {
+    var title = document.getElementById('titleInput').value || '';
+    var text  = quill.getText();
+    if (text.trim().length < 20 && task !== 'title_suggestions') {
+      if (window.nfToast) nfToast('اكتب محتوى أطول أولاً (20 حرف على الأقل)', 'warn');
+      return;
+    }
+    btn.classList.add('loading');
+    var orig = btn.innerHTML;
+    var fd = new FormData();
+    fd.append('_csrf', '<?php echo csrf_token(); ?>');
+    fd.append('task', task);
+    fd.append('title', title);
+    fd.append('text', text);
+
+    fetch('api/ai_assist.php', { method:'POST', body:fd })
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        btn.classList.remove('loading');
+        if (!data || !data.ok) {
+          if (window.nfToast) nfToast(data && data.error ? data.error : 'فشل الاتصال بـ AI', 'error');
+          return;
+        }
+        showAiResult(data.result, task, targetInputId);
+        if (window.nfToast) nfToast('تم توليد النتيجة ✨', 'success');
+      })
+      .catch(function(){
+        btn.classList.remove('loading');
+        if (window.nfToast) nfToast('فشل الاتصال بـ AI', 'error');
+      });
+  };
+
+  function showAiResult(text, task, targetInputId) {
+    var box = document.getElementById('aiResult');
+    if (!box) return;
+    box.style.display = 'block';
+    box.innerHTML = '';
+    var content = document.createElement('div');
+    content.textContent = text;
+    box.appendChild(content);
+
+    var actions = document.createElement('div');
+    actions.className = 'ai-result-actions';
+
+    // Primary action based on task
+    if (task === 'summarize' && targetInputId) {
+      var applyBtn = document.createElement('button');
+      applyBtn.textContent = '✓ تطبيق على الملخص';
+      applyBtn.onclick = function() {
+        document.getElementById(targetInputId).value = text;
+        if (window.nfToast) nfToast('تم تطبيق الملخص', 'success');
+      };
+      actions.appendChild(applyBtn);
+    }
+    if (task === 'improve') {
+      var replaceBtn = document.createElement('button');
+      replaceBtn.textContent = '✓ استبدال المحتوى';
+      replaceBtn.onclick = function() {
+        if (confirm('هل تريد استبدال المحتوى الحالي بالنسخة المحسّنة؟')) {
+          quill.setText(text);
+          syncContent();
+          if (window.nfToast) nfToast('تم تحسين المحتوى', 'success');
+        }
+      };
+      actions.appendChild(replaceBtn);
+    }
+    if (task === 'title_suggestions') {
+      var lines = text.split('\n').map(function(l){return l.trim();}).filter(Boolean).slice(0,3);
+      lines.forEach(function(line){
+        var b = document.createElement('button');
+        b.textContent = '✓ ' + (line.length > 40 ? line.slice(0,40)+'…' : line);
+        b.title = line;
+        b.onclick = function() {
+          document.getElementById('titleInput').value = line.replace(/^[-*•]\s*/,'');
+          if (window.nfToast) nfToast('تم تطبيق العنوان', 'success');
+        };
+        actions.appendChild(b);
+      });
+    }
+
+    var copyBtn = document.createElement('button');
+    copyBtn.textContent = '📋 نسخ';
+    copyBtn.onclick = function() {
+      navigator.clipboard && navigator.clipboard.writeText(text);
+      if (window.nfToast) nfToast('تم النسخ', 'success');
+    };
+    actions.appendChild(copyBtn);
+
+    var closeBtn = document.createElement('button');
+    closeBtn.textContent = '✕ إغلاق';
+    closeBtn.onclick = function() { box.style.display = 'none'; };
+    actions.appendChild(closeBtn);
+
+    box.appendChild(actions);
+  }
+
+  // Templates
+  var TEMPLATES = {
+    breaking: {
+      title: '',
+      content: '<h2>عاجل</h2><p><strong>التوقيت:</strong> …</p><p><strong>الموقع:</strong> …</p><p><strong>الخلاصة:</strong></p><p>[اكتب التفاصيل هنا]</p><blockquote>مصدر أو تصريح</blockquote><p><strong>ما التالي:</strong> …</p>'
+    },
+    report: {
+      title: '',
+      content: '<h2>مقدمة</h2><p>[سياق الخبر والخلفية]</p><h2>التفاصيل</h2><p>[الوقائع الرئيسية]</p><h2>السياق</h2><p>[تحليل وخلفية]</p><h2>ردود الفعل</h2><blockquote>تصريح أو رد فعل</blockquote><h2>الخاتمة</h2><p>[ما التالي وتوقعات]</p>'
+    },
+    opinion: {
+      title: '',
+      content: '<h2>الرأي</h2><p>[الأطروحة الرئيسية في جملة أو جملتين]</p><h2>الحجج</h2><ol><li>[الحجة الأولى]</li><li>[الحجة الثانية]</li><li>[الحجة الثالثة]</li></ol><h2>الرد على المعارضين</h2><p>[تناول وجهات النظر المقابلة]</p><h2>الخلاصة</h2><p>[الاستنتاج والدعوة للتأمل]</p>'
+    },
+    interview: {
+      title: '',
+      content: '<h2>المقدمة</h2><p>[تعريف بالضيف وسياق اللقاء]</p><p><strong>س:</strong> [السؤال الأول]</p><p><strong>ج:</strong> [الإجابة]</p><p><strong>س:</strong> [السؤال الثاني]</p><p><strong>ج:</strong> [الإجابة]</p><p><strong>س:</strong> [السؤال الثالث]</p><p><strong>ج:</strong> [الإجابة]</p><h2>كلمة أخيرة</h2><blockquote>[اقتباس ختامي مميز]</blockquote>'
+    }
+  };
+  window.applyTemplate = function(name) {
+    var tpl = TEMPLATES[name];
+    if (!tpl) return;
+    if (quill.getText().trim().length > 5) {
+      if (!confirm('سيتم استبدال المحتوى الحالي بالقالب. متأكد؟')) return;
+    }
+    quill.root.innerHTML = tpl.content;
+    syncContent();
+    if (window.nfToast) nfToast('تم تطبيق القالب', 'success');
   };
 
 })();
