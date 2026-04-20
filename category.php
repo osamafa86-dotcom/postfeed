@@ -7,6 +7,7 @@
 require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/user_auth.php';
 require_once __DIR__ . '/includes/user_functions.php';
+require_once __DIR__ . '/includes/view_tracking.php';
 
 $viewer = current_user();
 $viewerId = $viewer ? (int)$viewer['id'] : 0;
@@ -15,6 +16,8 @@ $pageTheme = current_theme();
 // معالجة المعاملات
 $slug = isset($_GET['slug']) ? trim($_GET['slug']) : '';
 $type = isset($_GET['type']) ? trim($_GET['type']) : '';
+
+record_page_view('category:' . ($slug ?: 'unknown'));
 $page = max(1, intval($_GET['page'] ?? 1));
 $perPage = 20;
 $offset = ($page - 1) * $perPage;
