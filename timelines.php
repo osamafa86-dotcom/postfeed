@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو — فهرس القصص المتطوّرة (Evolving Stories index)
+ * نيوز فيد — فهرس القصص المتطوّرة (Evolving Stories index)
  *
  * Dedicated discovery page for every Smart Timeline that has been
  * generated, plus fresh cluster candidates that don't yet have one.
@@ -103,7 +103,7 @@ foreach ($stories as $s) {
     else $candidateCount++;
 }
 
-$metaDesc = 'فهرس القصص المتطوّرة على نيوزفلو — ' . $storedCount
+$metaDesc = 'فهرس القصص المتطوّرة على نيوز فيد — ' . $storedCount
           . ' خط زمني ذكي يتتبّع تطوّر أهم الأحداث عبر الزمن.';
 ?><!DOCTYPE html>
 <html lang="ar" dir="rtl" data-theme="<?php echo e($pageTheme); ?>">
@@ -111,9 +111,9 @@ $metaDesc = 'فهرس القصص المتطوّرة على نيوزفلو — ' 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <base href="/">
-<title>قصص متطوّرة — خطوط زمنية ذكية · نيوزفلو</title>
+<title>قصص متطوّرة — خطوط زمنية ذكية · نيوز فيد</title>
 <meta name="description" content="<?php echo e($metaDesc); ?>">
-<meta property="og:title" content="قصص متطوّرة — نيوزفلو">
+<meta property="og:title" content="قصص متطوّرة — نيوز فيد">
 <meta property="og:description" content="<?php echo e($metaDesc); ?>">
 <meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">

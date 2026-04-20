@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو — SEO / structured data helpers
+ * نيوز فيد — SEO / structured data helpers
  *
  * One place for every `<meta property="og:…">`, Twitter Card, canonical,
  * and JSON-LD (Schema.org) block. Individual pages just call one of

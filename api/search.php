@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو - API البحث
+ * نيوز فيد - API البحث
  * ===================
  * GET /api/search.php?q=search_term
  * Search articles by title and excerpt

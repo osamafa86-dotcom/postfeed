@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو — توليد معرض المشهد اليومي (Daily Gallery cron)
+ * نيوز فيد — توليد معرض المشهد اليومي (Daily Gallery cron)
  *
  * Recommended schedule: once daily at 12:00 Cairo time.
  *   0 12 * * * curl -fsS "https://postfeed.emdatra.org/cron_gallery.php?key=XXX" > /dev/null 2>&1

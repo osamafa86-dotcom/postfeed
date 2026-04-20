@@ -124,7 +124,7 @@ $smtpUser      = (string)getSetting('smtp_user', '');
 $smtpPassSet   = trim((string)getSetting('smtp_pass', '')) !== '';
 $smtpSecure    = strtolower((string)getSetting('smtp_secure', 'tls'));
 
-$pageTitle = 'النشرة البريدية - نيوزفلو';
+$pageTitle = 'النشرة البريدية - نيوز فيد';
 $activePage = 'newsletter';
 include __DIR__ . '/includes/panel_layout_head.php';
 ?>
@@ -172,7 +172,7 @@ include __DIR__ . '/includes/panel_layout_head.php';
       <input type="hidden" name="save_from" value="1">
       <div class="form-group">
         <label>اسم المرسِل (يظهر في صندوق الوارد)</label>
-        <input type="text" name="mail_from_name" class="form-control" value="<?php echo e($mailFromName); ?>" placeholder="نيوزفلو">
+        <input type="text" name="mail_from_name" class="form-control" value="<?php echo e($mailFromName); ?>" placeholder="نيوز فيد">
       </div>
       <div class="form-group">
         <label>البريد الإلكتروني للمرسِل</label>

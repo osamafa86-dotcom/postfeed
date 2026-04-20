@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو — شبكة القصص المتطوّرة (Story Network)
+ * نيوز فيد — شبكة القصص المتطوّرة (Story Network)
  *
  * Interactive force-directed graph showing how admin-curated
  * persistent stories overlap with each other. Each node is a story
@@ -37,16 +37,16 @@ $graph = cache_remember('evolving_stories_network_v1', 300, function() {
 $nodeCount = count($graph['nodes'] ?? []);
 $linkCount = count($graph['links'] ?? []);
 
-$metaDesc = 'شبكة القصص المتطوّرة على نيوزفلو — اكتشف كيف تتقاطع القضايا المركزية عبر التقارير المشتركة في خريطة تفاعلية.';
+$metaDesc = 'شبكة القصص المتطوّرة على نيوز فيد — اكتشف كيف تتقاطع القضايا المركزية عبر التقارير المشتركة في خريطة تفاعلية.';
 ?><!DOCTYPE html>
 <html lang="ar" dir="rtl" data-theme="<?php echo e($pageTheme); ?>">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <base href="/">
-<title>🕸️ شبكة القصص — نيوزفلو</title>
+<title>🕸️ شبكة القصص — نيوز فيد</title>
 <meta name="description" content="<?php echo e($metaDesc); ?>">
-<meta property="og:title" content="شبكة القصص المتطوّرة — نيوزفلو">
+<meta property="og:title" content="شبكة القصص المتطوّرة — نيوز فيد">
 <meta property="og:description" content="<?php echo e($metaDesc); ?>">
 <meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -186,7 +186,7 @@ include __DIR__ . '/includes/components/site_header.php';
     <span class="net-eyebrow">🕸️ استكشاف بصري</span>
     <h1 class="net-title">شبكة القصص المتطوّرة</h1>
     <p class="net-lede">
-      كل دائرة تمثّل قصة متواصلة المتابعة على نيوزفلو، وكل خط يربط قصتين يتقاطعان في
+      كل دائرة تمثّل قصة متواصلة المتابعة على نيوز فيد، وكل خط يربط قصتين يتقاطعان في
       تقارير مشتركة — كلّما سُمك الخط، كلّما كان التقاطع أكبر. اسحب الدوائر لتحريكها،
       مرّر عليها لإبراز جيرانها، واضغط لفتح صفحة القصة.
     </p>

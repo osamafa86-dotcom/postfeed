@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو — Google News sitemap
+ * نيوز فيد — Google News sitemap
  *
  * Separate from /sitemap.php because Google News requires:
  *   - A rolling 48-hour window (articles older than 2 days MUST be

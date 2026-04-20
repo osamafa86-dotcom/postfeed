@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو - API الأكثر تداولاً (Trending Now)
+ * نيوز فيد - API الأكثر تداولاً (Trending Now)
  * ============================================
  * GET /api/trending.php?limit=N
  * Returns the velocity-scored "hottest stories right now" rail.

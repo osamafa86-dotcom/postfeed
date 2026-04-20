@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو - تلخيص الأخبار الجديدة بالذكاء الاصطناعي
+ * نيوز فيد - تلخيص الأخبار الجديدة بالذكاء الاصطناعي
  * يُشغل عبر Cron أو HTTP: cron_ai.php?key=XXX&limit=20
  */
 require_once __DIR__ . '/includes/config.php';

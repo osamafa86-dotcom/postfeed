@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو — استخراج AI لبيانات القصص المتطوّرة
+ * نيوز فيد — استخراج AI لبيانات القصص المتطوّرة
  * (Evolving Stories Phase 2 — entities + quotes extraction)
  *
  * This module powers two features on top of the evolving stories:

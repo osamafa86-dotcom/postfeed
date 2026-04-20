@@ -111,7 +111,7 @@ $summarized = (int)$db->query("SELECT COUNT(*) FROM articles WHERE ai_summary IS
 $pending = $totalArticles - $summarized;
 $recent = $db->query("SELECT id, title, ai_summary, ai_processed_at FROM articles WHERE ai_summary IS NOT NULL ORDER BY ai_processed_at DESC LIMIT 10")->fetchAll();
 
-$pageTitle = 'الذكاء الاصطناعي - نيوزفلو';
+$pageTitle = 'الذكاء الاصطناعي - نيوز فيد';
 $activePage = 'ai';
 include __DIR__ . '/includes/panel_layout_head.php';
 ?>
@@ -143,7 +143,7 @@ include __DIR__ . '/includes/panel_layout_head.php';
           <option value="anthropic" <?php echo $aiProvider === 'anthropic' ? 'selected' : ''; ?>>Anthropic Claude Haiku 4.5 — مدفوع</option>
         </select>
         <small style="color:var(--text-muted);font-size:11px;">
-          التبديل فوري. Gemini 2.5 Flash مجاني ضمن ~15 طلب/دقيقة و ~1500 طلب/يوم — يكفي لكل ميزات نيوزفلو.
+          التبديل فوري. Gemini 2.5 Flash مجاني ضمن ~15 طلب/دقيقة و ~1500 طلب/يوم — يكفي لكل ميزات نيوز فيد.
         </small>
       </div>
 

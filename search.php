@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو — صفحة نتائج البحث
+ * نيوز فيد — صفحة نتائج البحث
  * URL: /search?q=...
  */
 require_once __DIR__ . '/includes/functions.php';

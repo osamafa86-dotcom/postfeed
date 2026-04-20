@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو — معرض المشهد اليومي (Daily Photo Gallery)
+ * نيوز فيد — معرض المشهد اليومي (Daily Photo Gallery)
  *
  * URL: /gallery             → latest gallery
  *      /gallery/2026-04-12  → specific date
@@ -37,7 +37,7 @@ $headline = $gallery ? (string)$gallery['headline'] : 'المشهد اليومي
 $photos   = $gallery ? (array)$gallery['photos'] : [];
 $intro    = $gallery ? (string)($gallery['intro'] ?? '') : '';
 $pageUrl  = SITE_URL . '/gallery' . ($requestDate ? '/' . $requestDate : '');
-$metaDesc = $intro ?: 'معرض صور اليوم الإخباري — أبرز مشاهد اليوم من مصادر متعدّدة على نيوزفلو.';
+$metaDesc = $intro ?: 'معرض صور اليوم الإخباري — أبرز مشاهد اليوم من مصادر متعدّدة على نيوز فيد.';
 
 // Arabic date.
 $dateAr = '';

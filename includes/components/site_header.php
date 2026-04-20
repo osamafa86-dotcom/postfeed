@@ -48,7 +48,7 @@ $__nfVer = app_version();
     var deployed = v.deployed_at ? new Date(v.deployed_at * 1000).toISOString().replace('T', ' ').slice(0, 16) : '?';
     // Eye-catching so QA can tell which build rendered the page at a glance.
     console.log(
-      '%c نيوزفلو %c v' + v.full + ' %c ' + deployed + ' UTC ',
+      '%c نيوز فيد %c v' + v.full + ' %c ' + deployed + ' UTC ',
       'background:#0d9488;color:#fff;padding:2px 8px;border-radius:4px 0 0 4px;font-weight:700',
       'background:#134e4a;color:#5eead4;padding:2px 8px;font-family:monospace',
       'background:#1f2937;color:#d1d5db;padding:2px 8px;border-radius:0 4px 4px 0;font-family:monospace'

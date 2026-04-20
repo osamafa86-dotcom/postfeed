@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو — صفحة قصة متطوّرة واحدة (Admin-defined)
+ * نيوز فيد — صفحة قصة متطوّرة واحدة (Admin-defined)
  *
  * Public reader page for a single persistent story. Shows:
  *   1. Hero with name, description, and live-article counter.
@@ -177,7 +177,7 @@ if (!empty($dateRange['first']) && !empty($dateRange['last'])) {
 $pageName = $notFound ? 'قصة غير موجودة' : (string)$story['name'];
 $metaDesc = $notFound
     ? 'القصة المطلوبة غير متاحة.'
-    : ($story['description'] ?: ('تغطية متواصلة لـ' . $story['name'] . ' على نيوزفلو.'));
+    : ($story['description'] ?: ('تغطية متواصلة لـ' . $story['name'] . ' على نيوز فيد.'));
 $pageUrl  = SITE_URL . '/evolving-story/' . rawurlencode($slug);
 // Canonical always points to the live view, not the time-travel slice —
 // otherwise every historical snapshot would fight for the same ranking.

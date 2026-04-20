@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو - إعدادات الموقع
+ * نيوز فيد - إعدادات الموقع
  * ========================
  * قم بتعديل هذه القيم حسب إعدادات استضافة GoDaddy
  */
@@ -60,7 +60,7 @@ define('DB_CHARSET', 'utf8mb4');
 // etc. Overridable via .env so a staging copy on a different hostname
 // doesn't serve canonicals pointing at production.
 define('SITE_URL', env('SITE_URL', 'https://feedsnews.net'));
-define('SITE_NAME', 'نيوزفلو');
+define('SITE_NAME', 'نيوز فيد');
 define('SITE_TAGLINE', 'مجمع المصادر الإخبارية');
 define('TIMEZONE', 'Asia/Amman');
 

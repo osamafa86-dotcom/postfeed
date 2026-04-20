@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو - صفحة المقالة الواحدة
+ * نيوز فيد - صفحة المقالة الواحدة
  * =============================
  * عرض مقالة واحدة برابط: article.php?id=N
  */
@@ -147,7 +147,7 @@ if (!empty($article['cat_slug']) && count($relatedArticles) < $relatedLimit) {
             : mb_substr(trim(preg_replace('/\s+/', ' ', strip_tags($article['excerpt']))), 0, 160);
         $seoKeywords = !empty($article['ai_keywords'])
             ? $article['ai_keywords']
-            : ($article['cat_name'] . '، أخبار، نيوزفلو');
+            : ($article['cat_name'] . '، أخبار، نيوز فيد');
         // Canonical self-references the friendly URL on this site. We
         // deliberately don't point at the external source_url: doing so
         // tells Google "don't index me, index the source" — which kills
@@ -157,7 +157,7 @@ if (!empty($article['cat_slug']) && count($relatedArticles) < $relatedLimit) {
         $selfUrl   = SITE_URL . '/' . articleUrl($article);
         $canonical = $selfUrl;
         $publishedISO = !empty($article['published_at']) ? date('c', strtotime($article['published_at'])) : date('c');
-        $modifiedISO  = !empty($article['ai_processed_at']) ? date('c', strtotime($article['ai_processed_at'])) : $publishedISO;
+        $modifiedISO  = !empty($article['updated_at']) ? date('c', strtotime($article['updated_at'])) : $publishedISO;
     ?>
     <title><?php echo e($article['title']); ?> - <?php echo SITE_NAME; ?></title>
     <meta name="description" content="<?php echo e($seoDesc); ?>">

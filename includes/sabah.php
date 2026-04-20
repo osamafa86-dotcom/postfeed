@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو — موجز الصباح (Morning Briefing)
+ * نيوز فيد — موجز الصباح (Morning Briefing)
  *
  * NYT "The Morning"-inspired daily editorial briefing: one lead essay
  * + thematic sections + a closing question. Generated once daily from
@@ -114,7 +114,7 @@ function sabah_generate(): ?array {
     $data = sabah_collect_top_clusters(8);
     if ($data['count'] < 2) return null;
 
-    $prompt = "أنت رئيس تحرير نشرة \"صباح الخير من نيوزفلو\" — نشرة صباحية يومية بأسلوب NYT The Morning. "
+    $prompt = "أنت رئيس تحرير نشرة \"صباح الخير من نيوز فيد\" — نشرة صباحية يومية بأسلوب NYT The Morning. "
             . "لديك {$data['count']} ملفات إخبارية بارزة من آخر 24 ساعة. مهمتك: كتابة موجز صباحي "
             . "احترافي ممتع بالعربية الفصحى. هذه ليست قائمة عناوين، بل مقال صباحي قصير يروي القصص بسياق.\n\n"
             . "التعليمات:\n"

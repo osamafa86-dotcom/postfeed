@@ -1,6 +1,6 @@
 <?php
 $theme = current_theme();
-$siteName = defined('SITE_NAME') ? SITE_NAME : 'نيوزفلو';
+$siteName = defined('SITE_NAME') ? SITE_NAME : 'نيوز فيد';
 ?>
 <!DOCTYPE html>
 <html lang="ar" dir="rtl" data-theme="<?= e($theme) ?>">

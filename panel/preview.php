@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو — معاينة فروع Git (Branch Preview)
+ * نيوز فيد — معاينة فروع Git (Branch Preview)
  *
  * Admin-only endpoint that lets us test a feature branch on the live
  * server BEFORE merging it to main. The same `git fetch + reset --hard`
@@ -96,7 +96,7 @@ $adminName = $_SESSION['admin_name'] ?? 'المدير';
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>معاينة فرع — لوحة نيوزفلو</title>
+<title>معاينة فرع — لوحة نيوز فيد</title>
 <style>
   body {
     font-family: 'Tajawal','Segoe UI',Tahoma,Arial,sans-serif;

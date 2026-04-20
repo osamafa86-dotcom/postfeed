@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو - API الأخبار
+ * نيوز فيد - API الأخبار
  * ======================
  * GET /api/articles.php?category=slug&breaking=1&limit=N
  * Returns JSON list of articles

@@ -11,7 +11,7 @@ require_user_login('me/');
 $me = current_user();
 $theme = current_theme();
 $unread = user_unread_notifications_count((int)$me['id']);
-$siteName = defined('SITE_NAME') ? SITE_NAME : 'نيوزفلو';
+$siteName = defined('SITE_NAME') ? SITE_NAME : 'نيوز فيد';
 
 $active = $pageSlug ?? '';
 $navItems = [

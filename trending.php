@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو - الأكثر تداولاً الآن (Trending Now full page)
+ * نيوز فيد - الأكثر تداولاً الآن (Trending Now full page)
  *
  * Top 20 stories by velocity. Velocity = (views_last_hour × 4) +
  * views_last_6h, computed in includes/trending.php from the
@@ -25,7 +25,7 @@ $totalArticles = countArticles();
 $totalSources  = count(getActiveSources());
 
 $pageUrl = SITE_URL . '/trending';
-$metaDesc = 'الأكثر تداولاً الآن على نيوزفلو — أعلى الأخبار سرعة في القراءة خلال آخر ساعة وست ساعات.';
+$metaDesc = 'الأكثر تداولاً الآن على نيوز فيد — أعلى الأخبار سرعة في القراءة خلال آخر ساعة وست ساعات.';
 ?><!DOCTYPE html>
 <html lang="ar" dir="rtl" data-theme="<?php echo e($pageTheme); ?>">
 <head>

@@ -74,7 +74,7 @@ $thumbGrads = [
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>لوحة التحكم - نيوزفلو</title>
+<title>لوحة التحكم - نيوز فيد</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap');
 
@@ -583,7 +583,7 @@ $thumbGrads = [
   <div class="sidebar-logo">
     <div class="logo-icon">📰</div>
     <div class="logo-text">
-      <span>نيوزفلو</span>
+      <span>نيوز فيد</span>
       <span>DASHBOARD</span>
     </div>
   </div>
@@ -1071,7 +1071,7 @@ $thumbGrads = [
   <!-- FOOTER -->
   <footer class="footer-bar">
     <div class="footer-status"><span class="status-dot"></span>جميع الأنظمة تعمل بشكل طبيعي</div>
-    <div>نيوزفلو · لوحة التحكم</div>
+    <div>نيوز فيد · لوحة التحكم</div>
     <div>جميع الحقوق محفوظة © <?php echo date('Y'); ?></div>
   </footer>
 

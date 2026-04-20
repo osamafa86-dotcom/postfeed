@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو - Text-to-Speech helper
+ * نيوز فيد - Text-to-Speech helper
  * ================================
  * Multi-provider cloud TTS with on-disk MP3 caching.
  *

@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو - تسجيل الخروج
+ * نيوز فيد - تسجيل الخروج
  */
 
 require_once __DIR__ . '/../includes/config.php';

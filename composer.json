@@ -1,6 +1,6 @@
 {
     "name": "newsflow/postfeed",
-    "description": "NewsFlow — Arabic news aggregator",
+    "description": "News Feed — Arabic news aggregator",
     "type": "project",
     "require": {
         "php": ">=8.0"

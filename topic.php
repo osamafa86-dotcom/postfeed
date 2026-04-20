@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو - صفحة الموضوعات (Topic Clusters)
+ * نيوز فيد - صفحة الموضوعات (Topic Clusters)
  *
  * Groups articles by an AI-extracted keyword. Reuses the
  * articles.ai_keywords column (CSV: "كلمة1, كلمة2, كلمة3")
@@ -153,7 +153,7 @@ $pageTitleText = $keyword !== '' ? '#' . $keyword : 'الموضوعات الأك
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#1a5c5c">
-<link rel="alternate" type="application/rss+xml" title="نيوزفلو RSS" href="/rss.xml">
+<link rel="alternate" type="application/rss+xml" title="نيوز فيد RSS" href="/rss.xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'">

@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو — إرسال النشرة اليومية
+ * نيوز فيد — إرسال النشرة اليومية
  * Daily digest sender. Triggered by cron once a day (typically 7am
  * Asia/Amman). Picks the top N stories from the last 24h, builds an
  * Arabic HTML digest using existing ai_summary columns, and emails

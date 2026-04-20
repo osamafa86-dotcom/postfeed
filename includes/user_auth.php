@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو - طبقة المصادقة للمستخدمين (قرّاء)
+ * نيوز فيد - طبقة المصادقة للمستخدمين (قرّاء)
  * User authentication layer for regular readers (separate from admin session).
  */
 
@@ -124,7 +124,7 @@ function user_register(string $name, string $email, string $password, ?string $u
         // Welcome notification
         try {
             $db->prepare("INSERT INTO user_notifications (user_id, type, title, body, icon) VALUES (?, 'welcome', ?, ?, '👋')")
-               ->execute([$userId, 'مرحباً بك في نيوزفلو', 'اختر اهتماماتك من صفحة المتابعة لتحصل على خلاصة مخصصة.']);
+               ->execute([$userId, 'مرحباً بك في نيوز فيد', 'اختر اهتماماتك من صفحة المتابعة لتحصل على خلاصة مخصصة.']);
         } catch (Throwable $e) {}
 
         return [true, (string)$userId];

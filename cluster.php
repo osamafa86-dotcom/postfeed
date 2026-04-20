@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو - قارن التغطية (Compare Coverage)
+ * نيوز فيد - قارن التغطية (Compare Coverage)
  *
  * Side-by-side view of how the same story was covered by every
  * source we ingested it from. Reads articles.cluster_key — the
@@ -73,7 +73,7 @@ $sourceCount = count($sourceNames);
 
 $pageTitleText = $canonicalTitle !== '' ? $canonicalTitle : 'قارن التغطية';
 $metaDesc = $canonicalTitle !== ''
-    ? ('شاهد كيف غطّى ' . $sourceCount . ' مصدر إخبارّي خبر «' . mb_substr($canonicalTitle, 0, 100) . '» جنباً إلى جنب على نيوزفلو.')
+    ? ('شاهد كيف غطّى ' . $sourceCount . ' مصدر إخبارّي خبر «' . mb_substr($canonicalTitle, 0, 100) . '» جنباً إلى جنب على نيوز فيد.')
     : 'تغطية متعدّدة المصادر لكل خبر — قارن كيف نقلته الصحف العربية.';
 
 // Pre-fetch saved bookmarks for this page's articles.
@@ -118,7 +118,7 @@ $pageUrl = SITE_URL . '/cluster/' . $key;
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#1a5c5c">
-<link rel="alternate" type="application/rss+xml" title="نيوزفلو RSS" href="/rss.xml">
+<link rel="alternate" type="application/rss+xml" title="نيوز فيد RSS" href="/rss.xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
@@ -471,7 +471,7 @@ include __DIR__ . '/includes/components/site_header.php';
               <p class="coverage-snippet"><?php echo e(mb_substr($snippet, 0, 280)); ?><?php echo mb_strlen($snippet) > 280 ? '…' : ''; ?></p>
             <?php endif; ?>
             <div class="coverage-actions">
-              <a class="primary" href="<?php echo articleUrl($article); ?>">📖 اقرأ على نيوزفلو</a>
+              <a class="primary" href="<?php echo articleUrl($article); ?>">📖 اقرأ على نيوز فيد</a>
               <?php if (!empty($article['source_url'])): ?>
                 <a href="<?php echo e($article['source_url']); ?>" target="_blank" rel="noopener nofollow">↗ المصدر الأصلي</a>
               <?php endif; ?>
