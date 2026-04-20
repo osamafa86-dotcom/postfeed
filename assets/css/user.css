@@ -714,10 +714,10 @@ img { max-width:100%; height:auto; }
   padding:10px 18px; border-radius:999px;
   font-size:13px; font-weight:600;
   box-shadow:var(--shadow-lg);
-  transition:transform .3s; z-index:9999;
-  pointer-events:none;
+  transition:transform .3s, opacity .3s; z-index:9999;
+  pointer-events:none; opacity:0;
 }
-.nf-toast.show { transform:translateX(-50%) translateY(0); }
+.nf-toast.show { transform:translateX(-50%) translateY(0); opacity:1; }
 
 /* ================= RESPONSIVE ================= */
 @media (max-width: 900px) {
