@@ -1,6 +1,8 @@
 .env
 .env.local
-uploads/
+uploads/*
+!uploads/.htaccess
+!uploads/.gitkeep
 *.log
 *.tmp
 .DS_Store
