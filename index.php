@@ -12,6 +12,9 @@ require_once __DIR__ . '/includes/trending.php';
 require_once __DIR__ . '/includes/personalize.php';
 require_once __DIR__ . '/includes/story_timeline.php';
 require_once __DIR__ . '/includes/evolving_stories.php';
+require_once __DIR__ . '/includes/view_tracking.php';
+
+record_page_view('homepage');
 
 // Viewer context for save buttons / theme / user menu
 $viewer = current_user();

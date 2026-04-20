@@ -33,6 +33,103 @@ function view_tracking_ensure_tables(PDO $db): void {
             INDEX idx_dedup_lookup (article_id, ip_hash, created_at),
             INDEX idx_dedup_prune (created_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $db->exec("CREATE TABLE IF NOT EXISTS referrer_stats (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            stat_date DATE NOT NULL,
+            source_type VARCHAR(20) NOT NULL,
+            source_domain VARCHAR(120) NOT NULL DEFAULT '',
+            views INT NOT NULL DEFAULT 0,
+            UNIQUE INDEX idx_ref_unique (stat_date, source_type, source_domain),
+            INDEX idx_ref_date (stat_date),
+            INDEX idx_ref_type (source_type)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        $db->exec("CREATE TABLE IF NOT EXISTS hourly_view_stats (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            stat_hour DATETIME NOT NULL,
+            total_views INT NOT NULL DEFAULT 0,
+            UNIQUE INDEX idx_stat_hour (stat_hour)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    } catch (Throwable $e) {}
+}
+
+/**
+ * Classify a referrer URL into { source_type, source_domain }.
+ * source_type is one of: search, social, direct, internal, other.
+ * source_domain is the bare host (e.g. "google.com", "" for direct).
+ */
+function classify_referrer(string $referrer, string $ownHost = ''): array {
+    $referrer = trim($referrer);
+    if ($referrer === '') {
+        return ['direct', ''];
+    }
+    $host = parse_url($referrer, PHP_URL_HOST);
+    if (!$host) {
+        return ['direct', ''];
+    }
+    $host = strtolower(preg_replace('/^www\./', '', $host));
+
+    if ($ownHost !== '' && ($host === $ownHost || str_ends_with($host, '.' . $ownHost))) {
+        return ['internal', $host];
+    }
+
+    $searchEngines = ['google.', 'bing.com', 'yahoo.', 'duckduckgo.com', 'yandex.', 'baidu.com', 'ecosia.org', 'qwant.com', 'brave.com'];
+    foreach ($searchEngines as $needle) {
+        if (str_contains($host, $needle)) {
+            return ['search', $host];
+        }
+    }
+
+    $social = [
+        'facebook.com', 'fb.com', 'm.facebook.com', 'l.facebook.com',
+        'twitter.com', 'x.com', 't.co',
+        'instagram.com', 'l.instagram.com',
+        'youtube.com', 'youtu.be',
+        'linkedin.com', 'lnkd.in',
+        'reddit.com',
+        'telegram.org', 't.me', 'web.telegram.org',
+        'whatsapp.com', 'wa.me', 'api.whatsapp.com',
+        'pinterest.com', 'pin.it',
+        'tiktok.com',
+        'threads.net',
+    ];
+    foreach ($social as $needle) {
+        if ($host === $needle || str_ends_with($host, '.' . $needle)) {
+            return ['social', $host];
+        }
+    }
+
+    return ['other', $host];
+}
+
+function increment_referrer_stats(PDO $db, string $referrer): void {
+    $ownHost = parse_url(defined('SITE_URL') ? SITE_URL : '', PHP_URL_HOST) ?: '';
+    $ownHost = strtolower(preg_replace('/^www\./', '', (string)$ownHost));
+    [$type, $domain] = classify_referrer($referrer, $ownHost);
+
+    try {
+        $today = date('Y-m-d');
+        $db->prepare(
+            "INSERT INTO referrer_stats (stat_date, source_type, source_domain, views)
+             VALUES (?, ?, ?, 1)
+             ON DUPLICATE KEY UPDATE views = views + 1"
+        )->execute([$today, $type, $domain]);
+    } catch (Throwable $e) {}
+}
+
+function increment_hourly_stats(PDO $db): void {
+    try {
+        $hour = date('Y-m-d H:00:00');
+        $db->prepare(
+            "INSERT INTO hourly_view_stats (stat_hour, total_views)
+             VALUES (?, 1)
+             ON DUPLICATE KEY UPDATE total_views = total_views + 1"
+        )->execute([$hour]);
+
+        if (mt_rand(1, 500) === 1) {
+            $db->exec("DELETE FROM hourly_view_stats WHERE stat_hour < DATE_SUB(NOW(), INTERVAL 14 DAY)");
+        }
     } catch (Throwable $e) {}
 }
 
@@ -103,6 +200,8 @@ function record_article_view(int $articleId): bool {
            ->execute([$articleId]);
 
         increment_daily_stats($db);
+        increment_hourly_stats($db);
+        increment_referrer_stats($db, (string)($_SERVER['HTTP_REFERER'] ?? ''));
 
         if (mt_rand(1, 200) === 1) {
             view_dedup_prune($db);
@@ -118,6 +217,36 @@ function view_dedup_prune(PDO $db): void {
     try {
         $db->exec("DELETE FROM view_dedup WHERE created_at < DATE_SUB(NOW(), INTERVAL 2 HOUR)");
     } catch (Throwable $e) {}
+}
+
+/**
+ * Record a page view for non-article pages (homepage, category, search, …).
+ * Counts toward daily/hourly/referrer stats but does NOT touch articles.view_count.
+ * IP-deduplicated per-bucket (same IP+bucket within 30 min = one view).
+ */
+function record_page_view(string $bucket): bool {
+    if ($bucket === '' || is_bot_request()) return false;
+
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    $ipHash = sha1($ip . '::salt_nf_2026');
+    $pseudoId = crc32('page:' . $bucket);
+    $pseudoId = $pseudoId > 0 ? -$pseudoId : $pseudoId;
+
+    try {
+        $db = getDB();
+        view_tracking_ensure_tables($db);
+
+        if (is_duplicate_view($db, $pseudoId, $ipHash)) return false;
+        record_dedup_entry($db, $pseudoId, $ipHash);
+
+        increment_daily_stats($db);
+        increment_hourly_stats($db);
+        increment_referrer_stats($db, (string)($_SERVER['HTTP_REFERER'] ?? ''));
+
+        return true;
+    } catch (Throwable $e) {
+        return false;
+    }
 }
 
 /**

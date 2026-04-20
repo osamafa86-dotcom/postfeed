@@ -371,6 +371,10 @@ $__nfVer = app_version();
       <div class="nav-icon">📊</div>
       <span class="label">لوحة التحكم</span>
     </a>
+    <a href="analytics.php" class="nav-item<?php echo $activePage==='analytics'?' active':''; ?>">
+      <div class="nav-icon">📈</div>
+      <span class="label">التحليلات</span>
+    </a>
   </div>
 
   <?php
