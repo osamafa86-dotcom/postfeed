@@ -470,6 +470,82 @@ $__nfVer = app_version();
   .toast.exit { animation:toastOut 0.2s ease forwards; }
   @keyframes toastIn  { from{opacity:0;transform:translateX(-30px)} to{opacity:1;transform:translateX(0)} }
   @keyframes toastOut { from{opacity:1;transform:translateX(0)} to{opacity:0;transform:translateX(-30px)} }
+
+  /* ===== QUICK CAPTURE FAB ===== */
+  .qc-fab {
+    position:fixed; bottom:24px; left:24px; z-index:500;
+    width:52px; height:52px; border-radius:16px;
+    background:linear-gradient(135deg, #6366f1, #818cf8);
+    color:#fff; border:none; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    font-size:22px; box-shadow:0 6px 20px rgba(99,102,241,0.45);
+    transition:all 0.25s cubic-bezier(0.4,0,0.2,1);
+  }
+  .qc-fab:hover { transform:scale(1.08) translateY(-2px); box-shadow:0 8px 28px rgba(99,102,241,0.55); }
+  .qc-fab:active { transform:scale(0.95); }
+
+  .qc-panel {
+    position:fixed; bottom:86px; left:24px; z-index:500;
+    width:360px; max-width:calc(100vw - 48px);
+    background:#fff; border-radius:16px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.2), 0 0 0 1px rgba(0,0,0,0.04);
+    display:none; animation:qcSlideUp 0.25s cubic-bezier(0.4,0,0.2,1);
+  }
+  .qc-panel.open { display:block; }
+  @keyframes qcSlideUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+  .qc-panel-header {
+    padding:16px 18px; border-bottom:1px solid var(--border-light);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .qc-panel-header h4 { font-size:14px; font-weight:800; display:flex; align-items:center; gap:8px; }
+  .qc-panel-body { padding:14px 18px; }
+  .qc-input {
+    width:100%; padding:10px 14px; border:1.5px solid var(--border);
+    border-radius:10px; font-family:'Tajawal',sans-serif;
+    font-size:14px; font-weight:600; direction:rtl;
+    background:var(--bg-input); color:var(--text-primary);
+    outline:none; transition:var(--transition);
+    margin-bottom:10px;
+  }
+  .qc-input:focus { border-color:var(--primary); background:#fff; box-shadow:0 0 0 3px var(--primary-light); }
+  .qc-textarea {
+    width:100%; min-height:80px; padding:10px 14px;
+    border:1.5px solid var(--border); border-radius:10px;
+    font-family:'Tajawal',sans-serif; font-size:13px;
+    direction:rtl; background:var(--bg-input); color:var(--text-primary);
+    outline:none; transition:var(--transition); resize:vertical;
+    margin-bottom:12px;
+  }
+  .qc-textarea:focus { border-color:var(--primary); background:#fff; box-shadow:0 0 0 3px var(--primary-light); }
+  .qc-actions { display:flex; gap:8px; }
+  .qc-actions button {
+    flex:1; padding:10px; border-radius:10px; border:none;
+    font-family:'Tajawal',sans-serif; font-size:13px; font-weight:700;
+    cursor:pointer; transition:var(--transition);
+  }
+  .qc-save {
+    background:var(--primary); color:#fff;
+    box-shadow:0 2px 8px rgba(99,102,241,0.3);
+  }
+  .qc-save:hover { background:var(--primary-dark); }
+  .qc-draft { background:var(--bg-input); color:var(--text-secondary); border:1.5px solid var(--border) !important; }
+  .qc-draft:hover { border-color:var(--primary) !important; color:var(--primary); }
+  .qc-saved-list {
+    max-height:150px; overflow-y:auto; margin-top:12px;
+    border-top:1px solid var(--border-light); padding-top:10px;
+  }
+  .qc-saved-item {
+    display:flex; align-items:center; gap:8px;
+    padding:8px 10px; border-radius:8px; margin-bottom:4px;
+    font-size:12px; font-weight:600; color:var(--text-primary);
+    transition:var(--transition); cursor:pointer;
+  }
+  .qc-saved-item:hover { background:var(--bg-hover); }
+  .qc-saved-item .qc-del {
+    margin-right:auto; color:var(--text-muted); font-size:14px;
+    opacity:0; transition:opacity 0.15s;
+  }
+  .qc-saved-item:hover .qc-del { opacity:1; }
 </style>
 </head>
 <body>
@@ -492,6 +568,24 @@ $__nfVer = app_version();
 
 <!-- Toast stack -->
 <div class="toast-stack" id="toastStack"></div>
+
+<!-- Quick Capture FAB -->
+<button class="qc-fab" id="qcFab" onclick="toggleQuickCapture()" title="التقاط سريع (Ctrl+Shift+N)">✏️</button>
+<div class="qc-panel" id="qcPanel">
+  <div class="qc-panel-header">
+    <h4>⚡ التقاط سريع</h4>
+    <span class="kbd-hint">Ctrl+Shift+N</span>
+  </div>
+  <div class="qc-panel-body">
+    <input type="text" class="qc-input" id="qcTitle" placeholder="فكرة أو عنوان خبر...">
+    <textarea class="qc-textarea" id="qcNotes" placeholder="ملاحظات (اختياري)..."></textarea>
+    <div class="qc-actions">
+      <button class="qc-save" onclick="qcSaveAndCreate()">🚀 إنشاء خبر</button>
+      <button class="qc-draft" onclick="qcSaveLocally()">💾 حفظ محلياً</button>
+    </div>
+    <div class="qc-saved-list" id="qcSavedList"></div>
+  </div>
+</div>
 
 <aside class="sidebar">
   <div class="sidebar-logo">
@@ -536,8 +630,12 @@ $__nfVer = app_version();
       <div class="nav-icon">📂</div>
       <span class="label">الأقسام</span>
     </a>
-    <a href="evolving_stories.php" class="nav-item<?php echo $activePage==='evolving_stories'?' active':''; ?>">
+    <a href="calendar.php" class="nav-item<?php echo $activePage==='calendar'?' active':''; ?>">
       <div class="nav-icon">📅</div>
+      <span class="label">التقويم التحريري</span>
+    </a>
+    <a href="evolving_stories.php" class="nav-item<?php echo $activePage==='evolving_stories'?' active':''; ?>">
+      <div class="nav-icon">📖</div>
       <span class="label">القصص المتطوّرة</span>
     </a>
     <a href="sources.php" class="nav-item<?php echo $activePage==='sources'?' active':''; ?>">
