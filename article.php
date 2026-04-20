@@ -157,7 +157,7 @@ if (!empty($article['cat_slug']) && count($relatedArticles) < $relatedLimit) {
         $selfUrl   = SITE_URL . '/' . articleUrl($article);
         $canonical = $selfUrl;
         $publishedISO = !empty($article['published_at']) ? date('c', strtotime($article['published_at'])) : date('c');
-        $modifiedISO  = !empty($article['ai_processed_at']) ? date('c', strtotime($article['ai_processed_at'])) : $publishedISO;
+        $modifiedISO  = !empty($article['updated_at']) ? date('c', strtotime($article['updated_at'])) : $publishedISO;
     ?>
     <title><?php echo e($article['title']); ?> - <?php echo SITE_NAME; ?></title>
     <meta name="description" content="<?php echo e($seoDesc); ?>">
