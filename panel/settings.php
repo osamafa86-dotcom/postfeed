@@ -82,6 +82,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         $success = 'تم حفظ الإعدادات بنجاح';
+        // Invalidate the settings cache so the new values take effect on
+        // the next request instead of after REFERENCE_CACHE_TTL seconds.
+        if (function_exists('cache_forget')) {
+            cache_forget('settings_all');
+        }
     } catch (PDOException $e) {
         $error = 'خطأ في حفظ الإعدادات: ' . $e->getMessage();
     }
