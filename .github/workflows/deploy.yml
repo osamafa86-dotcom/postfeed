@@ -11,8 +11,37 @@ jobs:
     steps:
       - name: Trigger deploy webhook
         run: |
-          curl -fsSL -X POST \
-            -H "Content-Type: application/json" \
-            -H "X-Hub-Signature-256: sha256=$(echo -n '{}' | openssl dgst -sha256 -hmac 'postfeed_deploy_2026' | awk '{print $2}')" \
-            -d '{}' \
-            https://postfeed.emdatra.org/deploy.php
+          SIGNATURE="sha256=$(echo -n '{}' | openssl dgst -sha256 -hmac 'postfeed_deploy_2026' | awk '{print $NF}')"
+          MAX_RETRIES=4
+          RETRY=0
+          DELAY=2
+
+          while [ $RETRY -lt $MAX_RETRIES ]; do
+            HTTP_CODE=$(curl -sS -o /tmp/deploy_response.txt -w '%{http_code}' \
+              --connect-timeout 15 --max-time 60 \
+              -X POST \
+              -H "Content-Type: application/json" \
+              -H "X-Hub-Signature-256: $SIGNATURE" \
+              -d '{}' \
+              https://postfeed.emdatra.org/deploy.php 2>/tmp/deploy_error.txt) || true
+
+            echo "Attempt $((RETRY+1)): HTTP $HTTP_CODE"
+
+            if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "202" ]; then
+              echo "Deploy triggered successfully."
+              cat /tmp/deploy_response.txt
+              exit 0
+            fi
+
+            RETRY=$((RETRY+1))
+            if [ $RETRY -lt $MAX_RETRIES ]; then
+              echo "Retrying in ${DELAY}s..."
+              sleep $DELAY
+              DELAY=$((DELAY*2))
+            fi
+          done
+
+          echo "Deploy failed after $MAX_RETRIES attempts."
+          echo "Last response:" && cat /tmp/deploy_response.txt 2>/dev/null
+          echo "Last error:" && cat /tmp/deploy_error.txt 2>/dev/null
+          exit 1
