@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو — IndexNow protocol client.
+ * نيوز فيد — IndexNow protocol client.
  *
  * IndexNow lets search engines (Bing, Yandex, Seznam, Naver) index a
  * URL within minutes of publication instead of waiting for the next

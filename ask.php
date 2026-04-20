@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو - اسأل الأخبار (AI Q&A page)
+ * نيوز فيد - اسأل الأخبار (AI Q&A page)
  * =====================================
  * Lets a reader type a natural-language question and get a grounded
  * answer that only cites articles from our own archive. All the
@@ -23,7 +23,7 @@ $viewerId  = $viewer ? (int)$viewer['id'] : 0;
 $pageTheme = current_theme();
 
 $pageUrl  = SITE_URL . '/ask';
-$metaDesc = 'اسأل نيوزفلو — مساعد ذكي يجيب على أسئلتك عن آخر الأخبار بالاستشهاد من أرشيف الموقع الرسمي.';
+$metaDesc = 'اسأل نيوز فيد — مساعد ذكي يجيب على أسئلتك عن آخر الأخبار بالاستشهاد من أرشيف الموقع الرسمي.';
 
 // Pre-seeded suggestions shown above the input. Clicking one fires a
 // full question — they're intentionally broad so they work on any day.
@@ -395,7 +395,7 @@ include __DIR__ . '/includes/components/site_header.php';
     <span class="ask-beta">🧪 تجريبي</span>
     <h1>🤖 اسأل الأخبار</h1>
     <p>
-      اكتب سؤالك بالعربية وسيجيبك المساعد بناءً على آخر المقالات المنشورة على نيوزفلو فقط —
+      اكتب سؤالك بالعربية وسيجيبك المساعد بناءً على آخر المقالات المنشورة على نيوز فيد فقط —
       بدون اختراع معلومات، ومع الاستشهاد بالمصادر.
     </p>
 
@@ -413,13 +413,13 @@ include __DIR__ . '/includes/components/site_header.php';
 
   <div class="ask-loading" id="askLoading">
     <div class="ask-loading-dots"><span></span><span></span><span></span></div>
-    <div style="font-size:14px;color:var(--text-muted,#64748b);">يبحث المساعد في أرشيف نيوزفلو…</div>
+    <div style="font-size:14px;color:var(--text-muted,#64748b);">يبحث المساعد في أرشيف نيوز فيد…</div>
   </div>
 
   <div class="ask-error" id="askError"></div>
 
   <article class="ask-result" id="askResult">
-    <div class="ask-result-head">إجابة نيوزفلو</div>
+    <div class="ask-result-head">إجابة نيوز فيد</div>
     <h2 class="ask-question" id="askQuestionOut"></h2>
     <div class="ask-answer" id="askAnswerOut"></div>
 

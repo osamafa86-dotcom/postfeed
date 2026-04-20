@@ -1,5 +1,5 @@
 -- =============================================
--- نيوزفلو - قاعدة البيانات
+-- نيوز فيد - قاعدة البيانات
 -- NewsFlow Database Schema
 -- =============================================
 
@@ -303,7 +303,7 @@ CREATE TABLE IF NOT EXISTS `settings` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO `settings` (`setting_key`, `setting_value`) VALUES
-('site_name', 'نيوزفلو'),
+('site_name', 'نيوز فيد'),
 ('site_tagline', 'مجمع المصادر الإخبارية'),
 ('site_currency_usd', '0.71 JD'),
 ('site_currency_eur', '0.78 JD'),

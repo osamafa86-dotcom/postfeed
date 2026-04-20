@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو — صفحة موجز الصباح (Morning Briefing page)
+ * نيوز فيد — صفحة موجز الصباح (Morning Briefing page)
  *
  * URL: /sabah           → latest briefing
  *      /sabah/2026-04-12 → specific date
@@ -31,7 +31,7 @@ $archive = sabah_list(14);
 
 $headline = $briefing ? (string)$briefing['headline'] : 'موجز الصباح';
 $pageUrl  = SITE_URL . '/sabah' . ($requestDate ? '/' . $requestDate : '');
-$metaDesc = $briefing ? mb_substr((string)$briefing['hook'], 0, 160) : 'موجز الصباح اليومي من نيوزفلو — أبرز ما حدث في العالم العربي بأسلوب صباحي.';
+$metaDesc = $briefing ? mb_substr((string)$briefing['hook'], 0, 160) : 'موجز الصباح اليومي من نيوز فيد — أبرز ما حدث في العالم العربي بأسلوب صباحي.';
 
 // Format date in Arabic.
 $dateAr = '';

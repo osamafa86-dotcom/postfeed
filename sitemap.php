@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو — Main XML sitemap (articles + category hubs).
+ * نيوز فيد — Main XML sitemap (articles + category hubs).
  *
  * News articles with a <48h publish window also appear in the
  * companion /sitemap-news.php — that one uses the

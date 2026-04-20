@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو — Image proxy / resizer
+ * نيوز فيد — Image proxy / resizer
  * URL: /api/img.php?url=ENCODED_URL&w=400&q=75
  *
  * Downloads external images, resizes them using GD, caches locally,

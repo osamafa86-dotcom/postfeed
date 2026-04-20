@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو - إدارة الريلز والمصادر
+ * نيوز فيد - إدارة الريلز والمصادر
  */
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/functions.php';
@@ -148,7 +148,7 @@ if ($tab === 'sources') {
 // Always load active sources for dropdowns
 $activeSources = $db->query("SELECT id, username, display_name FROM reels_sources WHERE is_active = 1 ORDER BY display_name")->fetchAll();
 
-$pageTitle = 'إدارة الريلز - نيوزفلو';
+$pageTitle = 'إدارة الريلز - نيوز فيد';
 $activePage = 'reels';
 include __DIR__ . '/includes/panel_layout_head.php';
 ?>

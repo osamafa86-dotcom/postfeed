@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو - إدارة الأخبار
+ * نيوز فيد - إدارة الأخبار
  */
 
 require_once __DIR__ . '/../includes/config.php';
@@ -124,7 +124,7 @@ $articlesList = $articles->fetchAll();
 $totalArticles = $db->query("SELECT COUNT(*) FROM articles")->fetchColumn();
 $totalPages = ceil($totalArticles / $perPage);
 
-$pageTitle = ($action === 'add' ? 'إضافة خبر' : ($action === 'edit' ? 'تعديل خبر' : 'إدارة الأخبار')) . ' - نيوزفلو';
+$pageTitle = ($action === 'add' ? 'إضافة خبر' : ($action === 'edit' ? 'تعديل خبر' : 'إدارة الأخبار')) . ' - نيوز فيد';
 $activePage = 'articles';
 include __DIR__ . '/includes/panel_layout_head.php';
 ?>

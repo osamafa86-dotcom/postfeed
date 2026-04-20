@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو — معرض "المشهد اليومي" (Picture of the Day)
+ * نيوز فيد — معرض "المشهد اليومي" (Picture of the Day)
  *
  * Guardian-inspired daily photo gallery. Picks the best images from
  * the last 24 hours of ingested articles, ranked by cluster source

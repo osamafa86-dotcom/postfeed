@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو - الدوال المساعدة
+ * نيوز فيد - الدوال المساعدة
  */
 
 require_once __DIR__ . '/config.php';
@@ -318,7 +318,7 @@ function placeholderImage(int $w = 800, int $h = 500): string {
          . '<stop offset="0" stop-color="#1e293b"/><stop offset="1" stop-color="#334155"/>'
          . '</linearGradient></defs>'
          . '<rect width="100%" height="100%" fill="url(#g)"/>'
-         . '<text x="50%" y="50%" fill="#94a3b8" font-family="Tajawal,sans-serif" font-size="' . (int)($w/14) . '" text-anchor="middle" dominant-baseline="middle">نيوزفلو</text>'
+         . '<text x="50%" y="50%" fill="#94a3b8" font-family="Tajawal,sans-serif" font-size="' . (int)($w/14) . '" text-anchor="middle" dominant-baseline="middle">نيوز فيد</text>'
          . '</svg>';
     return $cache[$key] = 'data:image/svg+xml;utf8,' . rawurlencode($svg);
 }

@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو - TTS streaming endpoint
+ * نيوز فيد - TTS streaming endpoint
  * =================================
  * GET /api/tts.php?id=N
  *

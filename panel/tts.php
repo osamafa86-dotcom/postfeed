@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو - TTS settings (cloud text-to-speech)
+ * نيوز فيد - TTS settings (cloud text-to-speech)
  * ==============================================
  * Lets admins:
  *   - turn cloud TTS on/off (off = browser Web Speech fallback)
@@ -71,13 +71,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['test_generate'])) {
     } else {
         $sample = trim((string)($_POST['test_text'] ?? ''));
         if ($sample === '') {
-            $sample = 'مرحباً، هذه تجربة صوتية لنظام نيوزفلو. الخبر التالي من آخر التحديثات.';
+            $sample = 'مرحباً، هذه تجربة صوتية لنظام نيوز فيد. الخبر التالي من آخر التحديثات.';
         }
         // Fake article shape so tts_build_text + tts_get_or_generate
         // work without changes. We use ai_summary as the body so
         // tts_build_text picks it up directly.
         $fakeArticle = [
-            'title'      => 'اختبار صوت نيوزفلو',
+            'title'      => 'اختبار صوت نيوز فيد',
             'ai_summary' => $sample,
         ];
         try {
@@ -120,7 +120,7 @@ $vals = [
 $stats = tts_cache_stats();
 $mbCached = $stats['bytes'] > 0 ? number_format($stats['bytes'] / 1048576, 2) : '0.00';
 
-$pageTitle  = 'الصوت والقراءة - نيوزفلو';
+$pageTitle  = 'الصوت والقراءة - نيوز فيد';
 $activePage = 'tts';
 include __DIR__ . '/includes/panel_layout_head.php';
 ?>
@@ -257,7 +257,7 @@ include __DIR__ . '/includes/panel_layout_head.php';
       <input type="hidden" name="test_generate" value="1">
       <div class="form-group">
         <label>نص التجربة</label>
-        <textarea name="test_text" class="form-control" rows="3" placeholder="مرحباً، هذه تجربة صوتية لنظام نيوزفلو."></textarea>
+        <textarea name="test_text" class="form-control" rows="3" placeholder="مرحباً، هذه تجربة صوتية لنظام نيوز فيد."></textarea>
         <small style="color:var(--text-muted);font-size:11px;">
           اترك الحقل فارغاً للاستماع إلى جملة افتراضية. هذا المقطع يُحفظ في الذاكرة المؤقتة لتفادي التكلفة المزدوجة.
         </small>

@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو - صفحة الريلز
+ * نيوز فيد - صفحة الريلز
  */
 require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/functions.php';

@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو — استخراج كيانات واقتباسات القصص المتطوّرة
+ * نيوز فيد — استخراج كيانات واقتباسات القصص المتطوّرة
  * (Phase 2: entity + quote extraction nightly cron)
  *
  * For every active evolving story, walk the articles that haven't been

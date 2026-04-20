@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو — لوحة الإدارة: إدارة القصص المتطوّرة
+ * نيوز فيد — لوحة الإدارة: إدارة القصص المتطوّرة
  *
  * CRUD interface for admin-defined "evolving stories". Unlike the
  * cluster-based auto timelines, these are persistent topics that the
@@ -207,7 +207,7 @@ if ($action === 'edit' && $story) {
 // Listing
 $stories = evolving_stories_list(false);
 
-$pageTitle = ($action === 'add' ? 'إضافة قصة متطوّرة' : ($action === 'edit' ? 'تعديل قصة' : 'القصص المتطوّرة')) . ' - نيوزفلو';
+$pageTitle = ($action === 'add' ? 'إضافة قصة متطوّرة' : ($action === 'edit' ? 'تعديل قصة' : 'القصص المتطوّرة')) . ' - نيوز فيد';
 $activePage = 'evolving_stories';
 include __DIR__ . '/includes/panel_layout_head.php';
 ?>

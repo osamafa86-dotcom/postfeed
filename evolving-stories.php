@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو — فهرس القصص المتطوّرة المُعرَّفة من الإدارة
+ * نيوز فيد — فهرس القصص المتطوّرة المُعرَّفة من الإدارة
  *
  * The public discovery page for admin-curated persistent stories
  * (أخبار الأقصى، أخبار الأسرى، غزة، الضفة، الاستيطان…).
@@ -31,16 +31,16 @@ $stories = cache_remember('evolving_stories_index_v1', 180, function() {
 $totalArticles = 0;
 foreach ($stories as $s) $totalArticles += (int)$s['article_count'];
 
-$metaDesc = 'القصص المتطوّرة على نيوزفلو — متابعة متواصلة لأبرز القضايا المركزية مع تغطية من مصادر متعددة.';
+$metaDesc = 'القصص المتطوّرة على نيوز فيد — متابعة متواصلة لأبرز القضايا المركزية مع تغطية من مصادر متعددة.';
 ?><!DOCTYPE html>
 <html lang="ar" dir="rtl" data-theme="<?php echo e($pageTheme); ?>">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <base href="/">
-<title>القصص المتطوّرة — متابعة دائمة · نيوزفلو</title>
+<title>القصص المتطوّرة — متابعة دائمة · نيوز فيد</title>
 <meta name="description" content="<?php echo e($metaDesc); ?>">
-<meta property="og:title" content="القصص المتطوّرة — نيوزفلو">
+<meta property="og:title" content="القصص المتطوّرة — نيوز فيد">
 <meta property="og:description" content="<?php echo e($metaDesc); ?>">
 <meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -228,7 +228,7 @@ include __DIR__ . '/includes/components/site_header.php';
     <span class="es-eyebrow"><span class="live-dot"></span> متابعة دائمة ومتواصلة</span>
     <h1 class="es-title">📅 القصص المتطوّرة</h1>
     <p class="es-lede">
-      قضايا مركزية تُتابعها نيوزفلو على مدار الساعة — يجمع النظام كل خبر جديد حولها
+      قضايا مركزية تُتابعها نيوز فيد على مدار الساعة — يجمع النظام كل خبر جديد حولها
       من مصادر متعددة ويعيد ترتيبه في صفحة واحدة، لتحصل على الصورة الكاملة دون
       مطاردة عشرات الروابط.
     </p>

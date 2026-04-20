@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو — طبقة تجريد لمزوّدي الذكاء الاصطناعي
+ * نيوز فيد — طبقة تجريد لمزوّدي الذكاء الاصطناعي
  * (Unified AI provider — Anthropic Claude / Google Gemini)
  *
  * Every AI call in the app used to hit api.anthropic.com directly,

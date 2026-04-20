@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو - إدارة الشريط الإخباري
+ * نيوز فيد - إدارة الشريط الإخباري
  */
 
 require_once __DIR__ . '/../includes/config.php';
@@ -83,7 +83,7 @@ if (in_array($action, ['edit', 'delete']) && isset($_GET['id'])) {
 
 $tickers = $db->query("SELECT * FROM ticker_items ORDER BY sort_order, created_at DESC")->fetchAll();
 
-$pageTitle = ($action === 'add' ? 'إضافة عنصر' : ($action === 'edit' ? 'تعديل عنصر' : 'الشريط الإخباري')) . ' - نيوزفلو';
+$pageTitle = ($action === 'add' ? 'إضافة عنصر' : ($action === 'edit' ? 'تعديل عنصر' : 'الشريط الإخباري')) . ' - نيوز فيد';
 $activePage = 'ticker';
 include __DIR__ . '/includes/panel_layout_head.php';
 ?>

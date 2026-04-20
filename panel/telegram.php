@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو - مصادر تيليغرام للأخبار العاجلة
+ * نيوز فيد - مصادر تيليغرام للأخبار العاجلة
  */
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/functions.php';
@@ -92,7 +92,7 @@ if ($action === 'edit' && isset($_GET['id'])) {
 $sourcesList = $db->query("SELECT s.*, (SELECT COUNT(*) FROM telegram_messages WHERE source_id = s.id) as msg_count FROM telegram_sources s ORDER BY s.sort_order ASC, s.display_name")->fetchAll();
 $recentMsgs = $db->query("SELECT m.*, s.display_name, s.username FROM telegram_messages m JOIN telegram_sources s ON m.source_id = s.id ORDER BY m.posted_at DESC LIMIT 20")->fetchAll();
 
-$pageTitle = 'مصادر تيليغرام - نيوزفلو';
+$pageTitle = 'مصادر تيليغرام - نيوز فيد';
 $activePage = 'telegram';
 include __DIR__ . '/includes/panel_layout_head.php';
 ?>

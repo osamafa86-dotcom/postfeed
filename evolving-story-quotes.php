@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو — جدار الاقتباسات لقصة متطوّرة
+ * نيوز فيد — جدار الاقتباسات لقصة متطوّرة
  * (Evolving Stories Phase 2 #6 — Quote Wall)
  *
  * Public reader page for the full archive of direct quotes pulled out

@@ -11,7 +11,7 @@ $followedSrcIds = user_followed_source_ids($userId);
 ?>
 <div class="dash-topbar">
   <div>
-    <h1>👋 أهلاً بك في نيوزفلو</h1>
+    <h1>👋 أهلاً بك في نيوز فيد</h1>
     <p style="color:var(--muted); font-size:13px; margin-top:4px;">اختر اهتماماتك لنبني لك خلاصة أخبار مخصّصة</p>
   </div>
 </div>

@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو — توليد موجز الصباح (Morning Briefing cron)
+ * نيوز فيد — توليد موجز الصباح (Morning Briefing cron)
  *
  * Recommended schedule: once daily at 05:30 Cairo time.
  *   30 5 * * * curl -fsS "https://postfeed.emdatra.org/cron_sabah.php?key=XXX" > /dev/null 2>&1

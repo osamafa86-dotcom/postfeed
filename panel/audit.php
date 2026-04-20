@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو - سجل التدقيق (Audit Log)
+ * نيوز فيد - سجل التدقيق (Audit Log)
  */
 
 require_once __DIR__ . '/../includes/config.php';
@@ -47,7 +47,7 @@ try {
 
 $pages = max(1, (int)ceil($total / $perPage));
 
-$pageTitle  = 'سجل التدقيق - نيوزفلو';
+$pageTitle  = 'سجل التدقيق - نيوز فيد';
 $activePage = 'audit';
 include __DIR__ . '/includes/panel_layout_head.php';
 ?>

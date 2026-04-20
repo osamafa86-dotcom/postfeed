@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو — نسخة قابلة للطباعة (كتاب) لقصة متطوّرة
+ * نيوز فيد — نسخة قابلة للطباعة (كتاب) لقصة متطوّرة
  * (Evolving Stories Phase 3 #9 — PDF / Book Export)
  *
  * Deliberately does NOT use dompdf/mpdf. On shared hosting without
@@ -300,7 +300,7 @@ $pageTitle   = $story['name'] . ' — كتاب القصة · ' . $siteName;
 
   <!-- ========== COVER ========== -->
   <section class="page cover">
-    <div class="cover-brand">نيوزفلو · <b>Newsflow</b></div>
+    <div class="cover-brand">نيوز فيد · <b>News Feed</b></div>
 
     <div class="cover-main">
       <div class="cover-icon"><?php echo e($story['icon'] ?: '📰'); ?></div>

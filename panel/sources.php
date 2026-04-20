@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو - إدارة المصادر
+ * نيوز فيد - إدارة المصادر
  */
 
 require_once __DIR__ . '/../includes/config.php';
@@ -108,7 +108,7 @@ if (in_array($action, ['edit', 'delete']) && isset($_GET['id'])) {
 
 $sources = $db->query("SELECT * FROM sources ORDER BY name")->fetchAll();
 
-$pageTitle = ($action === 'add' ? 'إضافة مصدر' : ($action === 'edit' ? 'تعديل مصدر' : 'إدارة المصادر')) . ' - نيوزفلو';
+$pageTitle = ($action === 'add' ? 'إضافة مصدر' : ($action === 'edit' ? 'تعديل مصدر' : 'إدارة المصادر')) . ' - نيوز فيد';
 $activePage = 'sources';
 include __DIR__ . '/includes/panel_layout_head.php';
 ?>

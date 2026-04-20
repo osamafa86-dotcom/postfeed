@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو - الإعدادات
+ * نيوز فيد - الإعدادات
  */
 
 require_once __DIR__ . '/../includes/config.php';
@@ -87,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$pageTitle = 'الإعدادات - نيوزفلو';
+$pageTitle = 'الإعدادات - نيوز فيد';
 $activePage = 'settings';
 include __DIR__ . '/includes/panel_layout_head.php';
 ?>

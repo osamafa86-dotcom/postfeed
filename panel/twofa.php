@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو - إعداد المصادقة الثنائية (2FA)
+ * نيوز فيد - إعداد المصادقة الثنائية (2FA)
  */
 
 require_once __DIR__ . '/../includes/config.php';
@@ -81,11 +81,11 @@ $pendingSecret = $_SESSION['2fa_new_secret'] ?? '';
 $qrUri = '';
 $qrImg = '';
 if ($pendingSecret) {
-    $qrUri = totp_provisioning_uri($pendingSecret, $user['email'] ?? 'admin', 'NewsFlow');
+    $qrUri = totp_provisioning_uri($pendingSecret, $user['email'] ?? 'admin', 'News Feed');
     $qrImg = totp_qr_image_url($qrUri, 200);
 }
 
-$pageTitle  = 'المصادقة الثنائية - نيوزفلو';
+$pageTitle  = 'المصادقة الثنائية - نيوز فيد';
 $activePage = 'settings';
 include __DIR__ . '/includes/panel_layout_head.php';
 ?>

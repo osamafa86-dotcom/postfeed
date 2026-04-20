@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو - إدارة الأقسام
+ * نيوز فيد - إدارة الأقسام
  */
 
 require_once __DIR__ . '/../includes/config.php';
@@ -97,7 +97,7 @@ $cssClassColors = [
     'cat-breaking' => '#c0392b',
 ];
 
-$pageTitle = ($action === 'add' ? 'إضافة قسم' : ($action === 'edit' ? 'تعديل قسم' : 'إدارة الأقسام')) . ' - نيوزفلو';
+$pageTitle = ($action === 'add' ? 'إضافة قسم' : ($action === 'edit' ? 'تعديل قسم' : 'إدارة الأقسام')) . ' - نيوز فيد';
 $activePage = 'categories';
 include __DIR__ . '/includes/panel_layout_head.php';
 ?>

@@ -43,7 +43,7 @@ include __DIR__ . '/_auth_shell.php';
 <div class="auth-card">
   <div class="auth-head">
     <div class="auth-logo">N</div>
-    <h1>أنشئ حساب نيوزفلو</h1>
+    <h1>أنشئ حساب نيوز فيد</h1>
     <p>خلاصة أخبار مخصصة لاهتماماتك. مجاني بالكامل.</p>
   </div>
   <?php if ($error): ?><div class="auth-error"><?= e($error) ?></div><?php endif; ?>

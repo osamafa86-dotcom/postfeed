@@ -16,7 +16,7 @@ if (!isset($breakingCount)) {
 }
 $adminName = $_SESSION['admin_name'] ?? 'المدير';
 $activePage = $activePage ?? '';
-$pageTitle  = $pageTitle  ?? 'نيوزفلو';
+$pageTitle  = $pageTitle  ?? 'نيوز فيد';
 
 // Build fingerprint for the admin too — same console banner + meta
 // tag pattern as the public site, so you can confirm a deploy from
@@ -38,7 +38,7 @@ $__nfVer = app_version();
     var v = <?php echo json_encode($__nfVer, JSON_UNESCAPED_SLASHES); ?>;
     var deployed = v.deployed_at ? new Date(v.deployed_at * 1000).toISOString().replace('T', ' ').slice(0, 16) : '?';
     console.log(
-      '%c نيوزفلو — لوحة %c v' + v.full + ' %c ' + deployed + ' UTC ',
+      '%c نيوز فيد — لوحة %c v' + v.full + ' %c ' + deployed + ' UTC ',
       'background:#4a7fcb;color:#fff;padding:2px 8px;border-radius:4px 0 0 4px;font-weight:700',
       'background:#1e3a8a;color:#bfdbfe;padding:2px 8px;font-family:monospace',
       'background:#1f2937;color:#d1d5db;padding:2px 8px;border-radius:0 4px 4px 0;font-family:monospace'
@@ -360,7 +360,7 @@ $__nfVer = app_version();
   <div class="sidebar-logo">
     <div class="logo-icon">📰</div>
     <div class="logo-text">
-      <span>نيوزفلو</span>
+      <span>نيوز فيد</span>
       <span>DASHBOARD</span>
     </div>
   </div>

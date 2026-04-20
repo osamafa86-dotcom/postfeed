@@ -27,7 +27,7 @@ if ($siteUrl === '') {
     $scheme  = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
     $siteUrl = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
 }
-$siteName    = defined('SITE_NAME')    ? SITE_NAME    : 'NewsFlow';
+$siteName    = defined('SITE_NAME')    ? SITE_NAME    : 'News Feed';
 $siteTagline = defined('SITE_TAGLINE') ? SITE_TAGLINE : '';
 
 /** Build an absolute URL from a site-relative path. */

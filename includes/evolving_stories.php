@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو — القصص المتطوّرة المُعرَّفة من الإدارة (Evolving Stories)
+ * نيوز فيد — القصص المتطوّرة المُعرَّفة من الإدارة (Evolving Stories)
  *
  * Unlike the automatic cluster-based "story timelines" (see
  * includes/story_timeline.php), this module powers *persistent*

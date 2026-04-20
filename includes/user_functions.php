@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو - دوال المستخدم (قارئ)
+ * نيوز فيد - دوال المستخدم (قارئ)
  * Helper functions backing the user dashboard, save button, and personalization.
  */
 

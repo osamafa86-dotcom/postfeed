@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو — Shared shell for static info pages.
+ * نيوز فيد — Shared shell for static info pages.
  *
  * About / Privacy / Contact / Editorial / Corrections all share the
  * same layout: a branded header with a link home, a readable content

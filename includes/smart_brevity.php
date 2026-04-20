@@ -1,6 +1,6 @@
 <?php
 /**
- * نيوزفلو — بطاقات الإيجاز الذكي (Smart Brevity)
+ * نيوز فيد — بطاقات الإيجاز الذكي (Smart Brevity)
  *
  * Generates an Axios-style structured breakdown for article clusters:
  *   - لماذا يهم (Why it matters)

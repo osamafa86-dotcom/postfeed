@@ -2,7 +2,7 @@
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 /**
- * نيوزفلو - صفحة تسجيل الدخول للمسؤولين
+ * نيوز فيد - صفحة تسجيل الدخول للمسؤولين
  */
 
 session_start();
@@ -252,7 +252,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
     <div class="login-container">
         <div class="login-header">
-            <h1>نيوزفلو</h1>
+            <h1>نيوز فيد</h1>
             <p>لوحة التحكم</p>
         </div>
 
@@ -322,7 +322,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <div class="login-footer">
-            نيوزفلو &copy; 2026
+            نيوز فيد &copy; 2026
         </div>
     </div>
 </body>
