@@ -31,8 +31,8 @@ require_once __DIR__ . '/includes/functions.php';
 
 const TW_STREAM_MAX_SECS      = 55;
 const TW_DB_POLL_SECS         = 1;
-const TW_SCRAPE_EVERY_SECS    = 20;   // Twitter is ratelimit-sensitive; be less aggressive than tg
-const TW_SCRAPE_COOLDOWN_SECS = 15;
+const TW_SCRAPE_EVERY_SECS    = 12;   // matches telegram_stream cadence
+const TW_SCRAPE_COOLDOWN_SECS = 10;
 const TW_KEEPALIVE_SECS       = 15;
 const TW_RECONNECT_MS         = 2000;
 
