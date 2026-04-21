@@ -51,6 +51,17 @@ if ($action === 'fetch') {
     $action = 'list';
 }
 
+$debugReport = null;
+if ($action === 'debug' && isset($_GET['id'])) {
+    $stmt = $db->prepare("SELECT * FROM youtube_sources WHERE id = ?");
+    $stmt->execute([(int)$_GET['id']]);
+    $dbgSrc = $stmt->fetch();
+    if ($dbgSrc) {
+        $debugReport = yt_debug_fetch_channel($dbgSrc['channel_id']);
+        $debugReport['display_name'] = $dbgSrc['display_name'];
+    }
+}
+
 if ($action === 'resync') {
     // Wipe all fetched video rows and re-pull — useful after upgrading
     // the parser so stale rows with fetch-time timestamps get replaced
@@ -208,6 +219,60 @@ include __DIR__ . '/includes/panel_layout_head.php';
 
   <?php else: ?>
 
+    <?php if ($debugReport): ?>
+      <div class="card" style="margin-bottom:20px;padding:18px;">
+        <h3 style="margin:0 0 10px;font-size:15px;">🩺 تشخيص جلب <code><?php echo e($debugReport['display_name'] ?? ''); ?></code></h3>
+        <p style="color:var(--text-muted);font-size:12.5px;margin:0 0 14px;">
+          بيعرض شو الـ Atom feed بيرجّع وأي حقل تاريخ بالضبط بيوصلنا. اذا كل الـ <code>dates_seen</code> فارغة فـ YouTube غيّر شكل الـ feed. اذا فيها قيم بس <code>posted_at</code> بالـ DB مختلف فالمشكلة بمكان تاني.
+        </p>
+
+        <div style="border:1px solid var(--border,#e0e3e8);border-radius:10px;padding:12px;margin-bottom:12px;background:var(--bg2,#fafafa);">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
+            <strong>HTTP</strong>
+            <span class="badge <?php echo ($debugReport['http']['code']>=200 && $debugReport['http']['code']<300) ? 'badge-success' : 'badge-danger'; ?>">HTTP <?php echo (int)$debugReport['http']['code']; ?></span>
+            <span class="badge badge-muted">حجم <?php echo (int)$debugReport['http']['size']; ?> بايت</span>
+            <span class="badge badge-muted">وقت <?php echo e($debugReport['http']['total_time']); ?>ث</span>
+            <?php if (!empty($debugReport['http']['curl_error'])): ?>
+              <span class="badge badge-danger">curl: <?php echo e($debugReport['http']['curl_error']); ?></span>
+            <?php endif; ?>
+          </div>
+          <code style="display:block;word-break:break-all;background:#fff;padding:6px 8px;border-radius:6px;border:1px solid var(--border,#e0e3e8);font-size:11px;"><?php echo e($debugReport['http']['url']); ?></code>
+        </div>
+
+        <?php if (!empty($debugReport['error'])): ?>
+          <div class="alert alert-danger">❌ <?php echo e($debugReport['error']); ?></div>
+        <?php endif; ?>
+
+        <?php if (!empty($debugReport['entries'])): ?>
+          <h4 style="margin:16px 0 8px;font-size:13px;">أول 5 فيديوهات بحسب الـ feed:</h4>
+          <?php foreach ($debugReport['entries'] as $idx => $ent): ?>
+            <div style="border:1px solid var(--border,#e0e3e8);border-radius:8px;padding:10px;margin-bottom:8px;background:#fff;font-size:12px;">
+              <div style="margin-bottom:6px;"><strong><?php echo (int)$idx + 1; ?>.</strong> <code><?php echo e($ent['video_id']); ?></code> — <?php echo e(mb_substr($ent['title'], 0, 100)); ?></div>
+              <table style="width:100%;font-size:11.5px;">
+                <?php foreach ($ent['dates_seen'] as $k => $v): ?>
+                  <tr>
+                    <td style="padding:3px 6px;color:var(--text-muted);width:180px;"><code><?php echo e($k); ?></code></td>
+                    <td style="padding:3px 6px;<?php echo $v === '' ? 'color:#b91c1c;font-style:italic;' : 'color:#16a34a;font-weight:600;'; ?>">
+                      <?php echo $v === '' ? '(فارغ)' : e($v); ?>
+                    </td>
+                  </tr>
+                <?php endforeach; ?>
+              </table>
+            </div>
+          <?php endforeach; ?>
+        <?php endif; ?>
+
+        <?php if (!empty($debugReport['first_entry_raw'])): ?>
+          <details style="margin-top:12px;">
+            <summary style="cursor:pointer;color:var(--text-muted);font-size:12px;">الـ XML الخام لأول &lt;entry&gt;</summary>
+            <pre style="margin-top:8px;padding:10px;background:#fff;border:1px solid var(--border,#e0e3e8);border-radius:6px;max-height:280px;overflow:auto;font-size:11px;white-space:pre-wrap;"><?php echo e($debugReport['first_entry_raw']); ?></pre>
+          </details>
+        <?php endif; ?>
+
+        <a href="youtube.php" class="btn-outline" style="margin-top:12px;display:inline-block;">↩︎ رجوع</a>
+      </div>
+    <?php endif; ?>
+
     <div class="card" style="margin-bottom:20px;">
       <table>
         <thead>
@@ -234,6 +299,7 @@ include __DIR__ . '/includes/panel_layout_head.php';
               <td><?php echo $s['is_active'] ? '<span class="badge badge-success">نشط</span>' : '<span class="badge badge-muted">معطل</span>'; ?></td>
               <td>
                 <a href="youtube.php?action=edit&id=<?php echo (int)$s['id']; ?>" class="action-btn" title="تعديل">✏️</a>
+                <a href="youtube.php?action=debug&id=<?php echo (int)$s['id']; ?>" class="action-btn" title="تشخيص الجلب">🩺</a>
                 <a href="youtube.php?action=delete&id=<?php echo (int)$s['id']; ?>" class="btn-danger" onclick="return confirm('حذف القناة؟');">🗑️</a>
               </td>
             </tr>
