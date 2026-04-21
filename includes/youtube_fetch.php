@@ -231,6 +231,97 @@ function yt_http_get(string $url): ?string {
 }
 
 /**
+ * Inspect-only fetch — returns what the Atom feed looks like right now
+ * and what our parser extracts from each entry. Used by the admin
+ * "🩺 Debug" action so we can see whether published dates are coming
+ * through (the common failure mode: all videos posted_at = now()).
+ *
+ * No DB writes.
+ */
+function yt_debug_fetch_channel(string $channelId): array {
+    $report = ['channel_id' => $channelId, 'http' => null, 'entries' => [], 'error' => null];
+
+    if (!preg_match('#^UC[A-Za-z0-9_-]{22}$#', $channelId)) {
+        $report['error'] = 'channel_id format invalid';
+        return $report;
+    }
+
+    $url = 'https://www.youtube.com/feeds/videos.xml?channel_id=' . rawurlencode($channelId);
+    $sep = (strpos($url, '?') === false) ? '?' : '&';
+    $url .= $sep . '_cb=' . time();
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT        => 15,
+        CURLOPT_CONNECTTIMEOUT => 8,
+        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        CURLOPT_SSL_VERIFYPEER => false,
+    ]);
+    $body = curl_exec($ch);
+    $info = curl_getinfo($ch);
+    $err  = curl_error($ch);
+    curl_close($ch);
+
+    $report['http'] = [
+        'url'        => $url,
+        'code'       => (int)($info['http_code'] ?? 0),
+        'size'       => is_string($body) ? strlen($body) : 0,
+        'total_time' => round((float)($info['total_time'] ?? 0), 2),
+        'curl_error' => $err ?: null,
+    ];
+    if (!$body) {
+        $report['error'] = 'empty response';
+        return $report;
+    }
+
+    // Snippet of the raw XML around the first <entry> — helps spot if
+    // YouTube swapped <published> for something else.
+    $entryStart = strpos($body, '<entry');
+    if ($entryStart !== false) {
+        $entryEnd = strpos($body, '</entry>', $entryStart);
+        $len = $entryEnd !== false ? ($entryEnd - $entryStart + 8) : 1200;
+        $report['first_entry_raw'] = mb_substr($body, $entryStart, min(1500, $len));
+    }
+
+    libxml_use_internal_errors(true);
+    $feed = simplexml_load_string($body);
+    libxml_clear_errors();
+    if (!$feed || !isset($feed->entry)) {
+        $report['error'] = 'xml parse failed or no entries';
+        return $report;
+    }
+
+    $i = 0;
+    foreach ($feed->entry as $entry) {
+        if ($i >= 5) break; // First 5 entries is plenty to diagnose
+        $ytNs   = $entry->children('http://www.youtube.com/xml/schemas/2015');
+        $atomNs = $entry->children('http://www.w3.org/2005/Atom');
+
+        $videoId = (string)($ytNs->videoId ?? '');
+        $title   = trim((string)($atomNs->title ?? $entry->title ?? ''));
+
+        // Probe every path we might use for the date.
+        $dates = [
+            'atomNs->published'  => (string)($atomNs->published ?? ''),
+            'entry->published'   => (string)($entry->published ?? ''),
+            'atomNs->updated'    => (string)($atomNs->updated ?? ''),
+            'entry->updated'     => (string)($entry->updated ?? ''),
+        ];
+
+        $report['entries'][] = [
+            'video_id'   => $videoId,
+            'title'      => $title,
+            'dates_seen' => $dates,
+        ];
+        $i++;
+    }
+
+    return $report;
+}
+
+/**
  * Fetch the latest videos for every active source and persist the new
  * ones into youtube_videos. Returns the count of newly inserted rows.
  */
