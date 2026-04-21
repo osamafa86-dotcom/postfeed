@@ -1480,7 +1480,7 @@ $__featRest  = array_slice($latestArticles, 7);
 <script src="assets/js/home.min.js?v=m2" defer></script>
 <script src="assets/js/user.min.js?v=m1" defer></script>
 <script src="assets/js/telegram-live.min.js?v=m1" defer></script>
-<script src="assets/js/twitter-live.min.js?v=m1" defer></script>
+<script src="assets/js/twitter-live.min.js?v=m2" defer></script>
 <script>
 // Social feed tabs (Telegram / X) — show one panel at a time while both
 // stay in the DOM so their live-update scripts keep working.

@@ -13,6 +13,7 @@
   'use strict';
 
   var POLL_FALLBACK_MS = 20000;
+  var MAX_ON_PAGE      = 10;   // cap homepage list so it stays the newest 10
 
   var grid = document.querySelector('.tw-breaking');
   if (!grid) return;
@@ -75,6 +76,12 @@
       var node = buildNode(m);
       grid.insertBefore(node, grid.firstChild);
       added++;
+    }
+    // Keep only the newest MAX_ON_PAGE cards — drop the oldest at the
+    // bottom so the homepage section never grows past its intended size.
+    var all = grid.querySelectorAll('.tw-card');
+    for (var j = all.length - 1; j >= MAX_ON_PAGE; j--) {
+      all[j].parentNode && all[j].parentNode.removeChild(all[j]);
     }
     return added;
   }
@@ -183,5 +190,7 @@
     }
   });
 
-  setTimeout(startSSE, 500);
+  // Connect as soon as the page is idle so the first live tweet lands
+  // within a couple of seconds instead of half a second after load.
+  setTimeout(startSSE, 100);
 })();
