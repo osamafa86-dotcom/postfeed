@@ -50,6 +50,16 @@ if ($action === 'fetch') {
     $action = 'list';
 }
 
+$debugReport = null;
+if ($action === 'debug' && isset($_GET['id'])) {
+    $stmt = $db->prepare("SELECT * FROM twitter_sources WHERE id = ?");
+    $stmt->execute([(int)$_GET['id']]);
+    $dbgSrc = $stmt->fetch();
+    if ($dbgSrc) {
+        $debugReport = tw_debug_fetch_source($dbgSrc['username']);
+    }
+}
+
 if ($action === 'delete' && isset($_GET['id'])) {
     $db->prepare("DELETE FROM twitter_sources WHERE id = ?")->execute([(int)$_GET['id']]);
     $success = 'تم حذف المصدر';
@@ -181,6 +191,41 @@ include __DIR__ . '/includes/panel_layout_head.php';
 
   <?php else: ?>
 
+    <?php if ($debugReport): ?>
+      <div class="card" style="margin-bottom:20px;padding:18px;">
+        <h3 style="margin:0 0 10px;font-size:15px;">🩺 تشخيص جلب <code>@<?php echo e($debugReport['username']); ?></code></h3>
+        <p style="color:var(--text-muted);font-size:12.5px;margin:0 0 14px;">
+          بيعرض شو السيرفر شاف فعلاً من كل نقطة جلب. اذا كل الـ HTTP codes 200 بس parsed_count = 0 فهاد يعني Twitter غيّر شكل الـ response، علّمني بالمعطيات هون.
+          اذا HTTP code = 403/429/5xx فالسيرفر محجوب أو معدّل.
+        </p>
+        <?php foreach ($debugReport['transports'] as $t): ?>
+          <div style="border:1px solid var(--border,#e0e3e8);border-radius:10px;padding:12px;margin-bottom:12px;background:var(--bg2,#fafafa);">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
+              <strong><?php echo e($t['label']); ?></strong>
+              <span class="badge <?php echo ($t['http_code']>=200 && $t['http_code']<300) ? 'badge-success' : 'badge-danger'; ?>">HTTP <?php echo (int)$t['http_code']; ?></span>
+              <span class="badge badge-muted">حجم <?php echo (int)$t['size']; ?> بايت</span>
+              <span class="badge badge-muted">وقت <?php echo e($t['total_time']); ?>ث</span>
+              <span class="badge <?php echo (int)$t['parsed_count'] > 0 ? 'badge-success' : 'badge-muted'; ?>">تغريدات مستخلصة: <?php echo (int)$t['parsed_count']; ?></span>
+              <?php if (!empty($t['curl_error'])): ?>
+                <span class="badge badge-danger">curl: <?php echo e($t['curl_error']); ?></span>
+              <?php endif; ?>
+              <?php if (!empty($t['parse_error'])): ?>
+                <span class="badge badge-danger"><?php echo e($t['parse_error']); ?></span>
+              <?php endif; ?>
+            </div>
+            <details style="font-size:12px;">
+              <summary style="cursor:pointer;color:var(--text-muted);">URL + أول 500 حرف من الرد</summary>
+              <div style="margin-top:8px;">
+                <code style="display:block;word-break:break-all;background:#fff;padding:6px 8px;border-radius:6px;border:1px solid var(--border,#e0e3e8);font-size:11px;"><?php echo e($t['url']); ?></code>
+                <pre style="margin-top:8px;padding:10px;background:#fff;border:1px solid var(--border,#e0e3e8);border-radius:6px;max-height:220px;overflow:auto;font-size:11px;white-space:pre-wrap;"><?php echo e((string)($t['body_snippet'] ?? '(empty)')); ?></pre>
+              </div>
+            </details>
+          </div>
+        <?php endforeach; ?>
+        <a href="twitter.php" class="btn-outline" style="margin-top:4px;">↩︎ رجوع</a>
+      </div>
+    <?php endif; ?>
+
     <div class="card" style="margin-bottom:20px;">
       <table>
         <thead>
@@ -202,7 +247,8 @@ include __DIR__ . '/includes/panel_layout_head.php';
               <td style="color:var(--text-muted);font-size:12px;"><?php echo $s['last_fetched_at'] ? date('Y/m/d H:i', strtotime($s['last_fetched_at'])) : '—'; ?></td>
               <td><?php echo $s['is_active'] ? '<span class="badge badge-success">نشط</span>' : '<span class="badge badge-muted">معطل</span>'; ?></td>
               <td>
-                <a href="twitter.php?action=edit&id=<?php echo (int)$s['id']; ?>" class="action-btn">✏️</a>
+                <a href="twitter.php?action=edit&id=<?php echo (int)$s['id']; ?>" class="action-btn" title="تعديل">✏️</a>
+                <a href="twitter.php?action=debug&id=<?php echo (int)$s['id']; ?>" class="action-btn" title="تشخيص الجلب">🩺</a>
                 <a href="twitter.php?action=delete&id=<?php echo (int)$s['id']; ?>" class="btn-danger" onclick="return confirm('حذف الحساب؟');">🗑️</a>
               </td>
             </tr>
