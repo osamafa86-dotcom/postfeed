@@ -623,7 +623,7 @@ include __DIR__ . '/includes/components/site_header.php';
       <?php foreach ($messages as $m): ?>
         <a class="tg-item" href="<?php echo e($m['post_url']); ?>" target="_blank" rel="noopener" data-tg-id="<?php echo (int)$m['id']; ?>">
           <?php if (!empty($m['image_url'])): ?>
-            <div class="tg-item-img"><img src="<?php echo e($m['image_url']); ?>" alt="" loading="lazy" decoding="async"></div>
+            <div class="tg-item-img"><?php echo responsiveImg($m['image_url'], '', '(max-width:600px) 100vw, 400px', [320, 400, 640]); ?></div>
           <?php endif; ?>
           <div class="tg-item-body">
             <div class="tg-item-source">

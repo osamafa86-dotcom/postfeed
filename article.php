@@ -1468,7 +1468,7 @@ if (!empty($article['cat_slug']) && count($relatedArticles) < $relatedLimit) {
                     <?php foreach ($relatedArticles as $related): ?>
                         <a href="<?php echo articleUrl($related); ?>" class="rel-card">
                             <?php if (!empty($related['image_url'])): ?>
-                                <img src="<?php echo e($related['image_url']); ?>" alt="" class="rel-card-img" loading="lazy" decoding="async">
+                                <?php echo responsiveImg($related['image_url'], '', '(max-width:600px) 100vw, 300px', [300, 480], 'rel-card-img'); ?>
                             <?php endif; ?>
                             <div class="rel-card-body">
                                 <?php if (!empty($related['cat_name'])): ?>

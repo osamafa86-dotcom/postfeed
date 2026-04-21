@@ -163,9 +163,7 @@ include __DIR__ . '/includes/components/site_header.php';
     <?php foreach ($photos as $i => $photo): ?>
     <div class="gallery-item">
       <a href="/article/<?php echo (int)$photo['article_id']; ?>/<?php echo e($photo['slug'] ?? ''); ?>">
-        <img src="<?php echo e($photo['image_url']); ?>"
-             alt="<?php echo e($photo['title']); ?>"
-             loading="<?php echo $i < 4 ? 'eager' : 'lazy'; ?>" decoding="async">
+        <?php echo responsiveImg($photo['image_url'], $photo['title'], '(max-width:600px) 50vw, 300px', [300, 480, 640], '', $i < 4 ? 'eager' : 'lazy'); ?>
       </a>
       <?php if ((int)($photo['cluster_size'] ?? 0) >= 3): ?>
         <span class="gallery-item-badge">📰 <?php echo (int)$photo['cluster_size']; ?> مصادر</span>

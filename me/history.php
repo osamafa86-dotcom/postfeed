@@ -24,7 +24,7 @@ $history = user_reading_history($userId, 60);
     <?php foreach ($history as $a): ?>
       <div style="display:flex; gap:12px; padding:12px 0; border-bottom:1px solid var(--border); align-items:center;">
         <?php if (!empty($a['image_url'])): ?>
-          <img src="<?= e($a['image_url']) ?>" alt="" loading="lazy" style="width:80px; height:60px; border-radius:8px; object-fit:cover; flex-shrink:0;">
+          <?= responsiveImg($a['image_url'], '', '80px', [80, 160], '', 'lazy', 'style="width:80px; height:60px; border-radius:8px; object-fit:cover; flex-shrink:0;"') ?>
         <?php endif; ?>
         <div style="flex:1; min-width:0;">
           <a href="../<?= e(articleUrl($a)) ?>" style="font-weight:700; color:var(--text); font-size:14px; display:block;"><?= e($a['title']) ?></a>

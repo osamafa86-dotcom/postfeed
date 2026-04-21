@@ -521,7 +521,7 @@ $__featRest  = array_slice($latestArticles, 7);
           <div class="ps-card">
             <a class="ps-card-link" href="<?php echo articleUrl($article); ?>">
               <div class="img-wrap">
-                <img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async">
+                <?php echo responsiveImg($article['image_url'] ?? placeholderImage(400,300), $article['title'] ?? '', '(max-width:600px) 100vw, 400px', [320, 400, 640]); ?>
                 <div class="img-date"><?php echo timeAgo($article['published_at']); ?></div>
               </div>
               <div class="ps-card-body">
@@ -676,7 +676,7 @@ $__featRest  = array_slice($latestArticles, 7);
       <?php foreach ($breakingNews as $article): ?>
         <a class="bn-card" href="<?php echo articleUrl($article); ?>">
           <div class="bn-thumb">
-            <img src="<?php echo e($article['image_url'] ?? placeholderImage(200,150)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async">
+            <?php echo responsiveImg($article['image_url'] ?? placeholderImage(200,150), $article['title'] ?? '', '200px', [200, 320]); ?>
           </div>
           <div class="bn-body">
             <span class="bn-badge"><span class="bn-dot"></span>عاجل</span>
@@ -714,7 +714,7 @@ $__featRest  = array_slice($latestArticles, 7);
       <?php foreach ($tgMsgs as $m): ?>
         <a href="<?php echo e($m['post_url']); ?>" target="_blank" rel="noopener" class="tg-card" data-tg-id="<?php echo (int)$m['id']; ?>">
           <?php if (!empty($m['image_url'])): ?>
-            <div class="tg-img"><img src="<?php echo e($m['image_url']); ?>" alt="<?php echo e($m['text'] ?? ''); ?>" loading="lazy" decoding="async"></div>
+            <div class="tg-img"><?php echo responsiveImg($m['image_url'], $m['text'] ?? '', '300px', [300, 480]); ?></div>
           <?php endif; ?>
           <div class="tg-body">
             <div class="tg-source">
@@ -738,7 +738,7 @@ $__featRest  = array_slice($latestArticles, 7);
       <?php foreach ($politicalNews as $article): ?>
         <div class="news-card">
           <a class="news-card-link" href="<?php echo articleUrl($article); ?>">
-            <div class="card-img"><img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
+            <div class="card-img"><?php echo responsiveImg($article['image_url'] ?? placeholderImage(400,300), $article['title'] ?? '', '(max-width:600px) 100vw, 400px', [320, 400, 640]); ?></div>
             <div class="card-body">
               <span class="card-cat cat-political">سياسة</span>
               <?php echo renderClusterBadge($article); if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($article); ?>
@@ -764,7 +764,7 @@ $__featRest  = array_slice($latestArticles, 7);
       <?php foreach ($economyNews as $article): ?>
         <div class="news-card">
           <a class="news-card-link" href="<?php echo articleUrl($article); ?>">
-            <div class="card-img"><img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
+            <div class="card-img"><?php echo responsiveImg($article['image_url'] ?? placeholderImage(400,300), $article['title'] ?? '', '(max-width:600px) 100vw, 400px', [320, 400, 640]); ?></div>
             <div class="card-body">
               <span class="card-cat cat-economic">اقتصاد</span>
               <?php echo renderClusterBadge($article); if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($article); ?>
@@ -790,7 +790,7 @@ $__featRest  = array_slice($latestArticles, 7);
       <?php foreach ($sportsNews as $article): ?>
         <div class="news-card">
           <a class="news-card-link" href="<?php echo articleUrl($article); ?>">
-            <div class="card-img"><img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
+            <div class="card-img"><?php echo responsiveImg($article['image_url'] ?? placeholderImage(400,300), $article['title'] ?? '', '(max-width:600px) 100vw, 400px', [320, 400, 640]); ?></div>
             <div class="card-body">
               <span class="card-cat cat-sports">رياضة</span>
               <?php echo renderClusterBadge($article); if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($article); ?>
@@ -816,7 +816,7 @@ $__featRest  = array_slice($latestArticles, 7);
       <?php foreach ($artsNews as $article): ?>
         <div class="news-card">
           <a class="news-card-link" href="<?php echo articleUrl($article); ?>">
-            <div class="card-img"><img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
+            <div class="card-img"><?php echo responsiveImg($article['image_url'] ?? placeholderImage(400,300), $article['title'] ?? '', '(max-width:600px) 100vw, 400px', [320, 400, 640]); ?></div>
             <div class="card-body">
               <span class="card-cat cat-arts">فنون</span>
               <?php echo renderClusterBadge($article); if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($article); ?>
@@ -842,7 +842,7 @@ $__featRest  = array_slice($latestArticles, 7);
       <?php foreach ($reportsNews as $article): ?>
         <div class="news-card">
           <a class="news-card-link" href="<?php echo articleUrl($article); ?>">
-            <div class="card-img"><img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
+            <div class="card-img"><?php echo responsiveImg($article['image_url'] ?? placeholderImage(400,300), $article['title'] ?? '', '(max-width:600px) 100vw, 400px', [320, 400, 640]); ?></div>
             <div class="card-body">
               <span class="card-cat cat-reports">تقرير</span>
               <?php echo renderClusterBadge($article); if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($article); ?>
@@ -948,7 +948,7 @@ $__featRest  = array_slice($latestArticles, 7);
               </div>
             </div>
             <?php if (!empty($article['image_url'])): ?>
-              <div class="mr2-thumb"><img src="<?php echo e($article['image_url']); ?>" alt="" loading="lazy" decoding="async"></div>
+              <div class="mr2-thumb"><?php echo responsiveImg($article['image_url'], '', '120px', [120, 200]); ?></div>
             <?php else: ?>
               <div class="mr2-thumb mr2-thumb-ph"></div>
             <?php endif; ?>
@@ -1002,7 +1002,7 @@ $__featRest  = array_slice($latestArticles, 7);
               </div>
             </div>
             <?php if (!empty($__t['image_url'])): ?>
-              <div class="mr2-thumb"><img src="<?php echo e($__t['image_url']); ?>" alt="" loading="lazy" decoding="async"></div>
+              <div class="mr2-thumb"><?php echo responsiveImg($__t['image_url'], '', '120px', [120, 200]); ?></div>
             <?php else: ?>
               <div class="mr2-thumb mr2-thumb-trend">⚡</div>
             <?php endif; ?>

@@ -352,7 +352,7 @@ include __DIR__ . '/includes/components/site_header.php';
         <a class="news-card" href="<?php echo articleUrl($article); ?>">
           <button type="button" class="nf-bookmark-btn <?php echo $__ss ? 'saved' : ''; ?>" title="<?php echo $__ss ? 'إزالة من المحفوظات' : 'حفظ'; ?>" data-save-id="<?php echo $__sid; ?>" onclick="event.preventDefault(); event.stopPropagation(); NF.toggleSave(this)">🔖</button>
           <div class="card-img">
-            <img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title']); ?>" loading="lazy" decoding="async">
+            <?php echo responsiveImg($article['image_url'] ?? placeholderImage(400,300), $article['title'], '(max-width:600px) 100vw, 400px', [320, 400, 640]); ?>
           </div>
           <div class="card-body">
             <span class="card-cat <?php echo e($article['css_class'] ?? $pageCss); ?>"><?php echo e($article['cat_name'] ?? $pageTitle); ?></span>
