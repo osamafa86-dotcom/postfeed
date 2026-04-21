@@ -693,82 +693,90 @@ $__featRest  = array_slice($latestArticles, 7);
     </div>
 
     <?php
-    // Telegram breaking messages — read only (sync moved to cron_telegram.php)
+    // Breaking social feed — Telegram + Twitter/X in one tabbed section.
+    // Both lists stay in the DOM (the inactive one is just hidden) so the
+    // live-update scripts (telegram-live.js / twitter-live.js) keep
+    // prepending new rows even while their tab isn't visible.
     $tgMsgs = [];
-    try {
-        $tgDb = getDB();
-        $tgMsgs = $tgDb->query("SELECT m.*, s.display_name, s.username, s.avatar_url FROM telegram_messages m JOIN telegram_sources s ON m.source_id = s.id WHERE m.is_active=1 AND s.is_active=1 ORDER BY m.posted_at DESC LIMIT 8")->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Exception $e) { error_log('tg read: ' . $e->getMessage()); }
-    ?>
-    <?php if (!empty($tgMsgs)): ?>
-    <!-- TELEGRAM BREAKING NEWS -->
-    <div class="section-header">
-      <div class="section-title"><div class="line" style="background:#229ED9"></div>📢 أخبار من تيليغرام</div>
-      <a class="see-all" href="telegram.php">عرض الكل ›</a>
-    </div>
-    <?php
-    $tgLatestId = 0;
-    foreach ($tgMsgs as $__m) { if ((int)$__m['id'] > $tgLatestId) $tgLatestId = (int)$__m['id']; }
-    ?>
-    <div class="tg-breaking" style="margin-bottom:28px" data-latest-id="<?php echo (int)$tgLatestId; ?>" data-page="1">
-      <?php foreach ($tgMsgs as $m): ?>
-        <a href="<?php echo e($m['post_url']); ?>" target="_blank" rel="noopener" class="tg-card" data-tg-id="<?php echo (int)$m['id']; ?>">
-          <?php if (!empty($m['image_url'])): ?>
-            <div class="tg-img"><img src="<?php echo e($m['image_url']); ?>" alt="<?php echo e($m['text'] ?? ''); ?>" loading="lazy" decoding="async"></div>
-          <?php endif; ?>
-          <div class="tg-body">
-            <div class="tg-source">
-              <span class="tg-badge">📢 تيليغرام</span>
-              <strong>@<?php echo e($m['username']); ?></strong>
-              <span class="tg-time"><?php echo timeAgo($m['posted_at']); ?></span>
-            </div>
-            <div class="tg-text"><?php echo nl2br(e(mb_substr($m['text'], 0, 280))); ?><?php echo mb_strlen($m['text'])>280?'...':''; ?></div>
-          </div>
-        </a>
-      <?php endforeach; ?>
-    </div>
-    <?php endif; ?>
-
-    <?php
-    // Twitter/X breaking tweets — read only (sync moved to cron_twitter.php).
-    // Mirrors the Telegram section structure so the shared live-update JS
-    // can target .tw-breaking the same way it targets .tg-breaking.
     $twMsgs = [];
     try {
-        $twDb = getDB();
-        $twMsgs = $twDb->query("SELECT m.*, s.display_name, s.username, s.avatar_url
-                                FROM twitter_messages m
-                                JOIN twitter_sources s ON m.source_id = s.id
-                                WHERE m.is_active=1 AND s.is_active=1
-                                ORDER BY m.posted_at DESC LIMIT 8")->fetchAll(PDO::FETCH_ASSOC);
+        $socialDb = getDB();
+        $tgMsgs = $socialDb->query("SELECT m.*, s.display_name, s.username, s.avatar_url FROM telegram_messages m JOIN telegram_sources s ON m.source_id = s.id WHERE m.is_active=1 AND s.is_active=1 ORDER BY m.posted_at DESC LIMIT 8")->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) { error_log('tg read: ' . $e->getMessage()); }
+    try {
+        $socialDb = $socialDb ?? getDB();
+        $twMsgs = $socialDb->query("SELECT m.*, s.display_name, s.username, s.avatar_url FROM twitter_messages m JOIN twitter_sources s ON m.source_id = s.id WHERE m.is_active=1 AND s.is_active=1 ORDER BY m.posted_at DESC LIMIT 8")->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) { error_log('tw read: ' . $e->getMessage()); }
-    ?>
-    <?php if (!empty($twMsgs)): ?>
-    <!-- TWITTER / X BREAKING -->
-    <div class="section-header">
-      <div class="section-title"><div class="line" style="background:#1DA1F2"></div>🐦 آخر التغريدات من X</div>
-      <a class="see-all" href="panel/twitter.php">إدارة ›</a>
-    </div>
-    <?php
+
+    $tgLatestId = 0;
+    foreach ($tgMsgs as $__m) { if ((int)$__m['id'] > $tgLatestId) $tgLatestId = (int)$__m['id']; }
     $twLatestId = 0;
     foreach ($twMsgs as $__m) { if ((int)$__m['id'] > $twLatestId) $twLatestId = (int)$__m['id']; }
+
+    // Prefer Telegram as the default tab, but fall back to Twitter if
+    // Telegram has no messages yet (fresh install, no sources, etc.).
+    $activeFeed = !empty($tgMsgs) ? 'telegram' : (!empty($twMsgs) ? 'twitter' : null);
     ?>
-    <div class="tw-breaking" style="margin-bottom:28px" data-latest-id="<?php echo (int)$twLatestId; ?>" data-page="1">
-      <?php foreach ($twMsgs as $m): ?>
-        <a href="<?php echo e($m['post_url']); ?>" target="_blank" rel="noopener" class="tw-card" data-tw-id="<?php echo (int)$m['id']; ?>">
-          <?php if (!empty($m['image_url'])): ?>
-            <div class="tw-img"><img src="<?php echo e($m['image_url']); ?>" alt="<?php echo e($m['text'] ?? ''); ?>" loading="lazy" decoding="async"></div>
+    <?php if ($activeFeed !== null): ?>
+    <!-- SOCIAL BREAKING (Telegram + Twitter tabs) -->
+    <div class="feed-tabs-wrap" data-active="<?php echo $activeFeed; ?>" style="margin-bottom:28px">
+      <div class="section-header feed-tabs-header">
+        <div class="feed-tabs" role="tablist">
+          <?php if (!empty($tgMsgs)): ?>
+            <button type="button" class="feed-tab<?php echo $activeFeed==='telegram'?' active':''; ?>" data-tab="telegram" role="tab" aria-selected="<?php echo $activeFeed==='telegram'?'true':'false'; ?>">
+              <span class="feed-tab-ico">📢</span>
+              <span>أخبار تيليغرام</span>
+            </button>
           <?php endif; ?>
-          <div class="tw-body">
-            <div class="tw-source">
-              <span class="tw-badge">🐦 X</span>
-              <strong>@<?php echo e($m['username']); ?></strong>
-              <span class="tw-time"><?php echo timeAgo($m['posted_at']); ?></span>
+          <?php if (!empty($twMsgs)): ?>
+            <button type="button" class="feed-tab<?php echo $activeFeed==='twitter'?' active':''; ?>" data-tab="twitter" role="tab" aria-selected="<?php echo $activeFeed==='twitter'?'true':'false'; ?>">
+              <span class="feed-tab-ico">🐦</span>
+              <span>أخبار تويتر / X</span>
+            </button>
+          <?php endif; ?>
+        </div>
+        <a class="see-all" href="telegram.php" data-see-all<?php echo $activeFeed!=='telegram'?' hidden':''; ?>>عرض الكل ›</a>
+      </div>
+
+      <?php if (!empty($tgMsgs)): ?>
+      <div class="tg-breaking feed-panel" data-feed-panel="telegram" data-latest-id="<?php echo (int)$tgLatestId; ?>" data-page="1"<?php echo $activeFeed!=='telegram'?' hidden':''; ?>>
+        <?php foreach ($tgMsgs as $m): ?>
+          <a href="<?php echo e($m['post_url']); ?>" target="_blank" rel="noopener" class="tg-card" data-tg-id="<?php echo (int)$m['id']; ?>">
+            <?php if (!empty($m['image_url'])): ?>
+              <div class="tg-img"><img src="<?php echo e($m['image_url']); ?>" alt="<?php echo e($m['text'] ?? ''); ?>" loading="lazy" decoding="async"></div>
+            <?php endif; ?>
+            <div class="tg-body">
+              <div class="tg-source">
+                <span class="tg-badge">📢 تيليغرام</span>
+                <strong>@<?php echo e($m['username']); ?></strong>
+                <span class="tg-time"><?php echo timeAgo($m['posted_at']); ?></span>
+              </div>
+              <div class="tg-text"><?php echo nl2br(e(mb_substr($m['text'], 0, 280))); ?><?php echo mb_strlen($m['text'])>280?'...':''; ?></div>
             </div>
-            <div class="tw-text"><?php echo nl2br(e(mb_substr($m['text'] ?? '', 0, 280))); ?><?php echo mb_strlen($m['text'] ?? '')>280?'...':''; ?></div>
-          </div>
-        </a>
-      <?php endforeach; ?>
+          </a>
+        <?php endforeach; ?>
+      </div>
+      <?php endif; ?>
+
+      <?php if (!empty($twMsgs)): ?>
+      <div class="tw-breaking feed-panel" data-feed-panel="twitter" data-latest-id="<?php echo (int)$twLatestId; ?>" data-page="1"<?php echo $activeFeed!=='twitter'?' hidden':''; ?>>
+        <?php foreach ($twMsgs as $m): ?>
+          <a href="<?php echo e($m['post_url']); ?>" target="_blank" rel="noopener" class="tw-card" data-tw-id="<?php echo (int)$m['id']; ?>">
+            <?php if (!empty($m['image_url'])): ?>
+              <div class="tw-img"><img src="<?php echo e($m['image_url']); ?>" alt="<?php echo e($m['text'] ?? ''); ?>" loading="lazy" decoding="async"></div>
+            <?php endif; ?>
+            <div class="tw-body">
+              <div class="tw-source">
+                <span class="tw-badge">🐦 X</span>
+                <strong>@<?php echo e($m['username']); ?></strong>
+                <span class="tw-time"><?php echo timeAgo($m['posted_at']); ?></span>
+              </div>
+              <div class="tw-text"><?php echo nl2br(e(mb_substr($m['text'] ?? '', 0, 280))); ?><?php echo mb_strlen($m['text'] ?? '')>280?'...':''; ?></div>
+            </div>
+          </a>
+        <?php endforeach; ?>
+      </div>
+      <?php endif; ?>
     </div>
     <?php endif; ?>
 
@@ -1469,6 +1477,38 @@ $__featRest  = array_slice($latestArticles, 7);
 <script src="assets/js/user.min.js?v=m1" defer></script>
 <script src="assets/js/telegram-live.min.js?v=m1" defer></script>
 <script src="assets/js/twitter-live.min.js?v=m1" defer></script>
+<script>
+// Social feed tabs (Telegram / X) — show one panel at a time while both
+// stay in the DOM so their live-update scripts keep working.
+(function(){
+  var wrap = document.querySelector('.feed-tabs-wrap');
+  if (!wrap) return;
+  var tabs   = wrap.querySelectorAll('.feed-tab');
+  var panels = wrap.querySelectorAll('[data-feed-panel]');
+  var seeAll = wrap.querySelector('[data-see-all]');
+  var links  = { telegram: 'telegram.php', twitter: null };
+  function activate(name) {
+    tabs.forEach(function(t){
+      var on = t.dataset.tab === name;
+      t.classList.toggle('active', on);
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    panels.forEach(function(p){
+      if (p.dataset.feedPanel === name) p.removeAttribute('hidden');
+      else p.setAttribute('hidden', '');
+    });
+    wrap.setAttribute('data-active', name);
+    if (seeAll) {
+      var href = links[name];
+      if (href) { seeAll.href = href; seeAll.removeAttribute('hidden'); }
+      else      { seeAll.setAttribute('hidden', ''); }
+    }
+  }
+  tabs.forEach(function(t){
+    t.addEventListener('click', function(){ activate(t.dataset.tab); });
+  });
+})();
+</script>
 <script>
 // Footer newsletter signup — simple fetch + status feedback.
 function nfSubscribeNewsletter(e) {
