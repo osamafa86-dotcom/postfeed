@@ -693,12 +693,13 @@ $__featRest  = array_slice($latestArticles, 7);
     </div>
 
     <?php
-    // Breaking social feed — Telegram + Twitter/X in one tabbed section.
-    // Both lists stay in the DOM (the inactive one is just hidden) so the
-    // live-update scripts (telegram-live.js / twitter-live.js) keep
-    // prepending new rows even while their tab isn't visible.
+    // Breaking social feed — Telegram + Twitter/X + YouTube in one tabbed
+    // section. All lists stay in the DOM (inactive ones are `hidden`) so
+    // their live-update scripts keep prepending new rows even while the
+    // user is viewing a different tab.
     $tgMsgs = [];
     $twMsgs = [];
+    $ytMsgs = [];
     try {
         $socialDb = getDB();
         $tgMsgs = $socialDb->query("SELECT m.*, s.display_name, s.username, s.avatar_url FROM telegram_messages m JOIN telegram_sources s ON m.source_id = s.id WHERE m.is_active=1 AND s.is_active=1 ORDER BY m.posted_at DESC LIMIT 8")->fetchAll(PDO::FETCH_ASSOC);
@@ -707,15 +708,23 @@ $__featRest  = array_slice($latestArticles, 7);
         $socialDb = $socialDb ?? getDB();
         $twMsgs = $socialDb->query("SELECT m.*, s.display_name, s.username, s.avatar_url FROM twitter_messages m JOIN twitter_sources s ON m.source_id = s.id WHERE m.is_active=1 AND s.is_active=1 ORDER BY m.posted_at DESC LIMIT 10")->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) { error_log('tw read: ' . $e->getMessage()); }
+    try {
+        $socialDb = $socialDb ?? getDB();
+        $ytMsgs = $socialDb->query("SELECT v.*, s.display_name, s.handle, s.avatar_url FROM youtube_videos v JOIN youtube_sources s ON v.source_id = s.id WHERE v.is_active=1 AND s.is_active=1 ORDER BY v.posted_at DESC LIMIT 10")->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) { error_log('yt read: ' . $e->getMessage()); }
 
     $tgLatestId = 0;
     foreach ($tgMsgs as $__m) { if ((int)$__m['id'] > $tgLatestId) $tgLatestId = (int)$__m['id']; }
     $twLatestId = 0;
     foreach ($twMsgs as $__m) { if ((int)$__m['id'] > $twLatestId) $twLatestId = (int)$__m['id']; }
+    $ytLatestId = 0;
+    foreach ($ytMsgs as $__m) { if ((int)$__m['id'] > $ytLatestId) $ytLatestId = (int)$__m['id']; }
 
-    // Prefer Telegram as the default tab, but fall back to Twitter if
-    // Telegram has no messages yet (fresh install, no sources, etc.).
-    $activeFeed = !empty($tgMsgs) ? 'telegram' : (!empty($twMsgs) ? 'twitter' : null);
+    // Default tab priority: Telegram > Twitter > YouTube, skipping any
+    // that have no content yet (fresh install, no sources, etc.).
+    $activeFeed = !empty($tgMsgs) ? 'telegram'
+                : (!empty($twMsgs) ? 'twitter'
+                : (!empty($ytMsgs) ? 'youtube' : null));
     ?>
     <?php if ($activeFeed !== null): ?>
     <!-- SOCIAL BREAKING (Telegram + Twitter tabs) -->
@@ -736,6 +745,14 @@ $__featRest  = array_slice($latestArticles, 7);
                 <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.451-6.231zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/></svg>
               </span>
               <span>أخبار منصة اكس</span>
+            </button>
+          <?php endif; ?>
+          <?php if (!empty($ytMsgs)): ?>
+            <button type="button" class="feed-tab<?php echo $activeFeed==='youtube'?' active':''; ?>" data-tab="youtube" role="tab" aria-selected="<?php echo $activeFeed==='youtube'?'true':'false'; ?>">
+              <span class="feed-tab-ico feed-tab-ico-yt" aria-hidden="true">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+              </span>
+              <span>أخبار يوتيوب</span>
             </button>
           <?php endif; ?>
         </div>
@@ -776,6 +793,29 @@ $__featRest  = array_slice($latestArticles, 7);
                 <span class="tw-time"><?php echo timeAgo($m['posted_at']); ?></span>
               </div>
               <div class="tw-text"><?php echo nl2br(e(mb_substr($m['text'] ?? '', 0, 280))); ?><?php echo mb_strlen($m['text'] ?? '')>280?'...':''; ?></div>
+            </div>
+          </a>
+        <?php endforeach; ?>
+      </div>
+      <?php endif; ?>
+
+      <?php if (!empty($ytMsgs)): ?>
+      <div class="yt-breaking feed-panel" data-feed-panel="youtube" data-latest-id="<?php echo (int)$ytLatestId; ?>" data-page="1"<?php echo $activeFeed!=='youtube'?' hidden':''; ?>>
+        <?php foreach ($ytMsgs as $v): ?>
+          <a href="<?php echo e($v['post_url']); ?>" target="_blank" rel="noopener" class="yt-card" data-yt-id="<?php echo (int)$v['id']; ?>">
+            <?php if (!empty($v['thumbnail_url'])): ?>
+              <div class="yt-img">
+                <img src="<?php echo e($v['thumbnail_url']); ?>" alt="<?php echo e($v['title']); ?>" loading="lazy" decoding="async">
+                <span class="yt-play" aria-hidden="true">▶</span>
+              </div>
+            <?php endif; ?>
+            <div class="yt-body">
+              <div class="yt-source">
+                <span class="yt-badge">▶ يوتيوب</span>
+                <strong><?php echo e($v['display_name']); ?></strong>
+                <span class="yt-time"><?php echo timeAgo($v['posted_at']); ?></span>
+              </div>
+              <div class="yt-title"><?php echo e(mb_substr($v['title'], 0, 160)); ?><?php echo mb_strlen($v['title']) > 160 ? '...' : ''; ?></div>
             </div>
           </a>
         <?php endforeach; ?>
@@ -1481,6 +1521,7 @@ $__featRest  = array_slice($latestArticles, 7);
 <script src="assets/js/user.min.js?v=m1" defer></script>
 <script src="assets/js/telegram-live.min.js?v=m1" defer></script>
 <script src="assets/js/twitter-live.min.js?v=m2" defer></script>
+<script src="assets/js/youtube-live.min.js?v=m1" defer></script>
 <script>
 // Social feed tabs (Telegram / X) — show one panel at a time while both
 // stay in the DOM so their live-update scripts keep working.
@@ -1490,7 +1531,7 @@ $__featRest  = array_slice($latestArticles, 7);
   var tabs   = wrap.querySelectorAll('.feed-tab');
   var panels = wrap.querySelectorAll('[data-feed-panel]');
   var seeAll = wrap.querySelector('[data-see-all]');
-  var links  = { telegram: 'telegram.php', twitter: null };
+  var links  = { telegram: 'telegram.php', twitter: null, youtube: null };
   function activate(name) {
     tabs.forEach(function(t){
       var on = t.dataset.tab === name;
