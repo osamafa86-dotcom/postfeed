@@ -137,6 +137,37 @@ $db->exec("CREATE TABLE IF NOT EXISTS twitter_messages (
     INDEX idx_posted (posted_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+// ---------- youtube channels & videos ----------
+// Uses YouTube's built-in per-channel Atom feed
+// (youtube.com/feeds/videos.xml?channel_id=UCxxxx) — free, no API key,
+// reliable. Channel IDs are always 24 chars starting with "UC".
+$db->exec("CREATE TABLE IF NOT EXISTS youtube_sources (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    channel_id VARCHAR(40) NOT NULL UNIQUE,
+    handle VARCHAR(100) DEFAULT NULL,
+    display_name VARCHAR(150) NOT NULL,
+    avatar_url VARCHAR(500) DEFAULT NULL,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    sort_order INT NOT NULL DEFAULT 0,
+    last_fetched_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+$db->exec("CREATE TABLE IF NOT EXISTS youtube_videos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    source_id INT NOT NULL,
+    video_id VARCHAR(32) NOT NULL,
+    post_url VARCHAR(500) NOT NULL,
+    title VARCHAR(500) NOT NULL,
+    description TEXT,
+    thumbnail_url VARCHAR(500) DEFAULT NULL,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    posted_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_video (source_id, video_id),
+    INDEX idx_posted (posted_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
 // ---------- newsletter subscribers ----------
 // Daily digest sign-ups: double opt-in via confirm_token, one-click
 // unsubscribe via unsubscribe_token. last_sent_at is bumped by
