@@ -24,12 +24,22 @@
  */
 
 /**
- * Fetch the latest tweets for a single username.
+ * Fetch the latest tweets for a single username. Tries transports in
+ * order of reliability for our shared-host IP space:
+ *
+ *   1) rsshub.app   — Twitter's official endpoints mostly HTTP 429 us,
+ *      so this hosted RSS bridge is the only consistent source.
+ *   2) cdn.syndication.twimg.com JSON  — primary-ish fallback.
+ *   3) syndication.twitter.com NEXT_DATA — last-chance HTML scraper.
+ *
  * @return array<int, array{tweet_id:string, text:string, image_url:string, posted_at:string, url:string}>
  */
 function tw_fetch_user_tweets(string $username, int $limit = 20): array {
     $username = ltrim(trim($username), '@');
     if ($username === '') return [];
+
+    $out = tw_fetch_via_rsshub($username, $limit);
+    if (!empty($out)) return tw_finalize_tweets($out, $username, $limit);
 
     $out = tw_fetch_via_cdn_json($username, $limit);
     if (!empty($out)) return tw_finalize_tweets($out, $username, $limit);
@@ -38,6 +48,60 @@ function tw_fetch_user_tweets(string $username, int $limit = 20): array {
     if (!empty($out)) return tw_finalize_tweets($out, $username, $limit);
 
     return [];
+}
+
+/**
+ * Transport 0: rsshub.app hosted bridge — returns RSS XML that we
+ * parse into our tweet shape. Free, no auth, and it survives the
+ * rate limits that block direct syndication hits from shared hosts.
+ */
+function tw_fetch_via_rsshub(string $username, int $limit): array {
+    $url = 'https://rsshub.app/twitter/user/' . rawurlencode($username);
+    $xml = tw_http_get($url, 20);
+    if (!$xml) return [];
+
+    libxml_use_internal_errors(true);
+    $rss = simplexml_load_string($xml);
+    libxml_clear_errors();
+    if (!$rss || !isset($rss->channel->item)) {
+        error_log("tw_fetch: rsshub xml parse failed for $username");
+        return [];
+    }
+
+    $out = [];
+    foreach ($rss->channel->item as $item) {
+        $link = (string)$item->link;
+        if (!preg_match('#/status/(\d+)#', $link, $m)) continue;
+        $tweetId = $m[1];
+
+        $desc = (string)$item->description;
+        // Pull the first <img src> out of the description HTML — RSSHub
+        // embeds media as inline <img>.
+        $image = '';
+        if (preg_match('#<img[^>]+src=["\']([^"\']+)["\']#i', $desc, $im)) {
+            $image = html_entity_decode($im[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        }
+
+        $text = trim(strip_tags(str_replace(['<br/>', '<br>', '<br />'], "\n", $desc)));
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        // Strip trailing t.co media URL (duplicates the inline image).
+        $text = trim((string)preg_replace('#https?://t\.co/\S+$#', '', $text));
+
+        $ts = !empty($item->pubDate) ? strtotime((string)$item->pubDate) : 0;
+        $postedAt = $ts ? date('Y-m-d H:i:s', $ts) : date('Y-m-d H:i:s');
+
+        if ($text === '' && $image === '') continue;
+
+        $out[] = [
+            'tweet_id'  => $tweetId,
+            'text'      => $text,
+            'image_url' => $image,
+            'posted_at' => $postedAt,
+            'url'       => $link,
+        ];
+        if (count($out) >= $limit * 2) break;
+    }
+    return $out;
 }
 
 /**
@@ -59,9 +123,10 @@ function tw_finalize_tweets(array $tweets, string $username, int $limit): array 
 
 /**
  * GET helper with a cache-bypass query param so Cloudflare/CDN edges
- * don't hand us yesterday's cached response.
+ * don't hand us yesterday's cached response. $timeout lets slower
+ * transports like rsshub.app extend the window before giving up.
  */
-function tw_http_get(string $url): ?string {
+function tw_http_get(string $url, int $timeout = 15): ?string {
     $sep = (strpos($url, '?') === false) ? '?' : '&';
     $url .= $sep . '_cb=' . time();
 
@@ -69,7 +134,7 @@ function tw_http_get(string $url): ?string {
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_TIMEOUT        => 15,
+        CURLOPT_TIMEOUT        => $timeout,
         CURLOPT_CONNECTTIMEOUT => 8,
         CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         CURLOPT_SSL_VERIFYPEER => false,
@@ -228,6 +293,26 @@ function tw_debug_fetch_source(string $username): array {
         return $report;
     }
 
+    // Transport 0: RSSHub hosted bridge
+    $urlR = 'https://rsshub.app/twitter/user/' . rawurlencode($username);
+    $rR   = tw_debug_http($urlR, 20);
+    $rR['parsed_count'] = 0;
+    if ($rR['body']) {
+        libxml_use_internal_errors(true);
+        $rss = simplexml_load_string($rR['body']);
+        libxml_clear_errors();
+        if ($rss && isset($rss->channel->item)) {
+            foreach ($rss->channel->item as $item) {
+                $link = (string)$item->link;
+                if (preg_match('#/status/(\d+)#', $link)) $rR['parsed_count']++;
+            }
+        } else {
+            $rR['parse_error'] = 'rss xml parse failed / no items';
+        }
+    }
+    $rR['label'] = 'rsshub.app (RSS bridge)';
+    $report['transports'][] = $rR;
+
     // Transport 1: CDN JSON
     $url1  = 'https://cdn.syndication.twimg.com/timeline/profile?screen_name=' . rawurlencode($username) . '&with_replies=false&lang=en&_cb=' . time();
     $r1    = tw_debug_http($url1);
@@ -288,12 +373,12 @@ function tw_debug_fetch_source(string $username): array {
     return $report;
 }
 
-function tw_debug_http(string $url): array {
+function tw_debug_http(string $url, int $timeout = 15): array {
     $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_TIMEOUT        => 15,
+        CURLOPT_TIMEOUT        => $timeout,
         CURLOPT_CONNECTTIMEOUT => 8,
         CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         CURLOPT_SSL_VERIFYPEER => false,
