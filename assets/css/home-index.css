@@ -254,8 +254,19 @@
   .feed-tab:hover { color:var(--text); }
   .feed-tab.active { color:var(--text); }
   .feed-tab[data-tab="telegram"].active { color:#229ED9; border-bottom-color:#229ED9; }
-  .feed-tab[data-tab="twitter"].active  { color:#1DA1F2; border-bottom-color:#1DA1F2; }
-  .feed-tab-ico { font-size:16px; line-height:1; }
+  .feed-tab[data-tab="twitter"].active  { color:#000; border-bottom-color:#000; }
+  [data-theme="dark"] .feed-tab[data-tab="twitter"].active { color:#fff; border-bottom-color:#fff; }
+  .feed-tab-ico {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:20px; height:20px; line-height:1; flex-shrink:0;
+  }
+  .feed-tab-ico svg { width:100%; height:100%; display:block; }
+  /* Brand logos stay in their identity color even on inactive tabs so
+     the channel is recognizable at a glance. Dark theme swaps X to
+     white since the official X mark has no fixed fill. */
+  .feed-tab[data-tab="telegram"] .feed-tab-ico { color:#229ED9; }
+  .feed-tab[data-tab="twitter"]  .feed-tab-ico { color:#000; }
+  [data-theme="dark"] .feed-tab[data-tab="twitter"] .feed-tab-ico { color:#fff; }
   .feed-panel { margin-top:14px; }
 
   /* TELEGRAM BREAKING */

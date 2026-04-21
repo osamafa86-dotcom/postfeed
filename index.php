@@ -705,7 +705,7 @@ $__featRest  = array_slice($latestArticles, 7);
     } catch (Exception $e) { error_log('tg read: ' . $e->getMessage()); }
     try {
         $socialDb = $socialDb ?? getDB();
-        $twMsgs = $socialDb->query("SELECT m.*, s.display_name, s.username, s.avatar_url FROM twitter_messages m JOIN twitter_sources s ON m.source_id = s.id WHERE m.is_active=1 AND s.is_active=1 ORDER BY m.posted_at DESC LIMIT 8")->fetchAll(PDO::FETCH_ASSOC);
+        $twMsgs = $socialDb->query("SELECT m.*, s.display_name, s.username, s.avatar_url FROM twitter_messages m JOIN twitter_sources s ON m.source_id = s.id WHERE m.is_active=1 AND s.is_active=1 ORDER BY m.posted_at DESC LIMIT 10")->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) { error_log('tw read: ' . $e->getMessage()); }
 
     $tgLatestId = 0;
@@ -724,14 +724,18 @@ $__featRest  = array_slice($latestArticles, 7);
         <div class="feed-tabs" role="tablist">
           <?php if (!empty($tgMsgs)): ?>
             <button type="button" class="feed-tab<?php echo $activeFeed==='telegram'?' active':''; ?>" data-tab="telegram" role="tab" aria-selected="<?php echo $activeFeed==='telegram'?'true':'false'; ?>">
-              <span class="feed-tab-ico">📢</span>
-              <span>أخبار تيليغرام</span>
+              <span class="feed-tab-ico feed-tab-ico-tg" aria-hidden="true">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 7.24l-1.66 7.81c-.12.56-.45.7-.91.44L11.55 15.4l-1.79 1.73c-.2.2-.37.37-.76.37l.27-3.84 6.97-6.3c.3-.27-.07-.42-.47-.16L7.14 12.43l-3.71-1.16c-.8-.25-.82-.8.17-1.19l14.49-5.59c.67-.25 1.26.16 1.04 1.19z"/></svg>
+              </span>
+              <span>أخبار تلغرام</span>
             </button>
           <?php endif; ?>
           <?php if (!empty($twMsgs)): ?>
             <button type="button" class="feed-tab<?php echo $activeFeed==='twitter'?' active':''; ?>" data-tab="twitter" role="tab" aria-selected="<?php echo $activeFeed==='twitter'?'true':'false'; ?>">
-              <span class="feed-tab-ico">🐦</span>
-              <span>أخبار تويتر / X</span>
+              <span class="feed-tab-ico feed-tab-ico-x" aria-hidden="true">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.451-6.231zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/></svg>
+              </span>
+              <span>أخبار منصة اكس</span>
             </button>
           <?php endif; ?>
         </div>
