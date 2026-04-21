@@ -68,25 +68,47 @@ function tw_fetch_user_tweets(string $username, int $limit = 20): array {
 }
 
 /**
- * Transport: Nitter — rotate through public instances until one
- * returns a parseable RSS feed. Nitter scrapes the live profile page
- * so freshness is close to real-time, unlike the embed endpoint which
- * hands back cached responses.
+ * Transport: Nitter — query every public instance and merge their
+ * results, newest wins after dedupe by tweet id. Each Nitter instance
+ * runs its own ~10-minute cache of the profile feed, so caches age
+ * independently; pooling across instances means whichever one most
+ * recently refreshed wins and we get the freshest tweet seen anywhere.
+ *
+ * Capped at TW_NITTER_TOTAL_SECS total wall-clock across all instances
+ * so a cluster of slow hosts can't stall the scraper.
  */
 function tw_fetch_via_nitter(string $username, int $limit): array {
+    $merged   = [];
+    $seenIds  = [];
+    $startTs  = microtime(true);
+    $budget   = 10; // seconds across all instances, keep scrape fast
+    $anyOk    = false;
+
     foreach (TW_NITTER_INSTANCES as $host) {
-        $url = 'https://' . $host . '/' . rawurlencode($username) . '/rss';
-        $xml = tw_http_get($url, 8);
+        if ((microtime(true) - $startTs) > $budget) break;
+
+        $url  = 'https://' . $host . '/' . rawurlencode($username) . '/rss';
+        $xml  = tw_http_get($url, 4);
         if (!$xml) continue;
 
-        $out = tw_parse_rss_feed($xml);
-        if (!empty($out)) {
-            error_log("tw_fetch: nitter ok via $host for $username (" . count($out) . " items)");
-            return $out;
+        $items = tw_parse_rss_feed($xml);
+        if (empty($items)) continue;
+        $anyOk = true;
+
+        foreach ($items as $item) {
+            $id = $item['tweet_id'];
+            if (isset($seenIds[$id])) continue;
+            $seenIds[$id] = true;
+            $merged[] = $item;
         }
     }
-    error_log("tw_fetch: all nitter instances failed for $username");
-    return [];
+
+    if ($anyOk) {
+        error_log('tw_fetch: nitter merged ' . count($merged) . ' unique items for ' . $username);
+    } else {
+        error_log('tw_fetch: all nitter instances failed for ' . $username);
+    }
+    return $merged;
 }
 
 /**

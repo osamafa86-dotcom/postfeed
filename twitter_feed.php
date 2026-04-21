@@ -45,8 +45,8 @@ try {
     twf_json_exit(['ok' => false, 'error' => 'init: ' . $e->getMessage()]);
 }
 
-const TWF_SYNC_COOLDOWN_SECS = 45;
-const TWF_SYNC_IF_STALE_SECS = 60;
+const TWF_SYNC_COOLDOWN_SECS = 15;
+const TWF_SYNC_IF_STALE_SECS = 30;
 
 $sinceId = max(0, (int)($_GET['since_id'] ?? 0));
 $limit   = max(1, min(50, (int)($_GET['limit'] ?? 20)));
