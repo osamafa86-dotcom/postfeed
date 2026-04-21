@@ -212,6 +212,113 @@ function tw_normalize_tweet($raw): ?array {
 }
 
 /**
+ * Verbose diagnostic fetch for a single username — returns what each
+ * transport saw (HTTP code, response size, a short body snippet, and
+ * how many tweets parsed out). Used by the admin panel "Debug" button
+ * so operators can tell whether the server can reach Twitter at all
+ * and whether our parser understood the payload.
+ *
+ * No DB writes — this is pure read/inspect.
+ */
+function tw_debug_fetch_source(string $username): array {
+    $username = ltrim(trim($username), '@');
+    $report = ['username' => $username, 'transports' => []];
+    if ($username === '') {
+        $report['error'] = 'empty username';
+        return $report;
+    }
+
+    // Transport 1: CDN JSON
+    $url1  = 'https://cdn.syndication.twimg.com/timeline/profile?screen_name=' . rawurlencode($username) . '&with_replies=false&lang=en&_cb=' . time();
+    $r1    = tw_debug_http($url1);
+    $r1['parsed_count'] = 0;
+    if ($r1['body']) {
+        $body = $r1['body'];
+        if (preg_match('/^\s*[A-Za-z0-9_]+\(/', $body)) {
+            $body = preg_replace('/^\s*[A-Za-z0-9_]+\(/', '', $body);
+            $body = rtrim(rtrim($body), ');');
+        }
+        $data = json_decode($body, true);
+        if (is_array($data)) {
+            $items = $data['body'] ?? $data['tweets'] ?? $data['props']['pageProps']['timeline']['entries'] ?? [];
+            if (is_array($items)) {
+                foreach ($items as $raw) {
+                    if (tw_normalize_tweet($raw)) $r1['parsed_count']++;
+                }
+            }
+            $r1['top_level_keys'] = array_slice(array_keys($data), 0, 10);
+        } else {
+            $r1['parse_error'] = 'json_decode failed';
+        }
+    }
+    $r1['label'] = 'CDN JSON';
+    $report['transports'][] = $r1;
+
+    // Transport 2: NEXT_DATA HTML
+    $url2 = 'https://syndication.twitter.com/srv/timeline-profile/screen-name/' . rawurlencode($username) . '?_cb=' . time();
+    $r2   = tw_debug_http($url2);
+    $r2['parsed_count'] = 0;
+    if ($r2['body']) {
+        if (preg_match('#<script[^>]+id="__NEXT_DATA__"[^>]*>(.+?)</script>#s', $r2['body'], $m)) {
+            $data = json_decode($m[1], true);
+            if (is_array($data)) {
+                $entries = $data['props']['pageProps']['timeline']['entries']
+                        ?? $data['props']['pageProps']['contextProvider']['initialState']['timeline']['entries']
+                        ?? [];
+                if (is_array($entries)) {
+                    foreach ($entries as $entry) {
+                        $tweet = $entry['content']['tweet']
+                              ?? $entry['content']['item']['content']['tweet']
+                              ?? $entry['content']
+                              ?? null;
+                        if (tw_normalize_tweet($tweet)) $r2['parsed_count']++;
+                    }
+                }
+                $r2['top_level_keys'] = array_slice(array_keys($data['props']['pageProps'] ?? []), 0, 10);
+            } else {
+                $r2['parse_error'] = 'NEXT_DATA json_decode failed';
+            }
+        } else {
+            $r2['parse_error'] = '__NEXT_DATA__ script not found';
+        }
+    }
+    $r2['label'] = 'syndication.twitter.com NEXT_DATA';
+    $report['transports'][] = $r2;
+
+    return $report;
+}
+
+function tw_debug_http(string $url): array {
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT        => 15,
+        CURLOPT_CONNECTTIMEOUT => 8,
+        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_HTTPHEADER     => [
+            'Accept: text/html,application/json,application/xhtml+xml',
+            'Accept-Language: en-US,en;q=0.9,ar;q=0.8',
+            'Cache-Control: no-cache',
+        ],
+    ]);
+    $body     = curl_exec($ch);
+    $info     = curl_getinfo($ch);
+    $curlErr  = curl_error($ch);
+    curl_close($ch);
+    return [
+        'url'          => $url,
+        'http_code'    => (int)($info['http_code'] ?? 0),
+        'total_time'   => round((float)($info['total_time'] ?? 0), 2),
+        'size'         => is_string($body) ? strlen($body) : 0,
+        'curl_error'   => $curlErr ?: null,
+        'body'         => is_string($body) ? $body : null,
+        'body_snippet' => is_string($body) ? mb_substr($body, 0, 500) : null,
+    ];
+}
+
+/**
  * Fetch latest tweets for every active source in twitter_sources and
  * persist new ones into twitter_messages. Returns the count of newly
  * inserted rows across all sources.
