@@ -237,6 +237,27 @@
   .bn-source { color:#6b7280; font-weight:600; }
   .bn-sep { width:3px; height:3px; border-radius:50%; background:#d1d5db; }
 
+  /* SOCIAL FEED TABS (Telegram + Twitter in one section) */
+  .feed-tabs-wrap [hidden] { display:none !important; }
+  .feed-tabs-header { align-items:center; }
+  .feed-tabs {
+    display:flex; gap:4px; flex-wrap:wrap; align-items:stretch;
+    border-bottom:2px solid var(--border); flex:1; margin-bottom:-1px;
+  }
+  .feed-tab {
+    display:inline-flex; align-items:center; gap:8px;
+    padding:10px 16px; font-family:inherit; font-size:14px; font-weight:700;
+    color:var(--text-muted); background:transparent; border:0;
+    border-bottom:3px solid transparent; cursor:pointer;
+    margin-bottom:-2px; transition:color .15s, border-color .15s;
+  }
+  .feed-tab:hover { color:var(--text); }
+  .feed-tab.active { color:var(--text); }
+  .feed-tab[data-tab="telegram"].active { color:#229ED9; border-bottom-color:#229ED9; }
+  .feed-tab[data-tab="twitter"].active  { color:#1DA1F2; border-bottom-color:#1DA1F2; }
+  .feed-tab-ico { font-size:16px; line-height:1; }
+  .feed-panel { margin-top:14px; }
+
   /* TELEGRAM BREAKING */
   .tg-breaking { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
   .tg-card {
