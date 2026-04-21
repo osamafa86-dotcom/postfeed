@@ -51,6 +51,18 @@ if ($action === 'fetch') {
     $action = 'list';
 }
 
+if ($action === 'resync') {
+    // Wipe all fetched video rows and re-pull — useful after upgrading
+    // the parser so stale rows with fetch-time timestamps get replaced
+    // by rows with real YouTube publish timestamps.
+    try {
+        $wiped = $db->exec("DELETE FROM youtube_videos");
+    } catch (Throwable $e) { $wiped = 0; }
+    $count = yt_sync_all_sources();
+    $success = "تم حذف {$wiped} فيديو قديم وإعادة جلب {$count} فيديو بالتواريخ الصحيحة";
+    $action = 'list';
+}
+
 if ($action === 'delete' && isset($_GET['id'])) {
     $db->prepare("DELETE FROM youtube_sources WHERE id = ?")->execute([(int)$_GET['id']]);
     $success = 'تم حذف القناة';
@@ -131,6 +143,9 @@ include __DIR__ . '/includes/panel_layout_head.php';
     </div>
     <div class="page-actions">
       <a href="youtube.php?action=fetch" class="btn-outline">🔄 جلب الآن</a>
+      <a href="youtube.php?action=resync" class="btn-outline"
+         onclick="return confirm('سيتم حذف كل الفيديوهات المخزّنة وإعادة جلبها. متابعة؟');"
+         title="امسح كل الفيديوهات وأعد جلبها بالتواريخ الأصلية من يوتيوب">♻️ إعادة جلب كاملة</a>
       <?php if ($action === 'list'): ?>
         <a href="youtube.php?action=add" class="btn-primary">➕ إضافة قناة</a>
       <?php endif; ?>

@@ -710,7 +710,7 @@ $__featRest  = array_slice($latestArticles, 7);
     } catch (Exception $e) { error_log('tw read: ' . $e->getMessage()); }
     try {
         $socialDb = $socialDb ?? getDB();
-        $ytMsgs = $socialDb->query("SELECT v.*, s.display_name, s.handle, s.avatar_url FROM youtube_videos v JOIN youtube_sources s ON v.source_id = s.id WHERE v.is_active=1 AND s.is_active=1 ORDER BY v.posted_at DESC LIMIT 10")->fetchAll(PDO::FETCH_ASSOC);
+        $ytMsgs = $socialDb->query("SELECT v.*, s.display_name, s.handle, s.avatar_url FROM youtube_videos v JOIN youtube_sources s ON v.source_id = s.id WHERE v.is_active=1 AND s.is_active=1 ORDER BY v.posted_at DESC, v.id DESC LIMIT 10")->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) { error_log('yt read: ' . $e->getMessage()); }
 
     $tgLatestId = 0;

@@ -39,6 +39,7 @@ function yt_fetch_channel_videos(string $channelId, int $limit = 15): array {
     }
 
     // Register namespaces used by YouTube's Atom extensions.
+    $feed->registerXPathNamespace('atom',  'http://www.w3.org/2005/Atom');
     $feed->registerXPathNamespace('yt',    'http://www.youtube.com/xml/schemas/2015');
     $feed->registerXPathNamespace('media', 'http://search.yahoo.com/mrss/');
 
@@ -46,16 +47,22 @@ function yt_fetch_channel_videos(string $channelId, int $limit = 15): array {
     foreach ($feed->entry as $entry) {
         $ytNs    = $entry->children('http://www.youtube.com/xml/schemas/2015');
         $mediaNs = $entry->children('http://search.yahoo.com/mrss/');
+        // Atom children via explicit namespace so we never rely on
+        // SimpleXML's default-namespace auto-unwrap, which has been
+        // flaky across PHP versions.
+        $atomNs  = $entry->children('http://www.w3.org/2005/Atom');
 
         $videoId = (string)($ytNs->videoId ?? '');
         if ($videoId === '') continue;
 
-        $title = trim((string)($entry->title ?? ''));
+        $title = trim((string)($atomNs->title ?? $entry->title ?? ''));
 
         // Pick the <link rel="alternate"> — the human-facing watch URL.
         $watchUrl = '';
-        foreach ($entry->link as $link) {
-            if ((string)$link['rel'] === 'alternate' || $link['rel'] === null) {
+        $links = isset($atomNs->link) ? $atomNs->link : $entry->link;
+        foreach ($links as $link) {
+            $rel = (string)$link['rel'];
+            if ($rel === 'alternate' || $rel === '') {
                 $watchUrl = (string)$link['href'];
                 break;
             }
@@ -77,13 +84,30 @@ function yt_fetch_channel_videos(string $channelId, int $limit = 15): array {
             }
         }
         if ($thumbnail === '') {
-            // Fall back to the deterministic URL template if the feed
-            // didn't include a media:thumbnail for some reason.
             $thumbnail = 'https://i.ytimg.com/vi/' . rawurlencode($videoId) . '/hqdefault.jpg';
         }
 
-        $ts = !empty($entry->published) ? strtotime((string)$entry->published) : 0;
-        $postedAt = $ts ? date('Y-m-d H:i:s', $ts) : date('Y-m-d H:i:s');
+        // Real-published date is the #1 correctness gotcha here — if we
+        // fail to parse it, every video ends up with posted_at = "now",
+        // which kills chronological sorting. Try in this order:
+        //   1) explicit Atom-namespace <published>
+        //   2) default-namespace $entry->published (works on many setups)
+        //   3) explicit Atom-namespace <updated>
+        //   4) default-namespace $entry->updated
+        //   5) give up and fall through to now() with an error_log so
+        //      operators can notice the feed shape has drifted.
+        $publishedStr = '';
+        if (!empty($atomNs->published))       $publishedStr = (string)$atomNs->published;
+        elseif (!empty($entry->published))    $publishedStr = (string)$entry->published;
+        elseif (!empty($atomNs->updated))     $publishedStr = (string)$atomNs->updated;
+        elseif (!empty($entry->updated))      $publishedStr = (string)$entry->updated;
+
+        if ($publishedStr === '') {
+            error_log('yt_fetch: no <published> or <updated> for video ' . $videoId . ' on ' . $channelId);
+        }
+        $ts = $publishedStr !== '' ? strtotime($publishedStr) : 0;
+        if (!$ts) $ts = time();
+        $postedAt = date('Y-m-d H:i:s', $ts);
 
         if ($title === '') continue;
 
