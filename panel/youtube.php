@@ -52,6 +52,8 @@ if ($action === 'fetch') {
 }
 
 $debugReport = null;
+$debugDbRows = null;
+$debugParsed = null;
 if ($action === 'debug' && isset($_GET['id'])) {
     $stmt = $db->prepare("SELECT * FROM youtube_sources WHERE id = ?");
     $stmt->execute([(int)$_GET['id']]);
@@ -59,6 +61,16 @@ if ($action === 'debug' && isset($_GET['id'])) {
     if ($dbgSrc) {
         $debugReport = yt_debug_fetch_channel($dbgSrc['channel_id']);
         $debugReport['display_name'] = $dbgSrc['display_name'];
+
+        // What's actually in the DB for this source right now?
+        $rowsStmt = $db->prepare("SELECT video_id, title, posted_at, created_at FROM youtube_videos WHERE source_id = ? ORDER BY posted_at DESC, id DESC LIMIT 5");
+        $rowsStmt->execute([(int)$dbgSrc['id']]);
+        $debugDbRows = $rowsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // What does the live parser produce RIGHT NOW for this channel?
+        // Shows us whether the extraction-to-insert chain is doing the
+        // right thing even when jalb actually runs. First 5 only.
+        $debugParsed = array_slice(yt_fetch_channel_videos($dbgSrc['channel_id'], 5), 0, 5);
     }
 }
 
@@ -267,6 +279,53 @@ include __DIR__ . '/includes/panel_layout_head.php';
             <summary style="cursor:pointer;color:var(--text-muted);font-size:12px;">الـ XML الخام لأول &lt;entry&gt;</summary>
             <pre style="margin-top:8px;padding:10px;background:#fff;border:1px solid var(--border,#e0e3e8);border-radius:6px;max-height:280px;overflow:auto;font-size:11px;white-space:pre-wrap;"><?php echo e($debugReport['first_entry_raw']); ?></pre>
           </details>
+        <?php endif; ?>
+
+        <?php if ($debugParsed !== null): ?>
+          <h4 style="margin:18px 0 8px;font-size:13px;">نتيجة الـ parser الحية (شو بيرجّع <code>yt_fetch_channel_videos</code> الآن):</h4>
+          <?php if (empty($debugParsed)): ?>
+            <div class="alert alert-danger">❌ الـ parser رجّع قائمة فاضية — هاد السبب!</div>
+          <?php else: ?>
+            <div style="font-size:12px;background:#fff;border:1px solid var(--border,#e0e3e8);border-radius:8px;padding:10px;">
+              <?php foreach ($debugParsed as $idx => $p): ?>
+                <div style="padding:6px 0;<?php echo $idx > 0 ? 'border-top:1px dashed var(--border,#e0e3e8);' : ''; ?>">
+                  <strong><?php echo (int)$idx + 1; ?>.</strong>
+                  <code><?php echo e($p['video_id']); ?></code>
+                  — <span style="color:#16a34a;font-weight:600;"><?php echo e($p['posted_at']); ?></span>
+                  — <?php echo e(mb_substr($p['title'], 0, 80)); ?>
+                </div>
+              <?php endforeach; ?>
+            </div>
+          <?php endif; ?>
+        <?php endif; ?>
+
+        <?php if ($debugDbRows !== null): ?>
+          <h4 style="margin:18px 0 8px;font-size:13px;">المخزّن فعلاً بالـ DB لهاي القناة (أحدث 5 rows):</h4>
+          <?php if (empty($debugDbRows)): ?>
+            <div class="alert alert-muted">لا توجد rows مخزّنة بعد — اضغط "🔄 جلب الآن" أو "♻️ إعادة جلب كاملة".</div>
+          <?php else: ?>
+            <div style="font-size:12px;background:#fff;border:1px solid var(--border,#e0e3e8);border-radius:8px;padding:10px;">
+              <table style="width:100%;font-size:12px;">
+                <tr style="color:var(--text-muted);font-size:11px;">
+                  <th style="text-align:right;padding:4px;">video_id</th>
+                  <th style="text-align:right;padding:4px;">posted_at (من YouTube)</th>
+                  <th style="text-align:right;padding:4px;">created_at (وقت الجلب)</th>
+                  <th style="text-align:right;padding:4px;">العنوان</th>
+                </tr>
+                <?php foreach ($debugDbRows as $r): ?>
+                  <tr style="border-top:1px dashed var(--border,#e0e3e8);">
+                    <td style="padding:6px 4px;"><code><?php echo e($r['video_id']); ?></code></td>
+                    <td style="padding:6px 4px;color:#16a34a;font-weight:600;"><?php echo e($r['posted_at'] ?? '—'); ?></td>
+                    <td style="padding:6px 4px;color:var(--text-muted);"><?php echo e($r['created_at'] ?? '—'); ?></td>
+                    <td style="padding:6px 4px;"><?php echo e(mb_substr($r['title'], 0, 60)); ?></td>
+                  </tr>
+                <?php endforeach; ?>
+              </table>
+              <p style="margin-top:10px;color:var(--text-muted);font-size:11.5px;">
+                ⚠︎ إذا <code>posted_at</code> في الـ DB == <code>created_at</code> لكل الـ rows، فالـ parser مش بيحفظ التاريخ بشكل صحيح رغم إنه في الـ debug بيطلّعه صح — يعني مشكلة بالـ INSERT.
+              </p>
+            </div>
+          <?php endif; ?>
         <?php endif; ?>
 
         <a href="youtube.php" class="btn-outline" style="margin-top:12px;display:inline-block;">↩︎ رجوع</a>
