@@ -111,11 +111,19 @@ function tw_parse_rss_feed(string $xml): array {
         $image = '';
         if (preg_match('#<img[^>]+src=["\']([^"\']+)["\']#i', $desc, $im)) {
             $image = html_entity_decode($im[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
-            // Nitter image URLs are proxied through the instance — rewrite
-            // to the original pbs.twimg.com so the image loads even if the
-            // instance goes down later.
-            if (preg_match('#/pic/(?:media/)?([^?"\']+)#', $image, $pm)) {
-                $image = 'https://pbs.twimg.com/media/' . rawurldecode($pm[1]);
+            // Nitter proxies images through /pic/<url-encoded-path>.
+            // Decode the proxy path and rewrite back to pbs.twimg.com so
+            // the image keeps loading if the instance that served the
+            // RSS later disappears. Two shapes we see in the wild:
+            //   .../pic/media%2FXYZ.jpg?name=orig   (relative path)
+            //   .../pic/https%3A%2F%2Fpbs.twimg...  (full URL wrapped)
+            if (preg_match('#^https?://[^/]*nitter[^/]*/pic/(.+)$#', $image, $pm)) {
+                $inner = rawurldecode($pm[1]);
+                if (preg_match('#^https?://#', $inner)) {
+                    $image = $inner;
+                } else {
+                    $image = 'https://pbs.twimg.com/' . ltrim($inner, '/');
+                }
             }
         }
 
