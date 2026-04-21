@@ -23,14 +23,28 @@
  *     can grep the log if the section goes stale.
  */
 
+// Public Nitter instances tried in rotation. First one that returns
+// parseable RSS wins. Instances come and go — if all start failing,
+// refresh this list from https://github.com/zedeus/nitter/wiki/Instances
+const TW_NITTER_INSTANCES = [
+    'nitter.privacydev.net',
+    'nitter.poast.org',
+    'nitter.net',
+    'nitter.unixfox.eu',
+    'nitter.d420.de',
+    'nitter.no-logs.com',
+    'nitter.cz',
+    'nitter.1d4.us',
+];
+
 /**
- * Fetch the latest tweets for a single username. Tries transports in
- * order of reliability for our shared-host IP space:
+ * Fetch the latest tweets for a single username.
  *
- *   1) rsshub.app   — Twitter's official endpoints mostly HTTP 429 us,
- *      so this hosted RSS bridge is the only consistent source.
- *   2) cdn.syndication.twimg.com JSON  — primary-ish fallback.
- *   3) syndication.twitter.com NEXT_DATA — last-chance HTML scraper.
+ * Transports in order (most real-time first):
+ *   1) Nitter — scrapes the live profile page; freshest data.
+ *   2) NEXT_DATA (syndication.twitter.com) — reliable but cache-lagged.
+ *   3) RSSHub — RSS bridge; Twitter route is often broken.
+ *   4) CDN JSON — mostly dead; kept as last resort.
  *
  * @return array<int, array{tweet_id:string, text:string, image_url:string, posted_at:string, url:string}>
  */
@@ -38,35 +52,53 @@ function tw_fetch_user_tweets(string $username, int $limit = 20): array {
     $username = ltrim(trim($username), '@');
     if ($username === '') return [];
 
+    $out = tw_fetch_via_nitter($username, $limit);
+    if (!empty($out)) return tw_finalize_tweets($out, $username, $limit);
+
+    $out = tw_fetch_via_next_data($username, $limit);
+    if (!empty($out)) return tw_finalize_tweets($out, $username, $limit);
+
     $out = tw_fetch_via_rsshub($username, $limit);
     if (!empty($out)) return tw_finalize_tweets($out, $username, $limit);
 
     $out = tw_fetch_via_cdn_json($username, $limit);
     if (!empty($out)) return tw_finalize_tweets($out, $username, $limit);
 
-    $out = tw_fetch_via_next_data($username, $limit);
-    if (!empty($out)) return tw_finalize_tweets($out, $username, $limit);
-
     return [];
 }
 
 /**
- * Transport 0: rsshub.app hosted bridge — returns RSS XML that we
- * parse into our tweet shape. Free, no auth, and it survives the
- * rate limits that block direct syndication hits from shared hosts.
+ * Transport: Nitter — rotate through public instances until one
+ * returns a parseable RSS feed. Nitter scrapes the live profile page
+ * so freshness is close to real-time, unlike the embed endpoint which
+ * hands back cached responses.
  */
-function tw_fetch_via_rsshub(string $username, int $limit): array {
-    $url = 'https://rsshub.app/twitter/user/' . rawurlencode($username);
-    $xml = tw_http_get($url, 20);
-    if (!$xml) return [];
+function tw_fetch_via_nitter(string $username, int $limit): array {
+    foreach (TW_NITTER_INSTANCES as $host) {
+        $url = 'https://' . $host . '/' . rawurlencode($username) . '/rss';
+        $xml = tw_http_get($url, 8);
+        if (!$xml) continue;
 
+        $out = tw_parse_rss_feed($xml);
+        if (!empty($out)) {
+            error_log("tw_fetch: nitter ok via $host for $username (" . count($out) . " items)");
+            return $out;
+        }
+    }
+    error_log("tw_fetch: all nitter instances failed for $username");
+    return [];
+}
+
+/**
+ * Parse an RSS feed (Nitter or RSSHub shape) into our tweet rows.
+ * Items without a /status/NNN link are ignored because they're not
+ * tweets (e.g. retweets that Nitter renders differently).
+ */
+function tw_parse_rss_feed(string $xml): array {
     libxml_use_internal_errors(true);
     $rss = simplexml_load_string($xml);
     libxml_clear_errors();
-    if (!$rss || !isset($rss->channel->item)) {
-        error_log("tw_fetch: rsshub xml parse failed for $username");
-        return [];
-    }
+    if (!$rss || !isset($rss->channel->item)) return [];
 
     $out = [];
     foreach ($rss->channel->item as $item) {
@@ -75,16 +107,20 @@ function tw_fetch_via_rsshub(string $username, int $limit): array {
         $tweetId = $m[1];
 
         $desc = (string)$item->description;
-        // Pull the first <img src> out of the description HTML — RSSHub
-        // embeds media as inline <img>.
+
         $image = '';
         if (preg_match('#<img[^>]+src=["\']([^"\']+)["\']#i', $desc, $im)) {
             $image = html_entity_decode($im[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            // Nitter image URLs are proxied through the instance — rewrite
+            // to the original pbs.twimg.com so the image loads even if the
+            // instance goes down later.
+            if (preg_match('#/pic/(?:media/)?([^?"\']+)#', $image, $pm)) {
+                $image = 'https://pbs.twimg.com/media/' . rawurldecode($pm[1]);
+            }
         }
 
         $text = trim(strip_tags(str_replace(['<br/>', '<br>', '<br />'], "\n", $desc)));
         $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        // Strip trailing t.co media URL (duplicates the inline image).
         $text = trim((string)preg_replace('#https?://t\.co/\S+$#', '', $text));
 
         $ts = !empty($item->pubDate) ? strtotime((string)$item->pubDate) : 0;
@@ -92,14 +128,39 @@ function tw_fetch_via_rsshub(string $username, int $limit): array {
 
         if ($text === '' && $image === '') continue;
 
+        // Canonicalize the tweet URL to twitter.com so clicks work
+        // regardless of which instance gave us the row.
+        $canonLink = preg_replace(
+            '#^https?://[^/]+/#',
+            'https://twitter.com/',
+            $link
+        );
+
         $out[] = [
             'tweet_id'  => $tweetId,
             'text'      => $text,
             'image_url' => $image,
             'posted_at' => $postedAt,
-            'url'       => $link,
+            'url'       => $canonLink,
         ];
-        if (count($out) >= $limit * 2) break;
+    }
+    return $out;
+}
+
+/**
+ * Transport: rsshub.app hosted bridge — returns RSS XML that we parse
+ * into our tweet shape. Free, no auth. Twitter route has been broken
+ * on rsshub.app for a while so this is more of a "maybe it's back"
+ * fallback than a real transport.
+ */
+function tw_fetch_via_rsshub(string $username, int $limit): array {
+    $url = 'https://rsshub.app/twitter/user/' . rawurlencode($username);
+    $xml = tw_http_get($url, 15);
+    if (!$xml) return [];
+    $out = tw_parse_rss_feed($xml);
+    if (empty($out)) {
+        error_log("tw_fetch: rsshub returned empty for $username");
+        return [];
     }
     return $out;
 }
@@ -293,7 +354,28 @@ function tw_debug_fetch_source(string $username): array {
         return $report;
     }
 
-    // Transport 0: RSSHub hosted bridge
+    // Transport 0: Nitter — try each public instance
+    foreach (TW_NITTER_INSTANCES as $host) {
+        $urlN = 'https://' . $host . '/' . rawurlencode($username) . '/rss';
+        $rN   = tw_debug_http($urlN, 8);
+        $rN['parsed_count'] = 0;
+        $rN['label'] = 'Nitter @ ' . $host;
+        if ($rN['body']) {
+            $items = tw_parse_rss_feed($rN['body']);
+            $rN['parsed_count'] = count($items);
+            if (!empty($items)) {
+                // Show the newest-parsed timestamp so operators can see
+                // how fresh this instance actually is.
+                $rN['newest_posted_at'] = $items[0]['posted_at'] ?? null;
+            }
+        }
+        $report['transports'][] = $rN;
+        // Stop rotating as soon as one instance works — the rest are
+        // just noise in the debug output.
+        if ($rN['parsed_count'] > 0) break;
+    }
+
+    // Transport 1: RSSHub hosted bridge
     $urlR = 'https://rsshub.app/twitter/user/' . rawurlencode($username);
     $rR   = tw_debug_http($urlR, 20);
     $rR['parsed_count'] = 0;
