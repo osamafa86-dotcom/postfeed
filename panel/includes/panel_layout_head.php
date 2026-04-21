@@ -655,6 +655,10 @@ $__nfVer = app_version();
       <div class="nav-icon">📢</div>
       <span class="label">تيليغرام</span>
     </a>
+    <a href="twitter.php" class="nav-item<?php echo $activePage==='twitter'?' active':''; ?>">
+      <div class="nav-icon">🐦</div>
+      <span class="label">تويتر / X</span>
+    </a>
     <?php if ($__canAdmin): ?>
     <a href="ai.php" class="nav-item<?php echo $activePage==='ai'?' active':''; ?>">
       <div class="nav-icon">🤖</div>

@@ -729,6 +729,49 @@ $__featRest  = array_slice($latestArticles, 7);
     </div>
     <?php endif; ?>
 
+    <?php
+    // Twitter/X breaking tweets — read only (sync moved to cron_twitter.php).
+    // Mirrors the Telegram section structure so the shared live-update JS
+    // can target .tw-breaking the same way it targets .tg-breaking.
+    $twMsgs = [];
+    try {
+        $twDb = getDB();
+        $twMsgs = $twDb->query("SELECT m.*, s.display_name, s.username, s.avatar_url
+                                FROM twitter_messages m
+                                JOIN twitter_sources s ON m.source_id = s.id
+                                WHERE m.is_active=1 AND s.is_active=1
+                                ORDER BY m.posted_at DESC LIMIT 8")->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) { error_log('tw read: ' . $e->getMessage()); }
+    ?>
+    <?php if (!empty($twMsgs)): ?>
+    <!-- TWITTER / X BREAKING -->
+    <div class="section-header">
+      <div class="section-title"><div class="line" style="background:#1DA1F2"></div>🐦 آخر التغريدات من X</div>
+      <a class="see-all" href="panel/twitter.php">إدارة ›</a>
+    </div>
+    <?php
+    $twLatestId = 0;
+    foreach ($twMsgs as $__m) { if ((int)$__m['id'] > $twLatestId) $twLatestId = (int)$__m['id']; }
+    ?>
+    <div class="tw-breaking" style="margin-bottom:28px" data-latest-id="<?php echo (int)$twLatestId; ?>" data-page="1">
+      <?php foreach ($twMsgs as $m): ?>
+        <a href="<?php echo e($m['post_url']); ?>" target="_blank" rel="noopener" class="tw-card" data-tw-id="<?php echo (int)$m['id']; ?>">
+          <?php if (!empty($m['image_url'])): ?>
+            <div class="tw-img"><img src="<?php echo e($m['image_url']); ?>" alt="<?php echo e($m['text'] ?? ''); ?>" loading="lazy" decoding="async"></div>
+          <?php endif; ?>
+          <div class="tw-body">
+            <div class="tw-source">
+              <span class="tw-badge">🐦 X</span>
+              <strong>@<?php echo e($m['username']); ?></strong>
+              <span class="tw-time"><?php echo timeAgo($m['posted_at']); ?></span>
+            </div>
+            <div class="tw-text"><?php echo nl2br(e(mb_substr($m['text'] ?? '', 0, 280))); ?><?php echo mb_strlen($m['text'] ?? '')>280?'...':''; ?></div>
+          </div>
+        </a>
+      <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+
     <!-- POLITICAL NEWS -->
     <div id="political" class="section-header">
       <div class="section-title"><div class="line" style="background:#b05a5a"></div>🏛 أخبار سياسية</div>
@@ -1425,6 +1468,7 @@ $__featRest  = array_slice($latestArticles, 7);
 <script src="assets/js/home.min.js?v=m2" defer></script>
 <script src="assets/js/user.min.js?v=m1" defer></script>
 <script src="assets/js/telegram-live.min.js?v=m1" defer></script>
+<script src="assets/js/twitter-live.min.js?v=m1" defer></script>
 <script>
 // Footer newsletter signup — simple fetch + status feedback.
 function nfSubscribeNewsletter(e) {
