@@ -1,29 +1,69 @@
 <?php
 /**
  * Twitter/X feed fetcher — pulls recent tweets from public profiles via
- * Twitter's own embed syndication endpoint (same one used by the "Follow
- * on X" widget). No API key or paid plan required.
+ * Twitter's own embed syndication infrastructure (same one used by the
+ * "Follow on X" widget). No API key or paid plan required.
  *
- * Endpoint: https://syndication.twitter.com/srv/timeline-profile/screen-name/{user}
- * Response: HTML shell with a <script id="__NEXT_DATA__" type="application/json">
- *           block that holds the rendered timeline payload.
+ * Two fallback transports:
+ *   1) https://cdn.syndication.twimg.com/timeline/profile (JSON first)
+ *   2) https://syndication.twitter.com/srv/timeline-profile/screen-name/{user}
+ *      (HTML with __NEXT_DATA__ embedded JSON)
  *
- * If Twitter ever revokes this endpoint we degrade gracefully — the
- * fetchers return [] and the homepage section just shows whatever is
- * already in the DB. No hard failure for callers.
+ * If both fail the function returns [] — no hard error so the homepage
+ * section just keeps showing whatever is already in the DB.
+ *
+ * Behavior notes:
+ *   - Pinned tweets are dropped from the chronological list so an old
+ *     pinned tweet can't shadow newer posts at the top of the feed.
+ *   - Retweets are dropped — we only want original content.
+ *   - Results are sorted by created_at descending before return, so
+ *     however Twitter orders the raw timeline we always surface the
+ *     newest tweet first.
+ *   - On every failure path we error_log a short reason so operators
+ *     can grep the log if the section goes stale.
  */
 
 /**
- * Fetch the latest tweets for a single username. Returns newest-last so
- * callers can array_reverse into chronological order.
- *
+ * Fetch the latest tweets for a single username.
  * @return array<int, array{tweet_id:string, text:string, image_url:string, posted_at:string, url:string}>
  */
 function tw_fetch_user_tweets(string $username, int $limit = 20): array {
     $username = ltrim(trim($username), '@');
     if ($username === '') return [];
 
-    $url = 'https://syndication.twitter.com/srv/timeline-profile/screen-name/' . rawurlencode($username);
+    $out = tw_fetch_via_cdn_json($username, $limit);
+    if (!empty($out)) return tw_finalize_tweets($out, $username, $limit);
+
+    $out = tw_fetch_via_next_data($username, $limit);
+    if (!empty($out)) return tw_finalize_tweets($out, $username, $limit);
+
+    return [];
+}
+
+/**
+ * Sort by posted_at desc and trim to $limit. Also fills the post URL
+ * now that the username is known for certain.
+ */
+function tw_finalize_tweets(array $tweets, string $username, int $limit): array {
+    usort($tweets, function($a, $b) {
+        return strcmp((string)$b['posted_at'], (string)$a['posted_at']);
+    });
+    foreach ($tweets as &$t) {
+        if (empty($t['url'])) {
+            $t['url'] = 'https://twitter.com/' . $username . '/status/' . $t['tweet_id'];
+        }
+    }
+    unset($t);
+    return array_slice($tweets, 0, $limit);
+}
+
+/**
+ * GET helper with a cache-bypass query param so Cloudflare/CDN edges
+ * don't hand us yesterday's cached response.
+ */
+function tw_http_get(string $url): ?string {
+    $sep = (strpos($url, '?') === false) ? '?' : '&';
+    $url .= $sep . '_cb=' . time();
 
     $ch = curl_init($url);
     curl_setopt_array($ch, [
@@ -31,28 +71,80 @@ function tw_fetch_user_tweets(string $username, int $limit = 20): array {
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_TIMEOUT        => 15,
         CURLOPT_CONNECTTIMEOUT => 8,
-        CURLOPT_USERAGENT      => 'Mozilla/5.0 (compatible; NewsFlowBot/1.0; +https://postfeed.emdatra.org)',
+        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_HTTPHEADER     => [
-            'Accept: text/html,application/xhtml+xml',
+            'Accept: text/html,application/json,application/xhtml+xml',
             'Accept-Language: en-US,en;q=0.9,ar;q=0.8',
+            'Cache-Control: no-cache',
+            'Pragma: no-cache',
         ],
     ]);
-    $html = curl_exec($ch);
+    $body = curl_exec($ch);
     $code = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
     curl_close($ch);
 
-    if (!$html || $code >= 400) return [];
+    if (!$body || $code >= 400) {
+        error_log("tw_fetch: HTTP $code for $url");
+        return null;
+    }
+    return $body;
+}
 
-    // Pull the embedded JSON payload out of the HTML. Twitter wraps the
-    // rendered timeline inside <script id="__NEXT_DATA__" type="application/json">.
+/**
+ * Transport 1: cdn.syndication.twimg.com returns JSON directly.
+ */
+function tw_fetch_via_cdn_json(string $username, int $limit): array {
+    $url = 'https://cdn.syndication.twimg.com/timeline/profile'
+         . '?screen_name=' . rawurlencode($username)
+         . '&with_replies=false&suppress_response_codes=true&lang=en';
+
+    $body = tw_http_get($url);
+    if (!$body) return [];
+
+    // CDN sometimes wraps in JSONP — strip callback wrapper if present.
+    if (preg_match('/^\s*[A-Za-z0-9_]+\(/', $body)) {
+        $body = preg_replace('/^\s*[A-Za-z0-9_]+\(/', '', $body);
+        $body = rtrim(rtrim($body), ');');
+    }
+    $data = json_decode($body, true);
+    if (!is_array($data)) {
+        error_log("tw_fetch: cdn JSON parse failed for $username");
+        return [];
+    }
+
+    // Timeline items live under different shapes across API versions.
+    $items = $data['body'] ?? $data['tweets'] ?? [];
+    if (!is_array($items) || empty($items)) {
+        $items = $data['props']['pageProps']['timeline']['entries'] ?? [];
+    }
+
+    $out = [];
+    foreach ($items as $raw) {
+        $t = tw_normalize_tweet($raw);
+        if ($t) $out[] = $t;
+    }
+    return $out;
+}
+
+/**
+ * Transport 2: syndication.twitter.com HTML page with __NEXT_DATA__.
+ */
+function tw_fetch_via_next_data(string $username, int $limit): array {
+    $url = 'https://syndication.twitter.com/srv/timeline-profile/screen-name/' . rawurlencode($username);
+    $html = tw_http_get($url);
+    if (!$html) return [];
+
     if (!preg_match('#<script[^>]+id="__NEXT_DATA__"[^>]*>(.+?)</script>#s', $html, $m)) {
+        error_log("tw_fetch: __NEXT_DATA__ not found for $username");
         return [];
     }
     $data = json_decode($m[1], true);
-    if (!is_array($data)) return [];
+    if (!is_array($data)) {
+        error_log("tw_fetch: __NEXT_DATA__ JSON parse failed for $username");
+        return [];
+    }
 
-    // Walk defensively — the payload shape has changed a few times.
     $entries = $data['props']['pageProps']['timeline']['entries']
             ?? $data['props']['pageProps']['contextProvider']['initialState']['timeline']['entries']
             ?? [];
@@ -60,56 +152,63 @@ function tw_fetch_user_tweets(string $username, int $limit = 20): array {
 
     $out = [];
     foreach ($entries as $entry) {
+        // Skip pinned entries — they're not chronological and would
+        // otherwise shadow newer tweets at the top of our feed.
+        $entryId = (string)($entry['entryId'] ?? $entry['type'] ?? '');
+        if (stripos($entryId, 'pinned') !== false) continue;
+
         $tweet = $entry['content']['tweet']
               ?? $entry['content']['item']['content']['tweet']
+              ?? $entry['content']
               ?? null;
-        if (!is_array($tweet)) continue;
+        $t = tw_normalize_tweet($tweet);
+        if ($t) $out[] = $t;
+    }
+    return $out;
+}
 
-        $tweetId = (string)($tweet['id_str'] ?? $tweet['id'] ?? '');
-        if ($tweetId === '') continue;
+/**
+ * Normalize any tweet-like dict into our internal shape. Returns null
+ * if the row can't be interpreted (retweet, no text+no image, etc.).
+ */
+function tw_normalize_tweet($raw): ?array {
+    if (!is_array($raw)) return null;
 
-        // Skip retweets — we want the original author's content only.
-        if (!empty($tweet['retweeted_status']) || !empty($tweet['retweeted_status_id_str'])) continue;
+    // Some wrappers bury the tweet one level deeper.
+    if (isset($raw['tweet']) && is_array($raw['tweet'])) $raw = $raw['tweet'];
 
-        $text = (string)($tweet['full_text'] ?? $tweet['text'] ?? '');
-        // Twitter appends the short t.co media URL to full_text; strip it so
-        // we don't show raw URLs that duplicate the inline image we render.
-        $text = preg_replace('#https?://t\.co/\S+$#', '', trim($text));
-        $text = trim((string)$text);
+    $id = (string)($raw['id_str'] ?? $raw['id'] ?? '');
+    if ($id === '') return null;
 
-        // First photo, if any. Videos surface as preview thumbnails here.
-        $image = '';
-        $media = $tweet['mediaDetails'] ?? $tweet['extended_entities']['media'] ?? [];
-        if (is_array($media)) {
-            foreach ($media as $mItem) {
-                $candidate = $mItem['media_url_https'] ?? $mItem['media_url'] ?? '';
-                if ($candidate) { $image = $candidate; break; }
-            }
+    // Drop retweets — we want original authorship only.
+    if (!empty($raw['retweeted_status']) || !empty($raw['retweeted_status_id_str'])) return null;
+
+    $text = (string)($raw['full_text'] ?? $raw['text'] ?? '');
+    $text = preg_replace('#https?://t\.co/\S+$#', '', trim($text));
+    $text = trim((string)$text);
+
+    $image = '';
+    $media = $raw['mediaDetails'] ?? $raw['extended_entities']['media'] ?? $raw['entities']['media'] ?? [];
+    if (is_array($media)) {
+        foreach ($media as $mItem) {
+            $candidate = $mItem['media_url_https'] ?? $mItem['media_url'] ?? '';
+            if ($candidate) { $image = $candidate; break; }
         }
-
-        // created_at is Twitter's classic "Sun Apr 20 15:23:45 +0000 2026" format.
-        $ts = 0;
-        if (!empty($tweet['created_at'])) {
-            $ts = strtotime((string)$tweet['created_at']);
-        }
-        $postedAt = $ts ? date('Y-m-d H:i:s', $ts) : date('Y-m-d H:i:s');
-
-        $postUrl = 'https://twitter.com/' . $username . '/status/' . $tweetId;
-
-        if ($text === '' && $image === '') continue;
-
-        $out[] = [
-            'tweet_id'  => $tweetId,
-            'text'      => $text,
-            'image_url' => $image,
-            'posted_at' => $postedAt,
-            'url'       => $postUrl,
-        ];
-
-        if (count($out) >= $limit) break;
     }
 
-    return $out;
+    $ts = 0;
+    if (!empty($raw['created_at'])) $ts = strtotime((string)$raw['created_at']);
+    $postedAt = $ts ? date('Y-m-d H:i:s', $ts) : date('Y-m-d H:i:s');
+
+    if ($text === '' && $image === '') return null;
+
+    return [
+        'tweet_id'  => $id,
+        'text'      => $text,
+        'image_url' => $image,
+        'posted_at' => $postedAt,
+        'url'       => '',
+    ];
 }
 
 /**
@@ -122,12 +221,16 @@ function tw_sync_all_sources(): int {
     try {
         $sources = $db->query("SELECT * FROM twitter_sources WHERE is_active = 1")->fetchAll(PDO::FETCH_ASSOC);
     } catch (Throwable $e) {
+        error_log('tw_sync: sources query failed: ' . $e->getMessage());
         return 0;
     }
 
     $total = 0;
     foreach ($sources as $src) {
         $tweets = tw_fetch_user_tweets($src['username'], 20);
+        if (empty($tweets)) {
+            error_log('tw_sync: no tweets returned for @' . $src['username']);
+        }
         foreach ($tweets as $t) {
             try {
                 $stmt = $db->prepare("INSERT IGNORE INTO twitter_messages
@@ -143,7 +246,7 @@ function tw_sync_all_sources(): int {
                 ]);
                 if ($stmt->rowCount() > 0) $total++;
             } catch (Throwable $e) {
-                // Duplicate-key races + transient DB issues: ignore, keep going.
+                // Duplicate-key + transient issues: skip this row, keep going.
             }
         }
         try {
