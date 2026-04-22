@@ -156,8 +156,20 @@ function pod_generate_script(array $candidates, string $dateHuman): array {
         return ['ok' => false, 'error' => 'empty script payload'];
     }
 
+    // Some providers return tool-call arguments as JSON-encoded strings
+    // instead of decoded arrays. Re-decode defensively so array_filter
+    // below doesn't crash on a string.
+    $rawSegments = $data['segments'];
+    if (is_string($rawSegments)) {
+        $decoded = json_decode($rawSegments, true);
+        $rawSegments = is_array($decoded) ? $decoded : [];
+    }
+    if (!is_array($rawSegments)) {
+        return ['ok' => false, 'error' => 'segments not an array'];
+    }
+
     // Drop segments that reference article ids the model hallucinated.
-    $segments = array_values(array_filter($data['segments'], function ($seg) use ($validIds) {
+    $segments = array_values(array_filter($rawSegments, function ($seg) use ($validIds) {
         return is_array($seg) && isset($validIds[(int)($seg['article_id'] ?? 0)]);
     }));
     if (count($segments) < 3) {
