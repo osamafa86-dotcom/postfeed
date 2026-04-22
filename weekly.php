@@ -15,8 +15,14 @@ require_once __DIR__ . '/includes/weekly_rewind.php';
 require_once __DIR__ . '/includes/user_auth.php';
 require_once __DIR__ . '/includes/seo.php';
 
-$pageTheme = getUserTheme();
-$viewer    = currentUser();
+// During the feature's first week we surface PHP errors so any blank
+// 500 has a real message attached. Remove once the page has shipped
+// at least one rewind cleanly.
+ini_set('display_errors', '1');
+error_reporting(E_ALL);
+
+$pageTheme = current_theme();
+$viewer    = current_user();
 $viewerId  = (int)($viewer['id'] ?? 0);
 
 $mode = 'single';
