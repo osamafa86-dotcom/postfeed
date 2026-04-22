@@ -46,6 +46,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               . $extra . ' --week=' . escapeshellarg($week) . ' 2>&1';
         $out  = shell_exec($cmd);
         $flash = ['type' => 'ok', 'msg' => 'تم تشغيل الإرسال للأسبوع ' . $week, 'log' => (string)$out];
+    } elseif ($action === 'backfill') {
+        $weeks = max(1, min(12, (int)($_POST['weeks'] ?? 4)));
+        $cmd  = PHP_BINARY . ' ' . escapeshellarg(__DIR__ . '/../cron_weekly_rewind.php')
+              . ' --backfill=' . $weeks . ' 2>&1';
+        $out  = shell_exec($cmd);
+        $flash = ['type' => 'ok', 'msg' => "تم تشغيل backfill لآخر {$weeks} أسابيع", 'log' => (string)$out];
     } elseif ($action === 'send_test') {
         require_once __DIR__ . '/../includes/mailer.php';
         $email = filter_var(trim((string)($_POST['test_email'] ?? '')), FILTER_VALIDATE_EMAIL);
@@ -267,14 +273,26 @@ include __DIR__ . '/includes/panel_layout_head.php';
 
     <?php else: ?>
       <h2>لا توجد مراجعة محفوظة</h2>
-      <p style="color:#6b7280;">ابدأ بتوليد مراجعة للأسبوع الحالي:</p>
+      <p style="color:#6b7280;">ابدأ بتوليد مراجعة للأسبوع الحالي، أو املأ الأرشيف بالأسابيع السابقة دفعة واحدة.</p>
 
       <form method="POST" class="wr-gen-form">
         <?php echo csrf_field(); ?>
         <input type="hidden" name="action" value="generate">
-        <label style="font-size:13px;color:#374151;font-weight:700;">الأسبوع:</label>
+        <label style="font-size:13px;color:#374151;font-weight:700;">توليد أسبوع واحد:</label>
         <input type="text" name="week" value="<?php echo e(wr_year_week_for(time())); ?>" pattern="\d{4}-\d{1,2}" required>
         <button type="submit" class="wr-btn-primary">🤖 توليد بالـ AI</button>
+      </form>
+
+      <form method="POST" class="wr-gen-form" style="margin-top:16px;padding-top:14px;border-top:1px solid #f3f4f6;">
+        <?php echo csrf_field(); ?>
+        <input type="hidden" name="action" value="backfill">
+        <label style="font-size:13px;color:#374151;font-weight:700;">أو املأ الأرشيف بأخر:</label>
+        <input type="text" name="weeks" value="4" pattern="\d{1,2}" required style="width:60px;text-align:center;">
+        <span style="font-size:13px;color:#374151;">أسابيع</span>
+        <button type="submit" class="wr-btn-warn"
+                onclick="return confirm('سيقوم بعدة استدعاءات للـ AI (واحدة لكل أسبوع). قد يستغرق دقيقتين. متابعة؟');">
+          📚 توليد عدة أسابيع
+        </button>
       </form>
     <?php endif; ?>
   </section>

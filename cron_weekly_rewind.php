@@ -32,6 +32,35 @@ if (PHP_SAPI !== 'cli') {
 
 @set_time_limit(300);
 
+// --- Backfill mode ------------------------------------------------
+// One-shot helper to seed the archive with the last N weeks. Useful
+// on first deploy so the /weekly/archive isn't empty until next
+// Saturday. Each week is generated sequentially with --force.
+//   CLI:   php cron_weekly_rewind.php --backfill=4
+//   HTTP:  ?backfill=4&key=...
+$backfill = 0;
+if (!empty($_GET['backfill'])) $backfill = (int)$_GET['backfill'];
+if (PHP_SAPI === 'cli') {
+    foreach ($argv ?? [] as $a) {
+        if (strpos($a, '--backfill=') === 0) $backfill = (int)substr($a, 11);
+    }
+}
+$backfill = max(0, min(12, $backfill));
+if ($backfill > 0) {
+    echo "backfill mode: generating last {$backfill} weeks...\n";
+    $self = $_SERVER['SCRIPT_FILENAME'] ?? __FILE__;
+    $now = time();
+    for ($i = 0; $i < $backfill; $i++) {
+        $weekTs = $now - ($i * 7 * 86400);
+        $yw     = wr_year_week_for($weekTs);
+        echo "\n=== week {$yw} ===\n";
+        $cmd = PHP_BINARY . ' ' . escapeshellarg($self) . ' --force --week=' . escapeshellarg($yw) . ' 2>&1';
+        passthru($cmd);
+    }
+    echo "\nbackfill complete.\n";
+    exit;
+}
+
 // --- Resolve the target week --------------------------------------
 // Default: "this week" at the time of running. Override with
 // --week=YYYY-WW or ?week=YYYY-WW for back-filling past weeks.
