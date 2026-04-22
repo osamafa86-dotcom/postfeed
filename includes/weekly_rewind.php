@@ -496,3 +496,195 @@ function wr_generate_with_ai(array $candidates, string $startDate, string $endDa
 }
 
 } // function_exists guard (generator)
+
+/* ==================================================================
+ * Email rendering.
+ *
+ * Produces the HTML body for the Sunday-morning digest email. Uses
+ * inline styles + table-ish div structure (no Flexbox / no Grid) so
+ * it renders sanely across Gmail, Apple Mail, Outlook.com, and the
+ * legacy Outlook desktop client. The layout intentionally mirrors
+ * the /weekly/<year-week> web page so a forward-to-browser feels
+ * continuous, but without the site chrome.
+ *
+ * The caller passes the unsubscribe URL so it's unique per recipient.
+ * ================================================================ */
+
+if (!function_exists('wr_email_html')) {
+
+function wr_email_html(array $rewind, string $unsubscribeUrl, string $webUrl = ''): string {
+    $brand     = '#1a5c5c';
+    $accent    = '#0d9488';
+    $gold      = '#f59e0b';
+    $siteName  = getSetting('site_name', SITE_NAME);
+    $title     = e((string)($rewind['cover_title'] ?? 'مراجعة الأسبوع'));
+    $subtitle  = e((string)($rewind['cover_subtitle'] ?? ''));
+    $dateRange = e(wr_format_date_range_internal($rewind['start_date'], $rewind['end_date']));
+    $cover     = trim((string)($rewind['cover_image_url'] ?? ''));
+    $intro     = e((string)($rewind['intro_text'] ?? ''));
+    if ($webUrl === '') $webUrl = SITE_URL . '/weekly/' . ($rewind['year_week'] ?? '');
+
+    // ----- Hero --------------------------------------------------
+    $coverImg = '';
+    if ($cover !== '' && preg_match('#^https?://#', $cover)) {
+        $coverImg = '<img src="' . e($cover) . '" alt="" style="display:block;width:100%;max-height:280px;object-fit:cover;border-radius:0;">';
+    }
+    $hero  = '<div style="background:linear-gradient(135deg,#0f172a 0%,' . $brand . ' 100%);color:#fff;padding:0;border-radius:16px 16px 0 0;overflow:hidden;">'
+           . $coverImg
+           . '<div style="padding:28px 32px 32px;">'
+           . '<div style="display:inline-block;background:' . $gold . ';color:#1a1a2e;padding:5px 14px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.5px;margin-bottom:14px;">📅 مراجعة الأسبوع</div>'
+           . '<div style="font-size:12px;color:rgba(255,255,255,.75);margin-bottom:14px;font-weight:600;">' . $dateRange . '</div>'
+           . '<h1 style="font-size:30px;line-height:1.3;margin:0 0 12px;font-weight:900;color:#fff;">' . $title . '</h1>'
+           . ($subtitle !== '' ? '<p style="font-size:15px;line-height:1.7;margin:0;color:rgba(255,255,255,.9);">' . $subtitle . '</p>' : '')
+           . '</div></div>';
+
+    // ----- Intro -------------------------------------------------
+    $introBlock = '';
+    if ($intro !== '') {
+        $introBlock = '<div style="padding:28px 32px 8px;">'
+                    . '<div style="font-size:40px;color:' . $accent . ';font-weight:900;line-height:1;margin-bottom:8px;">—</div>'
+                    . '<p style="font-size:16px;line-height:1.85;color:#374151;margin:0;font-weight:500;">' . nl2br($intro) . '</p>'
+                    . '</div>';
+    }
+
+    // ----- Numbers strip -----------------------------------------
+    $numbersHtml = '';
+    $nums = (array)($rewind['content']['numbers'] ?? []);
+    if ($nums) {
+        $cells = '';
+        foreach ($nums as $n) {
+            $val = e((string)($n['value'] ?? ''));
+            $lbl = e((string)($n['label'] ?? ''));
+            if ($val === '' || $lbl === '') continue;
+            $cells .= '<td style="width:50%;padding:8px;">'
+                    . '<div style="background:#fff;border:1px solid #e3e6ec;border-radius:12px;padding:18px 14px;text-align:center;">'
+                    . '<div style="font-size:26px;font-weight:900;color:' . $accent . ';line-height:1.1;margin-bottom:6px;">' . $val . '</div>'
+                    . '<div style="font-size:12px;color:#6b7280;line-height:1.5;">' . $lbl . '</div>'
+                    . '</div></td>';
+        }
+        // Wrap two per row via simple table rows.
+        $numbersHtml = '<div style="padding:32px 24px 8px;">'
+                     . wr_email_section_heading('أرقام هذا الأسبوع', $accent)
+                     . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>' . $cells . '</tr></table>'
+                     . '</div>';
+    }
+
+    // ----- Stories ----------------------------------------------
+    $storiesHtml = '';
+    foreach (($rewind['content']['stories'] ?? []) as $i => $story) {
+        $idx  = str_pad((string)($i+1), 2, '0', STR_PAD_LEFT);
+        $ico  = e((string)($story['icon'] ?? '📰'));
+        $cat  = e((string)($story['category'] ?? ''));
+        $hl   = e((string)$story['headline']);
+        $sm   = nl2br(e((string)$story['summary']));
+        $why  = e((string)($story['why_it_matters'] ?? ''));
+
+        $srcHtml = '';
+        foreach (($story['articles'] ?? []) as $a) {
+            $url = SITE_URL . '/' . articleUrl(['id' => $a['id'], 'slug' => $a['slug']]);
+            $srcHtml .= '<a href="' . e($url) . '" style="display:block;padding:6px 10px;margin:2px 0;text-decoration:none;color:#374151;font-size:13px;line-height:1.55;border-radius:6px;">'
+                     . '<span style="display:inline-block;background:rgba(26,115,232,.1);color:#1a73e8;padding:1px 7px;border-radius:4px;font-size:10.5px;font-weight:700;margin-left:6px;">' . e((string)($a['source_name'] ?? '—')) . '</span>'
+                     . e((string)$a['title'])
+                     . '</a>';
+        }
+        $sourcesBlock = $srcHtml !== ''
+            ? '<div style="margin-top:14px;padding-top:12px;border-top:1px dashed #e3e6ec;">'
+              . '<div style="font-size:11px;font-weight:700;color:#6b7280;margin-bottom:6px;">المصادر:</div>'
+              . $srcHtml . '</div>'
+            : '';
+
+        $whyBlock = $why !== ''
+            ? '<div style="background:rgba(245,158,11,.08);border-right:3px solid ' . $gold . ';padding:12px 16px;border-radius:0 10px 10px 0;font-size:14px;line-height:1.75;color:#374151;margin-top:14px;">'
+              . '<div style="font-size:10.5px;font-weight:800;color:#b45309;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">لماذا يهم؟</div>'
+              . $why . '</div>'
+            : '';
+
+        $catLine = $cat !== ''
+            ? '<div style="font-size:10.5px;font-weight:800;color:' . $accent . ';text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;">' . $cat . '</div>'
+            : '';
+
+        $storiesHtml .= '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 28px;border-bottom:1px solid #e3e6ec;padding-bottom:24px;">'
+                      . '<tr>'
+                      . '<td valign="top" width="64" style="padding:4px 0 0 14px;text-align:center;">'
+                      . '<div style="width:48px;height:48px;background:linear-gradient(135deg,rgba(13,148,136,.12),rgba(26,92,92,.08));border-radius:12px;font-size:26px;line-height:48px;text-align:center;margin:0 auto 6px;">' . $ico . '</div>'
+                      . '<div style="font-size:13px;font-weight:900;color:#9ca3af;font-family:Menlo,Consolas,monospace;">' . $idx . '</div>'
+                      . '</td>'
+                      . '<td valign="top" style="padding:4px 0 0;">'
+                      . $catLine
+                      . '<h3 style="font-size:21px;font-weight:900;line-height:1.35;margin:0 0 10px;color:#1a1a2e;">' . $hl . '</h3>'
+                      . '<p style="font-size:15px;line-height:1.9;color:#374151;margin:0;">' . $sm . '</p>'
+                      . $whyBlock
+                      . $sourcesBlock
+                      . '</td></tr></table>';
+    }
+    $storiesBlock = $storiesHtml !== ''
+        ? '<div style="padding:8px 24px;">' . wr_email_section_heading('القصص المختارة', $accent) . $storiesHtml . '</div>'
+        : '';
+
+    // ----- Watching next ----------------------------------------
+    $watchingHtml = '';
+    foreach (($rewind['content']['watching_next'] ?? []) as $w) {
+        $ico   = e((string)($w['icon'] ?? '📅'));
+        $wt    = e((string)($w['title'] ?? ''));
+        $wnote = e((string)($w['note']  ?? ''));
+        if ($wt === '') continue;
+        $watchingHtml .= '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 10px;">'
+                       . '<tr><td>'
+                       . '<div style="background:#fff;border:1px solid #e3e6ec;border-right:4px solid ' . $accent . ';border-radius:12px;padding:14px 16px;">'
+                       . '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>'
+                       . '<td width="48" valign="top">'
+                       . '<div style="width:40px;height:40px;background:rgba(13,148,136,.12);border-radius:10px;font-size:22px;line-height:40px;text-align:center;">' . $ico . '</div>'
+                       . '</td>'
+                       . '<td valign="top" style="padding-right:12px;">'
+                       . '<strong style="display:block;font-size:15px;font-weight:800;color:#1a1a2e;margin-bottom:3px;">' . $wt . '</strong>'
+                       . ($wnote !== '' ? '<span style="font-size:13px;color:#6b7280;line-height:1.65;">' . $wnote . '</span>' : '')
+                       . '</td></tr></table></div></td></tr></table>';
+    }
+    $watchingBlock = $watchingHtml !== ''
+        ? '<div style="padding:20px 24px 8px;">' . wr_email_section_heading('ما ننتظره الأسبوع القادم', $accent) . $watchingHtml . '</div>'
+        : '';
+
+    // ----- CTA + footer -----------------------------------------
+    $ctaBlock = '<div style="text-align:center;padding:28px 24px 8px;">'
+              . '<a href="' . e($webUrl) . '" style="display:inline-block;background:' . $accent . ';color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:800;font-size:15px;">افتح المراجعة على الموقع ←</a>'
+              . '</div>';
+
+    $footer = '<div style="padding:24px 24px 28px;text-align:center;border-top:1px solid #e3e6ec;margin-top:24px;">'
+            . '<div style="font-size:12px;color:#6b7280;line-height:1.8;">'
+            . 'تصلك هذه المراجعة الأسبوعية من <strong style="color:#1a1a2e;">' . e($siteName) . '</strong>.<br>'
+            . 'لا تريد استلامها بعد الآن؟ '
+            . '<a href="' . e($unsubscribeUrl) . '" style="color:' . $accent . ';text-decoration:underline;">إلغاء الاشتراك</a>'
+            . '</div></div>';
+
+    // Outer shell + white card.
+    $body = '<div style="background:#f5f5f1;padding:24px 12px;">'
+          . '<div style="max-width:640px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.06);">'
+          . $hero
+          . $introBlock
+          . $numbersHtml
+          . $storiesBlock
+          . $watchingBlock
+          . $ctaBlock
+          . $footer
+          . '</div></div>';
+
+    // Wrap in the shared newsletter shell (RTL html+body, head, fonts).
+    if (function_exists('newsletter_email_html')) {
+        return newsletter_email_html((string)$rewind['cover_title'], $body, $unsubscribeUrl);
+    }
+    // Fallback minimal shell if mailer hasn't been loaded yet.
+    return '<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"></head>'
+         . '<body style="margin:0;padding:0;font-family:Tajawal,Segoe UI,Tahoma,sans-serif;">' . $body . '</body></html>';
+}
+
+function wr_email_section_heading(string $text, string $color): string {
+    return '<div style="font-size:12px;text-transform:uppercase;letter-spacing:2px;font-weight:800;color:' . $color . ';margin:0 0 18px;padding:0 4px;">'
+         . e($text) . '</div>';
+}
+
+function wr_format_date_range_internal(string $start, string $end): string {
+    if (function_exists('wr_format_date_range')) return wr_format_date_range($start, $end);
+    return $start . ' – ' . $end;
+}
+
+} // function_exists guard (email)
