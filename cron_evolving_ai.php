@@ -29,6 +29,14 @@ if (PHP_SAPI !== 'cli') {
 
 @set_time_limit(600);
 
+// Cost kill-switch — see cron_ai.php for the rationale. This script
+// fans 8 AI calls per active story per run, so it's the second most
+// expensive after cron_ai.
+if ((string)getSetting('cron_evolving_ai_enabled', '1') !== '1') {
+    echo "skip: cron_evolving_ai_enabled = 0\n";
+    exit;
+}
+
 // Per-story budget. Default is small so a nightly run stays cheap even
 // when a story has a big backlog — the cron catches up over a few runs.
 $perStoryBudget = (int)($_GET['limit'] ?? ($argv[1] ?? 8));

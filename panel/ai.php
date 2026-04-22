@@ -46,6 +46,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_ai_settings'])) 
     $success = 'تم حفظ إعدادات الذكاء الاصطناعي';
 }
 
+// Toggle the per-cron AI kill switches. Persisted in `settings`,
+// read by cron_ai.php / cron_evolving_ai.php on each run. Letting
+// the operator flip these from the UI avoids touching crontab when
+// they want to stay under a free-tier quota.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_ai_switches'])) {
+    foreach (['cron_ai_enabled', 'cron_evolving_ai_enabled'] as $key) {
+        $val = !empty($_POST[$key]) ? '1' : '0';
+        $stmt = $db->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)
+                              ON DUPLICATE KEY UPDATE setting_value = ?");
+        $stmt->execute([$key, $val, $val]);
+    }
+    cache_forget('settings_all');
+    $success = 'تم حفظ مفاتيح إيقاف الذكاء الاصطناعي';
+}
+
 // Generate / rotate the cron key used by cron_tg_summary.php and friends
 // so the admin doesn't have to dig into the DB to find (or create) it.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate_cron_key'])) {
@@ -165,6 +180,63 @@ include __DIR__ . '/includes/panel_layout_head.php';
 
       <button type="submit" class="btn-primary">💾 حفظ الإعدادات</button>
     </form>
+  </div>
+
+  <?php
+    $aiEnabled        = (string)getSetting('cron_ai_enabled',          '1') === '1';
+    $evolvingEnabled  = (string)getSetting('cron_evolving_ai_enabled', '1') === '1';
+  ?>
+  <div class="card" style="margin-top:18px;">
+    <h2 style="margin:0 0 8px;">⏸ مفاتيح إيقاف توليد المحتوى</h2>
+    <p style="font-size:13px;color:#64748b;margin:0 0 14px;">
+      أوقف العمليات الكثيفة على الذكاء الاصطناعي لتقليل التكاليف.
+      الموجزات اليومية والأسبوعية تستمر بشكل منفصل.
+    </p>
+    <form method="POST">
+      <input type="hidden" name="save_ai_switches" value="1">
+
+      <label style="display:flex;align-items:center;gap:10px;padding:14px;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:10px;cursor:pointer;background:<?php echo $aiEnabled ? '#f0fdf4' : '#fef2f2'; ?>;">
+        <input type="checkbox" name="cron_ai_enabled" value="1"<?php echo $aiEnabled ? ' checked' : ''; ?> style="width:18px;height:18px;">
+        <div style="flex:1;">
+          <div style="font-weight:700;font-size:14px;">تلخيص المقالات الفردية (cron_ai.php)</div>
+          <div style="font-size:12px;color:#64748b;">يلخّص كل خبر جديد على حدة. <strong>الأكثر استهلاكاً للحصة</strong> — أوقفه لتوفير ٨٠٪ من الاستدعاءات.</div>
+        </div>
+        <span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;background:<?php echo $aiEnabled ? '#16a34a' : '#dc2626'; ?>;color:#fff;">
+          <?php echo $aiEnabled ? '● مُفعّل' : '○ موقف'; ?>
+        </span>
+      </label>
+
+      <label style="display:flex;align-items:center;gap:10px;padding:14px;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:14px;cursor:pointer;background:<?php echo $evolvingEnabled ? '#f0fdf4' : '#fef2f2'; ?>;">
+        <input type="checkbox" name="cron_evolving_ai_enabled" value="1"<?php echo $evolvingEnabled ? ' checked' : ''; ?> style="width:18px;height:18px;">
+        <div style="flex:1;">
+          <div style="font-weight:700;font-size:14px;">استخراج كيانات القصص المتطوّرة (cron_evolving_ai.php)</div>
+          <div style="font-size:12px;color:#64748b;">يستخرج الأشخاص والاقتباسات من القصص المتطوّرة. ٨ مكالمات/قصة/ليلة. أوقفه إذا الميزة غير مستخدمة.</div>
+        </div>
+        <span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;background:<?php echo $evolvingEnabled ? '#16a34a' : '#dc2626'; ?>;color:#fff;">
+          <?php echo $evolvingEnabled ? '● مُفعّل' : '○ موقف'; ?>
+        </span>
+      </label>
+
+      <button type="submit" class="btn-primary" style="padding:10px 24px;background:#1a5c5c;color:#fff;border:0;border-radius:8px;font-weight:700;cursor:pointer;">حفظ</button>
+    </form>
+
+    <div style="margin-top:18px;padding:14px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;">
+      <h3 style="margin:0 0 8px;font-size:14px;color:#92400e;">📅 الجدول الموصى به للـ cron (٣ مكالمات/يوم + ٢ أسبوعياً)</h3>
+      <pre style="margin:0;font-size:11.5px;font-family:Menlo,Consolas,monospace;color:#451a03;white-space:pre-wrap;line-height:1.7;">
+# موجز التلغرام الشامل (مرة واحدة، ١١ مساءً)
+0 23 * * * curl -fsS "<?php echo e($siteUrl); ?>/cron_tg_summary.php?key=<?php echo e($cronKey ?: 'KEY'); ?>&mode=daily" > /dev/null
+
+# موجز أخبار الموقع (مرة واحدة، ١١ مساءً)
+5 23 * * * curl -fsS "<?php echo e($siteUrl); ?>/cron_sabah.php?key=<?php echo e($cronKey ?: 'KEY'); ?>" > /dev/null
+
+# مراجعة الأسبوع (سبت ٨ مساءً + إرسال أحد ٧ صباحاً)
+0 20 * * 6 curl -fsS "<?php echo e($siteUrl); ?>/cron_weekly_rewind.php?key=<?php echo e($cronKey ?: 'KEY'); ?>" > /dev/null
+0 7  * * 0 curl -fsS "<?php echo e($siteUrl); ?>/cron_weekly_rewind_send.php?key=<?php echo e($cronKey ?: 'KEY'); ?>" > /dev/null
+</pre>
+      <p style="margin:8px 0 0;font-size:12px;color:#92400e;">
+        ⚠ بعد ضبط الجدول الجديد في cPanel، احذف أي cron قديم لـ <code>cron_ai.php</code> و <code>cron_evolving_ai.php</code> و الـ <code>cron_tg_summary.php</code> كل ٤ ساعات.
+      </p>
+    </div>
   </div>
 
   <?php

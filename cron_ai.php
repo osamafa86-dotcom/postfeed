@@ -20,6 +20,18 @@ if (PHP_SAPI !== 'cli') {
 
 @set_time_limit(300);
 $db = getDB();
+
+// Cost kill-switch. The per-article summarizer is the heaviest AI
+// consumer on the site (one call per new article, dozens per hour).
+// Operators can flip `cron_ai_enabled` to "0" from the panel to
+// silence it without touching the server crontab — useful for
+// staying under free-tier quotas while the daily / weekly briefings
+// keep running.
+if ((string)getSetting('cron_ai_enabled', '1') !== '1') {
+    echo "skip: cron_ai_enabled = 0 (article-level AI disabled)\n";
+    exit;
+}
+
 $limit = (int)($_GET['limit'] ?? ($argv[1] ?? 20));
 if ($limit < 1 || $limit > 100) $limit = 20;
 
