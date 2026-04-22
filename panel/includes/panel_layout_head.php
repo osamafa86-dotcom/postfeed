@@ -703,6 +703,10 @@ $__nfVer = app_version();
       <div class="nav-icon">🗺</div>
       <span class="label">خريطة الأخبار</span>
     </a>
+    <a href="podcast.php" class="nav-item<?php echo $activePage==='podcast'?' active':''; ?>">
+      <div class="nav-icon">📻</div>
+      <span class="label">البودكاست اليومي</span>
+    </a>
     <a href="preview.php" class="nav-item<?php echo $activePage==='preview'?' active':''; ?>">
       <div class="nav-icon">🧪</div>
       <span class="label">معاينة فرع</span>
