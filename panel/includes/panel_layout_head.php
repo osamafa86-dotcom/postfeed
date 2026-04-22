@@ -695,6 +695,10 @@ $__nfVer = app_version();
       <div class="nav-icon">📬</div>
       <span class="label">النشرة البريدية</span>
     </a>
+    <a href="weekly_rewind.php" class="nav-item<?php echo $activePage==='weekly_rewind'?' active':''; ?>">
+      <div class="nav-icon">📅</div>
+      <span class="label">مراجعة الأسبوع</span>
+    </a>
     <a href="preview.php" class="nav-item<?php echo $activePage==='preview'?' active':''; ?>">
       <div class="nav-icon">🧪</div>
       <span class="label">معاينة فرع</span>
