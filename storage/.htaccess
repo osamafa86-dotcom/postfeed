@@ -1,1 +1,5 @@
-Deny from all
+# Access control for /storage is pushed into each subdirectory so the
+# public /storage/podcast/*.mp3 path works while /storage/cache and
+# /storage/tts (internal caches) stay blocked. Putting a blanket
+# "Deny from all" here broke podcast playback because nested rules
+# don't reliably override it on every Apache build we've seen.
