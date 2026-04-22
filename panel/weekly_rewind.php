@@ -44,7 +44,10 @@ $flash = null;
  * from manual runs.
  * ---------------------------------------------------------------- */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    csrf_verify();
+    if (!csrf_verify($_POST['_csrf'] ?? '')) {
+        http_response_code(403);
+        exit('CSRF verification failed');
+    }
     @set_time_limit(600);
     $action = (string)($_POST['action'] ?? '');
     $week   = preg_match('/^\d{4}-\d{1,2}$/', (string)($_POST['week'] ?? ''))
