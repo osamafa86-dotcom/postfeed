@@ -160,9 +160,7 @@ if (!empty($article['cat_slug']) && count($relatedArticles) < $relatedLimit) {
     <link rel="canonical" href="<?php echo e($canonical); ?>">
     <link rel="alternate" hreflang="ar" href="<?php echo e($selfUrl); ?>">
     <link rel="alternate" hreflang="x-default" href="<?php echo e($selfUrl); ?>">
-    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
-    <link rel="manifest" href="manifest.webmanifest">
-    <meta name="theme-color" content="#1a73e8">
+    <?php include __DIR__ . '/includes/components/pwa_head.php'; ?>
 
     <!-- OG Tags -->
     <meta property="og:site_name" content="<?php echo e(SITE_NAME); ?>">

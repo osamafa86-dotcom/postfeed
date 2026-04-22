@@ -150,9 +150,7 @@ $pageTitleText = $keyword !== '' ? '#' . $keyword : 'الموضوعات الأك
     }
 ?>
 <meta name="description" content="<?php echo e($topicDesc); ?>">
-<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
-<link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#1a5c5c">
+<?php include __DIR__ . '/includes/components/pwa_head.php'; ?>
 <link rel="alternate" type="application/rss+xml" title="نيوز فيد RSS" href="/rss.xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

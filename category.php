@@ -159,9 +159,7 @@ if ($viewerId && !empty($articles)) {
 ?>
 <meta name="description" content="<?php echo e($catDesc); ?>">
 <link rel="alternate" hreflang="ar" href="<?php echo e($catCanonical); ?>">
-<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
-<link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#1a73e8">
+<?php include __DIR__ . '/includes/components/pwa_head.php'; ?>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'">

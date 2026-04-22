@@ -86,8 +86,7 @@ function tg_page_url(int $p): string {
 <title>📢 أخبار تيليغرام — <?php echo e(getSetting('site_name', SITE_NAME)); ?></title>
 <meta name="description" content="أحدث رسائل قنوات تيليغرام الإخبارية من <?php echo e(getSetting('site_name', SITE_NAME)); ?>">
 <link rel="canonical" href="<?php echo e(SITE_URL . '/telegram.php'); ?>">
-<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
-<meta name="theme-color" content="#229ED9">
+<?php $pwa_theme_color = '#229ED9'; include __DIR__ . '/includes/components/pwa_head.php'; ?>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'">

@@ -109,9 +109,7 @@ $metaDesc = $timeline && !empty($timeline['intro'])
 <meta property="og:image" content="<?php echo e($articles[0]['image_url']); ?>">
 <?php endif; ?>
 <meta name="twitter:card" content="summary_large_image">
-<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
-<link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#1a5c5c">
+<?php include __DIR__ . '/includes/components/pwa_head.php'; ?>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'">

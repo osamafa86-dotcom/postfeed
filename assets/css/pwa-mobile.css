@@ -1,0 +1,188 @@
+/* ============================================================
+ * Mobile + PWA enhancements
+ * ============================================================
+ * Loaded from every page via includes/components/pwa_head.php.
+ *
+ * The goal isn't to redo the site's responsive work — each
+ * section already has its own breakpoints in home.css and
+ * home-index.css — it's to patch the cross-cutting issues
+ * that become visible when the site is installed to the
+ * home screen and launched as a standalone app:
+ *
+ *   - iPhone notch / status-bar overlap
+ *   - iOS auto-zoom on input focus
+ *   - touch targets smaller than Apple's 44px guideline
+ *   - horizontal-scroll strips that clip on very narrow
+ *     phones (stats-strip, sections-nav, feed-tabs)
+ *   - tap-highlight flashing on interactive elements
+ * ========================================================== */
+
+:root {
+  --nf-safe-top:    env(safe-area-inset-top, 0px);
+  --nf-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --nf-safe-left:   env(safe-area-inset-left, 0px);
+  --nf-safe-right:  env(safe-area-inset-right, 0px);
+}
+
+/* iOS Safari inflates text on landscape rotation. Disable that so
+   fonts stay the size we designed them at. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Neutralise the blue tap-flash so interactions feel native. */
+* {
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+}
+
+body {
+  /* Allow the header's dark gradient to reach the notch, but pad
+     any full-bleed bottom bar so it clears the iPhone home line. */
+  padding-bottom: var(--nf-safe-bottom);
+}
+
+/* ---- iOS input auto-zoom guard --------------------------------
+   Safari on iPhone zooms any <input>/<textarea>/<select> with a
+   font-size below 16px when the field receives focus. Force 16px
+   on small screens to prevent that lurch. */
+@media (max-width: 768px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+  /* Search box in the header is styled through a wrapper, so bump
+     the input itself to avoid the zoom while keeping the visual
+     size controlled by the wrapper. */
+  .site-header .search-box input,
+  #nfSearchInput {
+    font-size: 16px !important;
+  }
+}
+
+/* ---- Minimum touch targets ------------------------------------
+   Apple HIG: 44×44. Most of our pills/buttons were sized around
+   36–40px on mobile. Bump just the hit area with a minimum, not
+   the visible padding, so the UI stays compact. */
+@media (max-width: 768px) {
+  .sec-pill,
+  .feed-tab,
+  .site-header .icon-btn,
+  .site-header .menu-toggle,
+  .mobile-nav a,
+  .ticker-item,
+  .btn-join {
+    min-height: 44px;
+  }
+}
+
+/* ---- Horizontal-scroll strips: never clip ---------------------
+   The stats-strip and sections-nav already have overflow-x:auto
+   but on very narrow phones they sometimes get compressed flex
+   children that wrap. Force no-wrap + padding-right for a bit of
+   breathing room past the last chip. */
+@media (max-width: 520px) {
+  .stats-strip-inner,
+  .sections-nav-inner {
+    flex-wrap: nowrap;
+    scroll-padding-right: 12px;
+    padding-right: calc(10px + var(--nf-safe-right));
+    padding-left:  calc(10px + var(--nf-safe-left));
+  }
+  .stats-strip-inner > *,
+  .sections-nav-inner > * {
+    flex-shrink: 0;
+  }
+}
+
+/* ---- Feed tabs (Telegram/Twitter/YouTube) become scroll-x -----
+   The three tabs fit fine on any phone, but if Facebook +
+   Instagram are added later, wrapping will look awful on a
+   320px screen. Switching to horizontal scroll is the safe
+   long-term pattern. */
+@media (max-width: 520px) {
+  .feed-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .feed-tabs::-webkit-scrollbar { display: none; }
+  .feed-tab {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+}
+
+/* ---- Social breaking cards on tiny screens --------------------
+   tg-card / tw-card / yt-card use `flex:0 0 90px` on their image
+   column. On a 320px screen that leaves ~180px for the text and
+   padding, which is fine — but the 160px YT thumbnail overflows.
+   Let the YT thumb shrink too below 380px. */
+@media (max-width: 380px) {
+  .tg-card, .tw-card, .yt-card {
+    padding: 12px;
+    gap: 10px;
+  }
+  .tg-img, .tw-img {
+    flex: 0 0 76px;
+    height: 76px;
+  }
+  .yt-img {
+    flex: 0 0 104px;
+    height: 60px;
+  }
+  .tg-text, .tw-text {
+    font-size: 12.5px;
+    -webkit-line-clamp: 3;
+  }
+  .yt-title {
+    font-size: 13px;
+    -webkit-line-clamp: 2;
+  }
+}
+
+/* ---- Main layout edge padding --------------------------------- */
+@media (max-width: 520px) {
+  .main-layout,
+  .nf-feature-container,
+  .container {
+    padding-left:  calc(12px + var(--nf-safe-left));
+    padding-right: calc(12px + var(--nf-safe-right));
+  }
+}
+
+/* ==============================================================
+ * Standalone (installed PWA) specific tweaks
+ * ============================================================ */
+@media (display-mode: standalone) {
+  /* The OS status bar overlaps the header when launched as a
+     standalone app because our <meta status-bar-style> is
+     "black-translucent". Pad the header so the logo stays clear
+     of the notch. */
+  .site-header {
+    padding-top: var(--nf-safe-top);
+  }
+  /* Breaking ticker is full-bleed, nothing special.
+     The bottom install banner self-dismisses because we hide
+     it via JS when `window.matchMedia('(display-mode: standalone)')`
+     matches — see install-prompt.js. */
+}
+
+/* iOS Safari "standalone" reports via window.navigator.standalone.
+   The install-prompt.js adds `body.nf-standalone` on launch so we
+   can target iOS PWA specifically too. */
+body.nf-standalone .site-header {
+  padding-top: calc(var(--nf-safe-top) + 4px);
+}
+
+/* Improve scroll momentum on old iOS WebKit. */
+html, body {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Hide the header's bulky live-pill below 480px — already hidden by
+   site-header.css at 1100px but re-state here in case of cascade
+   ordering when this file loads late. */
+@media (max-width: 480px) {
+  .site-header .live-pill { display: none !important; }
+}

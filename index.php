@@ -252,8 +252,7 @@ $homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap"></noscript>
 <meta name="description" content="مجمع الأخبار العربية الأول - أحدث الأخبار من مصادر موثوقة في السياسة، الاقتصاد، الرياضة، والتكنولوجيا">
 <link rel="alternate" type="application/rss+xml" title="<?php echo e(getSetting('site_name', SITE_NAME)); ?> RSS" href="/rss.xml">
-<link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#1a5c5c">
+<?php include __DIR__ . '/includes/components/pwa_head.php'; ?>
 <?php
 // SEO block: canonical + OG + Twitter + WebSite/Organization JSON-LD.
 // Kept in one helper (includes/seo.php) so the tag shape stays
@@ -290,16 +289,6 @@ render_home_seo();
   <link rel="stylesheet" href="assets/css/user.min.css?v=m2">
 </noscript>
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
-<script>
-// Register the service worker for the PWA shell. Wrapped in a load
-// listener so it never blocks first paint, and a try/catch so an
-// older browser without SW support is a no-op instead of an error.
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function () {
-    try { navigator.serviceWorker.register('/sw.js', { scope: '/' }); } catch (e) {}
-  });
-}
-</script>
 </head>
 <body>
 

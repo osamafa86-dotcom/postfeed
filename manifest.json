@@ -4,39 +4,57 @@
   "description": "مجمع الأخبار العربية الأول من مصادر موثوقة",
   "lang": "ar",
   "dir": "rtl",
-  "start_url": "/",
+  "start_url": "/?utm_source=pwa",
+  "id": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait-primary",
   "background_color": "#0f172a",
   "theme_color": "#1a5c5c",
   "categories": ["news", "magazines"],
+  "prefer_related_applications": false,
   "icons": [
-    {
-      "src": "/assets/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    },
-    {
-      "src": "/assets/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "maskable"
-    }
+    { "src": "/icon.php?size=72",  "sizes": "72x72",   "type": "image/png", "purpose": "any" },
+    { "src": "/icon.php?size=96",  "sizes": "96x96",   "type": "image/png", "purpose": "any" },
+    { "src": "/icon.php?size=128", "sizes": "128x128", "type": "image/png", "purpose": "any" },
+    { "src": "/icon.php?size=144", "sizes": "144x144", "type": "image/png", "purpose": "any" },
+    { "src": "/icon.php?size=152", "sizes": "152x152", "type": "image/png", "purpose": "any" },
+    { "src": "/icon.php?size=192", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon.php?size=384", "sizes": "384x384", "type": "image/png", "purpose": "any" },
+    { "src": "/icon.php?size=512", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon.php?size=192&maskable=1", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon.php?size=512&maskable=1", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/assets/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ],
   "shortcuts": [
     {
       "name": "الأخبار العاجلة",
       "short_name": "عاجل",
-      "url": "/category/breaking",
-      "description": "أحدث الأخبار العاجلة"
+      "url": "/category.php?type=breaking",
+      "description": "أحدث الأخبار العاجلة",
+      "icons": [{ "src": "/icon.php?size=96", "sizes": "96x96", "type": "image/png" }]
     },
     {
       "name": "تيليغرام",
       "short_name": "تيليغرام",
       "url": "/telegram.php",
-      "description": "آخر منشورات قنوات تيليغرام"
+      "description": "آخر منشورات قنوات تيليغرام",
+      "icons": [{ "src": "/icon.php?size=96", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "آخر الأخبار",
+      "short_name": "آخر",
+      "url": "/category.php?type=latest",
+      "description": "أحدث الأخبار المضافة",
+      "icons": [{ "src": "/icon.php?size=96", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "اسأل الأخبار",
+      "short_name": "اسأل",
+      "url": "/ask.php",
+      "description": "بحث ذكي في الأخبار",
+      "icons": [{ "src": "/icon.php?size=96", "sizes": "96x96", "type": "image/png" }]
     }
   ]
 }

@@ -48,9 +48,7 @@ $suggestions = [
 <meta property="og:title" content="🤖 اسأل الأخبار — <?php echo e(getSetting('site_name', SITE_NAME)); ?>">
 <meta property="og:description" content="<?php echo e($metaDesc); ?>">
 <meta property="og:url" content="<?php echo e($pageUrl); ?>">
-<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
-<link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#1a5c5c">
+<?php include __DIR__ . '/includes/components/pwa_head.php'; ?>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
