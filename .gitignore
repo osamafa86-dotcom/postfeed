@@ -13,6 +13,7 @@ vendor/
 .phpunit.cache/
 storage/cache/*
 storage/ratelimit/*
+storage/.secret_key
 !storage/cache/.gitkeep
 !storage/ratelimit/.gitkeep
 assets/icons/*.png
