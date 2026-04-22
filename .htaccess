@@ -24,6 +24,13 @@ DirectoryIndex index.php index.html
 
 AddDefaultCharset UTF-8
 
+# Make sure the podcast MP3s served from /storage/podcast/ get the right
+# Content-Type. X-Content-Type-Options: nosniff is set below, so if the
+# host skips MP3 MIME detection the browser refuses to play the file.
+<IfModule mod_mime.c>
+    AddType audio/mpeg .mp3
+</IfModule>
+
 # Security Headers
 <IfModule mod_headers.c>
     Header set X-Content-Type-Options "nosniff"
