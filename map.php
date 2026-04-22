@@ -34,9 +34,9 @@ $stats     = nm_stats();
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="assets/css/site-header.min.css?v=m1">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
 <link rel="stylesheet" href="assets/css/map.css?v=1">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
@@ -89,9 +89,20 @@ include __DIR__ . '/includes/components/site_header.php';
   </div>
 </main>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-<script src="assets/js/map.js?v=1"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script>
+// Detect load failures so the operator doesn't stare at a grey
+// canvas without knowing the CDN is the problem.
+if (typeof L === 'undefined') {
+  document.getElementById('mapSideBody').innerHTML =
+    '<p style="padding:20px;background:#fee;color:#991b1b;border-radius:8px;font-size:13px;line-height:1.7;">'
+    + '⚠ فشل تحميل مكتبة Leaflet من CDN.<br>'
+    + 'تحقّقي من الاتصال أو جدار الحماية / CSP.'
+    + '</p>';
+}
+</script>
+<script src="assets/js/map.js?v=2"></script>
 
 </body>
 </html>
