@@ -96,9 +96,9 @@
           var icon = f.properties.is_breaking
             ? L.divIcon({ className: '', html: '<div class="map-marker-breaking"></div>', iconSize: [14,14] })
             : L.icon({
-                iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-                iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-                shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+                iconUrl:       '/assets/vendor/leaflet/images/marker-icon.png',
+                iconRetinaUrl: '/assets/vendor/leaflet/images/marker-icon-2x.png',
+                shadowUrl:     '/assets/vendor/leaflet/images/marker-shadow.png',
                 iconSize: [25,41], iconAnchor: [12,41], popupAnchor: [1,-34], shadowSize: [41,41],
               });
           var marker = L.marker([lat, lng], { icon: icon, title: f.properties.title });

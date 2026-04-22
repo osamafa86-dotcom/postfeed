@@ -34,9 +34,9 @@ $stats     = nm_stats();
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="assets/css/site-header.min.css?v=m1">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+<link rel="stylesheet" href="/assets/vendor/leaflet/leaflet.css?v=1.9.4">
+<link rel="stylesheet" href="/assets/vendor/leaflet/MarkerCluster.css?v=1.5.3">
+<link rel="stylesheet" href="/assets/vendor/leaflet/MarkerCluster.Default.css?v=1.5.3">
 <link rel="stylesheet" href="assets/css/map.css?v=1">
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 </head>
@@ -89,8 +89,8 @@ include __DIR__ . '/includes/components/site_header.php';
   </div>
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="/assets/vendor/leaflet/leaflet.js?v=1.9.4"></script>
+<script src="/assets/vendor/leaflet/leaflet.markercluster.js?v=1.5.3"></script>
 <script>
 // Detect load failures so the operator doesn't stare at a grey
 // canvas without knowing the CDN is the problem.
@@ -102,7 +102,7 @@ if (typeof L === 'undefined') {
     + '</p>';
 }
 </script>
-<script src="assets/js/map.js?v=2"></script>
+<script src="assets/js/map.js?v=3"></script>
 
 </body>
 </html>

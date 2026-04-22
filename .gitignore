@@ -9,7 +9,7 @@ uploads/*
 newsflow-v2.zip
 cron_log.txt
 deploy_log.txt
-vendor/
+/vendor/
 .phpunit.cache/
 storage/cache/*
 storage/ratelimit/*
