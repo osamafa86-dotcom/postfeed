@@ -245,10 +245,17 @@ function tts_generate_elevenlabs(string $text, string $voice): ?string {
 // Provider: Google Cloud Text-to-Speech
 // ---------------------------------------------------------------------
 
+function tts_last_error(?string $set = null): string {
+    static $last = '';
+    if ($set !== null) $last = $set;
+    return $last;
+}
+
 function tts_generate_google(string $text, string $voice): ?string {
     $apiKey = trim((string)getSetting('tts_google_key', ''));
     if ($apiKey === '') $apiKey = trim((string)env('GOOGLE_TTS_API_KEY', ''));
     if ($apiKey === '') {
+        tts_last_error('Google: API key not configured');
         error_log('[tts] Google: API key not configured');
         return null;
     }
@@ -290,12 +297,15 @@ function tts_generate_google(string $text, string $voice): ?string {
     curl_close($ch);
 
     if ($http !== 200 || !is_string($resp) || $resp === '') {
-        error_log('[tts] Google HTTP ' . $http . ': ' . ($err ?: mb_substr((string)$resp, 0, 200)));
+        $snippet = $err ?: mb_substr((string)$resp, 0, 400);
+        tts_last_error('Google HTTP ' . $http . ': ' . $snippet);
+        error_log('[tts] Google HTTP ' . $http . ': ' . $snippet);
         return null;
     }
     $data = json_decode($resp, true);
     $b64  = $data['audioContent'] ?? '';
     if (!is_string($b64) || $b64 === '') {
+        tts_last_error('Google: empty audioContent in response');
         error_log('[tts] Google: empty audioContent in response');
         return null;
     }

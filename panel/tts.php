@@ -96,7 +96,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['test_generate'])) {
                          . ($result['cached'] ? 'من الذاكرة المؤقتة' : 'طلب جديد من ' . $result['provider']) . ')';
             }
         } elseif (!$error) {
-            $error = 'فشل توليد الصوت — تحقّق من مفتاح API ومعرف الصوت في السجلات.';
+            $last = tts_last_error();
+            $error = 'فشل توليد الصوت — ' . ($last !== '' ? $last : 'تحقّق من مفتاح API ومعرف الصوت في السجلات.');
         }
     }
 }
