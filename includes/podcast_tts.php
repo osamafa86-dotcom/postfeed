@@ -38,7 +38,11 @@ function pod_synthesize(string $speech, string $date): array {
         return ['ok' => false, 'error' => 'TTS voice not configured for provider: ' . $provider];
     }
 
-    $chunks = pod_chunk_for_tts($speech, 4500);
+    // Google caps each request at 5000 *bytes* (not characters). Arabic
+    // UTF-8 runs ~2 bytes/char, so 4500 chars overshoots the cap. We
+    // chunk conservatively on characters and the splitter packs within
+    // this limit for every provider we support.
+    $chunks = pod_chunk_for_tts($speech, 2000);
     if (!$chunks) {
         return ['ok' => false, 'error' => 'empty speech'];
     }
@@ -47,9 +51,11 @@ function pod_synthesize(string $speech, string $date): array {
     foreach ($chunks as $i => $chunk) {
         $bytes = pod_call_tts_provider($provider, $chunk, $voice);
         if ($bytes === null || $bytes === '') {
+            $detail = function_exists('tts_last_error') ? tts_last_error() : '';
             return [
                 'ok'    => false,
-                'error' => "TTS provider failed on chunk " . ($i + 1) . "/" . count($chunks),
+                'error' => "TTS provider failed on chunk " . ($i + 1) . "/" . count($chunks)
+                         . ($detail !== '' ? ' — ' . $detail : ''),
             ];
         }
         $mp3Bytes .= $bytes;
