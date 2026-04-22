@@ -58,7 +58,12 @@ function pod_synthesize(string $speech, string $date): array {
                          . ($detail !== '' ? ' — ' . $detail : ''),
             ];
         }
-        $mp3Bytes .= $bytes;
+        // Strip any leading ID3v2 tag. Google TTS prepends one to every
+        // response; concatenating them verbatim leaves mid-stream tag
+        // bytes that confuse many decoders (the file plays partially or
+        // not at all). Keeping only the raw MP3 frames yields a clean,
+        // seekable single file.
+        $mp3Bytes .= pod_strip_id3v2($bytes);
         // Tiny pause between chunks helps providers that rate-limit
         // per-request rather than per-minute.
         if ($i < count($chunks) - 1) usleep(250000);
@@ -116,6 +121,29 @@ function pod_chunk_for_tts(string $speech, int $max = 4500): array {
     }
     if ($current !== '') $out[] = $current;
     return $out;
+}
+
+/**
+ * Strip an ID3v2 tag from the front of an MP3 buffer if present. The
+ * tag header is 10 bytes: "ID3" + version (2 bytes) + flags (1 byte) +
+ * size (4 bytes, syncsafe). Returns the buffer unchanged when no tag
+ * is detected (so ElevenLabs / OpenAI output passes through untouched).
+ */
+function pod_strip_id3v2(string $mp3): string {
+    if (strlen($mp3) < 10 || substr($mp3, 0, 3) !== 'ID3') {
+        return $mp3;
+    }
+    $b = array_values(unpack('C*', substr($mp3, 6, 4)));
+    // Syncsafe integer: each byte contributes 7 bits.
+    $size = (($b[0] & 0x7F) << 21)
+          | (($b[1] & 0x7F) << 14)
+          | (($b[2] & 0x7F) <<  7)
+          |  ($b[3] & 0x7F);
+    $headerLen = 10 + $size;
+    if ($headerLen >= strlen($mp3)) {
+        return $mp3;
+    }
+    return substr($mp3, $headerLen);
 }
 
 function pod_call_tts_provider(string $provider, string $text, string $voice): ?string {
