@@ -225,6 +225,22 @@ html, body {
   overscroll-behavior-x: contain;
 }
 
+/* ---- Kill transitions during the first paint ------------------
+   install-prompt.js adds `.nf-booting` on <html> before any layout
+   happens, then clears it two rAFs later. While the class is on,
+   no element animates between states — this prevents the visible
+   "ghost of the homepage slides off to the right and vanishes"
+   glitch when returning from an article via back/BFCache.
+   Covers .mobile-nav (right transition), modals, drawers, header
+   sticky, and any card hover transforms. */
+.nf-booting *,
+.nf-booting *::before,
+.nf-booting *::after {
+  transition: none !important;
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+}
+
 /* Hide the header's bulky live-pill below 480px — already hidden by
    site-header.css at 1100px but re-state here in case of cascade
    ordering when this file loads late. */

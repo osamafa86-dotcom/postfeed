@@ -19,6 +19,40 @@
   var STORAGE_KEY = 'nf_install_banner_v1';
   var HIDE_DAYS   = 14;
 
+  // ---- Prevent "flash + slide" on back navigation -----------
+  // When the browser restores the homepage after a back-press,
+  // any CSS `transition` still in effect from the previous
+  // paint can animate the element from its old computed value
+  // to its new one — visually, a ghost of the page slides off-
+  // screen before the real content settles. Happens most
+  // noticeably with .mobile-nav (transitions `right`) and any
+  // drawer/overlay that uses position+transition.
+  //
+  // We suppress every transition for two animation frames on
+  // initial paint + BFCache restore. That's enough for the
+  // elements to reach their true resting state without animating
+  // to it. The `nf-booting` class is removed as soon as the paint
+  // has committed, so user-initiated transitions still work.
+  var root = document.documentElement;
+  root.classList.add('nf-booting');
+  function clearBoot() {
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        root.classList.remove('nf-booting');
+      });
+    });
+  }
+  if (document.readyState !== 'loading') clearBoot();
+  else document.addEventListener('DOMContentLoaded', clearBoot, { once: true });
+
+  // BFCache restore — same treatment.
+  window.addEventListener('pageshow', function (e) {
+    if (e.persisted) {
+      root.classList.add('nf-booting');
+      clearBoot();
+    }
+  });
+
   function isStandalone() {
     return (
       window.matchMedia('(display-mode: standalone)').matches ||

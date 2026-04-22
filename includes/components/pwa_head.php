@@ -14,7 +14,15 @@
 
 $pwa_theme_color = $pwa_theme_color ?? '#1a5c5c';
 ?>
-<link rel="stylesheet" href="/assets/css/pwa-mobile.css?v=3">
+<script>
+// Set the boot flag *before* any layout happens. install-prompt.js
+// clears it after the first paint so elements can transition
+// normally again. Any user-visible CSS transition that would
+// otherwise fire on initial render is suppressed, which kills
+// the back-navigation "flash + slide" glitch.
+document.documentElement.classList.add('nf-booting');
+</script>
+<link rel="stylesheet" href="/assets/css/pwa-mobile.css?v=4">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="<?php echo htmlspecialchars($pwa_theme_color, ENT_QUOTES, 'UTF-8'); ?>">
 <meta name="color-scheme" content="light dark">
