@@ -404,7 +404,23 @@ function _ai_http_to_friendly(int $http, string $err, $resp, string $vendor): ?s
         return "مفتاح {$vendor} API غير صالح أو منتهي الصلاحية.";
     }
     if ($http === 429) {
-        return 'تم تجاوز حد الطلبات مؤقتاً. حاول لاحقاً.';
+        // Surface the provider's specific quota reason so the operator
+        // can tell "wait 60s" (per-minute throttle) from "wait until
+        // tomorrow" (per-day quota) from "needs billing" (free-tier
+        // hard cap). Gemini and Anthropic both return useful detail
+        // in the response body — strip it down to the message.
+        $detail = '';
+        $body = is_string($resp) ? $resp : '';
+        $j = json_decode($body, true);
+        if (is_array($j)) {
+            $detail = (string)($j['error']['message'] ?? $j['error'] ?? '');
+            if (!empty($j['error']['details'][0]['violations'][0]['quotaId'])) {
+                $detail .= ' [quota: ' . $j['error']['details'][0]['violations'][0]['quotaId'] . ']';
+            }
+        }
+        if ($detail === '' && $body !== '') $detail = mb_substr($body, 0, 240);
+        $detail = trim(preg_replace('/\s+/', ' ', $detail));
+        return 'تم تجاوز حد الطلبات (429). ' . ($detail !== '' ? $detail : 'حاول لاحقاً.');
     }
     if ($http === 0 || $http >= 500) {
         return "تعذّر الاتصال بخدمة {$vendor} الآن.";
