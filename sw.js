@@ -14,7 +14,7 @@
  * Bump CACHE_VERSION whenever the asset bundle changes substantially
  * to force clients to discard the previous generation of caches.
  */
-const CACHE_VERSION = 'newsflow-v3';
+const CACHE_VERSION = 'newsflow-v4';
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const PAGES_CACHE   = `${CACHE_VERSION}-pages`;
 
@@ -71,27 +71,56 @@ function isHTMLRequest(request) {
   return accept.includes('text/html');
 }
 
-// Network-first with a short timeout. Resolves with a cached copy
-// if the network is slow or down, and falls back to the offline
-// shell when there's nothing cached either.
-async function networkFirst(request) {
+// Stale-while-revalidate for HTML navigations.
+//
+// Why not network-first? The old strategy waited on the network
+// before returning *any* response, which meant "back" from an
+// article triggered a fresh PHP request + server render before
+// the homepage appeared. The user perceived this as a white
+// flash and a horizontal-scroll lurch (reels snap-scroller
+// resetting during the reflow).
+//
+// With SWR:
+//   1. Cached homepage is returned instantly from disk — back-nav
+//      feels native, no flash.
+//   2. A background fetch refreshes the cache so the *next* visit
+//      gets the newest breaking news.
+//   3. First-time visitors (no cache) fall through to a fresh
+//      network request, with the offline shell as last resort.
+//
+// The live sections (Telegram/Twitter/YouTube/tickers) keep
+// updating over SSE + polling regardless, so the brief "stale"
+// moment before the background fetch resolves isn't visible.
+async function staleWhileRevalidate(request) {
   const cache = await caches.open(PAGES_CACHE);
-  try {
-    const fresh = await Promise.race([
-      fetch(request),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
-    ]);
+  const cached = await cache.match(request);
+
+  const networkPromise = fetch(request).then((fresh) => {
     if (fresh && fresh.ok) {
       cache.put(request, fresh.clone()).catch(() => {});
     }
     return fresh;
-  } catch (err) {
-    const cached = await cache.match(request);
-    if (cached) return cached;
-    const offline = await caches.match(OFFLINE_URL);
-    if (offline) return offline;
-    return new Response('غير متصل بالإنترنت', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+  }).catch(() => null);
+
+  if (cached) {
+    // Let the revalidation run in the background; we return
+    // the cached copy immediately so navigation feels instant.
+    return cached;
   }
+
+  // First visit — wait on the network with a 3s safety timeout.
+  const fresh = await Promise.race([
+    networkPromise,
+    new Promise((resolve) => setTimeout(() => resolve(null), 3000)),
+  ]);
+  if (fresh) return fresh;
+
+  const offline = await caches.match(OFFLINE_URL);
+  if (offline) return offline;
+  return new Response('غير متصل بالإنترنت', {
+    status: 503,
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+  });
 }
 
 // Cache-first for static assets. We still kick off a background
@@ -122,7 +151,7 @@ self.addEventListener('fetch', (event) => {
   if (shouldBypass(url)) return;
 
   if (isHTMLRequest(request)) {
-    event.respondWith(networkFirst(request));
+    event.respondWith(staleWhileRevalidate(request));
     return;
   }
 

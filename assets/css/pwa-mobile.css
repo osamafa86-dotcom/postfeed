@@ -29,6 +29,13 @@
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  /* Match the themed background so back-navigation never shows a
+     white canvas between the cached paint and the style bundle. */
+  background-color: var(--bg, #faf6ec);
+}
+[data-theme="dark"] html,
+html[data-theme="dark"] {
+  background-color: var(--bg, #0f1220);
 }
 
 /* Neutralise the blue tap-flash so interactions feel native. */
@@ -94,14 +101,32 @@ body {
   }
 }
 
-/* ---- Feed tabs (Telegram/Twitter/YouTube) become scroll-x -----
-   The three tabs fit fine on any phone, but if Facebook +
-   Instagram are added later, wrapping will look awful on a
-   320px screen. Switching to horizontal scroll is the safe
-   long-term pattern. */
-@media (max-width: 520px) {
+/* ---- Feed tabs (Telegram/Twitter/YouTube) -----
+   Three tabs with "أخبار <platform>" labels overflow a 360px
+   viewport and wrap onto two rows. On mobile we:
+     1. Hide the "أخبار " / "منصة " prefixes via .feed-tab-pre,
+        so labels collapse to just the platform name.
+     2. Shrink the icon, padding, font-size and gap.
+     3. Fall back to horizontal scroll below 380px as a safety
+        net — useful when Facebook/Instagram tabs land later. */
+@media (max-width: 640px) {
+  .feed-tab-pre { display: none; }
+  .feed-tab {
+    padding: 9px 12px;
+    font-size: 13px;
+    gap: 6px;
+  }
+  .feed-tab-ico {
+    width: 16px;
+    height: 16px;
+  }
   .feed-tabs {
+    gap: 2px;
     flex-wrap: nowrap;
+  }
+}
+@media (max-width: 380px) {
+  .feed-tabs {
     overflow-x: auto;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
@@ -109,7 +134,8 @@ body {
   .feed-tabs::-webkit-scrollbar { display: none; }
   .feed-tab {
     flex: 0 0 auto;
-    white-space: nowrap;
+    padding: 9px 10px;
+    font-size: 12.5px;
   }
 }
 
@@ -178,6 +204,18 @@ body.nf-standalone .site-header {
 /* Improve scroll momentum on old iOS WebKit. */
 html, body {
   -webkit-overflow-scrolling: touch;
+}
+
+/* ---- Prevent scroll-snap "slide" on back navigation ----------
+   The reels strip uses `scroll-snap-type:x mandatory`. When the
+   browser restores its scroll position on back-nav, mandatory
+   snap forces a re-align to the nearest snap point, which the
+   user perceives as a horizontal slide animation. Swapping to
+   `proximity` keeps the snap feel for forward user gestures but
+   lets the exact restored position stick. */
+.reels-scroll {
+  scroll-snap-type: x proximity !important;
+  overscroll-behavior-x: contain;
 }
 
 /* Hide the header's bulky live-pill below 480px — already hidden by
