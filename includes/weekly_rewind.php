@@ -688,3 +688,155 @@ function wr_format_date_range_internal(string $start, string $end): string {
 }
 
 } // function_exists guard (email)
+
+/* ==================================================================
+ * In-process orchestration helpers.
+ *
+ * The panel calls these directly instead of shelling out to
+ * cron_weekly_rewind.php — `shell_exec()` is disabled on most
+ * shared hosts, which silently breaks "generate from panel".
+ * Running in-process avoids the shell entirely and surfaces real
+ * error messages back to the operator.
+ *
+ * The cron scripts still exist for crontab use; they're thin
+ * wrappers that print to stdout. The actual logic lives here.
+ * ================================================================ */
+
+if (!function_exists('wr_run_generate')) {
+
+/**
+ * Generate (or regenerate) a single week's rewind in-process.
+ * Returns ['ok'=>bool, 'log'=>string, 'id'=>?int].
+ */
+function wr_run_generate(string $yearWeek, bool $force = true): array {
+    $log = [];
+    $log[] = "بدء التوليد للأسبوع {$yearWeek}";
+
+    if (!preg_match('/^\d{4}-\d{1,2}$/', $yearWeek)) {
+        return ['ok' => false, 'log' => "تنسيق الأسبوع غير صالح: {$yearWeek}"];
+    }
+
+    $existing = wr_get_by_week($yearWeek);
+    if ($existing && !$force) {
+        return ['ok' => false, 'log' => "مراجعة موجودة بالفعل (#{$existing['id']}). استخدم force لإعادة التوليد."];
+    }
+
+    [$startDate, $endDate] = wr_dates_for_year_week($yearWeek);
+    $log[] = "النافذة: {$startDate} → {$endDate}";
+
+    $candidates = wr_collect_candidates($startDate, $endDate, 1, 60);
+    $log[] = "المرشّحات: " . count($candidates);
+
+    if (count($candidates) < 5) {
+        return ['ok' => false, 'log' => implode("\n", $log) . "\n— لا توجد مقالات كافية (أقل من 5)."];
+    }
+
+    @set_time_limit(180);
+    $t0 = microtime(true);
+    $ai = wr_generate_with_ai($candidates, $startDate, $endDate);
+    $elapsed = round(microtime(true) - $t0, 2);
+
+    if (empty($ai['ok'])) {
+        $err = $ai['error'] ?? 'unknown';
+        return ['ok' => false, 'log' => implode("\n", $log) . "\n— فشل الـ AI: {$err} ({$elapsed}s)"];
+    }
+
+    $stories = count($ai['payload']['content']['stories'] ?? []);
+    $log[] = "AI: اختار {$stories} قصة في {$elapsed}s";
+
+    $id = wr_save($yearWeek, $ai['payload']);
+    if (!$id) {
+        return ['ok' => false, 'log' => implode("\n", $log) . "\n— فشل الحفظ في قاعدة البيانات"];
+    }
+
+    $log[] = "✓ تم الحفظ بمعرّف #{$id}";
+    return ['ok' => true, 'log' => implode("\n", $log), 'id' => $id];
+}
+
+/**
+ * Backfill the last N weeks in-process. Returns aggregated log.
+ */
+function wr_run_backfill(int $weeks): array {
+    $weeks = max(1, min(12, $weeks));
+    $log = ["بدء backfill لآخر {$weeks} أسابيع"];
+    $now = time();
+    $okCount = 0; $failCount = 0;
+
+    for ($i = 0; $i < $weeks; $i++) {
+        $yw = wr_year_week_for($now - ($i * 7 * 86400));
+        $log[] = "\n=== {$yw} ===";
+        $r = wr_run_generate($yw, true);
+        $log[] = $r['log'];
+        if (!empty($r['ok'])) $okCount++; else $failCount++;
+        // Brief breather so the AI provider doesn't rate-limit us.
+        if ($i < $weeks - 1) sleep(1);
+    }
+
+    $log[] = "\n— نجح: {$okCount} | فشل: {$failCount}";
+    return ['ok' => $okCount > 0, 'log' => implode("\n", $log)];
+}
+
+/**
+ * Send a saved rewind to all confirmed subscribers in-process.
+ * Skips already-delivered subscribers unless $force is true.
+ */
+function wr_run_send(string $yearWeek = '', bool $force = false, bool $dry = false): array {
+    require_once __DIR__ . '/mailer.php';
+    wr_ensure_table();
+
+    $rewind = $yearWeek ? wr_get_by_week($yearWeek) : wr_get_latest();
+    if (!$rewind) {
+        return ['ok' => false, 'log' => 'لا توجد مراجعة للإرسال' . ($yearWeek ? " للأسبوع {$yearWeek}" : '.')];
+    }
+    $log = ["مراجعة #{$rewind['id']} ({$rewind['year_week']}): {$rewind['cover_title']}"];
+
+    if (!empty($rewind['emailed_at']) && !$force) {
+        $log[] = "تخطي: أُرسلت سابقاً في {$rewind['emailed_at']}. استخدم force للإرسال مرة أخرى.";
+        return ['ok' => false, 'log' => implode("\n", $log)];
+    }
+
+    $db = getDB();
+    $subs = $db->query("SELECT id, email, unsubscribe_token FROM newsletter_subscribers
+                        WHERE confirmed = 1")->fetchAll(PDO::FETCH_ASSOC);
+    if (!$subs) {
+        return ['ok' => false, 'log' => implode("\n", $log) . "\n— لا يوجد مشتركون مؤكّدون"];
+    }
+    $log[] = "المشتركون: " . count($subs);
+
+    @set_time_limit(600);
+    $subject = 'مراجعة الأسبوع — ' . ($rewind['cover_title'] ?: $rewind['year_week']);
+    $delStmt = $db->prepare("INSERT IGNORE INTO weekly_rewind_deliveries
+                             (rewind_id, recipient_kind, recipient_id, delivered_at)
+                             VALUES (?, 'subscriber', ?, NOW())");
+    $checkStmt = $db->prepare("SELECT 1 FROM weekly_rewind_deliveries
+                               WHERE rewind_id = ? AND recipient_kind='subscriber' AND recipient_id = ?");
+
+    $success = 0; $fail = 0; $skipped = 0;
+    foreach ($subs as $sub) {
+        $subId = (int)$sub['id'];
+        if (!$force) {
+            $checkStmt->execute([$rewind['id'], $subId]);
+            if ($checkStmt->fetchColumn()) { $skipped++; continue; }
+        }
+        $unsub = SITE_URL . '/newsletter/unsubscribe/' . $sub['unsubscribe_token'];
+        $web   = SITE_URL . '/weekly/' . $rewind['year_week'];
+        $html  = wr_email_html($rewind, $unsub, $web);
+        if ($dry) { $success++; continue; }
+
+        $ok = mailer_send((string)$sub['email'], $subject, $html);
+        if ($ok) {
+            $success++;
+            try { $delStmt->execute([$rewind['id'], $subId]); } catch (Throwable $e) {}
+        } else {
+            $fail++;
+            error_log("[wr_send] {$sub['email']}: " . mailer_last_error());
+        }
+        usleep(200000);
+    }
+
+    if (!$dry && $success > 0) wr_mark_emailed((int)$rewind['id']);
+    $log[] = ($dry ? "[DRY] " : "") . "نجح: {$success} | فشل: {$fail} | تم تخطي (مُرسلة سابقاً): {$skipped}";
+    return ['ok' => $success > 0, 'log' => implode("\n", $log)];
+}
+
+} // function_exists guard (orchestration)

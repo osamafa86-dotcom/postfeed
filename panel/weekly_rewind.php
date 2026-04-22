@@ -30,28 +30,36 @@ $flash = null;
  * ---------------------------------------------------------------- */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_verify();
+    @set_time_limit(600);
     $action = (string)($_POST['action'] ?? '');
     $week   = preg_match('/^\d{4}-\d{1,2}$/', (string)($_POST['week'] ?? ''))
             ? (string)$_POST['week']
             : wr_year_week_for(time());
 
     if ($action === 'generate') {
-        $cmd  = PHP_BINARY . ' ' . escapeshellarg(__DIR__ . '/../cron_weekly_rewind.php')
-              . ' --force --week=' . escapeshellarg($week) . ' 2>&1';
-        $out  = shell_exec($cmd);
-        $flash = ['type' => 'ok', 'msg' => 'تم تشغيل التوليد للأسبوع ' . $week, 'log' => (string)$out];
+        // In-process — never shell_exec (disabled on most shared hosts).
+        $r = wr_run_generate($week, true);
+        $flash = [
+            'type' => $r['ok'] ? 'ok' : 'err',
+            'msg'  => ($r['ok'] ? '✓ تم توليد المراجعة للأسبوع ' : '✗ فشل التوليد للأسبوع ') . $week,
+            'log'  => $r['log'],
+        ];
     } elseif ($action === 'send') {
-        $extra = !empty($_POST['force']) ? ' --force' : '';
-        $cmd  = PHP_BINARY . ' ' . escapeshellarg(__DIR__ . '/../cron_weekly_rewind_send.php')
-              . $extra . ' --week=' . escapeshellarg($week) . ' 2>&1';
-        $out  = shell_exec($cmd);
-        $flash = ['type' => 'ok', 'msg' => 'تم تشغيل الإرسال للأسبوع ' . $week, 'log' => (string)$out];
+        $force = !empty($_POST['force']);
+        $r = wr_run_send($week, $force, false);
+        $flash = [
+            'type' => $r['ok'] ? 'ok' : 'err',
+            'msg'  => ($r['ok'] ? '✓ تم الإرسال للأسبوع ' : '✗ فشل الإرسال للأسبوع ') . $week,
+            'log'  => $r['log'],
+        ];
     } elseif ($action === 'backfill') {
         $weeks = max(1, min(12, (int)($_POST['weeks'] ?? 4)));
-        $cmd  = PHP_BINARY . ' ' . escapeshellarg(__DIR__ . '/../cron_weekly_rewind.php')
-              . ' --backfill=' . $weeks . ' 2>&1';
-        $out  = shell_exec($cmd);
-        $flash = ['type' => 'ok', 'msg' => "تم تشغيل backfill لآخر {$weeks} أسابيع", 'log' => (string)$out];
+        $r = wr_run_backfill($weeks);
+        $flash = [
+            'type' => $r['ok'] ? 'ok' : 'err',
+            'msg'  => ($r['ok'] ? '✓ اكتمل backfill لـ ' : '✗ فشل backfill لـ ') . $weeks . ' أسابيع',
+            'log'  => $r['log'],
+        ];
     } elseif ($action === 'send_test') {
         require_once __DIR__ . '/../includes/mailer.php';
         $email = filter_var(trim((string)($_POST['test_email'] ?? '')), FILTER_VALIDATE_EMAIL);

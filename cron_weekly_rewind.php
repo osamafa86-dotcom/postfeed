@@ -47,18 +47,9 @@ if (PHP_SAPI === 'cli') {
 }
 $backfill = max(0, min(12, $backfill));
 if ($backfill > 0) {
-    echo "backfill mode: generating last {$backfill} weeks...\n";
-    $self = $_SERVER['SCRIPT_FILENAME'] ?? __FILE__;
-    $now = time();
-    for ($i = 0; $i < $backfill; $i++) {
-        $weekTs = $now - ($i * 7 * 86400);
-        $yw     = wr_year_week_for($weekTs);
-        echo "\n=== week {$yw} ===\n";
-        $cmd = PHP_BINARY . ' ' . escapeshellarg($self) . ' --force --week=' . escapeshellarg($yw) . ' 2>&1';
-        passthru($cmd);
-    }
-    echo "\nbackfill complete.\n";
-    exit;
+    $r = wr_run_backfill($backfill);
+    echo $r['log'] . "\n";
+    exit($r['ok'] ? 0 : 1);
 }
 
 // --- Resolve the target week --------------------------------------
@@ -77,44 +68,9 @@ if (!preg_match('/^\d{4}-\d{1,2}$/', (string)$targetWeek)) {
 
 $force = !empty($_GET['force']) || (PHP_SAPI === 'cli' && in_array('--force', $argv ?? [], true));
 
-// --- Skip if we already have one for this week --------------------
-$existing = wr_get_by_week($targetWeek);
-if ($existing && !$force) {
-    echo "skip: rewind #{$existing['id']} already exists for {$targetWeek}. Use --force to regenerate.\n";
-    exit;
-}
-
-// --- Collect candidate articles -----------------------------------
-[$startDate, $endDate] = wr_dates_for_year_week($targetWeek);
-echo "building rewind for {$targetWeek} ({$startDate} → {$endDate})...\n";
-
-$candidates = wr_collect_candidates($startDate, $endDate, 1, 60);
-if (count($candidates) < 15) {
-    echo "skip: only " . count($candidates) . " candidates (need 15+).\n";
-    exit;
-}
-echo "candidates: " . count($candidates) . "\n";
-
-// --- AI generation ------------------------------------------------
-$t0 = microtime(true);
-$ai = wr_generate_with_ai($candidates, $startDate, $endDate);
-$elapsed = round(microtime(true) - $t0, 2);
-
-if (empty($ai['ok'])) {
-    $err = $ai['error'] ?? 'unknown';
-    echo "fail: generation error — {$err} ({$elapsed}s)\n";
-    error_log("[weekly_rewind] {$targetWeek}: {$err}");
-    exit(1);
-}
-
-$payload = $ai['payload'];
-$storyCount = count($payload['content']['stories'] ?? []);
-echo "ai: picked {$storyCount} stories in {$elapsed}s\n";
-
-// --- Persist ------------------------------------------------------
-$id = wr_save($targetWeek, $payload);
-if (!$id) {
-    echo "fail: could not save rewind\n"; exit(1);
-}
-
-echo "ok: saved rewind #{$id} for {$targetWeek}\n";
+// Single-week generation. Logic lives in includes/weekly_rewind.php
+// so the panel ("توليد بالـ AI" button) and this cron run identical
+// code — no chance of behaviour drift between the two paths.
+$r = wr_run_generate($targetWeek, $force);
+echo $r['log'] . "\n";
+exit($r['ok'] ? 0 : 1);

@@ -46,75 +46,9 @@ if (!$week && PHP_SAPI === 'cli') {
     }
 }
 
-// ---- Pick rewind -------------------------------------------------
-$rewind = $week ? wr_get_by_week((string)$week) : wr_get_latest();
-if (!$rewind) {
-    echo "skip: no rewind available to send" . ($week ? " for week {$week}" : '') . ".\n";
-    exit;
-}
-echo "rewind #{$rewind['id']} ({$rewind['year_week']}): {$rewind['cover_title']}\n";
-
-if (!empty($rewind['emailed_at']) && !$force) {
-    echo "skip: already emailed at {$rewind['emailed_at']}. Use --force to resend.\n";
-    exit;
-}
-
-// ---- Subscribers -------------------------------------------------
-$db = getDB();
-$subs = $db->query("SELECT id, email, unsubscribe_token FROM newsletter_subscribers
-                    WHERE confirmed = 1")->fetchAll(PDO::FETCH_ASSOC);
-if (!$subs) {
-    echo "skip: no confirmed subscribers.\n";
-    exit;
-}
-echo "subscribers: " . count($subs) . "\n";
-
-wr_ensure_table();  // makes sure weekly_rewind_deliveries exists
-
-// ---- Send loop ---------------------------------------------------
-$subject = 'مراجعة الأسبوع — ' . ($rewind['cover_title'] ?: $rewind['year_week']);
-$success = 0; $fail = 0; $skipped = 0;
-
-$delStmt = $db->prepare("INSERT IGNORE INTO weekly_rewind_deliveries
-                         (rewind_id, recipient_kind, recipient_id, delivered_at)
-                         VALUES (?, 'subscriber', ?, NOW())");
-$checkStmt = $db->prepare("SELECT 1 FROM weekly_rewind_deliveries
-                           WHERE rewind_id = ? AND recipient_kind='subscriber' AND recipient_id = ?");
-
-foreach ($subs as $sub) {
-    $subId = (int)$sub['id'];
-
-    if (!$force) {
-        $checkStmt->execute([$rewind['id'], $subId]);
-        if ($checkStmt->fetchColumn()) { $skipped++; continue; }
-    }
-
-    $unsubUrl = SITE_URL . '/newsletter/unsubscribe/' . $sub['unsubscribe_token'];
-    $webUrl   = SITE_URL . '/weekly/' . $rewind['year_week'];
-    $html     = wr_email_html($rewind, $unsubUrl, $webUrl);
-
-    if ($dry) {
-        echo "[dry] would send to {$sub['email']}\n";
-        $success++;
-        continue;
-    }
-
-    $ok = mailer_send((string)$sub['email'], $subject, $html);
-    if ($ok) {
-        $success++;
-        try { $delStmt->execute([$rewind['id'], $subId]); } catch (Throwable $e) {}
-    } else {
-        $fail++;
-        error_log("[weekly_rewind_send] failed to send to {$sub['email']}: " . mailer_last_error());
-    }
-
-    usleep(200000); // 200ms to be polite to SMTP relay
-}
-
-// ---- Mark emailed ------------------------------------------------
-if (!$dry && $success > 0) {
-    wr_mark_emailed((int)$rewind['id']);
-}
-
+// Send loop lives in wr_run_send() so the panel ("📧 إرسال لكل المشتركين"
+// button) and this cron run identical code.
+$r = wr_run_send((string)($week ?: ''), $force, $dry);
 $elapsed = round(microtime(true) - $start, 2);
-echo "done: sent {$success} | failed {$fail} | skipped {$skipped} | {$elapsed}s\n";
+echo $r['log'] . "\n— {$elapsed}s\n";
+exit($r['ok'] ? 0 : 1);
