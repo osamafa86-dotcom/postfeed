@@ -233,6 +233,17 @@ $homeReels = cache_remember('home_reels_8', HOMEPAGE_CACHE_TTL, function() {
     }
 });
 
+// Latest weekly rewind — used to show the Sunday "مراجعة الأسبوع جاهزة"
+// banner just under the stats strip. Cached briefly so homepage
+// traffic doesn't hammer the rewinds table.
+$latestRewind = cache_remember('home_weekly_rewind', 300, function() {
+    try {
+        require_once __DIR__ . '/includes/weekly_rewind.php';
+        return wr_get_latest();
+    } catch (Throwable $e) {
+        return null;
+    }
+});
 ?><!DOCTYPE html>
 <html lang="ar" dir="rtl" data-theme="<?php echo e($pageTheme); ?>">
 <head>
@@ -310,6 +321,69 @@ include __DIR__ . '/includes/components/site_header.php';
     <span class="stat-chip stat-chip-red"><span class="stat-chip-ico">⏱</span><b>منذ 2 دق</b><em>آخر تحديث</em></span>
   </div>
 </div>
+
+<?php if (!empty($latestRewind) && !empty($latestRewind['year_week'])):
+    // Banner is dismissible per-rewind; client-side JS checks localStorage
+    // keyed by year_week so the user only has to dismiss each week once.
+    $__wrYw = e($latestRewind['year_week']);
+    $__wrTitle = e($latestRewind['cover_title'] ?: 'مراجعة الأسبوع جاهزة');
+    $__wrSub   = e($latestRewind['cover_subtitle'] ?: 'ملخص أسبوعي لأبرز ما جرى، بقلم هيئة تحرير الذكاء الاصطناعي.');
+?>
+<style>
+  .wr-banner { position: relative; max-width: 1400px; margin: 12px auto 0; padding: 0 20px; }
+  .wr-banner[hidden] { display: none !important; }
+  .wr-banner-link { display: flex; align-items: center; gap: 14px; padding: 14px 18px;
+    background: linear-gradient(135deg, #0f172a 0%, #1a5c5c 100%); color: #fff;
+    border-radius: 14px; text-decoration: none; box-shadow: 0 10px 28px -12px rgba(13, 148, 136, 0.6);
+    border: 1px solid rgba(245, 158, 11, 0.35); }
+  .wr-banner-ico { flex: 0 0 48px; width: 48px; height: 48px; display: inline-flex;
+    align-items: center; justify-content: center; font-size: 26px; background: rgba(245, 158, 11, 0.95);
+    color: #1a1a2e; border-radius: 12px; }
+  .wr-banner-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .wr-banner-body strong { font-size: 15px; font-weight: 800; line-height: 1.35;
+    color: #fff; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .wr-banner-body em { font-size: 13px; font-style: normal; color: rgba(255,255,255,0.82);
+    line-height: 1.55; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .wr-banner-cta { flex: 0 0 auto; font-size: 13px; font-weight: 800;
+    background: #f59e0b; color: #1a1a2e; padding: 8px 16px; border-radius: 8px; white-space: nowrap; }
+  .wr-banner-x { position: absolute; top: 4px; left: 4px; background: transparent; color: rgba(255,255,255,0.7);
+    border: 0; font-size: 22px; width: 32px; height: 32px; cursor: pointer; line-height: 1; border-radius: 8px; }
+  .wr-banner-x:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  @media (max-width: 640px) {
+    .wr-banner { padding: 0 12px; }
+    .wr-banner-link { padding: 12px 14px; gap: 10px; }
+    .wr-banner-ico { flex: 0 0 40px; width: 40px; height: 40px; font-size: 22px; }
+    .wr-banner-body strong { font-size: 13.5px; }
+    .wr-banner-body em { font-size: 12px; }
+    .wr-banner-cta { display: none; }
+  }
+</style>
+<div id="wrBanner" class="wr-banner" data-yw="<?php echo $__wrYw; ?>" hidden>
+  <a class="wr-banner-link" href="/weekly/<?php echo $__wrYw; ?>">
+    <span class="wr-banner-ico">📅</span>
+    <span class="wr-banner-body">
+      <strong>مراجعة الأسبوع: <?php echo $__wrTitle; ?></strong>
+      <em><?php echo $__wrSub; ?></em>
+    </span>
+    <span class="wr-banner-cta">اقرأ ←</span>
+  </a>
+  <button type="button" class="wr-banner-x" aria-label="إغلاق" onclick="wrBannerDismiss()">×</button>
+</div>
+<script>
+(function(){
+  var el = document.getElementById('wrBanner');
+  if (!el) return;
+  var yw = el.getAttribute('data-yw');
+  var key = 'wr_dismissed_' + yw;
+  try { if (localStorage.getItem(key)) return; } catch(e){}
+  el.hidden = false;
+  window.wrBannerDismiss = function(){
+    try { localStorage.setItem(key, String(Date.now())); } catch(e){}
+    el.hidden = true;
+  };
+})();
+</script>
+<?php endif; ?>
 
 <!-- SECTIONS NAV (homepage anchors) -->
 <div class="sections-nav">
