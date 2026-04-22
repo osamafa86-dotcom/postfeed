@@ -97,6 +97,7 @@ FileETag None
     RewriteRule ^podcast/archive/?$ podcast.php?date=archive [L,QSA]
     RewriteRule ^podcast/(\d{4}-\d{2}-\d{2})/?$ podcast.php?date=$1 [L,QSA]
     RewriteRule ^podcast/?$ podcast.php [L,QSA]
+    RewriteRule ^podcast\.xml$ podcast_rss.php [L]
     RewriteRule ^newsletter/confirm/([a-f0-9]{48})/?$ newsletter_confirm.php?token=$1 [L,QSA]
     RewriteRule ^newsletter/unsubscribe/([a-f0-9]{48})/?$ newsletter_unsubscribe.php?token=$1 [L,QSA]
     # Static info pages (Google News eligibility: About / Editorial / Corrections / Privacy / Contact)
