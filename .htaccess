@@ -89,6 +89,10 @@ FileETag None
     RewriteRule ^gallery/(\d{4}-\d{2}-\d{2})/?$ gallery.php?date=$1 [L,QSA]
     RewriteRule ^gallery/?$ gallery.php [L,QSA]
     RewriteRule ^ask/?$ ask.php [L,QSA]
+    # Weekly Rewind — latest digest, archive, and specific weeks.
+    RewriteRule ^weekly/archive/?$ weekly.php?week=archive [L,QSA]
+    RewriteRule ^weekly/(\d{4}-\d{1,2})/?$ weekly.php?week=$1 [L,QSA]
+    RewriteRule ^weekly/?$ weekly.php [L,QSA]
     RewriteRule ^newsletter/confirm/([a-f0-9]{48})/?$ newsletter_confirm.php?token=$1 [L,QSA]
     RewriteRule ^newsletter/unsubscribe/([a-f0-9]{48})/?$ newsletter_unsubscribe.php?token=$1 [L,QSA]
     # Static info pages (Google News eligibility: About / Editorial / Corrections / Privacy / Contact)
