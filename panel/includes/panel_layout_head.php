@@ -699,6 +699,10 @@ $__nfVer = app_version();
       <div class="nav-icon">📅</div>
       <span class="label">مراجعة الأسبوع</span>
     </a>
+    <a href="news_map.php" class="nav-item<?php echo $activePage==='news_map'?' active':''; ?>">
+      <div class="nav-icon">🗺</div>
+      <span class="label">خريطة الأخبار</span>
+    </a>
     <a href="preview.php" class="nav-item<?php echo $activePage==='preview'?' active':''; ?>">
       <div class="nav-icon">🧪</div>
       <span class="label">معاينة فرع</span>
