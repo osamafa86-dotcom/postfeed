@@ -19,15 +19,29 @@
   var BTN_CLASS = 'nf-listen-btn';
   var INJECTED_ATTR = 'data-nf-listen-mounted';
 
-  // Card configs: selector, title-extractor, body-extractor.
+  // Card configs: selector, title-extractor, body-extractor,
+  // whether this card type maps to a real article id (so we
+  // can hit the cloud-TTS endpoint) or should stick with the
+  // browser fallback.
   var cardTypes = [
-    { sel: '.bn-card',           title: '.bn-title',            body: null, position: 'top-left' },
-    { sel: '.nf-side-card',      title: '.nf-side-card-title',  body: null, position: 'top-left' },
-    { sel: '.nf-feature-main',   title: '.nf-feature-main-title', body: null, position: 'top-left', big: true },
-    { sel: '.tg-card',           title: '.tg-source strong',    body: '.tg-text', position: 'top-left' },
-    { sel: '.tw-card',           title: '.tw-source strong',    body: '.tw-text', position: 'top-left' },
-    { sel: '.yt-card',           title: '.yt-title',            body: null, position: 'top-left' },
+    { sel: '.bn-card',         title: '.bn-title',              body: null,       article: true  },
+    { sel: '.nf-side-card',    title: '.nf-side-card-title',    body: null,       article: true  },
+    { sel: '.nf-feature-main', title: '.nf-feature-main-title', body: null,       article: true, big: true },
+    { sel: '.tg-card',         title: '.tg-source strong',      body: '.tg-text', article: false },
+    { sel: '.tw-card',         title: '.tw-source strong',      body: '.tw-text', article: false },
+    { sel: '.yt-card',         title: '.yt-title',              body: null,       article: false },
   ];
+
+  // Extract the article id from the card's anchor href when the
+  // card type is backed by an article. Matches /article/123 and
+  // /article/123/slug — the two shapes the .htaccess rewrite
+  // accepts.
+  function getArticleId(cardEl) {
+    var a = cardEl.tagName === 'A' ? cardEl : cardEl.querySelector('a[href*="/article/"]');
+    if (!a) return 0;
+    var m = (a.getAttribute('href') || '').match(/\/article\/(\d+)/);
+    return m ? parseInt(m[1], 10) : 0;
+  }
 
   function ensureStyle() {
     if (document.getElementById('nf-listen-btn-style')) return;
@@ -107,7 +121,21 @@
 
     clearAllPlayingFlags();
     btn.classList.add('playing');
-    window.NF_Audio.play(txt.title, full);
+
+    // Article-backed cards: try cloud TTS first (MP3 cached on
+    // the server), fall back to browser Web Speech on 404 / err.
+    if (cfg.article) {
+      var articleId = getArticleId(cardEl);
+      if (articleId) {
+        window.NF_Audio.playArticle(articleId, txt.title, full);
+      } else {
+        window.NF_Audio.play(txt.title, full);
+      }
+    } else {
+      // Social cards have no article id — use the browser TTS
+      // with the full card text.
+      window.NF_Audio.play(txt.title, full);
+    }
 
     // Clear the flag when playback ends. Poll briefly — the
     // SpeechSynthesis API doesn't expose a clean "ended" event

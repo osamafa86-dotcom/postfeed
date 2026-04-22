@@ -300,8 +300,8 @@ render_home_seo();
   <link rel="stylesheet" href="assets/css/user.min.css?v=m2">
 </noscript>
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
-<script src="/assets/js/audio-player.js?v=2" defer></script>
-<script src="/assets/js/audio-cards.js?v=1" defer></script>
+<script src="/assets/js/audio-player.js?v=3" defer></script>
+<script src="/assets/js/audio-cards.js?v=2" defer></script>
 </head>
 <body>
 

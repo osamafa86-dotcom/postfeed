@@ -41,6 +41,8 @@
     queue:   [],
     cursor:  0,
     current: null,
+    mode:    'browser',   // 'browser' | 'mp3'
+    audioEl: null,         // <audio> element when mode='mp3'
   };
 
   // ---- VOICE SELECTION --------------------------------------
@@ -290,15 +292,111 @@
     }
   }, 14000);
 
+  // ---- MP3 PLAYBACK (for cloud-TTS articles) ----------------
+  // playFromUrl() is used by NF_Audio.playArticle() so callers
+  // can opt into premium cloud TTS without caring about the
+  // transport — it accepts the URL and title and falls back
+  // transparently when the endpoint returns anything non-audio.
+  function playFromUrl(url, title, opts) {
+    stop();
+    state.title   = title || '';
+    state.mode    = 'mp3';
+    state.playing = true;
+    state.paused  = false;
+    mountPlayer();
+    syncPlayerUI();
+    setupMediaSession(title, opts);
+
+    var a = new Audio();
+    a.src = url;
+    a.playbackRate = state.rate;
+    a.preload = 'auto';
+    a.addEventListener('ended', function () {
+      state.playing = false; state.paused = false; state.mode = 'browser';
+      state.audioEl = null;
+      unmountPlayer();
+      updateMediaSessionState();
+    });
+    a.addEventListener('error', function () {
+      // Network / 404 / bad MP3 — fall back to Web Speech.
+      state.audioEl = null; state.mode = 'browser';
+      if (opts && typeof opts.onFallback === 'function') {
+        opts.onFallback();
+      }
+    });
+    state.audioEl = a;
+    a.play().catch(function () { /* autoplay block — user will retry */ });
+    return true;
+  }
+
+  // Override pause/resume/stop to handle both modes.
+  var _origPause = pause, _origResume = resume, _origStop = stop;
+  pause = function () {
+    if (state.mode === 'mp3' && state.audioEl) {
+      state.audioEl.pause();
+      state.paused = true;
+      syncPlayerUI();
+      updateMediaSessionState();
+      return;
+    }
+    _origPause();
+  };
+  resume = function () {
+    if (state.mode === 'mp3' && state.audioEl) {
+      state.audioEl.play().catch(function () {});
+      state.paused = false;
+      syncPlayerUI();
+      updateMediaSessionState();
+      return;
+    }
+    _origResume();
+  };
+  stop = function () {
+    if (state.mode === 'mp3' && state.audioEl) {
+      try { state.audioEl.pause(); state.audioEl.src = ''; } catch (e) {}
+      state.audioEl = null;
+    }
+    state.mode = 'browser';
+    _origStop();
+  };
+
+  // Re-bind setRate to handle <audio>'s live playbackRate.
+  var _origSetRate = setRate;
+  setRate = function (r) {
+    r = Math.max(0.5, Math.min(2, r));
+    if (state.mode === 'mp3' && state.audioEl) {
+      state.audioEl.playbackRate = r;
+      state.rate = r;
+      try { localStorage.setItem(RATE_KEY, String(r)); } catch (e) {}
+      syncPlayerUI();
+      return;
+    }
+    _origSetRate(r);
+  };
+
+  /**
+   * Smart article play. Tries /api/tts.php?id=N first (cloud
+   * MP3, cached on server), and on any failure falls back to
+   * the browser Web Speech reading of the provided title+text.
+   */
+  function playArticle(articleId, title, fallbackText, opts) {
+    if (!articleId) return play(title, fallbackText, opts);
+    var url = '/api/tts.php?id=' + encodeURIComponent(articleId);
+    return playFromUrl(url, title, Object.assign({}, opts || {}, {
+      onFallback: function () { play(title, fallbackText, opts); },
+    }));
+  }
+
   window.NF_Audio = {
     play: play,
-    pause: pause,
-    resume: resume,
-    stop: stop,
+    playArticle: playArticle,
+    pause: function () { pause(); },
+    resume: function () { resume(); },
+    stop: function () { stop(); },
     toggle: togglePause,
-    setRate: setRate,
+    setRate: function (r) { setRate(r); },
     state: function () {
-      return { playing: state.playing, paused: state.paused, title: state.title, rate: state.rate };
+      return { playing: state.playing, paused: state.paused, title: state.title, rate: state.rate, mode: state.mode };
     },
     unsupported: false,
   };
