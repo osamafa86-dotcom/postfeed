@@ -14,9 +14,7 @@
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../includes/podcast.php';
-require_once __DIR__ . '/../includes/podcast_script.php';
-require_once __DIR__ . '/../includes/podcast_tts.php';
-require_once __DIR__ . '/../cron_podcast.php';   // pulls pod_run_generate_day
+require_once __DIR__ . '/../includes/podcast_run.php';
 requireRole('admin');
 
 ini_set('display_errors', '1');
