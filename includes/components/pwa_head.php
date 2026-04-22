@@ -14,7 +14,7 @@
 
 $pwa_theme_color = $pwa_theme_color ?? '#1a5c5c';
 ?>
-<link rel="stylesheet" href="/assets/css/pwa-mobile.css?v=2">
+<link rel="stylesheet" href="/assets/css/pwa-mobile.css?v=3">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="<?php echo htmlspecialchars($pwa_theme_color, ENT_QUOTES, 'UTF-8'); ?>">
 <meta name="color-scheme" content="light dark">

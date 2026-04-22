@@ -109,33 +109,40 @@ body {
      2. Shrink the icon, padding, font-size and gap.
      3. Fall back to horizontal scroll below 380px as a safety
         net — useful when Facebook/Instagram tabs land later. */
+/* `!important` is deliberate here: this file is included via
+   pwa_head.php early in <head>, which means home-index.min.css
+   (loaded later) wins the cascade on same-specificity selectors.
+   The mobile overrides MUST win, so we force them. */
 @media (max-width: 640px) {
-  .feed-tab-pre { display: none; }
+  .feed-tab-pre { display: none !important; }
   .feed-tab {
-    padding: 9px 12px;
-    font-size: 13px;
-    gap: 6px;
+    padding: 9px 12px !important;
+    font-size: 13px !important;
+    gap: 6px !important;
   }
   .feed-tab-ico {
-    width: 16px;
-    height: 16px;
+    width: 16px !important;
+    height: 16px !important;
   }
   .feed-tabs {
-    gap: 2px;
-    flex-wrap: nowrap;
+    gap: 2px !important;
+    flex-wrap: nowrap !important;
+  }
+  .feed-tab-label {
+    white-space: nowrap;
   }
 }
 @media (max-width: 380px) {
   .feed-tabs {
-    overflow-x: auto;
+    overflow-x: auto !important;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
   }
   .feed-tabs::-webkit-scrollbar { display: none; }
   .feed-tab {
-    flex: 0 0 auto;
-    padding: 9px 10px;
-    font-size: 12.5px;
+    flex: 0 0 auto !important;
+    padding: 9px 10px !important;
+    font-size: 12.5px !important;
   }
 }
 
