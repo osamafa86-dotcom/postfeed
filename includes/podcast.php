@@ -88,6 +88,7 @@ function pod_save(string $episodeDate, array $payload): int {
     ];
 
     if ($existing) {
+        unset($params[':date']);
         $params[':id'] = (int)$existing['id'];
         $sql = "UPDATE podcast_episodes SET
                   title=:title, subtitle=:subtitle, intro=:intro,
