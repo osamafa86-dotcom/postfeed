@@ -13,9 +13,11 @@ deploy_log.txt
 .phpunit.cache/
 storage/cache/*
 storage/ratelimit/*
+storage/podcast/*
 storage/.secret_key
 !storage/cache/.gitkeep
 !storage/cache/.htaccess
 !storage/ratelimit/.gitkeep
+!storage/podcast/.gitkeep
 assets/icons/*.png
 composer.lock
