@@ -13,10 +13,25 @@
  */
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/functions.php';
-require_once __DIR__ . '/../includes/weekly_rewind.php';
 requireRole('admin');
 
-wr_ensure_table();
+// Surface real errors to admins on this page — generation can fail
+// for many reasons (AI provider down, schema mismatch, missing
+// column) and a blank 500 is unhelpful. Admin-only.
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
+
+require_once __DIR__ . '/../includes/weekly_rewind.php';
+
+try {
+    wr_ensure_table();
+} catch (Throwable $e) {
+    echo '<pre style="padding:20px;background:#fee;color:#900;border-radius:8px;margin:20px;">'
+       . 'wr_ensure_table failed: ' . htmlspecialchars($e->getMessage()) . "\n\n"
+       . htmlspecialchars($e->getTraceAsString()) . '</pre>';
+    exit;
+}
 $db = getDB();
 $activePage = 'weekly_rewind';
 
@@ -36,30 +51,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ? (string)$_POST['week']
             : wr_year_week_for(time());
 
-    if ($action === 'generate') {
-        // In-process — never shell_exec (disabled on most shared hosts).
-        $r = wr_run_generate($week, true);
+    try {
+        if ($action === 'generate') {
+            // In-process — never shell_exec (disabled on most shared hosts).
+            $r = wr_run_generate($week, true);
+            $flash = [
+                'type' => $r['ok'] ? 'ok' : 'err',
+                'msg'  => ($r['ok'] ? '✓ تم توليد المراجعة للأسبوع ' : '✗ فشل التوليد للأسبوع ') . $week,
+                'log'  => $r['log'],
+            ];
+        } elseif ($action === 'send') {
+            $force = !empty($_POST['force']);
+            $r = wr_run_send($week, $force, false);
+            $flash = [
+                'type' => $r['ok'] ? 'ok' : 'err',
+                'msg'  => ($r['ok'] ? '✓ تم الإرسال للأسبوع ' : '✗ فشل الإرسال للأسبوع ') . $week,
+                'log'  => $r['log'],
+            ];
+        } elseif ($action === 'backfill') {
+            $weeks = max(1, min(12, (int)($_POST['weeks'] ?? 4)));
+            $r = wr_run_backfill($weeks);
+            $flash = [
+                'type' => $r['ok'] ? 'ok' : 'err',
+                'msg'  => ($r['ok'] ? '✓ اكتمل backfill لـ ' : '✗ فشل backfill لـ ') . $weeks . ' أسابيع',
+                'log'  => $r['log'],
+            ];
+        }
+    } catch (Throwable $e) {
         $flash = [
-            'type' => $r['ok'] ? 'ok' : 'err',
-            'msg'  => ($r['ok'] ? '✓ تم توليد المراجعة للأسبوع ' : '✗ فشل التوليد للأسبوع ') . $week,
-            'log'  => $r['log'],
+            'type' => 'err',
+            'msg'  => '✗ استثناء أثناء التنفيذ: ' . $e->getMessage(),
+            'log'  => $e->getMessage() . "\n\n" . $e->getTraceAsString(),
         ];
-    } elseif ($action === 'send') {
-        $force = !empty($_POST['force']);
-        $r = wr_run_send($week, $force, false);
-        $flash = [
-            'type' => $r['ok'] ? 'ok' : 'err',
-            'msg'  => ($r['ok'] ? '✓ تم الإرسال للأسبوع ' : '✗ فشل الإرسال للأسبوع ') . $week,
-            'log'  => $r['log'],
-        ];
-    } elseif ($action === 'backfill') {
-        $weeks = max(1, min(12, (int)($_POST['weeks'] ?? 4)));
-        $r = wr_run_backfill($weeks);
-        $flash = [
-            'type' => $r['ok'] ? 'ok' : 'err',
-            'msg'  => ($r['ok'] ? '✓ اكتمل backfill لـ ' : '✗ فشل backfill لـ ') . $weeks . ' أسابيع',
-            'log'  => $r['log'],
-        ];
+    }
+
+    if (false) {  // unreachable, kept so the next block stays a separate elif
     } elseif ($action === 'send_test') {
         require_once __DIR__ . '/../includes/mailer.php';
         $email = filter_var(trim((string)($_POST['test_email'] ?? '')), FILTER_VALIDATE_EMAIL);
