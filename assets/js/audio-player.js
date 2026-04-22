@@ -195,8 +195,47 @@
     state.paused  = false;
     mountPlayer();
     syncPlayerUI();
+    setupMediaSession(title, opts);
     playNextChunk();
     return true;
+  }
+
+  // ---- MEDIA SESSION API ------------------------------------
+  // Lets iOS lock-screen, Android notification tray, and Chrome
+  // hardware-media-keys control playback. Optional — degrades
+  // silently on browsers without support.
+  function setupMediaSession(title, opts) {
+    if (!('mediaSession' in navigator)) return;
+    var artwork = [];
+    var siteName = 'نيوز فيد';
+    if (opts && opts.image) {
+      artwork.push({ src: opts.image, sizes: '512x512', type: 'image/jpeg' });
+    } else {
+      // Use the PWA icon so the lock-screen panel isn't blank.
+      artwork.push({ src: '/icon.php?size=512', sizes: '512x512', type: 'image/png' });
+      artwork.push({ src: '/icon.php?size=192', sizes: '192x192', type: 'image/png' });
+    }
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title:  title || 'خبر',
+        artist: siteName,
+        album:  siteName,
+        artwork: artwork,
+      });
+      navigator.mediaSession.playbackState = 'playing';
+      navigator.mediaSession.setActionHandler('play',  resume);
+      navigator.mediaSession.setActionHandler('pause', pause);
+      navigator.mediaSession.setActionHandler('stop',  stop);
+    } catch (e) { /* older browsers silently ignore */ }
+  }
+
+  function updateMediaSessionState() {
+    if (!('mediaSession' in navigator)) return;
+    try {
+      navigator.mediaSession.playbackState = state.paused ? 'paused'
+                                           : state.playing ? 'playing'
+                                           : 'none';
+    } catch (e) {}
   }
 
   function pause() {
@@ -211,6 +250,7 @@
     speechSynthesis.resume();
     state.paused = false;
     syncPlayerUI();
+    updateMediaSessionState();
   }
 
   function togglePause() { state.paused ? resume() : pause(); }
@@ -221,6 +261,10 @@
     state.queue = []; state.cursor = 0; state.current = null;
     state.title = '';
     unmountPlayer();
+    updateMediaSessionState();
+    if ('mediaSession' in navigator) {
+      try { navigator.mediaSession.metadata = null; } catch (e) {}
+    }
   }
 
   function setRate(r) {
