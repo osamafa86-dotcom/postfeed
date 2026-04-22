@@ -731,10 +731,31 @@ function wr_run_generate(string $yearWeek, bool $force = true): array {
         return ['ok' => false, 'log' => implode("\n", $log) . "\n— لا توجد مقالات كافية (أقل من 5)."];
     }
 
-    @set_time_limit(180);
+    @set_time_limit(240);
     $t0 = microtime(true);
     $ai = wr_generate_with_ai($candidates, $startDate, $endDate);
     $elapsed = round(microtime(true) - $t0, 2);
+
+    // Rate-limit retry: if the first call failed within 2s with a
+    // throttle-shaped error, the provider rejected at the gate
+    // (HTTP 429). Halving the candidate set roughly halves prompt
+    // tokens, which is enough to slip under most per-minute limits
+    // on free / starter tiers. Tried once, no recursion.
+    if (empty($ai['ok']) && $elapsed < 2.0) {
+        $err = (string)($ai['error'] ?? '');
+        $isThrottle = stripos($err, 'rate') !== false
+                   || stripos($err, '429')  !== false
+                   || stripos($err, 'حد')   !== false
+                   || stripos($err, 'limit') !== false;
+        if ($isThrottle && count($candidates) > 25) {
+            $log[] = "↻ rate-limited; إعادة المحاولة بعد 6s بنصف الحجم...";
+            sleep(6);
+            $smaller = array_slice($candidates, 0, 25);
+            $t0 = microtime(true);
+            $ai = wr_generate_with_ai($smaller, $startDate, $endDate);
+            $elapsed = round(microtime(true) - $t0, 2);
+        }
+    }
 
     if (empty($ai['ok'])) {
         $err = $ai['error'] ?? 'unknown';
