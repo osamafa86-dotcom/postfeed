@@ -193,6 +193,7 @@ include __DIR__ . '/includes/panel_layout_head.php';
       الموجزات اليومية والأسبوعية تستمر بشكل منفصل.
     </p>
     <form method="POST">
+      <?php echo csrf_field(); ?>
       <input type="hidden" name="save_ai_switches" value="1">
 
       <label style="display:flex;align-items:center;gap:10px;padding:14px;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:10px;cursor:pointer;background:<?php echo $aiEnabled ? '#f0fdf4' : '#fef2f2'; ?>;">
