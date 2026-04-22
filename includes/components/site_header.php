@@ -111,6 +111,7 @@ $__nfVer = app_version();
       <a href="index.php" class="<?php echo $nf_nav_link_class('home'); ?>">الرئيسية</a>
       <a href="category.php?type=latest" class="<?php echo $nf_nav_link_class('latest'); ?>">آخر الأخبار</a>
       <a href="/weekly" class="<?php echo $nf_nav_link_class('weekly'); ?>">📅 مراجعة الأسبوع</a>
+      <a href="/map" class="<?php echo $nf_nav_link_class('map'); ?>">🗺 الخريطة</a>
       <a href="evolving-stories" class="<?php echo $nf_nav_link_class('evolving'); ?>">📅 قصص متطوّرة</a>
       <a href="timelines" class="<?php echo $nf_nav_link_class('timelines'); ?>">🧠 خطوط زمنية</a>
       <a href="category/political" class="<?php echo $nf_nav_link_class('category', 'political'); ?>">سياسة</a>
@@ -133,6 +134,7 @@ $__nfVer = app_version();
   <a href="category.php?type=breaking"<?php echo $activeType === 'breaking' ? ' class="active"' : ''; ?>>🔴 عاجل</a>
   <a href="category.php?type=latest"<?php echo $activeType === 'latest' ? ' class="active"' : ''; ?>>⏱ آخر الأخبار</a>
   <a href="/weekly"<?php echo $activeType === 'weekly' ? ' class="active"' : ''; ?>>📅 مراجعة الأسبوع</a>
+  <a href="/map"<?php echo $activeType === 'map' ? ' class="active"' : ''; ?>>🗺 الخريطة</a>
   <a href="evolving-stories"<?php echo $activeType === 'evolving' ? ' class="active"' : ''; ?>>📅 قصص متطوّرة</a>
   <a href="timelines"<?php echo $activeType === 'timelines' ? ' class="active"' : ''; ?>>🧠 خطوط زمنية</a>
   <a href="category/political"<?php echo $activeSlug === 'political' ? ' class="active"' : ''; ?>>🏛 سياسة</a>
