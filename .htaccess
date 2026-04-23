@@ -89,6 +89,7 @@ FileETag None
     RewriteRule ^gallery/(\d{4}-\d{2}-\d{2})/?$ gallery.php?date=$1 [L,QSA]
     RewriteRule ^gallery/?$ gallery.php [L,QSA]
     RewriteRule ^ask/?$ ask.php [L,QSA]
+    RewriteRule ^prophet-quiz/?$ prophet_quiz.php [L,QSA]
     # Weekly Rewind — latest digest, archive, and specific weeks.
     RewriteRule ^weekly/archive/?$ weekly.php?week=archive [L,QSA]
     RewriteRule ^weekly/(\d{4}-\d{1,2})/?$ weekly.php?week=$1 [L,QSA]
