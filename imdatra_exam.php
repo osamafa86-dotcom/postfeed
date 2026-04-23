@@ -1,10 +1,11 @@
 <?php
 /**
- * İmdatra Koleji — 3. Sınıf Fen Bilimleri Sınavı (Çoktan Seçmeli).
+ * İmdatra Koleji — 3. Sınıf Fen Bilimleri: "Dünya ve Ay" Sınavı.
  *
- * Yazdırılabilir sınav kağıdı. 20 çoktan seçmeli soru, toplam 100 puan.
- * Öğrenci bilgi alanı, yazdırma düğmesi ve öğretmenler için açılır/
- * kapanır cevap anahtarı içerir (cevap anahtarı yazdırmada gizlenir).
+ * Yazdırılabilir sınav kağıdı. 20 çoktan seçmeli soru, yalnızca
+ * "Gezegenimizi Tanıyalım / Dünya ve Ay" ünitesine odaklanmıştır.
+ * Her soru 5 puan, toplam 100 puandır. Öğretmenler için açılır/
+ * kapanır cevap anahtarı vardır (basımda gizlenir).
  */
 require_once __DIR__ . '/includes/functions.php';
 ?><!DOCTYPE html>
@@ -12,7 +13,7 @@ require_once __DIR__ . '/includes/functions.php';
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fen Bilimleri Sınavı — 3. Sınıf — İmdatra Koleji</title>
+<title>Dünya ve Ay Sınavı — 3. Sınıf — İmdatra Koleji</title>
 <meta name="robots" content="noindex,nofollow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,9 +22,9 @@ require_once __DIR__ . '/includes/functions.php';
   :root {
     --ink: #111827;
     --muted: #6b7280;
-    --accent: #0369a1;
-    --accent-2: #0c4a6e;
-    --soft: #f0f9ff;
+    --accent: #1e40af;
+    --accent-2: #1e3a8a;
+    --soft: #eff6ff;
     --border: #cbd5e1;
     --yellow: #fef3c7;
     --yellow-border: #fcd34d;
@@ -54,34 +55,41 @@ require_once __DIR__ . '/includes/functions.php';
   .tbtn.ghost { background:#64748b; }
   .tbtn.ghost:hover { background:#475569; }
 
-  /* Başlık */
+  /* Okul başlığı */
   .exam-head {
     border-bottom:3px double var(--accent);
     padding-bottom:14px; margin-bottom:18px;
     display:flex; align-items:center; gap:18px;
   }
   .exam-head .logo {
-    width:66px; height:66px; border-radius:50%;
+    width:72px; height:72px; border-radius:50%;
     background:linear-gradient(135deg,var(--accent),var(--accent-2));
     color:#fff; display:flex; align-items:center; justify-content:center;
-    font-size:26px; font-weight:900; flex-shrink:0;
+    font-size:28px; font-weight:900; flex-shrink:0;
+    border:3px solid #dbeafe;
+    box-shadow:0 4px 10px rgba(30,64,175,.25);
   }
   .exam-head .h-text { flex:1; }
   .exam-head .school {
-    font-size:22px; font-weight:900; color:var(--accent-2);
-    letter-spacing:.5px;
+    font-size:24px; font-weight:900; color:var(--accent-2);
+    letter-spacing:.8px;
   }
   .exam-head .meta-line {
     font-size:13px; color:var(--muted); margin-top:4px; font-weight:600;
   }
   .exam-title-row {
     background:var(--soft); border:2px solid var(--accent);
-    border-radius:10px; padding:10px 18px; margin-bottom:18px;
+    border-radius:10px; padding:12px 18px; margin-bottom:18px;
     display:flex; justify-content:space-between; align-items:center;
     flex-wrap:wrap; gap:10px;
   }
   .exam-title-row h1 {
     font-size:19px; font-weight:900; color:var(--accent-2);
+  }
+  .exam-title-row h1 .unit {
+    display:inline-block; margin-right:8px; font-size:15px;
+    background:var(--accent); color:#fff; padding:3px 10px;
+    border-radius:6px; font-weight:800;
   }
   .exam-title-row .ders {
     font-size:13px; font-weight:700; color:var(--accent);
@@ -98,7 +106,7 @@ require_once __DIR__ . '/includes/functions.php';
     display:flex; gap:8px; align-items:center;
     border-bottom:1px dotted var(--border); padding:5px 0;
   }
-  .info-grid .row strong { min-width:85px; color:var(--accent-2); font-weight:800; }
+  .info-grid .row strong { min-width:95px; color:var(--accent-2); font-weight:800; }
   .info-grid .row .line { flex:1; }
 
   /* Talimat kutusu */
@@ -209,12 +217,12 @@ require_once __DIR__ . '/includes/functions.php';
     <div class="logo">İK</div>
     <div class="h-text">
       <div class="school">İMDATRA KOLEJİ</div>
-      <div class="meta-line">2025–2026 Eğitim–Öğretim Yılı • 1. Dönem Değerlendirme Sınavı</div>
+      <div class="meta-line">2025–2026 Eğitim–Öğretim Yılı • 3. Sınıf Fen Bilimleri</div>
     </div>
   </header>
 
   <div class="exam-title-row">
-    <h1>3. Sınıf Fen Bilimleri Sınavı</h1>
+    <h1><span class="unit">🌍 ÜNİTE</span> Dünya ve Ay — Çoktan Seçmeli Sınav</h1>
     <span class="ders">Süre: 40 dk • 100 puan</span>
   </div>
 
@@ -229,69 +237,29 @@ require_once __DIR__ . '/includes/functions.php';
   <!-- Talimatlar -->
   <div class="instructions">
     <strong>🧒 Sevgili Öğrenciler:</strong>
-    Sınav <strong>20 çoktan seçmeli</strong> sorudan oluşmaktadır. Her soru <strong>5 puan</strong> değerindedir. Her sorunun yalnızca <strong>bir</strong> doğru cevabı vardır. Doğru şıkkı (A / B / C / D) yuvarlak içine alınız. Başarılar dileriz! 🌟
+    Sınavda <strong>20 çoktan seçmeli soru</strong> vardır. Her soru <strong>5 puan</strong> değerindedir. Her sorunun yalnızca <strong>bir</strong> doğru cevabı bulunmaktadır. Doğru şıkkı (A / B / C / D) yuvarlak içine alınız. Başarılar! 🌟
   </div>
 
   <!-- Sorular -->
   <section>
     <div class="section-head">
-      <span>ÇOKTAN SEÇMELİ SORULAR</span>
+      <span>🌍 DÜNYA VE AY — ÇOKTAN SEÇMELİ SORULAR</span>
       <span class="pts">20 soru × 5 puan = 100 puan</span>
     </div>
     <div class="section-body">
 
       <div class="q">
-        <div class="q-text"><span class="num">1</span> Hangi duyu organımızla tatları ayırt ederiz?</div>
+        <div class="q-text"><span class="num">1</span> Dünya'nın şekli aşağıdakilerden hangisine benzer?</div>
         <div class="choices">
-          <div class="c"><span class="box">A</span> Göz</div>
-          <div class="c"><span class="box">B</span> Kulak</div>
-          <div class="c"><span class="box">C</span> Dil</div>
-          <div class="c"><span class="box">D</span> Burun</div>
+          <div class="c"><span class="box">A</span> Küp</div>
+          <div class="c"><span class="box">B</span> Küre</div>
+          <div class="c"><span class="box">C</span> Koni</div>
+          <div class="c"><span class="box">D</span> Silindir</div>
         </div>
       </div>
 
       <div class="q">
-        <div class="q-text"><span class="num">2</span> Dünya'nın şekli aşağıdakilerden hangisine benzer?</div>
-        <div class="choices">
-          <div class="c"><span class="box">A</span> Küre</div>
-          <div class="c"><span class="box">B</span> Kare</div>
-          <div class="c"><span class="box">C</span> Üçgen</div>
-          <div class="c"><span class="box">D</span> Dikdörtgen</div>
-        </div>
-      </div>
-
-      <div class="q">
-        <div class="q-text"><span class="num">3</span> Aşağıdakilerden hangisi <u>itme</u> kuvvetine örnektir?</div>
-        <div class="choices">
-          <div class="c"><span class="box">A</span> Topu ayakla tekmelemek</div>
-          <div class="c"><span class="box">B</span> Halatı kendine çekmek</div>
-          <div class="c"><span class="box">C</span> Kapı kolunu çekmek</div>
-          <div class="c"><span class="box">D</span> İpi aşağıya çekmek</div>
-        </div>
-      </div>
-
-      <div class="q">
-        <div class="q-text"><span class="num">4</span> Aşağıdakilerden hangisi <u>doğal</u> ışık kaynağıdır?</div>
-        <div class="choices">
-          <div class="c"><span class="box">A</span> Ampul</div>
-          <div class="c"><span class="box">B</span> Mum</div>
-          <div class="c"><span class="box">C</span> El feneri</div>
-          <div class="c"><span class="box">D</span> Güneş</div>
-        </div>
-      </div>
-
-      <div class="q">
-        <div class="q-text"><span class="num">5</span> Buzun erimesi hangi hâl değişimine örnektir?</div>
-        <div class="choices">
-          <div class="c"><span class="box">A</span> Katı → Sıvı</div>
-          <div class="c"><span class="box">B</span> Sıvı → Gaz</div>
-          <div class="c"><span class="box">C</span> Gaz → Sıvı</div>
-          <div class="c"><span class="box">D</span> Katı → Gaz</div>
-        </div>
-      </div>
-
-      <div class="q">
-        <div class="q-text"><span class="num">6</span> Dünya'nın tek doğal uydusu hangisidir?</div>
+        <div class="q-text"><span class="num">2</span> Dünya'nın tek doğal uydusu hangisidir?</div>
         <div class="choices">
           <div class="c"><span class="box">A</span> Güneş</div>
           <div class="c"><span class="box">B</span> Mars</div>
@@ -301,142 +269,182 @@ require_once __DIR__ . '/includes/functions.php';
       </div>
 
       <div class="q">
-        <div class="q-text"><span class="num">7</span> Aşağıdakilerden hangisi <u>canlı</u>dır?</div>
+        <div class="q-text"><span class="num">3</span> Dünya'nın yüzeyinin büyük bölümünü ne kaplar?</div>
         <div class="choices">
-          <div class="c"><span class="box">A</span> Taş</div>
-          <div class="c"><span class="box">B</span> Ağaç</div>
-          <div class="c"><span class="box">C</span> Kalem</div>
-          <div class="c"><span class="box">D</span> Sandalye</div>
+          <div class="c"><span class="box">A</span> Kara parçaları</div>
+          <div class="c"><span class="box">B</span> Sular</div>
+          <div class="c"><span class="box">C</span> Ormanlar</div>
+          <div class="c"><span class="box">D</span> Çöller</div>
         </div>
       </div>
 
       <div class="q">
-        <div class="q-text"><span class="num">8</span> Aşağıdakilerden hangisi <u>mıknatıs</u> tarafından çekilir?</div>
+        <div class="q-text"><span class="num">4</span> Aşağıdakilerden hangisi bir yeryüzü şekli <u>değildir</u>?</div>
         <div class="choices">
-          <div class="c"><span class="box">A</span> Kağıt</div>
-          <div class="c"><span class="box">B</span> Demir çivi</div>
-          <div class="c"><span class="box">C</span> Plastik kaşık</div>
-          <div class="c"><span class="box">D</span> Tahta kutu</div>
+          <div class="c"><span class="box">A</span> Dağ</div>
+          <div class="c"><span class="box">B</span> Ova</div>
+          <div class="c"><span class="box">C</span> Plato</div>
+          <div class="c"><span class="box">D</span> Bulut</div>
         </div>
       </div>
 
       <div class="q">
-        <div class="q-text"><span class="num">9</span> Sesi duyabilmemizi sağlayan duyu organımız hangisidir?</div>
+        <div class="q-text"><span class="num">5</span> Ay'ın yüzeyindeki çukurlara ne ad verilir?</div>
         <div class="choices">
-          <div class="c"><span class="box">A</span> Göz</div>
-          <div class="c"><span class="box">B</span> Dil</div>
-          <div class="c"><span class="box">C</span> Kulak</div>
-          <div class="c"><span class="box">D</span> Deri</div>
+          <div class="c"><span class="box">A</span> Göl</div>
+          <div class="c"><span class="box">B</span> Krater</div>
+          <div class="c"><span class="box">C</span> Vadi</div>
+          <div class="c"><span class="box">D</span> Kanyon</div>
         </div>
       </div>
 
       <div class="q">
-        <div class="q-text"><span class="num">10</span> Bir bitkinin büyüyebilmesi için <u>gerekli olmayan</u> aşağıdakilerden hangisidir?</div>
+        <div class="q-text"><span class="num">6</span> Ay ile ilgili aşağıdakilerden hangisi <u>yanlış</u>tır?</div>
         <div class="choices">
-          <div class="c"><span class="box">A</span> Su</div>
-          <div class="c"><span class="box">B</span> Işık</div>
-          <div class="c"><span class="box">C</span> Hava</div>
-          <div class="c"><span class="box">D</span> Müzik</div>
+          <div class="c"><span class="box">A</span> Dünya'nın uydusudur.</div>
+          <div class="c"><span class="box">B</span> Dünya'dan daha küçüktür.</div>
+          <div class="c"><span class="box">C</span> Kendi ışığı vardır.</div>
+          <div class="c"><span class="box">D</span> Gökyüzünde görülür.</div>
         </div>
       </div>
 
       <div class="q">
-        <div class="q-text"><span class="num">11</span> Aşağıdakilerden hangisi <u>yapay</u> ışık kaynağıdır?</div>
+        <div class="q-text"><span class="num">7</span> Aşağıdakilerden hangisi bir <u>kara parçası</u>dır?</div>
         <div class="choices">
-          <div class="c"><span class="box">A</span> Güneş</div>
-          <div class="c"><span class="box">B</span> Yıldızlar</div>
-          <div class="c"><span class="box">C</span> Ateşböceği</div>
-          <div class="c"><span class="box">D</span> Ampul</div>
+          <div class="c"><span class="box">A</span> Deniz</div>
+          <div class="c"><span class="box">B</span> Nehir</div>
+          <div class="c"><span class="box">C</span> Ada</div>
+          <div class="c"><span class="box">D</span> Göl</div>
         </div>
       </div>
 
       <div class="q">
-        <div class="q-text"><span class="num">12</span> Aşağıdakilerden hangisi <u>sıvı</u> maddedir?</div>
+        <div class="q-text"><span class="num">8</span> Aşağıdakilerden hangisi <u>tatlı su</u> kaynağıdır?</div>
         <div class="choices">
-          <div class="c"><span class="box">A</span> Buz</div>
-          <div class="c"><span class="box">B</span> Süt</div>
-          <div class="c"><span class="box">C</span> Taş</div>
-          <div class="c"><span class="box">D</span> Hava</div>
+          <div class="c"><span class="box">A</span> Deniz</div>
+          <div class="c"><span class="box">B</span> Okyanus</div>
+          <div class="c"><span class="box">C</span> Nehir</div>
+          <div class="c"><span class="box">D</span> Tuz gölü</div>
         </div>
       </div>
 
       <div class="q">
-        <div class="q-text"><span class="num">13</span> Çiçekleri koklayarak kokularını ayırt etmemizi sağlayan duyu organı hangisidir?</div>
+        <div class="q-text"><span class="num">9</span> Dünya üzerinde yaşayan canlılar için aşağıdakilerden hangisi <u>gerekli değildir</u>?</div>
         <div class="choices">
-          <div class="c"><span class="box">A</span> Kulak</div>
-          <div class="c"><span class="box">B</span> Burun</div>
-          <div class="c"><span class="box">C</span> Dil</div>
-          <div class="c"><span class="box">D</span> Göz</div>
+          <div class="c"><span class="box">A</span> Hava</div>
+          <div class="c"><span class="box">B</span> Su</div>
+          <div class="c"><span class="box">C</span> Uygun sıcaklık</div>
+          <div class="c"><span class="box">D</span> Gürültü</div>
         </div>
       </div>
 
       <div class="q">
-        <div class="q-text"><span class="num">14</span> Aşağıdakilerden hangisi bir elektrikli alet <u>değildir</u>?</div>
+        <div class="q-text"><span class="num">10</span> Ay'ın büyüklüğü Dünya'ya göre nasıldır?</div>
         <div class="choices">
-          <div class="c"><span class="box">A</span> Buzdolabı</div>
-          <div class="c"><span class="box">B</span> Televizyon</div>
-          <div class="c"><span class="box">C</span> Mum</div>
-          <div class="c"><span class="box">D</span> Ütü</div>
+          <div class="c"><span class="box">A</span> Dünya'dan büyüktür.</div>
+          <div class="c"><span class="box">B</span> Dünya ile aynı büyüklüktedir.</div>
+          <div class="c"><span class="box">C</span> Dünya'dan küçüktür.</div>
+          <div class="c"><span class="box">D</span> Dünya'nın iki katıdır.</div>
         </div>
       </div>
 
       <div class="q">
-        <div class="q-text"><span class="num">15</span> Suyun kaynayıp buharlaşması hangi hâl değişimidir?</div>
+        <div class="q-text"><span class="num">11</span> Dünya ile Ay arasındaki <u>ortak</u> özellik hangisidir?</div>
         <div class="choices">
-          <div class="c"><span class="box">A</span> Katı → Sıvı</div>
-          <div class="c"><span class="box">B</span> Sıvı → Gaz</div>
-          <div class="c"><span class="box">C</span> Gaz → Sıvı</div>
-          <div class="c"><span class="box">D</span> Sıvı → Katı</div>
+          <div class="c"><span class="box">A</span> İkisi de kendi ışığını yayar.</div>
+          <div class="c"><span class="box">B</span> İkisinin de şekli küreye benzer.</div>
+          <div class="c"><span class="box">C</span> İkisinde de canlılar yaşar.</div>
+          <div class="c"><span class="box">D</span> İkisi de gezegendir.</div>
         </div>
       </div>
 
       <div class="q">
-        <div class="q-text"><span class="num">16</span> Aşağıdakilerden hangisi <u>çekme</u> kuvvetine örnektir?</div>
+        <div class="q-text"><span class="num">12</span> Ay'ın yüzeyinde aşağıdakilerden hangisi <u>bulunmaz</u>?</div>
         <div class="choices">
-          <div class="c"><span class="box">A</span> Topu tekmelemek</div>
-          <div class="c"><span class="box">B</span> Çekmeceyi açmak</div>
-          <div class="c"><span class="box">C</span> Kapıyı itmek</div>
-          <div class="c"><span class="box">D</span> Bisikleti ileri sürmek</div>
+          <div class="c"><span class="box">A</span> Kraterler</div>
+          <div class="c"><span class="box">B</span> Tepeler</div>
+          <div class="c"><span class="box">C</span> Kayalıklar</div>
+          <div class="c"><span class="box">D</span> Nehirler ve göller</div>
         </div>
       </div>
 
       <div class="q">
-        <div class="q-text"><span class="num">17</span> Aşağıdakilerden hangisi canlıların ortak özelliklerinden <u>biri değildir</u>?</div>
+        <div class="q-text"><span class="num">13</span> Dünya'nın iç kısmında aşağıdakilerden hangisi bulunur?</div>
         <div class="choices">
-          <div class="c"><span class="box">A</span> Beslenme</div>
-          <div class="c"><span class="box">B</span> Solunum</div>
-          <div class="c"><span class="box">C</span> Üreme</div>
-          <div class="c"><span class="box">D</span> Paslanma</div>
+          <div class="c"><span class="box">A</span> Buz katmanları</div>
+          <div class="c"><span class="box">B</span> Sıcak magma</div>
+          <div class="c"><span class="box">C</span> Taze su</div>
+          <div class="c"><span class="box">D</span> Soğuk hava</div>
         </div>
       </div>
 
       <div class="q">
-        <div class="q-text"><span class="num">18</span> Elektrikle ilgili aşağıdakilerden hangisi <u>doğru</u>dur?</div>
+        <div class="q-text"><span class="num">14</span> Ay ile ilgili aşağıdakilerden hangisi <u>doğru</u>dur?</div>
         <div class="choices">
-          <div class="c"><span class="box">A</span> Fişi ıslak elle prize takarız.</div>
-          <div class="c"><span class="box">B</span> Kabloların içini açıp bakarız.</div>
-          <div class="c"><span class="box">C</span> Bozuk kabloları kullanmayız.</div>
-          <div class="c"><span class="box">D</span> Prize çivi sokabiliriz.</div>
+          <div class="c"><span class="box">A</span> Ay'ın havası vardır, nefes alınabilir.</div>
+          <div class="c"><span class="box">B</span> Ay, Güneş'in ışığını yansıtır.</div>
+          <div class="c"><span class="box">C</span> Ay, Dünya'dan büyüktür.</div>
+          <div class="c"><span class="box">D</span> Ay'ın yüzeyi dümdüzdür.</div>
         </div>
       </div>
 
       <div class="q">
-        <div class="q-text"><span class="num">19</span> Kızgın sobaya elini yaklaştıran Ayşe sıcaklığı hangi duyu organıyla hisseder?</div>
+        <div class="q-text"><span class="num">15</span> Dünya, Güneş Sistemi'nde kaçıncı gezegendir?</div>
         <div class="choices">
-          <div class="c"><span class="box">A</span> Gözüyle</div>
-          <div class="c"><span class="box">B</span> Burnuyla</div>
-          <div class="c"><span class="box">C</span> Derisiyle</div>
-          <div class="c"><span class="box">D</span> Diliyle</div>
+          <div class="c"><span class="box">A</span> Birinci</div>
+          <div class="c"><span class="box">B</span> İkinci</div>
+          <div class="c"><span class="box">C</span> Üçüncü</div>
+          <div class="c"><span class="box">D</span> Dördüncü</div>
         </div>
       </div>
 
       <div class="q">
-        <div class="q-text"><span class="num">20</span> Işık ile ilgili aşağıdakilerden hangisi <u>doğru</u>dur?</div>
+        <div class="q-text"><span class="num">16</span> Dünya'nın yüzeyini değiştiren doğa olaylarından hangisi <u>değildir</u>?</div>
         <div class="choices">
-          <div class="c"><span class="box">A</span> Işık eğri yayılır.</div>
-          <div class="c"><span class="box">B</span> Işık doğrusal (düz) yayılır.</div>
-          <div class="c"><span class="box">C</span> Işık sadece geceleri yayılır.</div>
-          <div class="c"><span class="box">D</span> Işık duvardan geçer.</div>
+          <div class="c"><span class="box">A</span> Deprem</div>
+          <div class="c"><span class="box">B</span> Volkan patlaması</div>
+          <div class="c"><span class="box">C</span> Erozyon (aşınma)</div>
+          <div class="c"><span class="box">D</span> Gökkuşağı</div>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-text"><span class="num">17</span> Aşağıdakilerden hangisi <u>su kaynakları</u>ndan biridir?</div>
+        <div class="choices">
+          <div class="c"><span class="box">A</span> Plato</div>
+          <div class="c"><span class="box">B</span> Okyanus</div>
+          <div class="c"><span class="box">C</span> Dağ</div>
+          <div class="c"><span class="box">D</span> Ova</div>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-text"><span class="num">18</span> Yeryüzünde en yüksek kara parçası hangisidir?</div>
+        <div class="choices">
+          <div class="c"><span class="box">A</span> Ova</div>
+          <div class="c"><span class="box">B</span> Plato</div>
+          <div class="c"><span class="box">C</span> Dağ</div>
+          <div class="c"><span class="box">D</span> Vadi</div>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-text"><span class="num">19</span> Ay, Dünya'ya göre konumu bakımından hangisidir?</div>
+        <div class="choices">
+          <div class="c"><span class="box">A</span> Dünya'dan çok uzaktaki bir yıldızdır.</div>
+          <div class="c"><span class="box">B</span> Dünya'ya en yakın gök cismidir.</div>
+          <div class="c"><span class="box">C</span> Dünya'nın içindedir.</div>
+          <div class="c"><span class="box">D</span> Güneş'in içindedir.</div>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-text"><span class="num">20</span> Aşağıdakilerden hangisi Dünya'yı diğer gök cisimlerinden <u>ayıran</u> özelliktir?</div>
+        <div class="choices">
+          <div class="c"><span class="box">A</span> Küre şeklinde olması</div>
+          <div class="c"><span class="box">B</span> Üzerinde canlıların yaşaması</div>
+          <div class="c"><span class="box">C</span> Gökyüzünde görülmesi</div>
+          <div class="c"><span class="box">D</span> Uydusunun bulunması</div>
         </div>
       </div>
 
@@ -444,7 +452,7 @@ require_once __DIR__ . '/includes/functions.php';
   </section>
 
   <div class="footer-note">
-    <span>Başarılar dileriz. 🍀</span>
+    <span>Başarılar dileriz. 🍀🌍🌕</span>
     <span><strong>Öğretmen:</strong> ____________________</span>
   </div>
 
@@ -452,25 +460,25 @@ require_once __DIR__ . '/includes/functions.php';
   <div class="answer-key" id="anahtar" style="display:none;">
     <h3>🔑 Cevap Anahtarı (Öğretmen İçin)</h3>
     <div class="answer-table">
-      <div class="cell"><strong>1</strong> — C</div>
-      <div class="cell"><strong>2</strong> — A</div>
-      <div class="cell"><strong>3</strong> — A</div>
+      <div class="cell"><strong>1</strong> — B</div>
+      <div class="cell"><strong>2</strong> — C</div>
+      <div class="cell"><strong>3</strong> — B</div>
       <div class="cell"><strong>4</strong> — D</div>
-      <div class="cell"><strong>5</strong> — A</div>
+      <div class="cell"><strong>5</strong> — B</div>
       <div class="cell"><strong>6</strong> — C</div>
-      <div class="cell"><strong>7</strong> — B</div>
-      <div class="cell"><strong>8</strong> — B</div>
-      <div class="cell"><strong>9</strong> — C</div>
-      <div class="cell"><strong>10</strong> — D</div>
-      <div class="cell"><strong>11</strong> — D</div>
-      <div class="cell"><strong>12</strong> — B</div>
+      <div class="cell"><strong>7</strong> — C</div>
+      <div class="cell"><strong>8</strong> — C</div>
+      <div class="cell"><strong>9</strong> — D</div>
+      <div class="cell"><strong>10</strong> — C</div>
+      <div class="cell"><strong>11</strong> — B</div>
+      <div class="cell"><strong>12</strong> — D</div>
       <div class="cell"><strong>13</strong> — B</div>
-      <div class="cell"><strong>14</strong> — C</div>
-      <div class="cell"><strong>15</strong> — B</div>
-      <div class="cell"><strong>16</strong> — B</div>
-      <div class="cell"><strong>17</strong> — D</div>
+      <div class="cell"><strong>14</strong> — B</div>
+      <div class="cell"><strong>15</strong> — C</div>
+      <div class="cell"><strong>16</strong> — D</div>
+      <div class="cell"><strong>17</strong> — B</div>
       <div class="cell"><strong>18</strong> — C</div>
-      <div class="cell"><strong>19</strong> — C</div>
+      <div class="cell"><strong>19</strong> — B</div>
       <div class="cell"><strong>20</strong> — B</div>
     </div>
   </div>
