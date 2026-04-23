@@ -1,10 +1,10 @@
 <?php
 /**
- * İmdatra Koleji — 3. Sınıf Fen Bilimleri Sınavı.
+ * İmdatra Koleji — 3. Sınıf Fen Bilimleri Sınavı (Çoktan Seçmeli).
  *
- * Yazdırılabilir sınav kağıdı. Çoktan seçmeli, doğru/yanlış, boşluk
- * doldurma, eşleştirme ve açık uçlu sorular içerir. Cevap anahtarı
- * sayfa altında gösterilip gizlenebilir (basım sırasında gizlidir).
+ * Yazdırılabilir sınav kağıdı. 20 çoktan seçmeli soru, toplam 100 puan.
+ * Öğrenci bilgi alanı, yazdırma düğmesi ve öğretmenler için açılır/
+ * kapanır cevap anahtarı içerir (cevap anahtarı yazdırmada gizlenir).
  */
 require_once __DIR__ . '/includes/functions.php';
 ?><!DOCTYPE html>
@@ -31,14 +31,13 @@ require_once __DIR__ . '/includes/functions.php';
   * { margin:0; padding:0; box-sizing:border-box; }
   body {
     font-family:'Nunito','Segoe UI',Tahoma,Arial,sans-serif;
-    background:#e2e8f0; color:var(--ink); line-height:1.6;
+    background:#e2e8f0; color:var(--ink); line-height:1.55;
     padding:20px;
   }
   .sheet {
     max-width:820px; margin:0 auto; background:#fff;
-    padding:36px 40px; border-radius:8px;
+    padding:34px 40px; border-radius:8px;
     box-shadow:0 4px 20px rgba(0,0,0,.08);
-    position:relative;
   }
 
   /* Yazdırma kontrolleri */
@@ -58,14 +57,14 @@ require_once __DIR__ . '/includes/functions.php';
   /* Başlık */
   .exam-head {
     border-bottom:3px double var(--accent);
-    padding-bottom:16px; margin-bottom:20px;
+    padding-bottom:14px; margin-bottom:18px;
     display:flex; align-items:center; gap:18px;
   }
   .exam-head .logo {
-    width:70px; height:70px; border-radius:50%;
+    width:66px; height:66px; border-radius:50%;
     background:linear-gradient(135deg,var(--accent),var(--accent-2));
     color:#fff; display:flex; align-items:center; justify-content:center;
-    font-size:28px; font-weight:900; flex-shrink:0;
+    font-size:26px; font-weight:900; flex-shrink:0;
   }
   .exam-head .h-text { flex:1; }
   .exam-head .school {
@@ -73,145 +72,118 @@ require_once __DIR__ . '/includes/functions.php';
     letter-spacing:.5px;
   }
   .exam-head .meta-line {
-    font-size:14px; color:var(--muted); margin-top:4px; font-weight:600;
+    font-size:13px; color:var(--muted); margin-top:4px; font-weight:600;
   }
   .exam-title-row {
     background:var(--soft); border:2px solid var(--accent);
-    border-radius:10px; padding:12px 18px; margin-bottom:20px;
+    border-radius:10px; padding:10px 18px; margin-bottom:18px;
     display:flex; justify-content:space-between; align-items:center;
     flex-wrap:wrap; gap:10px;
   }
   .exam-title-row h1 {
-    font-size:20px; font-weight:900; color:var(--accent-2);
+    font-size:19px; font-weight:900; color:var(--accent-2);
   }
   .exam-title-row .ders {
-    font-size:14px; font-weight:700; color:var(--accent);
-    background:#fff; padding:6px 14px; border-radius:20px;
+    font-size:13px; font-weight:700; color:var(--accent);
+    background:#fff; padding:5px 12px; border-radius:20px;
     border:1px solid var(--accent);
   }
 
-  /* Öğrenci bilgi tablosu */
+  /* Öğrenci bilgi */
   .info-grid {
-    display:grid; grid-template-columns:1fr 1fr; gap:10px 16px;
-    margin-bottom:22px; font-size:14px;
+    display:grid; grid-template-columns:1fr 1fr; gap:6px 16px;
+    margin-bottom:16px; font-size:13px;
   }
   .info-grid .row {
     display:flex; gap:8px; align-items:center;
-    border-bottom:1px dotted var(--border); padding:6px 0;
+    border-bottom:1px dotted var(--border); padding:5px 0;
   }
   .info-grid .row strong { min-width:85px; color:var(--accent-2); font-weight:800; }
-  .info-grid .row .line { flex:1; border-bottom:1px solid transparent; }
+  .info-grid .row .line { flex:1; }
 
   /* Talimat kutusu */
   .instructions {
     background:var(--yellow); border:1px solid var(--yellow-border);
-    border-radius:10px; padding:12px 16px; margin-bottom:24px;
-    font-size:13px; color:#78350f;
+    border-radius:10px; padding:10px 14px; margin-bottom:20px;
+    font-size:12.5px; color:#78350f;
   }
-  .instructions strong { color:#92400e; display:block; margin-bottom:4px; }
-  .instructions ul { padding-right:20px; padding-left:20px; }
-  .instructions li { margin-bottom:3px; }
+  .instructions strong { color:#92400e; }
 
-  /* Bölüm başlıkları */
-  .section {
-    margin-bottom:26px;
-    page-break-inside:avoid;
-  }
+  /* Bölüm başlığı */
   .section-head {
     background:var(--accent); color:#fff;
     padding:8px 14px; border-radius:8px 8px 0 0;
     display:flex; justify-content:space-between; align-items:center;
-    font-weight:800; font-size:15px;
+    font-weight:800; font-size:14px;
   }
   .section-head .pts { font-size:12px; opacity:.9; }
   .section-body {
     border:1px solid var(--accent); border-top:0;
-    border-radius:0 0 8px 8px; padding:16px 18px;
+    border-radius:0 0 8px 8px; padding:14px 18px;
   }
 
   /* Sorular */
   .q {
-    margin-bottom:14px; padding-bottom:12px;
+    margin-bottom:12px; padding-bottom:10px;
     border-bottom:1px dashed #e2e8f0;
+    page-break-inside:avoid;
   }
   .q:last-child { border-bottom:0; margin-bottom:0; padding-bottom:0; }
   .q-text {
-    font-weight:700; margin-bottom:8px; font-size:15px; line-height:1.6;
+    font-weight:700; margin-bottom:6px; font-size:14px; line-height:1.55;
   }
   .q-text .num {
     display:inline-block; background:var(--accent); color:#fff;
-    width:24px; height:24px; border-radius:50%; text-align:center;
-    line-height:24px; font-weight:900; margin-left:6px; font-size:13px;
+    width:23px; height:23px; border-radius:50%; text-align:center;
+    line-height:23px; font-weight:900; margin-left:6px; font-size:12px;
   }
   .choices {
-    display:grid; grid-template-columns:1fr 1fr; gap:6px 16px;
-    padding-right:30px; font-size:14px;
+    display:grid; grid-template-columns:1fr 1fr; gap:4px 14px;
+    padding-right:28px; font-size:13.5px;
   }
   .choices .c {
-    display:flex; align-items:center; gap:8px;
+    display:flex; align-items:center; gap:7px;
   }
   .choices .c .box {
     display:inline-flex; align-items:center; justify-content:center;
-    width:22px; height:22px; border:2px solid var(--accent);
+    width:20px; height:20px; border:2px solid var(--accent);
     border-radius:50%; font-weight:800; color:var(--accent);
-    font-size:13px; flex-shrink:0;
-  }
-
-  .tf { display:flex; gap:20px; padding-right:30px; margin-top:6px; }
-  .tf .opt {
-    display:inline-flex; align-items:center; gap:6px; font-weight:700;
-  }
-  .tf .opt .circle {
-    display:inline-block; width:18px; height:18px; border:2px solid var(--ink);
-    border-radius:50%;
-  }
-
-  .blank {
-    display:inline-block; min-width:120px; border-bottom:2px solid var(--ink);
-    margin:0 4px; height:20px;
-  }
-
-  .match-grid {
-    display:grid; grid-template-columns:1fr 60px 1fr; gap:8px 16px;
-    align-items:center; padding-right:10px;
-  }
-  .match-grid .item {
-    border:1px solid var(--border); padding:8px 12px; border-radius:6px;
-    font-weight:600; background:#f8fafc;
-  }
-  .match-grid .arrow { text-align:center; color:var(--muted); }
-
-  .write-lines .line {
-    border-bottom:1px solid var(--ink); height:26px; margin-top:6px;
+    font-size:12px; flex-shrink:0;
   }
 
   /* Cevap Anahtarı */
   .answer-key {
-    margin-top:30px; padding:18px 22px;
+    margin-top:26px; padding:16px 20px;
     background:#ecfdf5; border:2px dashed #10b981;
-    border-radius:10px; font-size:14px;
+    border-radius:10px; font-size:13.5px;
   }
   .answer-key h3 {
-    color:#065f46; font-size:16px; margin-bottom:10px;
-    display:flex; align-items:center; gap:8px;
+    color:#065f46; font-size:15px; margin-bottom:10px;
   }
-  .answer-key ol { padding-right:22px; }
-  .answer-key li { margin-bottom:4px; }
+  .answer-table {
+    display:grid; grid-template-columns:repeat(5, 1fr); gap:6px;
+  }
+  .answer-table .cell {
+    background:#fff; border:1px solid #10b981; border-radius:6px;
+    padding:6px 8px; text-align:center; font-weight:700;
+  }
+  .answer-table .cell strong { color:#065f46; }
 
   /* Dipnot */
   .footer-note {
-    margin-top:26px; padding-top:14px;
+    margin-top:22px; padding-top:12px;
     border-top:1px solid var(--border);
     display:flex; justify-content:space-between;
     font-size:13px; color:var(--muted);
+    flex-wrap:wrap; gap:10px;
   }
 
   @media print {
     body { background:#fff; padding:0; }
-    .sheet { box-shadow:none; max-width:100%; padding:20px 24px; }
+    .sheet { box-shadow:none; max-width:100%; padding:16px 22px; }
     .toolbar { display:none; }
     .answer-key { display:none; }
-    @page { size:A4; margin:14mm; }
+    @page { size:A4; margin:12mm; }
   }
   @media (max-width:640px) {
     .sheet { padding:20px 18px; }
@@ -219,6 +191,7 @@ require_once __DIR__ . '/includes/functions.php';
     .choices { grid-template-columns:1fr; padding-right:20px; }
     .exam-title-row h1 { font-size:17px; }
     .exam-head .school { font-size:18px; }
+    .answer-table { grid-template-columns:repeat(4, 1fr); }
   }
 </style>
 </head>
@@ -242,7 +215,7 @@ require_once __DIR__ . '/includes/functions.php';
 
   <div class="exam-title-row">
     <h1>3. Sınıf Fen Bilimleri Sınavı</h1>
-    <span class="ders">Süre: 40 dk</span>
+    <span class="ders">Süre: 40 dk • 100 puan</span>
   </div>
 
   <!-- Öğrenci Bilgileri -->
@@ -255,25 +228,20 @@ require_once __DIR__ . '/includes/functions.php';
 
   <!-- Talimatlar -->
   <div class="instructions">
-    <strong>🧒 Sevgili Öğrenciler,</strong>
-    <ul>
-      <li>Sınav <strong>5 bölümden</strong> oluşmaktadır ve toplam <strong>100 puan</strong>dır.</li>
-      <li>Soruları dikkatlice okuyunuz.</li>
-      <li>Kalem silgi ve mavi tükenmez kalem kullanınız.</li>
-      <li>Başarılar dileriz. 🌟</li>
-    </ul>
+    <strong>🧒 Sevgili Öğrenciler:</strong>
+    Sınav <strong>20 çoktan seçmeli</strong> sorudan oluşmaktadır. Her soru <strong>5 puan</strong> değerindedir. Her sorunun yalnızca <strong>bir</strong> doğru cevabı vardır. Doğru şıkkı (A / B / C / D) yuvarlak içine alınız. Başarılar dileriz! 🌟
   </div>
 
-  <!-- A. Çoktan Seçmeli -->
-  <section class="section">
+  <!-- Sorular -->
+  <section>
     <div class="section-head">
-      <span>A) ÇOKTAN SEÇMELİ SORULAR</span>
-      <span class="pts">Her soru 5 puan — (5 × 5 = 25 puan)</span>
+      <span>ÇOKTAN SEÇMELİ SORULAR</span>
+      <span class="pts">20 soru × 5 puan = 100 puan</span>
     </div>
     <div class="section-body">
 
       <div class="q">
-        <div class="q-text"><span class="num">1</span> Aşağıdaki duyu organlarından hangisi ile tatları ayırt ederiz?</div>
+        <div class="q-text"><span class="num">1</span> Hangi duyu organımızla tatları ayırt ederiz?</div>
         <div class="choices">
           <div class="c"><span class="box">A</span> Göz</div>
           <div class="c"><span class="box">B</span> Kulak</div>
@@ -298,7 +266,7 @@ require_once __DIR__ . '/includes/functions.php';
           <div class="c"><span class="box">A</span> Topu ayakla tekmelemek</div>
           <div class="c"><span class="box">B</span> Halatı kendine çekmek</div>
           <div class="c"><span class="box">C</span> Kapı kolunu çekmek</div>
-          <div class="c"><span class="box">D</span> Çantayı omzuna asmak</div>
+          <div class="c"><span class="box">D</span> İpi aşağıya çekmek</div>
         </div>
       </div>
 
@@ -322,130 +290,153 @@ require_once __DIR__ . '/includes/functions.php';
         </div>
       </div>
 
-    </div>
-  </section>
-
-  <!-- B. Doğru/Yanlış -->
-  <section class="section">
-    <div class="section-head">
-      <span>B) DOĞRU / YANLIŞ SORULARI</span>
-      <span class="pts">Her soru 4 puan — (5 × 4 = 20 puan)</span>
-    </div>
-    <div class="section-body">
-
       <div class="q">
-        <div class="q-text"><span class="num">6</span> Dünya, Güneş'in etrafında döner.</div>
-        <div class="tf">
-          <span class="opt"><span class="circle"></span> Doğru (D)</span>
-          <span class="opt"><span class="circle"></span> Yanlış (Y)</span>
+        <div class="q-text"><span class="num">6</span> Dünya'nın tek doğal uydusu hangisidir?</div>
+        <div class="choices">
+          <div class="c"><span class="box">A</span> Güneş</div>
+          <div class="c"><span class="box">B</span> Mars</div>
+          <div class="c"><span class="box">C</span> Ay</div>
+          <div class="c"><span class="box">D</span> Jüpiter</div>
         </div>
       </div>
 
       <div class="q">
-        <div class="q-text"><span class="num">7</span> Ses; katı, sıvı ve gaz maddelerde yayılır.</div>
-        <div class="tf">
-          <span class="opt"><span class="circle"></span> Doğru (D)</span>
-          <span class="opt"><span class="circle"></span> Yanlış (Y)</span>
+        <div class="q-text"><span class="num">7</span> Aşağıdakilerden hangisi <u>canlı</u>dır?</div>
+        <div class="choices">
+          <div class="c"><span class="box">A</span> Taş</div>
+          <div class="c"><span class="box">B</span> Ağaç</div>
+          <div class="c"><span class="box">C</span> Kalem</div>
+          <div class="c"><span class="box">D</span> Sandalye</div>
         </div>
       </div>
 
       <div class="q">
-        <div class="q-text"><span class="num">8</span> Mıknatıs bütün metalleri çeker.</div>
-        <div class="tf">
-          <span class="opt"><span class="circle"></span> Doğru (D)</span>
-          <span class="opt"><span class="circle"></span> Yanlış (Y)</span>
+        <div class="q-text"><span class="num">8</span> Aşağıdakilerden hangisi <u>mıknatıs</u> tarafından çekilir?</div>
+        <div class="choices">
+          <div class="c"><span class="box">A</span> Kağıt</div>
+          <div class="c"><span class="box">B</span> Demir çivi</div>
+          <div class="c"><span class="box">C</span> Plastik kaşık</div>
+          <div class="c"><span class="box">D</span> Tahta kutu</div>
         </div>
       </div>
 
       <div class="q">
-        <div class="q-text"><span class="num">9</span> Bitkiler; büyüme, solunum ve üreme yaparlar.</div>
-        <div class="tf">
-          <span class="opt"><span class="circle"></span> Doğru (D)</span>
-          <span class="opt"><span class="circle"></span> Yanlış (Y)</span>
+        <div class="q-text"><span class="num">9</span> Sesi duyabilmemizi sağlayan duyu organımız hangisidir?</div>
+        <div class="choices">
+          <div class="c"><span class="box">A</span> Göz</div>
+          <div class="c"><span class="box">B</span> Dil</div>
+          <div class="c"><span class="box">C</span> Kulak</div>
+          <div class="c"><span class="box">D</span> Deri</div>
         </div>
       </div>
 
       <div class="q">
-        <div class="q-text"><span class="num">10</span> Elektrik fişini ıslak elle prizden çıkarmak güvenlidir.</div>
-        <div class="tf">
-          <span class="opt"><span class="circle"></span> Doğru (D)</span>
-          <span class="opt"><span class="circle"></span> Yanlış (Y)</span>
-        </div>
-      </div>
-
-    </div>
-  </section>
-
-  <!-- C. Boşluk Doldurma -->
-  <section class="section">
-    <div class="section-head">
-      <span>C) BOŞLUK DOLDURMA</span>
-      <span class="pts">Her soru 5 puan — (5 × 5 = 25 puan)</span>
-    </div>
-    <div class="section-body">
-
-      <div class="q">
-        <div class="q-text"><span class="num">11</span> Kulaklarımız <span class="blank"></span> duyu organımızdır.</div>
-      </div>
-
-      <div class="q">
-        <div class="q-text"><span class="num">12</span> Dünya'nın tek doğal uydusu <span class="blank"></span>'dır.</div>
-      </div>
-
-      <div class="q">
-        <div class="q-text"><span class="num">13</span> Kuvvet; varlıkları <span class="blank"></span>, durdurabilir veya <span class="blank"></span> değiştirebilir.</div>
-      </div>
-
-      <div class="q">
-        <div class="q-text"><span class="num">14</span> Işık <span class="blank"></span> çizgiler halinde yayılır.</div>
-      </div>
-
-      <div class="q">
-        <div class="q-text"><span class="num">15</span> Bir bitkinin büyüyebilmesi için <span class="blank"></span>, su ve hava gereklidir.</div>
-      </div>
-
-    </div>
-  </section>
-
-  <!-- D. Eşleştirme -->
-  <section class="section">
-    <div class="section-head">
-      <span>D) EŞLEŞTİRME</span>
-      <span class="pts">Her eşleştirme 4 puan — (5 × 4 = 20 puan)</span>
-    </div>
-    <div class="section-body">
-      <div class="q-text" style="margin-bottom:10px;"><span class="num">16</span> Duyu organlarını ilgili duyularla eşleştiriniz.</div>
-      <div class="match-grid">
-        <div class="item">👁️ Göz</div><div class="arrow">↔</div><div class="item">Koklama</div>
-        <div class="item">👂 Kulak</div><div class="arrow">↔</div><div class="item">Tatma</div>
-        <div class="item">👃 Burun</div><div class="arrow">↔</div><div class="item">Görme</div>
-        <div class="item">👅 Dil</div><div class="arrow">↔</div><div class="item">Dokunma</div>
-        <div class="item">✋ Deri</div><div class="arrow">↔</div><div class="item">İşitme</div>
-      </div>
-    </div>
-  </section>
-
-  <!-- E. Açık Uçlu -->
-  <section class="section">
-    <div class="section-head">
-      <span>E) AÇIK UÇLU SORULAR</span>
-      <span class="pts">Her soru 5 puan — (2 × 5 = 10 puan)</span>
-    </div>
-    <div class="section-body">
-
-      <div class="q">
-        <div class="q-text"><span class="num">17</span> Evinizde kullandığınız <strong>3 elektrikli alet</strong> yazınız.</div>
-        <div class="write-lines">
-          <div class="line"></div>
-          <div class="line"></div>
+        <div class="q-text"><span class="num">10</span> Bir bitkinin büyüyebilmesi için <u>gerekli olmayan</u> aşağıdakilerden hangisidir?</div>
+        <div class="choices">
+          <div class="c"><span class="box">A</span> Su</div>
+          <div class="c"><span class="box">B</span> Işık</div>
+          <div class="c"><span class="box">C</span> Hava</div>
+          <div class="c"><span class="box">D</span> Müzik</div>
         </div>
       </div>
 
       <div class="q">
-        <div class="q-text"><span class="num">18</span> Canlıların ortak özelliklerinden <strong>ikisini</strong> yazınız.</div>
-        <div class="write-lines">
-          <div class="line"></div>
-          <div class="line"></div>
+        <div class="q-text"><span class="num">11</span> Aşağıdakilerden hangisi <u>yapay</u> ışık kaynağıdır?</div>
+        <div class="choices">
+          <div class="c"><span class="box">A</span> Güneş</div>
+          <div class="c"><span class="box">B</span> Yıldızlar</div>
+          <div class="c"><span class="box">C</span> Ateşböceği</div>
+          <div class="c"><span class="box">D</span> Ampul</div>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-text"><span class="num">12</span> Aşağıdakilerden hangisi <u>sıvı</u> maddedir?</div>
+        <div class="choices">
+          <div class="c"><span class="box">A</span> Buz</div>
+          <div class="c"><span class="box">B</span> Süt</div>
+          <div class="c"><span class="box">C</span> Taş</div>
+          <div class="c"><span class="box">D</span> Hava</div>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-text"><span class="num">13</span> Çiçekleri koklayarak kokularını ayırt etmemizi sağlayan duyu organı hangisidir?</div>
+        <div class="choices">
+          <div class="c"><span class="box">A</span> Kulak</div>
+          <div class="c"><span class="box">B</span> Burun</div>
+          <div class="c"><span class="box">C</span> Dil</div>
+          <div class="c"><span class="box">D</span> Göz</div>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-text"><span class="num">14</span> Aşağıdakilerden hangisi bir elektrikli alet <u>değildir</u>?</div>
+        <div class="choices">
+          <div class="c"><span class="box">A</span> Buzdolabı</div>
+          <div class="c"><span class="box">B</span> Televizyon</div>
+          <div class="c"><span class="box">C</span> Mum</div>
+          <div class="c"><span class="box">D</span> Ütü</div>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-text"><span class="num">15</span> Suyun kaynayıp buharlaşması hangi hâl değişimidir?</div>
+        <div class="choices">
+          <div class="c"><span class="box">A</span> Katı → Sıvı</div>
+          <div class="c"><span class="box">B</span> Sıvı → Gaz</div>
+          <div class="c"><span class="box">C</span> Gaz → Sıvı</div>
+          <div class="c"><span class="box">D</span> Sıvı → Katı</div>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-text"><span class="num">16</span> Aşağıdakilerden hangisi <u>çekme</u> kuvvetine örnektir?</div>
+        <div class="choices">
+          <div class="c"><span class="box">A</span> Topu tekmelemek</div>
+          <div class="c"><span class="box">B</span> Çekmeceyi açmak</div>
+          <div class="c"><span class="box">C</span> Kapıyı itmek</div>
+          <div class="c"><span class="box">D</span> Bisikleti ileri sürmek</div>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-text"><span class="num">17</span> Aşağıdakilerden hangisi canlıların ortak özelliklerinden <u>biri değildir</u>?</div>
+        <div class="choices">
+          <div class="c"><span class="box">A</span> Beslenme</div>
+          <div class="c"><span class="box">B</span> Solunum</div>
+          <div class="c"><span class="box">C</span> Üreme</div>
+          <div class="c"><span class="box">D</span> Paslanma</div>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-text"><span class="num">18</span> Elektrikle ilgili aşağıdakilerden hangisi <u>doğru</u>dur?</div>
+        <div class="choices">
+          <div class="c"><span class="box">A</span> Fişi ıslak elle prize takarız.</div>
+          <div class="c"><span class="box">B</span> Kabloların içini açıp bakarız.</div>
+          <div class="c"><span class="box">C</span> Bozuk kabloları kullanmayız.</div>
+          <div class="c"><span class="box">D</span> Prize çivi sokabiliriz.</div>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-text"><span class="num">19</span> Kızgın sobaya elini yaklaştıran Ayşe sıcaklığı hangi duyu organıyla hisseder?</div>
+        <div class="choices">
+          <div class="c"><span class="box">A</span> Gözüyle</div>
+          <div class="c"><span class="box">B</span> Burnuyla</div>
+          <div class="c"><span class="box">C</span> Derisiyle</div>
+          <div class="c"><span class="box">D</span> Diliyle</div>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-text"><span class="num">20</span> Işık ile ilgili aşağıdakilerden hangisi <u>doğru</u>dur?</div>
+        <div class="choices">
+          <div class="c"><span class="box">A</span> Işık eğri yayılır.</div>
+          <div class="c"><span class="box">B</span> Işık doğrusal (düz) yayılır.</div>
+          <div class="c"><span class="box">C</span> Işık sadece geceleri yayılır.</div>
+          <div class="c"><span class="box">D</span> Işık duvardan geçer.</div>
         </div>
       </div>
 
@@ -457,29 +448,31 @@ require_once __DIR__ . '/includes/functions.php';
     <span><strong>Öğretmen:</strong> ____________________</span>
   </div>
 
-  <!-- Cevap Anahtarı (toplu yazdırmada gizli) -->
+  <!-- Cevap Anahtarı -->
   <div class="answer-key" id="anahtar" style="display:none;">
     <h3>🔑 Cevap Anahtarı (Öğretmen İçin)</h3>
-    <ol>
-      <li><strong>A) Çoktan Seçmeli:</strong> 1-C, 2-A, 3-A, 4-D, 5-A</li>
-      <li><strong>B) Doğru/Yanlış:</strong> 6-D, 7-D, 8-Y, 9-D, 10-Y</li>
-      <li><strong>C) Boşluk Doldurma:</strong>
-        <ul style="padding-right:20px; margin-top:4px;">
-          <li>11. işitme</li>
-          <li>12. Ay</li>
-          <li>13. hareket ettirebilir / şeklini</li>
-          <li>14. doğrusal (düz)</li>
-          <li>15. ışık (güneş ışığı)</li>
-        </ul>
-      </li>
-      <li><strong>D) Eşleştirme:</strong> Göz→Görme, Kulak→İşitme, Burun→Koklama, Dil→Tatma, Deri→Dokunma</li>
-      <li><strong>E) Açık Uçlu:</strong>
-        <ul style="padding-right:20px; margin-top:4px;">
-          <li>17. Örnek: buzdolabı, televizyon, çamaşır makinesi, ütü, bulaşık makinesi, saç kurutma makinesi…</li>
-          <li>18. Beslenme, solunum, büyüme, üreme, hareket etme, boşaltım — ikisi yeterli.</li>
-        </ul>
-      </li>
-    </ol>
+    <div class="answer-table">
+      <div class="cell"><strong>1</strong> — C</div>
+      <div class="cell"><strong>2</strong> — A</div>
+      <div class="cell"><strong>3</strong> — A</div>
+      <div class="cell"><strong>4</strong> — D</div>
+      <div class="cell"><strong>5</strong> — A</div>
+      <div class="cell"><strong>6</strong> — C</div>
+      <div class="cell"><strong>7</strong> — B</div>
+      <div class="cell"><strong>8</strong> — B</div>
+      <div class="cell"><strong>9</strong> — C</div>
+      <div class="cell"><strong>10</strong> — D</div>
+      <div class="cell"><strong>11</strong> — D</div>
+      <div class="cell"><strong>12</strong> — B</div>
+      <div class="cell"><strong>13</strong> — B</div>
+      <div class="cell"><strong>14</strong> — C</div>
+      <div class="cell"><strong>15</strong> — B</div>
+      <div class="cell"><strong>16</strong> — B</div>
+      <div class="cell"><strong>17</strong> — D</div>
+      <div class="cell"><strong>18</strong> — C</div>
+      <div class="cell"><strong>19</strong> — C</div>
+      <div class="cell"><strong>20</strong> — B</div>
+    </div>
   </div>
 
 </article>
