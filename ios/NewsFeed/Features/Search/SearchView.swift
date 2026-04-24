@@ -37,7 +37,7 @@ struct SearchView: View {
         .navigationTitle("البحث")
         .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $query, prompt: "ابحث في الأخبار…")
-        .onChange(of: query) { _, newValue in
+        .onChange(of: query) { newValue in
             searchTask?.cancel()
             guard newValue.count >= 2 else {
                 items = []

@@ -64,7 +64,7 @@ actor APIClient {
         req.setValue(APIConfig.appVersion, forHTTPHeaderField: "X-App-Version")
         req.setValue(Locale.current.identifier, forHTTPHeaderField: "Accept-Language")
 
-        if authed, let token = await TokenStore.shared.token {
+        if authed, let token = TokenStore.shared.token {
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
