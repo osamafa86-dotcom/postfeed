@@ -1,0 +1,3 @@
+CFBundleDisplayName = "نيوز فيد";
+NSUserTrackingUsageDescription = "نستخدم هذه المعلومة لتخصيص الأخبار المقترحة لك ولتحسين تجربتك.";
+NSPhotoLibraryAddUsageDescription = "يطلب التطبيق الإذن لحفظ الصور المشاركة على مكتبة الصور.";

@@ -1,0 +1,3 @@
+CFBundleDisplayName = "NewsFeed";
+NSUserTrackingUsageDescription = "We use this information to personalize news recommendations and improve your experience.";
+NSPhotoLibraryAddUsageDescription = "We need permission to save shared photos to your library.";

@@ -1,0 +1,20 @@
+/* English - NewsFeed */
+
+"app.name" = "NewsFeed";
+"tab.feed" = "Home";
+"tab.trending" = "Trending";
+"tab.search" = "Search";
+"tab.ask" = "Ask";
+"tab.profile" = "Profile";
+"action.retry" = "Retry";
+"action.login" = "Sign in";
+"action.register" = "Sign up";
+"action.logout" = "Sign out";
+"action.save" = "Save";
+"action.cancel" = "Cancel";
+"action.delete" = "Delete";
+"action.report" = "Report";
+"action.share" = "Share";
+"error.unauthorized" = "Your session expired, please sign in again.";
+"error.network" = "Network error.";
+"error.rate_limited" = "Rate limit reached. Try again in a moment.";

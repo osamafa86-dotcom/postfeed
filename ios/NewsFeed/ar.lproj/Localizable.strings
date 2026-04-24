@@ -1,0 +1,20 @@
+/* Arabic (default) - نيوز فيد */
+
+"app.name" = "نيوز فيد";
+"tab.feed" = "الرئيسية";
+"tab.trending" = "الأكثر قراءة";
+"tab.search" = "البحث";
+"tab.ask" = "اسأل";
+"tab.profile" = "حسابي";
+"action.retry" = "إعادة المحاولة";
+"action.login" = "تسجيل الدخول";
+"action.register" = "إنشاء حساب";
+"action.logout" = "تسجيل الخروج";
+"action.save" = "حفظ";
+"action.cancel" = "إلغاء";
+"action.delete" = "حذف";
+"action.report" = "إبلاغ";
+"action.share" = "مشاركة";
+"error.unauthorized" = "انتهت جلستك، يرجى تسجيل الدخول مجدداً.";
+"error.network" = "تعذّر الاتصال بالإنترنت.";
+"error.rate_limited" = "تم تجاوز الحد المسموح. حاول بعد قليل.";
