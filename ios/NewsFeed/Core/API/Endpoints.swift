@@ -36,6 +36,48 @@ enum Endpoints {
         try await APIClient.shared.get("trending.php", query: ["limit": String(limit)])
     }
 
+    static func homeFeed() async throws -> HomeFeedResponse {
+        try await APIClient.shared.get("feed/home.php", authed: TokenStore.shared.hasToken)
+    }
+
+    static func palestine(beforeId: Int? = nil, limit: Int = 20) async throws -> FeedPage {
+        try await APIClient.shared.get("palestine.php", query: [
+            "limit": String(limit),
+            "before_id": beforeId.map(String.init),
+        ])
+    }
+
+    static func telegram(limit: Int = 24, sourceId: Int? = nil) async throws -> TelegramResponse {
+        try await APIClient.shared.get("telegram.php", query: [
+            "limit": String(limit),
+            "source_id": sourceId.map(String.init),
+        ])
+    }
+
+    static func reels(limit: Int = 12) async throws -> ReelsResponse {
+        try await APIClient.shared.get("reels.php", query: ["limit": String(limit)])
+    }
+
+    static func evolvingStories() async throws -> EvolvingStoriesResponse {
+        try await APIClient.shared.get("evolving-stories.php")
+    }
+
+    static func evolvingStory(slug: String) async throws -> EvolvingStoryDetailResponse {
+        try await APIClient.shared.get("evolving-stories.php", query: ["slug": slug])
+    }
+
+    static func latestPodcast() async throws -> PodcastResponse {
+        try await APIClient.shared.get("podcast.php")
+    }
+
+    static func podcastArchive(limit: Int = 30) async throws -> PodcastArchiveResponse {
+        try await APIClient.shared.get("podcast.php", query: ["archive": "1", "limit": String(limit)])
+    }
+
+    static func latestWeekly() async throws -> WeeklyResponse {
+        try await APIClient.shared.get("weekly.php")
+    }
+
     static func categories() async throws -> CategoriesResponse {
         try await APIClient.shared.get("categories.php", authed: TokenStore.shared.hasToken)
     }
