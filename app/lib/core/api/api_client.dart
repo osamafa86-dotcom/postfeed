@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +12,24 @@ const String _defaultBase = 'https://feedsnews.net/api/v1';
 
 class ApiBase {
   static const String url = String.fromEnvironment('API_BASE', defaultValue: _defaultBase);
+}
+
+String _platformLabel() {
+  if (kIsWeb) return 'web';
+  switch (defaultTargetPlatform) {
+    case TargetPlatform.iOS:
+      return 'ios';
+    case TargetPlatform.android:
+      return 'android';
+    case TargetPlatform.macOS:
+      return 'macos';
+    case TargetPlatform.windows:
+      return 'windows';
+    case TargetPlatform.linux:
+      return 'linux';
+    default:
+      return 'other';
+  }
 }
 
 /// Wraps Dio with the conventions of the v1 API:
@@ -34,7 +50,7 @@ class ApiClient {
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json; charset=utf-8',
-        'X-Platform': Platform.isIOS ? 'ios' : (Platform.isAndroid ? 'android' : 'other'),
+        'X-Platform': _platformLabel(),
       },
     ));
 
