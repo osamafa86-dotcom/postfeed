@@ -2,7 +2,8 @@ plugins {
     id("com.android.application")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
-    id("com.google.gms.google-services")
+    // Firebase is added later — comment out until google-services.json is committed.
+    // id("com.google.gms.google-services")
 }
 
 import java.util.Properties
