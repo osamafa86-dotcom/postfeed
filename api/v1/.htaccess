@@ -1,0 +1,65 @@
+# Pretty routes for the v1 API.
+# /api/v1/auth/login           -> auth/login.php
+# /api/v1/content/article      -> content/article.php
+# /api/v1/media/podcast/latest -> media/podcast-episodes.php?mode=latest
+# /api/v1/media/podcast/episodes -> media/podcast-episodes.php
+# /api/v1/user/follow/category -> user/follows.php?type=category
+# /api/v1/user/notifications/read -> user/notifications.php
+# /api/v1/auth/oauth/google    -> auth/oauth.php?provider=google
+# /api/v1/auth/oauth/apple     -> auth/oauth.php?provider=apple
+# /api/v1/content/evolving-story/quotes  -> content/evolving-story-quotes.php
+
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteBase /api/v1/
+
+# Already exists as a real file → serve it.
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Podcast subroutes
+RewriteRule ^media/podcast/latest/?$           media/podcast-episodes.php?mode=latest [QSA,L]
+RewriteRule ^media/podcast/episodes/?$         media/podcast-episodes.php [QSA,L]
+RewriteRule ^media/podcast/episode/?$          media/podcast-episodes.php?mode=episode [QSA,L]
+
+# Notifications subroutes
+RewriteRule ^user/notifications/read/?$        user/notifications.php [QSA,L]
+
+# Follow subroutes (POST type=category|source|story)
+RewriteRule ^user/follow/category/?$           user/follows.php?type=category [QSA,L]
+RewriteRule ^user/follow/source/?$             user/follows.php?type=source [QSA,L]
+RewriteRule ^user/follow/story/?$              user/follows.php?type=story [QSA,L]
+
+# OAuth
+RewriteRule ^auth/oauth/google/?$              auth/oauth.php?provider=google [QSA,L]
+RewriteRule ^auth/oauth/apple/?$               auth/oauth.php?provider=apple [QSA,L]
+
+# Newsletter aliases
+RewriteRule ^user/newsletter/(subscribe|unsubscribe)/?$ user/newsletter.php?action=$1 [QSA,L]
+
+# Bookmark + bookmarks alias
+RewriteRule ^user/bookmark/?$                  user/bookmarks.php [QSA,L]
+
+# Reaction alias
+RewriteRule ^user/reaction/?$                  user/reactions.php [QSA,L]
+
+# Comment alias
+RewriteRule ^user/comment/?$                   user/comments.php [QSA,L]
+
+# Follows alias
+RewriteRule ^user/follow/?$                    user/follows.php [QSA,L]
+
+# Fall back: turn `/api/v1/section/name` into `/api/v1/section/name.php`
+RewriteRule ^([^/]+)/([^/]+)/?$                $1/$2.php [QSA,L]
+
+# Single-segment endpoints (e.g. /api/v1/index)
+RewriteRule ^([^/]+)/?$                        $1.php [QSA,L]
+</IfModule>
+
+# CORS preflight passthrough.
+<IfModule mod_headers.c>
+  Header set Access-Control-Allow-Origin "*"
+  Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Device-Id, X-App-Version, X-Platform"
+  Header set Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+</IfModule>

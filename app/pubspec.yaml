@@ -1,0 +1,110 @@
+name: feedsnews
+description: "فيد نيوز — Feed News mobile app (iOS & Android)"
+publish_to: "none"
+version: 1.23.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # Networking
+  dio: ^5.7.0
+  retrofit: ^4.4.1
+  pretty_dio_logger: ^1.4.0
+
+  # State management
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+
+  # Routing
+  go_router: ^14.6.1
+
+  # Storage
+  flutter_secure_storage: ^9.2.2
+  shared_preferences: ^2.3.2
+  hive_flutter: ^1.1.0
+  path_provider: ^2.1.4
+
+  # Image
+  cached_network_image: ^3.4.1
+  flutter_svg: ^2.0.10+1
+
+  # UI / UX
+  shimmer: ^3.0.0
+  pull_to_refresh_flutter3: ^2.0.2
+  flutter_html: ^3.0.0-beta.2
+  url_launcher: ^6.3.1
+  share_plus: ^10.0.2
+  flutter_inappwebview: ^6.1.5
+  intl: ^0.19.0
+  timeago: ^3.7.0
+
+  # Audio (podcast + TTS playback)
+  just_audio: ^0.9.40
+  just_audio_background: ^0.0.1-beta.13
+  audio_session: ^0.1.21
+
+  # Video (YouTube + reels)
+  youtube_player_iframe: ^5.2.0
+  webview_flutter: ^4.10.0
+
+  # Push notifications
+  firebase_core: ^3.6.0
+  firebase_messaging: ^15.1.3
+  flutter_local_notifications: ^17.2.3
+
+  # Auth
+  google_sign_in: ^6.2.1
+  sign_in_with_apple: ^6.1.2
+
+  # Maps (news map)
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+
+  # Analytics
+  sentry_flutter: ^8.9.0
+
+  # Utility
+  json_annotation: ^4.9.0
+  freezed_annotation: ^2.4.4
+  collection: ^1.18.0
+  equatable: ^2.0.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  build_runner: ^2.4.13
+  json_serializable: ^6.8.0
+  freezed: ^2.5.7
+  retrofit_generator: ^9.1.4
+  riverpod_generator: ^2.6.2
+  flutter_launcher_icons: ^0.14.1
+  flutter_native_splash: ^2.4.1
+
+flutter:
+  uses-material-design: true
+  generate: true
+  assets:
+    - assets/images/
+    - assets/icons/
+
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  image_path: "assets/icons/app_icon.png"
+  remove_alpha_ios: true
+  background_color_ios: "#0d6efd"
+
+flutter_native_splash:
+  color: "#0d6efd"
+  image: assets/icons/splash_logo.png
+  android_12:
+    color: "#0d6efd"
+    image: assets/icons/splash_logo.png

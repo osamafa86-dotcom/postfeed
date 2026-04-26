@@ -1,0 +1,19 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["TEAM_ID.net.feedsnews.app"],
+        "components": [
+          { "/": "/article*" },
+          { "/": "/article.php*" },
+          { "/": "/evolving-story.php*" },
+          { "/": "/podcast.php*" },
+          { "/": "/" }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["TEAM_ID.net.feedsnews.app"]
+  }
+}
