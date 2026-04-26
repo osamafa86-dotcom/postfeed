@@ -17,16 +17,9 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../../includes/config.php';
-require_once __DIR__ . '/../../includes/functions.php';
-require_once __DIR__ . '/../../includes/rate_limit.php';
-require_once __DIR__ . '/../../includes/user_migrate.php';
-
-// Make sure user-related tables exist (idempotent).
-user_dashboard_migrate();
-
 // -------------------------------------------------
-// CORS — mobile apps & PWA shells call from any origin.
+// CORS — must run BEFORE any include so preflight always succeeds,
+// even if the includes throw or warn.
 // -------------------------------------------------
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
@@ -40,6 +33,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
     http_response_code(204);
     exit;
 }
+
+require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/functions.php';
+require_once __DIR__ . '/../../includes/rate_limit.php';
+require_once __DIR__ . '/../../includes/user_migrate.php';
+
+// Make sure user-related tables exist (idempotent).
+user_dashboard_migrate();
 
 // -------------------------------------------------
 // Response helpers — always return a uniform envelope.
