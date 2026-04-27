@@ -137,6 +137,9 @@ fi
 echo ""
 echo "[5/6] flutter clean + pub get..."
 cd "$APP"
+# Strip macOS extended attributes (Finder info, quarantine, etc.) — codesign
+# refuses frameworks that carry "resource fork / Finder information" detritus.
+xattr -cr "$REPO" 2>/dev/null || true
 flutter clean
 flutter pub get
 
