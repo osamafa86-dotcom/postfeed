@@ -64,7 +64,7 @@ class AppTheme {
         backgroundColor: AppColors.cardLight,
         elevation: 8,
       ),
-      cardTheme: const CardThemeData(
+      cardTheme: const CardTheme(
         color: AppColors.cardLight,
         elevation: 0,
         margin: EdgeInsets.zero,
@@ -110,7 +110,7 @@ class AppTheme {
         backgroundColor: AppColors.cardDark,
         elevation: 8,
       ),
-      cardTheme: const CardThemeData(
+      cardTheme: const CardTheme(
         color: AppColors.cardDark,
         elevation: 0,
         margin: EdgeInsets.zero,
