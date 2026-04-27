@@ -41,6 +41,20 @@ jobs:
         working-directory: app
         run: flutter create --platforms=ios --org=net.feedsnews --project-name=feedsnews .
 
+      - name: Force iOS 14 deployment target in Podfile
+        working-directory: app/ios
+        run: |
+          python3 - <<'PY'
+          import re
+          with open('Podfile') as f: c = f.read()
+          # Strip any existing platform :ios line (commented or not).
+          c = re.sub(r'^#?\s*platform\s+:ios.*\n', '', c, flags=re.MULTILINE)
+          # Pin to iOS 14 — firebase_core 11.x requires >= 13, sentry needs >= 12.
+          c = "platform :ios, '14.0'\n" + c.lstrip()
+          with open('Podfile', 'w') as f: f.write(c)
+          PY
+          head -5 Podfile
+
       - name: Get dependencies
         working-directory: app
         run: flutter pub get
