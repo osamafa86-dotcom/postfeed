@@ -76,6 +76,10 @@ dependencies:
   collection: ^1.18.0
   equatable: ^2.0.5
 
+  # Pinned: brought in transitively by sentry/firebase/share_plus, but
+  # older versions break Gradle configuration on AGP 8 + Kotlin DSL.
+  package_info_plus: ^8.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
