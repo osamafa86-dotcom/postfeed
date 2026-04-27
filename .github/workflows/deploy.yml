@@ -17,13 +17,14 @@ jobs:
           DELAY=2
 
           while [ $RETRY -lt $MAX_RETRIES ]; do
-            HTTP_CODE=$(curl -sS -o /tmp/deploy_response.txt -w '%{http_code}' \
+            HTTP_CODE=$(curl -sS -L --post301 --post302 --post303 \
+              -o /tmp/deploy_response.txt -w '%{http_code}' \
               --connect-timeout 15 --max-time 60 \
               -X POST \
               -H "Content-Type: application/json" \
               -H "X-Hub-Signature-256: $SIGNATURE" \
               -d '{}' \
-              https://postfeed.emdatra.org/deploy.php 2>/tmp/deploy_error.txt) || true
+              https://feedsnews.net/deploy.php 2>/tmp/deploy_error.txt) || true
 
             echo "Attempt $((RETRY+1)): HTTP $HTTP_CODE"
 
