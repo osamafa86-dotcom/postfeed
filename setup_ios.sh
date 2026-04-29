@@ -141,7 +141,8 @@ cd "$APP"
 # refuses frameworks that carry "resource fork / Finder information" detritus.
 # We have to clean the Flutter SDK and pub-cache too, otherwise Flutter.framework
 # is copied into build/ with xattrs intact every time and codesign fails again.
-FLUTTER_ROOT="$(dirname "$(dirname "$(command -v flutter)")")"
+FLUTTER_BIN_REAL="$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "$(command -v flutter)")"
+FLUTTER_ROOT="$(dirname "$(dirname "$FLUTTER_BIN_REAL")")"
 echo "  stripping xattrs from $FLUTTER_ROOT"
 xattr -cr "$FLUTTER_ROOT" 2>/dev/null || true
 xattr -cr "$HOME/.pub-cache" 2>/dev/null || true
