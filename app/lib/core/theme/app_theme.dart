@@ -1,21 +1,51 @@
 import 'package:flutter/material.dart';
 
 /// Brand colors mirror the website (نيوز فيد / فيد نيوز).
+/// CSS variable values copied from `assets/css/home.min.css :root`.
 class AppColors {
-  static const Color primary       = Color(0xFF0D6EFD);
-  static const Color primaryDark   = Color(0xFF0A58CA);
-  static const Color accent        = Color(0xFFD97706);
-  static const Color breaking      = Color(0xFFDC2626);
-  static const Color surfaceLight  = Color(0xFFF8FAFC);
+  // Brand accents
+  static const Color accent        = Color(0xFF1A73E8); // --accent (blue)
+  static const Color accent2       = Color(0xFF0D9488); // --accent2 (teal)
+  static const Color accent3       = Color(0xFF16A34A); // --accent3 (green)
+  static const Color gold          = Color(0xFFD97706); // --gold
+  static const Color goldBright    = Color(0xFFF59E0B); // weekly rewind CTA
+  static const Color breaking      = Color(0xFFDC2626); // --red
+  static const Color purple        = Color(0xFF7C3AED); // stat-chip-purple
+
+  // Backwards-compat aliases — keep `primary` so existing widgets compile.
+  static const Color primary       = accent;
+  static const Color primaryDark   = Color(0xFF1453A8);
+
+  // Surfaces (light = warm cream like the website)
+  static const Color surfaceLight  = Color(0xFFFAF6EC); // --bg
+  static const Color surfaceLight2 = Color(0xFFFDFAF2); // --bg2
   static const Color surfaceDark   = Color(0xFF0B1220);
   static const Color cardLight     = Colors.white;
   static const Color cardDark      = Color(0xFF111827);
-  static const Color textLight     = Color(0xFF0F172A);
+
+  // Site header (dark navy bar, used as appBar background)
+  static const Color headerLight   = Color(0xFF1A1A2E); // --header-bg
+  static const Color headerDark    = Color(0xFF0B1020);
+  static const Color headerText    = Color(0xFFE5E7EB); // --header-text
+
+  // Text
+  static const Color textLight     = Color(0xFF1A1A2E); // --text
+  static const Color textLight2    = Color(0xFF374151); // --text2
   static const Color textDark      = Color(0xFFE5E7EB);
-  static const Color textMutedLight = Color(0xFF64748B);
+  static const Color textMutedLight = Color(0xFF6B7280); // --muted
+  static const Color textMutedLight2 = Color(0xFF9CA3AF); // --muted2
   static const Color textMutedDark  = Color(0xFF94A3B8);
-  static const Color borderLight   = Color(0xFFE2E8F0);
+
+  // Borders
+  static const Color borderLight   = Color(0xFFE0E3E8); // --border
   static const Color borderDark    = Color(0xFF1F2937);
+
+  // Stat chip backgrounds (very light tints).
+  static const Color chipBlueBg    = Color(0xFFE8F0FE);
+  static const Color chipTealBg    = Color(0xFFE6F7F4);
+  static const Color chipPurpleBg  = Color(0xFFF1E9FE);
+  static const Color chipOrangeBg  = Color(0xFFFEF3E2);
+  static const Color chipRedBg     = Color(0xFFFDE7E7);
 
   // Category colors mirror the website's css_class palette.
   static const Map<String, Color> categoryColors = {
@@ -44,17 +74,19 @@ class AppTheme {
       cardColor: AppColors.cardLight,
       textTheme: _textTheme(base.textTheme, AppColors.textLight, AppColors.textMutedLight),
       appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.cardLight,
+        backgroundColor: AppColors.headerLight,
+        foregroundColor: AppColors.headerText,
         elevation: 0,
-        scrolledUnderElevation: 0.5,
-        centerTitle: true,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
         titleTextStyle: TextStyle(
           fontFamily: _fontFamily,
           fontSize: 18,
-          fontWeight: FontWeight.w700,
-          color: AppColors.textLight,
+          fontWeight: FontWeight.w800,
+          color: AppColors.headerText,
         ),
-        iconTheme: const IconThemeData(color: AppColors.textLight),
+        iconTheme: const IconThemeData(color: AppColors.headerText),
+        actionsIconTheme: const IconThemeData(color: AppColors.headerText),
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         type: BottomNavigationBarType.fixed,

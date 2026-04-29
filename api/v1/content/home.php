@@ -64,6 +64,67 @@ try {
 // Top sources for the chip rail.
 $sources = $db->query("SELECT id, name, slug, logo_letter, logo_color, logo_bg, url FROM sources WHERE is_active=1 ORDER BY articles_today DESC, id ASC LIMIT 12")->fetchAll();
 
+// Stats strip — total articles, active sources, top category, last update.
+$totalArticles = 0;
+try {
+    $totalArticles = (int)$db->query("SELECT COUNT(*) FROM articles")->fetchColumn();
+} catch (Throwable $e) {}
+
+$totalSourcesActive = 0;
+try {
+    $totalSourcesActive = (int)$db->query("SELECT COUNT(*) FROM sources WHERE is_active=1")->fetchColumn();
+} catch (Throwable $e) {}
+
+$topCategory = null;
+try {
+    $row = $db->query("SELECT c.name, c.slug, c.icon, c.css_class
+                        FROM articles a
+                        JOIN categories c ON c.id = a.category_id
+                       WHERE a.published_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                       GROUP BY c.id
+                       ORDER BY COUNT(*) DESC
+                       LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+    if ($row) {
+        $topCategory = [
+            'name'  => $row['name'],
+            'slug'  => $row['slug'],
+            'icon'  => $row['icon'],
+            'color' => $row['css_class'],
+        ];
+    }
+} catch (Throwable $e) {}
+
+$lastUpdateIso = null;
+try {
+    $row = $db->query("SELECT MAX(published_at) AS last_at FROM articles")->fetch(PDO::FETCH_ASSOC);
+    if ($row && !empty($row['last_at'])) {
+        $lastUpdateIso = date('c', strtotime($row['last_at']));
+    }
+} catch (Throwable $e) {}
+
+$stats = [
+    'total_articles'     => $totalArticles,
+    'total_sources'      => $totalSourcesActive,
+    'total_views_today'  => null, // server doesn't track aggregated views yet
+    'top_category'       => $topCategory,
+    'last_updated_at'    => $lastUpdateIso,
+];
+
+// Latest weekly rewind (Sunday banner).
+$weeklyRewind = null;
+try {
+    require_once __DIR__ . '/../../../includes/weekly_rewind.php';
+    $wr = wr_get_latest();
+    if ($wr && !empty($wr['year_week'])) {
+        $weeklyRewind = [
+            'year_week'      => $wr['year_week'],
+            'cover_title'    => $wr['cover_title'] ?: 'مراجعة الأسبوع جاهزة',
+            'cover_subtitle' => $wr['cover_subtitle'] ?: 'ملخص أسبوعي لأبرز ما جرى، بقلم هيئة تحرير الذكاء الاصطناعي.',
+            'published_at'   => $wr['published_at'] ?? null,
+        ];
+    }
+} catch (Throwable $e) {}
+
 api_ok([
     'hero'      => $hero,
     'breaking'  => $breaking,
@@ -86,5 +147,7 @@ api_ok([
             'url' => $s['url'],
         ];
     }, $sources),
-    'generated_at' => gmdate('c'),
+    'stats'         => $stats,
+    'weekly_rewind' => $weeklyRewind,
+    'generated_at'  => gmdate('c'),
 ]);

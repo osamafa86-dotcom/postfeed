@@ -2,6 +2,80 @@ import 'article.dart';
 import 'category.dart';
 import 'source.dart';
 
+/// Compact category descriptor used in the stats strip "top trending" chip.
+class StatsCategory {
+  const StatsCategory({required this.name, required this.slug, this.icon, this.color});
+  final String name;
+  final String slug;
+  final String? icon;
+  final String? color;
+
+  factory StatsCategory.fromJson(Map<String, dynamic> j) => StatsCategory(
+        name: j['name'] as String,
+        slug: (j['slug'] as String?) ?? '',
+        icon: j['icon'] as String?,
+        color: j['color'] as String?,
+      );
+}
+
+/// Stats strip payload (5 chips above the section nav on the website).
+class HomeStats {
+  const HomeStats({
+    this.totalArticles = 0,
+    this.totalSources = 0,
+    this.totalViewsToday,
+    this.topCategory,
+    this.lastUpdatedAt,
+  });
+  final int totalArticles;
+  final int totalSources;
+  final int? totalViewsToday;
+  final StatsCategory? topCategory;
+  final DateTime? lastUpdatedAt;
+
+  factory HomeStats.fromJson(Map<String, dynamic> j) => HomeStats(
+        totalArticles: (j['total_articles'] as num?)?.toInt() ?? 0,
+        totalSources: (j['total_sources'] as num?)?.toInt() ?? 0,
+        totalViewsToday: (j['total_views_today'] as num?)?.toInt(),
+        topCategory: (j['top_category'] is Map)
+            ? StatsCategory.fromJson((j['top_category'] as Map).cast())
+            : null,
+        lastUpdatedAt: _parseDt(j['last_updated_at']),
+      );
+
+  static DateTime? _parseDt(dynamic v) {
+    if (v == null) return null;
+    return DateTime.tryParse(v.toString().replaceFirst(' ', 'T'));
+  }
+}
+
+/// Latest weekly rewind banner — shown under the stats strip on Sundays.
+class WeeklyRewindCover {
+  const WeeklyRewindCover({
+    required this.yearWeek,
+    required this.coverTitle,
+    required this.coverSubtitle,
+    this.publishedAt,
+  });
+  final String yearWeek;
+  final String coverTitle;
+  final String coverSubtitle;
+  final DateTime? publishedAt;
+
+  factory WeeklyRewindCover.fromJson(Map<String, dynamic> j) => WeeklyRewindCover(
+        yearWeek: j['year_week'] as String,
+        coverTitle: (j['cover_title'] as String?) ?? 'مراجعة الأسبوع جاهزة',
+        coverSubtitle: (j['cover_subtitle'] as String?) ??
+            'ملخص أسبوعي لأبرز ما جرى، بقلم هيئة تحرير الذكاء الاصطناعي.',
+        publishedAt: _parseDt(j['published_at']),
+      );
+
+  static DateTime? _parseDt(dynamic v) {
+    if (v == null) return null;
+    return DateTime.tryParse(v.toString().replaceFirst(' ', 'T'));
+  }
+}
+
 class TrendTag {
   const TrendTag({required this.id, required this.title, this.tweetCount = 0, this.searchCount = 0});
   final int id;
@@ -53,6 +127,8 @@ class HomePayload {
     this.trends = const [],
     this.ticker = const [],
     this.sources = const [],
+    this.stats,
+    this.weeklyRewind,
   });
 
   final Article? hero;
@@ -62,6 +138,8 @@ class HomePayload {
   final List<TrendTag> trends;
   final List<TickerItem> ticker;
   final List<Source> sources;
+  final HomeStats? stats;
+  final WeeklyRewindCover? weeklyRewind;
 
   factory HomePayload.fromJson(Map<String, dynamic> j) => HomePayload(
         hero: (j['hero'] is Map) ? Article.fromJson((j['hero'] as Map).cast()) : null,
@@ -89,5 +167,9 @@ class HomePayload {
             .whereType<Map>()
             .map((s) => Source.fromJson(s.cast()))
             .toList(),
+        stats: (j['stats'] is Map) ? HomeStats.fromJson((j['stats'] as Map).cast()) : null,
+        weeklyRewind: (j['weekly_rewind'] is Map)
+            ? WeeklyRewindCover.fromJson((j['weekly_rewind'] as Map).cast())
+            : null,
       );
 }
