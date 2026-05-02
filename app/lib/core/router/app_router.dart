@@ -7,6 +7,7 @@ import '../../features/auth/presentation/register_screen.dart';
 import '../../features/content/presentation/article_screen.dart';
 import '../../features/content/presentation/category_screen.dart';
 import '../../features/content/presentation/clusters_screen.dart';
+import '../../features/content/presentation/summaries_screen.dart';
 import '../../features/content/presentation/quotes_wall_screen.dart';
 import '../../features/content/presentation/stories_network_screen.dart';
 import '../../features/content/presentation/evolving_stories_screen.dart';
@@ -49,6 +50,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(path: '/', builder: (_, __) => const _HomeRoot()),
           GoRoute(path: '/discover', builder: (_, __) => const _DiscoverRoot()),
+          GoRoute(path: '/summaries', builder: (_, __) => const _SummariesRoot()),
           GoRoute(path: '/platforms', builder: (_, __) => const PlatformsScreen()),
           GoRoute(path: '/follow', builder: (_, __) => const _FollowRoot()),
           GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
@@ -137,6 +139,12 @@ class _FollowRoot extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       const _LazyImport('follow');
+}
+
+class _SummariesRoot extends StatelessWidget {
+  const _SummariesRoot();
+  @override
+  Widget build(BuildContext context) => const SummariesScreen();
 }
 
 class _LazyImport extends StatelessWidget {
