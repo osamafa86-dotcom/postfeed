@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../auth/data/auth_repository.dart';
+import 'edit_profile_screen.dart';
+import 'reorder_categories_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -83,7 +85,17 @@ class _AuthedView extends StatelessWidget {
         Center(child: Text(u.name, style: Theme.of(context).textTheme.titleLarge)),
         if ((u.email ?? '').isNotEmpty)
           Center(child: Text(u.email, style: Theme.of(context).textTheme.bodySmall)),
-        const SizedBox(height: 24),
+        const SizedBox(height: 10),
+        Center(
+          child: TextButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => EditProfileScreen(user: u)),
+            ),
+            icon: const Icon(Icons.edit, size: 16),
+            label: const Text('تعديل الملف الشخصي'),
+          ),
+        ),
+        const SizedBox(height: 14),
         ListTile(
           leading: const Icon(Icons.bookmark_outline),
           title: const Text('المقالات المحفوظة'),
@@ -93,6 +105,14 @@ class _AuthedView extends StatelessWidget {
           leading: const Icon(Icons.notifications_outlined),
           title: const Text('الإشعارات'),
           onTap: () => context.push('/notifications'),
+        ),
+        ListTile(
+          leading: const Icon(Icons.reorder),
+          title: const Text('ترتيب الأقسام'),
+          subtitle: const Text('رتّب الأقسام حسب اهتمامك'),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const ReorderCategoriesScreen()),
+          ),
         ),
         ListTile(
           leading: const Icon(Icons.history),

@@ -3,15 +3,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:share_plus/share_plus.dart' show Share;
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/models/article.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/article_card.dart';
+import '../../../core/widgets/comments_sheet.dart';
 import '../../../core/widgets/loading_state.dart';
 import '../../../core/widgets/section_header.dart';
+import '../../auth/data/auth_storage.dart';
+import '../../user/data/user_repository.dart';
 import '../data/content_repository.dart';
 
 class ArticleScreen extends ConsumerWidget {
@@ -21,6 +25,9 @@ class ArticleScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asy = ref.watch(articleProvider(id));
+    final bookmarks = ref.watch(bookmarkedIdsProvider);
+    final isBookmarked = bookmarks.contains(id);
+
     return Scaffold(
       appBar: AppBar(
         actions: [
@@ -33,11 +40,21 @@ class ArticleScreen extends ConsumerWidget {
             orElse: () => const SizedBox.shrink(),
           ),
           IconButton(
-            icon: const Icon(Icons.bookmark_outline),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('سجّل دخولك لحفظ المقال')),
-              );
+            icon: Icon(isBookmarked ? Icons.bookmark : Icons.bookmark_outline),
+            color: isBookmarked ? const Color(0xFF38BDF8) : null,
+            onPressed: () async {
+              if (!AuthStorage.isAuthenticated) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('سجّل دخولك لحفظ المقال'),
+                    action: SnackBarAction(label: 'دخول', onPressed: () => context.push('/login')),
+                  ),
+                );
+                return;
+              }
+              try {
+                await ref.read(bookmarkedIdsProvider.notifier).toggle(id);
+              } catch (_) {}
             },
           ),
         ],
@@ -53,6 +70,10 @@ class ArticleScreen extends ConsumerWidget {
     );
   }
 }
+
+// ═══════════════════════════════════════════════════════════════
+// ARTICLE BODY
+// ═══════════════════════════════════════════════════════════════
 
 class _ArticleBody extends StatelessWidget {
   const _ArticleBody({required this.article, required this.related});
@@ -134,6 +155,15 @@ class _ArticleBody extends StatelessWidget {
                   Text('${article.viewCount}', style: theme.textTheme.bodySmall),
                 ],
               ),
+
+              const SizedBox(height: 14),
+
+              // ── TTS Player ──
+              _TtsPlayer(articleId: article.id),
+
+              // ── Quick actions row ──
+              _QuickActions(article: article),
+
               const Divider(height: 32),
               if (article.excerpt != null && article.excerpt!.isNotEmpty) ...[
                 Text(
@@ -189,6 +219,232 @@ class _ArticleBody extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TTS PLAYER
+// ═══════════════════════════════════════════════════════════════
+
+class _TtsPlayer extends ConsumerStatefulWidget {
+  const _TtsPlayer({required this.articleId});
+  final int articleId;
+
+  @override
+  ConsumerState<_TtsPlayer> createState() => _TtsPlayerState();
+}
+
+class _TtsPlayerState extends ConsumerState<_TtsPlayer> {
+  AudioPlayer? _player;
+  _TtsState _state = _TtsState.idle;
+  Duration _position = Duration.zero;
+  Duration _duration = Duration.zero;
+
+  @override
+  void dispose() {
+    _player?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _play() async {
+    if (_state == _TtsState.loading) return;
+
+    // If already loaded, just toggle play/pause
+    if (_player != null) {
+      if (_player!.playing) {
+        _player!.pause();
+      } else {
+        _player!.play();
+      }
+      return;
+    }
+
+    setState(() => _state = _TtsState.loading);
+
+    try {
+      final result = await ref.read(contentRepositoryProvider).tts(widget.articleId);
+      final player = AudioPlayer();
+      await player.setUrl(result.audioUrl);
+
+      player.playerStateStream.listen((s) {
+        if (!mounted) return;
+        setState(() {
+          if (s.processingState == ProcessingState.completed) {
+            _state = _TtsState.idle;
+            _position = Duration.zero;
+            player.seek(Duration.zero);
+            player.pause();
+          } else if (s.playing) {
+            _state = _TtsState.playing;
+          } else {
+            _state = _TtsState.paused;
+          }
+        });
+      });
+
+      player.positionStream.listen((p) {
+        if (mounted) setState(() => _position = p);
+      });
+
+      player.durationStream.listen((d) {
+        if (mounted && d != null) setState(() => _duration = d);
+      });
+
+      _player = player;
+      player.play();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _state = _TtsState.idle);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تعذّر تشغيل القراءة الصوتية')),
+        );
+      }
+    }
+  }
+
+  String _fmt(Duration d) {
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.04) : const Color(0xFFF0F9FF),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? Colors.white.withOpacity(0.06) : const Color(0xFFBAE6FD),
+        ),
+      ),
+      child: Row(
+        children: [
+          // Play/Pause button
+          GestureDetector(
+            onTap: _play,
+            child: Container(
+              width: 38, height: 38,
+              decoration: BoxDecoration(
+                color: const Color(0xFF38BDF8),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              alignment: Alignment.center,
+              child: _state == _TtsState.loading
+                  ? const SizedBox(width: 18, height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : Icon(
+                      _state == _TtsState.playing ? Icons.pause : Icons.headphones,
+                      color: Colors.white, size: 20),
+            ),
+          ),
+          const SizedBox(width: 10),
+
+          // Label + progress
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _state == _TtsState.idle ? 'استمع للمقال' : 'جارٍ القراءة...',
+                  style: TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : AppColors.textLight,
+                  ),
+                ),
+                if (_state != _TtsState.idle && _duration.inSeconds > 0) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Text(_fmt(_position),
+                        style: TextStyle(fontSize: 10,
+                          color: isDark ? Colors.white38 : AppColors.textMutedLight)),
+                      Expanded(
+                        child: SliderTheme(
+                          data: SliderThemeData(
+                            trackHeight: 3,
+                            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+                            activeTrackColor: const Color(0xFF38BDF8),
+                            inactiveTrackColor: isDark ? Colors.white12 : const Color(0xFFE0F2FE),
+                            thumbColor: const Color(0xFF38BDF8),
+                            overlayShape: SliderComponentShape.noOverlay,
+                          ),
+                          child: Slider(
+                            value: _position.inMilliseconds.toDouble().clamp(0, _duration.inMilliseconds.toDouble()),
+                            min: 0,
+                            max: _duration.inMilliseconds.toDouble().clamp(1, double.infinity),
+                            onChanged: (v) => _player?.seek(Duration(milliseconds: v.toInt())),
+                          ),
+                        ),
+                      ),
+                      Text(_fmt(_duration),
+                        style: TextStyle(fontSize: 10,
+                          color: isDark ? Colors.white38 : AppColors.textMutedLight)),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+enum _TtsState { idle, loading, playing, paused }
+
+// ═══════════════════════════════════════════════════════════════
+// QUICK ACTIONS ROW (comments, reactions)
+// ═══════════════════════════════════════════════════════════════
+
+class _QuickActions extends StatelessWidget {
+  const _QuickActions({required this.article});
+  final Article article;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final muted = isDark ? Colors.white54 : AppColors.textMutedLight;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        children: [
+          _chip(Icons.chat_bubble_outline, 'تعليقات', muted, isDark,
+            onTap: () => showCommentsSheet(context, article.id)),
+          const SizedBox(width: 10),
+          _chip(Icons.compare_arrows, 'مقارنة التغطية', muted, isDark,
+            onTap: () => context.push('/clusters')),
+        ],
+      ),
+    );
+  }
+
+  Widget _chip(IconData icon, String label, Color muted, bool isDark, {VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withOpacity(0.04) : Colors.grey.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: muted),
+            const SizedBox(width: 4),
+            Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: muted)),
+          ],
+        ),
+      ),
     );
   }
 }

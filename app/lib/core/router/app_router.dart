@@ -6,6 +6,7 @@ import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 import '../../features/content/presentation/article_screen.dart';
 import '../../features/content/presentation/category_screen.dart';
+import '../../features/content/presentation/clusters_screen.dart';
 import '../../features/content/presentation/evolving_stories_screen.dart';
 import '../../features/content/presentation/evolving_story_screen.dart';
 import '../../features/content/presentation/news_map_screen.dart';
@@ -22,6 +23,8 @@ import '../../features/media/presentation/reels_screen.dart';
 import '../../features/media/presentation/telegram_screen.dart';
 import '../../features/media/presentation/twitter_screen.dart';
 import '../../features/media/presentation/youtube_screen.dart';
+import '../../features/media/presentation/platforms_screen.dart';
+import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/podcast/presentation/podcast_screen.dart';
 import '../../features/shell/main_shell.dart';
 import '../../features/splash/splash_screen.dart';
@@ -35,6 +38,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     initialLocation: '/splash',
     routes: [
       GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
+      GoRoute(path: '/onboarding', builder: (_, __) => const OnboardingScreen()),
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
 
@@ -43,7 +47,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(path: '/', builder: (_, __) => const _HomeRoot()),
           GoRoute(path: '/discover', builder: (_, __) => const _DiscoverRoot()),
-          GoRoute(path: '/podcast', builder: (_, __) => const PodcastScreen()),
+          GoRoute(path: '/platforms', builder: (_, __) => const PlatformsScreen()),
           GoRoute(path: '/follow', builder: (_, __) => const _FollowRoot()),
           GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
         ],
@@ -66,6 +70,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, s) => SourceScreen(slug: s.pathParameters['slug']!),
       ),
       GoRoute(path: '/trending', builder: (_, __) => const TrendingScreen()),
+      GoRoute(path: '/clusters', builder: (_, __) => const ClustersScreen()),
       GoRoute(path: '/search', builder: (_, __) => const SearchScreen()),
 
       // Evolving stories
@@ -87,6 +92,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // Daily / weekly briefs
       GoRoute(path: '/sabah', builder: (_, __) => const SabahScreen()),
       GoRoute(path: '/weekly', builder: (_, __) => const WeeklyRewindScreen()),
+
+      // Podcast (standalone)
+      GoRoute(path: '/podcast', builder: (_, __) => const PodcastScreen()),
 
       // AI Q&A
       GoRoute(path: '/ask', builder: (_, __) => const AskScreen()),

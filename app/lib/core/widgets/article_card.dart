@@ -1,10 +1,18 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart' show Share;
 import 'package:timeago/timeago.dart' as timeago;
 
 import '../models/article.dart';
 import '../theme/app_theme.dart';
+import '../../features/auth/data/auth_storage.dart';
+import '../../features/user/data/user_repository.dart';
+import 'comments_sheet.dart';
+
+/// Sky blue color used for source names across the app.
+const _kSourceBlue = Color(0xFF38BDF8);
 
 class ArticleCard extends StatelessWidget {
   const ArticleCard({super.key, required this.article, this.compact = false});
@@ -26,13 +34,14 @@ class ArticleCard extends StatelessWidget {
             border: Border.all(color: theme.dividerColor),
           ),
           padding: const EdgeInsets.all(10),
-          child: compact ? _compactLayout(theme) : _fullLayout(theme),
+          child: compact ? _compactLayout(context, theme) : _fullLayout(context, theme),
         ),
       ),
     );
   }
 
-  Widget _fullLayout(ThemeData theme) {
+  Widget _fullLayout(BuildContext context, ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -89,72 +98,88 @@ class ArticleCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
         ],
+
+        // ── Source row (sky blue) ──
         if (article.source != null) ...[
           const SizedBox(height: 8),
           Row(
             children: [
               _sourceBadge(article.source!.logoLetter ?? '', article.source!.logoColor),
               const SizedBox(width: 6),
-              Text(article.source!.name, style: theme.textTheme.bodySmall),
+              Text(article.source!.name,
+                style: const TextStyle(color: _kSourceBlue, fontSize: 12, fontWeight: FontWeight.w600)),
             ],
           ),
         ],
+
+        const SizedBox(height: 8),
+
+        // ── Interactive action bar ──
+        _ActionBar(article: article, isDark: isDark),
       ],
     );
   }
 
-  Widget _compactLayout(ThemeData theme) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _compactLayout(BuildContext context, ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
+    return Column(
       children: [
-        if (article.imageUrl != null)
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: SizedBox(
-              width: 84,
-              height: 84,
-              child: CachedNetworkImage(
-                imageUrl: article.imageUrl!,
-                fit: BoxFit.cover,
-                placeholder: (_, __) => Container(color: theme.dividerColor.withOpacity(0.3)),
-                errorWidget: (_, __, ___) => Container(color: theme.dividerColor.withOpacity(0.3)),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (article.imageUrl != null)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  width: 84,
+                  height: 84,
+                  child: CachedNetworkImage(
+                    imageUrl: article.imageUrl!,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) => Container(color: theme.dividerColor.withOpacity(0.3)),
+                    errorWidget: (_, __, ___) => Container(color: theme.dividerColor.withOpacity(0.3)),
+                  ),
+                ),
               ),
-            ),
-          ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (article.category != null) _categoryChip(article.category!),
-              const SizedBox(height: 4),
-              Text(
-                article.title,
-                style: theme.textTheme.titleSmall?.copyWith(height: 1.45),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 6),
-              Row(
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (article.source != null)
-                    Expanded(
-                      child: Text(
-                        article.source!.name,
-                        style: theme.textTheme.bodySmall,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  if (article.publishedAt != null)
-                    Text(
-                      timeago.format(article.publishedAt!, locale: 'ar'),
-                      style: theme.textTheme.bodySmall,
-                    ),
+                  if (article.category != null) _categoryChip(article.category!),
+                  const SizedBox(height: 4),
+                  Text(
+                    article.title,
+                    style: theme.textTheme.titleSmall?.copyWith(height: 1.45),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      if (article.source != null)
+                        Expanded(
+                          child: Text(
+                            article.source!.name,
+                            style: const TextStyle(color: _kSourceBlue, fontSize: 12, fontWeight: FontWeight.w600),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      if (article.publishedAt != null)
+                        Text(
+                          timeago.format(article.publishedAt!, locale: 'ar'),
+                          style: theme.textTheme.bodySmall,
+                        ),
+                    ],
+                  ),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
+        const SizedBox(height: 6),
+        // Interactive action bar for compact too
+        _ActionBar(article: article, isDark: isDark, small: true),
       ],
     );
   }
@@ -189,6 +214,221 @@ class ArticleCard extends StatelessWidget {
       child: Text(
         letter,
         style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INTERACTIVE ACTION BAR — Bookmark, Share, Comments/Likes
+// ═══════════════════════════════════════════════════════════════
+
+class _ActionBar extends ConsumerStatefulWidget {
+  const _ActionBar({required this.article, required this.isDark, this.small = false});
+  final Article article;
+  final bool isDark;
+  final bool small;
+
+  @override
+  ConsumerState<_ActionBar> createState() => _ActionBarState();
+}
+
+class _ActionBarState extends ConsumerState<_ActionBar> {
+  String? _reaction; // null = none, 'like'/'love'/'sad'/'angry'/'wow'/'fire'
+  bool _reacting = false;
+
+  static const _reactions = [
+    ('like',  '👍'),
+    ('love',  '❤️'),
+    ('wow',   '😮'),
+    ('sad',   '😢'),
+    ('angry', '😡'),
+    ('fire',  '🔥'),
+  ];
+
+  IconData get _reactionIcon =>
+      _reaction != null ? Icons.favorite : Icons.favorite_border;
+
+  Color _reactionColor(Color muted) {
+    if (_reaction == null) return muted;
+    switch (_reaction) {
+      case 'love': return const Color(0xFFE91E63);
+      case 'sad': return const Color(0xFF42A5F5);
+      case 'angry': return const Color(0xFFFF5722);
+      case 'wow': return const Color(0xFFFFC107);
+      case 'fire': return const Color(0xFFFF9800);
+      default: return const Color(0xFFEF4444);
+    }
+  }
+
+  Future<void> _sendReaction(String reaction) async {
+    if (_reacting) return;
+    setState(() { _reaction = reaction; _reacting = true; });
+    try {
+      await ref.read(userRepositoryProvider).react(widget.article.id, reaction);
+    } catch (_) {
+      if (mounted) setState(() => _reaction = null);
+    } finally {
+      if (mounted) setState(() => _reacting = false);
+    }
+  }
+
+  void _showReactionPicker(BuildContext context) {
+    if (!AuthStorage.isAuthenticated) {
+      _showLoginSnack(context);
+      return;
+    }
+    final RenderBox box = context.findRenderObject() as RenderBox;
+    final Offset pos = box.localToGlobal(Offset.zero);
+    showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(pos.dx, pos.dy - 50, pos.dx + 250, pos.dy),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      items: _reactions.map((r) => PopupMenuItem<String>(
+        value: r.$1,
+        height: 40,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Text(r.$2, style: const TextStyle(fontSize: 22)),
+      )).toList(),
+    ).then((value) {
+      if (value != null) _sendReaction(value);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bookmarks = ref.watch(bookmarkedIdsProvider);
+    final isBookmarked = bookmarks.contains(widget.article.id);
+    final muted = widget.isDark ? Colors.white54 : AppColors.textMutedLight;
+    final iconSize = widget.small ? 16.0 : 18.0;
+    final fontSize = widget.small ? 10.0 : 11.0;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(
+          color: widget.isDark ? Colors.white.withOpacity(0.06) : Colors.grey.withOpacity(0.12),
+        )),
+      ),
+      child: Row(
+        children: [
+          // Like / Reaction — tap for like, long press for picker
+          GestureDetector(
+            onLongPress: () => _showReactionPicker(context),
+            child: _ActionButton(
+              icon: _reactionIcon,
+              color: _reactionColor(muted),
+              label: widget.article.viewCount > 0 ? '${widget.article.viewCount}' : '',
+              iconSize: iconSize,
+              fontSize: fontSize,
+              onTap: () async {
+                if (!AuthStorage.isAuthenticated) {
+                  _showLoginSnack(context);
+                  return;
+                }
+                _sendReaction('like');
+              },
+            ),
+          ),
+          const SizedBox(width: 4),
+
+          // Comments
+          _ActionButton(
+            icon: Icons.chat_bubble_outline,
+            color: muted,
+            label: widget.article.comments > 0 ? '${widget.article.comments}' : '',
+            iconSize: iconSize,
+            fontSize: fontSize,
+            onTap: () => showCommentsSheet(context, widget.article.id),
+          ),
+          const SizedBox(width: 4),
+
+          // Bookmark
+          _ActionButton(
+            icon: isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+            color: isBookmarked ? _kSourceBlue : muted,
+            iconSize: iconSize,
+            fontSize: fontSize,
+            onTap: () async {
+              if (!AuthStorage.isAuthenticated) {
+                _showLoginSnack(context);
+                return;
+              }
+              try {
+                await ref.read(bookmarkedIdsProvider.notifier).toggle(widget.article.id);
+              } catch (_) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('تعذّر تحديث المحفوظات')),
+                  );
+                }
+              }
+            },
+          ),
+
+          const Spacer(),
+
+          // Share
+          _ActionButton(
+            icon: Icons.share_outlined,
+            color: muted,
+            iconSize: iconSize,
+            fontSize: fontSize,
+            onTap: () {
+              final url = 'https://feedsnews.net/article/${widget.article.slug ?? widget.article.id}';
+              Share.share('${widget.article.title}\n$url');
+              // Fire-and-forget share tracking
+              ref.read(userRepositoryProvider).trackShare(widget.article.id);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLoginSnack(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('سجّل دخولك أولاً'),
+        action: SnackBarAction(
+          label: 'تسجيل',
+          onPressed: () => context.push('/login'),
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    required this.icon, required this.color,
+    this.label, this.iconSize = 18, this.fontSize = 11,
+    required this.onTap,
+  });
+  final IconData icon;
+  final Color color;
+  final String? label;
+  final double iconSize;
+  final double fontSize;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: iconSize, color: color),
+            if (label != null && label!.isNotEmpty) ...[
+              const SizedBox(width: 3),
+              Text(label!, style: TextStyle(color: color, fontSize: fontSize, fontWeight: FontWeight.w600)),
+            ],
+          ],
+        ),
       ),
     );
   }

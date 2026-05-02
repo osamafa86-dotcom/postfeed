@@ -134,6 +134,19 @@ class ContentRepository {
     );
   }
 
+  /// Request TTS audio for an article. Returns the audio URL.
+  Future<({String audioUrl, int duration})> tts(int articleId) async {
+    final res = await _api.post<Map<String, dynamic>>(
+      '/media/tts',
+      body: {'article_id': articleId},
+      decode: (d) => (d as Map).cast<String, dynamic>(),
+    );
+    return (
+      audioUrl: res.data!['audio_url'] as String,
+      duration: (res.data!['duration'] as num?)?.toInt() ?? 0,
+    );
+  }
+
   Future<List<StoryQuote>> storyQuotes(String slug) async {
     final res = await _api.get<Map<String, dynamic>>(
       '/content/evolving-story-quotes',
