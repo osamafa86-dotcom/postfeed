@@ -9,6 +9,7 @@ class EvolvingStory {
     this.accentColor = '#0d9488',
     this.articleCount = 0,
     this.lastMatchedAt,
+    this.latest = const [],
   });
 
   final int id;
@@ -20,6 +21,13 @@ class EvolvingStory {
   final String accentColor;
   final int articleCount;
   final DateTime? lastMatchedAt;
+  final List<StoryPreviewArticle> latest;
+
+  /// Whether this story has been updated within the last 2 hours.
+  bool get isLive {
+    if (lastMatchedAt == null) return false;
+    return DateTime.now().difference(lastMatchedAt!).inHours < 2;
+  }
 
   factory EvolvingStory.fromJson(Map<String, dynamic> j) => EvolvingStory(
         id: (j['id'] as num).toInt(),
@@ -32,6 +40,32 @@ class EvolvingStory {
         articleCount: (j['article_count'] as num?)?.toInt() ?? 0,
         lastMatchedAt: j['last_matched_at'] != null
             ? DateTime.tryParse(j['last_matched_at'].toString().replaceFirst(' ', 'T'))
+            : null,
+        latest: (j['latest'] as List? ?? [])
+            .whereType<Map>()
+            .map((m) => StoryPreviewArticle.fromJson(m.cast()))
+            .toList(),
+      );
+}
+
+/// Lightweight article preview returned with evolving stories.
+class StoryPreviewArticle {
+  const StoryPreviewArticle({
+    required this.id,
+    required this.title,
+    this.publishedAt,
+  });
+
+  final int id;
+  final String title;
+  final DateTime? publishedAt;
+
+  factory StoryPreviewArticle.fromJson(Map<String, dynamic> j) =>
+      StoryPreviewArticle(
+        id: (j['id'] as num).toInt(),
+        title: j['title'] as String,
+        publishedAt: j['published_at'] != null
+            ? DateTime.tryParse(j['published_at'].toString().replaceFirst(' ', 'T'))
             : null,
       );
 }

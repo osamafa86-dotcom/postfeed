@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../content/presentation/discover_screen.dart';
 import '../content/presentation/home_screen.dart';
-import '../podcast/presentation/podcast_screen.dart';
+import '../../features/media/presentation/platforms_screen.dart';
 import '../user/presentation/follow_screen.dart';
 import '../user/presentation/profile_screen.dart';
 
@@ -15,7 +15,7 @@ class MainShell extends StatelessWidget {
   static const _tabs = [
     _TabSpec(path: '/',         icon: Icons.home_outlined,            sel: Icons.home,            label: 'الرئيسية'),
     _TabSpec(path: '/discover', icon: Icons.explore_outlined,         sel: Icons.explore,         label: 'استكشف'),
-    _TabSpec(path: '/podcast',  icon: Icons.headphones_outlined,      sel: Icons.headphones,      label: 'البودكاست'),
+    _TabSpec(path: '/platforms', icon: Icons.cell_tower_outlined,      sel: Icons.cell_tower,      label: 'منصات'),
     _TabSpec(path: '/follow',   icon: Icons.bookmark_border,          sel: Icons.bookmark,        label: 'متابعتي'),
     _TabSpec(path: '/profile',  icon: Icons.person_outline,           sel: Icons.person,          label: 'حسابي'),
   ];
@@ -25,7 +25,7 @@ class MainShell extends StatelessWidget {
       if (location == _tabs[i].path) return i;
     }
     if (location.startsWith('/discover')) return 1;
-    if (location.startsWith('/podcast')) return 2;
+    if (location.startsWith('/platforms')) return 2;
     if (location.startsWith('/follow')) return 3;
     if (location.startsWith('/profile')) return 4;
     return 0;
@@ -35,7 +35,7 @@ class MainShell extends StatelessWidget {
     return switch (index) {
       0 => const HomeScreen(),
       1 => const DiscoverScreen(),
-      2 => const PodcastScreen(),
+      2 => const PlatformsScreen(),
       3 => const FollowScreen(),
       4 => const ProfileScreen(),
       _ => const HomeScreen(),

@@ -58,6 +58,13 @@ class ArticleScreen extends ConsumerWidget {
             },
           ),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(2),
+          child: asy.maybeWhen(
+            data: (_) => const _ReadProgressBar(),
+            orElse: () => const SizedBox.shrink(),
+          ),
+        ),
       ),
       body: asy.when(
         loading: () => const LoadingShimmerList(itemCount: 4),
@@ -67,6 +74,51 @@ class ArticleScreen extends ConsumerWidget {
         ),
         data: (data) => _ArticleBody(article: data.article, related: data.related),
       ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// READ PROGRESS BAR
+// ═══════════════════════════════════════════════════════════════
+
+class _ReadProgressBar extends StatefulWidget {
+  const _ReadProgressBar();
+  @override
+  State<_ReadProgressBar> createState() => _ReadProgressBarState();
+}
+
+class _ReadProgressBarState extends State<_ReadProgressBar> {
+  double _progress = 0;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Listen to primary scroll controller
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final controller = PrimaryScrollController.of(context);
+      controller.addListener(_onScroll);
+    });
+  }
+
+  void _onScroll() {
+    final controller = PrimaryScrollController.of(context);
+    if (!controller.hasClients) return;
+    final max = controller.position.maxScrollExtent;
+    if (max <= 0) return;
+    final progress = (controller.offset / max).clamp(0.0, 1.0);
+    if (mounted && (progress - _progress).abs() > 0.005) {
+      setState(() => _progress = progress);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LinearProgressIndicator(
+      value: _progress,
+      minHeight: 2,
+      backgroundColor: Colors.transparent,
+      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF38BDF8)),
     );
   }
 }

@@ -287,6 +287,16 @@ class MediaRepository {
     return (answer: res.data!['answer']?.toString() ?? '', sources: sources);
   }
 
+  /// AI summary of latest social media posts (telegram/twitter).
+  Future<String> socialSummary(String platform) async {
+    final res = await _api.get<Map<String, dynamic>>(
+      '/media/social-summary',
+      query: {'platform': platform},
+      decode: (d) => (d as Map).cast<String, dynamic>(),
+    );
+    return res.data?['summary']?.toString() ?? '';
+  }
+
   Future<({String? audioUrl, int duration, bool cached})> ttsForArticle(int articleId) async {
     final res = await _api.post<Map<String, dynamic>>(
       '/media/tts',
@@ -321,3 +331,9 @@ final galleryProvider =
 
 final newsMapProvider =
     FutureProvider<List<MapPoint>>((ref) => ref.watch(mediaRepositoryProvider).newsMap());
+
+final telegramSummaryProvider = FutureProvider<String>(
+    (ref) => ref.watch(mediaRepositoryProvider).socialSummary('telegram'));
+
+final twitterSummaryProvider = FutureProvider<String>(
+    (ref) => ref.watch(mediaRepositoryProvider).socialSummary('twitter'));

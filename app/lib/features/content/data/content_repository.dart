@@ -147,6 +147,16 @@ class ContentRepository {
     );
   }
 
+  /// Personalized "For You" feed based on user's follows and reads.
+  Future<List<Article>> forYou() async {
+    final res = await _api.get<List<Article>>(
+      '/content/for-you',
+      decode: (d) =>
+          (d as List).whereType<Map>().map((m) => Article.fromJson(m.cast())).toList(),
+    );
+    return res.data ?? const [];
+  }
+
   Future<List<StoryQuote>> storyQuotes(String slug) async {
     final res = await _api.get<Map<String, dynamic>>(
       '/content/evolving-story-quotes',
@@ -177,6 +187,10 @@ final sourcesProvider = FutureProvider<List<Source>>((ref) {
 
 final evolvingStoriesProvider = FutureProvider<List<EvolvingStory>>((ref) {
   return ref.watch(contentRepositoryProvider).evolvingStories();
+});
+
+final forYouProvider = FutureProvider<List<Article>>((ref) {
+  return ref.watch(contentRepositoryProvider).forYou();
 });
 
 final articleProvider =

@@ -12,6 +12,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/article_card.dart';
 import '../../../core/widgets/loading_state.dart';
 import '../../../core/widgets/section_header.dart';
+import '../../auth/data/auth_storage.dart';
 import '../../media/data/media_repository.dart';
 import '../data/content_repository.dart';
 import 'widgets/breaking_strip.dart';
@@ -84,6 +85,13 @@ class _HomeBody extends ConsumerWidget {
 
         if (payload.breaking.isNotEmpty)
           SliverToBoxAdapter(child: BreakingStrip(items: payload.breaking)),
+
+        // ── Stats Strip ──
+        SliverToBoxAdapter(child: _StatsStrip(payload: payload)),
+
+        // ── For You — personalized feed ──
+        if (AuthStorage.isAuthenticated)
+          SliverToBoxAdapter(child: _ForYouSection()),
 
         // ── Hero Card ──
         if (payload.hero != null)
@@ -598,6 +606,10 @@ class _PlatformsBoxState extends ConsumerState<_PlatformsBox> {
             ),
           ),
 
+          // ── AI Summary card ──
+          if (_selected < 2)
+            _SocialAiSummary(platform: _selected == 0 ? 'telegram' : 'twitter'),
+
           // ── Feed content ──
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 250),
@@ -741,6 +753,64 @@ class _YoutubePreview extends ConsumerWidget {
           },
         );
       },
+    );
+  }
+}
+
+// ── Social AI Summary Card ──
+class _SocialAiSummary extends ConsumerWidget {
+  const _SocialAiSummary({required this.platform});
+  final String platform;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final provider = platform == 'telegram' ? telegramSummaryProvider : twitterSummaryProvider;
+    final asy = ref.watch(provider);
+
+    return asy.maybeWhen(
+      data: (summary) {
+        if (summary.isEmpty) return const SizedBox.shrink();
+        return Container(
+          margin: const EdgeInsets.fromLTRB(14, 8, 14, 4),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.white.withOpacity(0.06), Colors.white.withOpacity(0.02)],
+            ),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white.withOpacity(0.08)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 28, height: 28,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [Color(0xFF6366F1), Color(0xFF4338CA)]),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                alignment: Alignment.center,
+                child: const Icon(Icons.auto_awesome, size: 14, color: Colors.white),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('ملخص AI',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF818CF8))),
+                    const SizedBox(height: 4),
+                    Text(summary,
+                      style: TextStyle(fontSize: 12, height: 1.6, color: Colors.white.withOpacity(0.75)),
+                      maxLines: 4, overflow: TextOverflow.ellipsis),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+      orElse: () => const SizedBox.shrink(),
     );
   }
 }
@@ -1250,6 +1320,182 @@ class _QuickAccessRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STATS STRIP — أرقام سريعة
+// ═══════════════════════════════════════════════════════════════
+
+class _StatsStrip extends StatelessWidget {
+  const _StatsStrip({required this.payload});
+  final HomePayload payload;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final totalArticles = payload.latest.length + payload.breaking.length;
+    final totalSources = payload.sources.length;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withOpacity(0.04) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark ? Colors.white.withOpacity(0.06) : const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _StatItem(value: '$totalArticles+', label: 'خبر', icon: Icons.article_outlined, isDark: isDark),
+          Container(width: 1, height: 28,
+            color: isDark ? Colors.white.withOpacity(0.08) : const Color(0xFFE2E8F0)),
+          _StatItem(value: '$totalSources', label: 'مصدر', icon: Icons.public, isDark: isDark),
+          Container(width: 1, height: 28,
+            color: isDark ? Colors.white.withOpacity(0.08) : const Color(0xFFE2E8F0)),
+          _StatItem(value: '${payload.buckets.length}', label: 'قسم', icon: Icons.grid_view, isDark: isDark),
+          Container(width: 1, height: 28,
+            color: isDark ? Colors.white.withOpacity(0.08) : const Color(0xFFE2E8F0)),
+          _StatItem(value: '${payload.trends.length}', label: 'ترند', icon: Icons.trending_up, isDark: isDark),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatItem extends StatelessWidget {
+  const _StatItem({required this.value, required this.label, required this.icon, required this.isDark});
+  final String value, label;
+  final IconData icon;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Icon(icon, size: 16, color: const Color(0xFF38BDF8)),
+        const SizedBox(height: 4),
+        Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900,
+          color: isDark ? Colors.white : AppColors.textLight)),
+        Text(label, style: TextStyle(fontSize: 10,
+          color: isDark ? Colors.white38 : AppColors.textMutedLight)),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FOR YOU — خاص بك (personalized feed)
+// ═══════════════════════════════════════════════════════════════
+
+class _ForYouSection extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final asy = ref.watch(forYouProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return asy.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (articles) {
+        if (articles.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+              child: Row(children: [
+                Container(
+                  width: 32, height: 32,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [Color(0xFFF59E0B), Color(0xFFEF4444)]),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  alignment: Alignment.center,
+                  child: const Icon(Icons.person, color: Colors.white, size: 16),
+                ),
+                const SizedBox(width: 8),
+                Text('خاص بك',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900,
+                    color: isDark ? Colors.white : AppColors.textLight)),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => context.push('/follow'),
+                  child: Text('تعديل',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+                      color: const Color(0xFF38BDF8))),
+                ),
+              ]),
+            ),
+            SizedBox(
+              height: 220,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                itemCount: articles.length.clamp(0, 8),
+                itemBuilder: (_, i) {
+                  final a = articles[i];
+                  return GestureDetector(
+                    onTap: () => context.push('/article/${a.id}'),
+                    child: Container(
+                      width: 200,
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white.withOpacity(0.04) : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark ? Colors.white.withOpacity(0.06) : const Color(0xFFE2E8F0)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (a.imageUrl != null)
+                            ClipRRect(
+                              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                              child: CachedNetworkImage(
+                                imageUrl: a.imageUrl!, width: 200, height: 110, fit: BoxFit.cover),
+                            )
+                          else
+                            Container(
+                              height: 110,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.1),
+                                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                              ),
+                              alignment: Alignment.center,
+                              child: Icon(Icons.article, size: 32, color: AppColors.primary.withOpacity(0.3)),
+                            ),
+                          Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(a.title,
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, height: 1.4,
+                                    color: isDark ? Colors.white : AppColors.textLight),
+                                  maxLines: 3, overflow: TextOverflow.ellipsis),
+                                const SizedBox(height: 6),
+                                if (a.source != null)
+                                  Text(a.source!.name,
+                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600,
+                                      color: Color(0xFF38BDF8)),
+                                    overflow: TextOverflow.ellipsis),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

@@ -7,6 +7,8 @@ import '../../features/auth/presentation/register_screen.dart';
 import '../../features/content/presentation/article_screen.dart';
 import '../../features/content/presentation/category_screen.dart';
 import '../../features/content/presentation/clusters_screen.dart';
+import '../../features/content/presentation/quotes_wall_screen.dart';
+import '../../features/content/presentation/stories_network_screen.dart';
 import '../../features/content/presentation/evolving_stories_screen.dart';
 import '../../features/content/presentation/evolving_story_screen.dart';
 import '../../features/content/presentation/news_map_screen.dart';
@@ -80,6 +82,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, s) => EvolvingStoryScreen(slug: s.pathParameters['slug']!),
       ),
       GoRoute(path: '/timelines', builder: (_, __) => const TimelinesScreen()),
+      GoRoute(path: '/stories-network', builder: (_, __) => const StoriesNetworkScreen()),
+      GoRoute(
+        path: '/stories/:slug/quotes',
+        builder: (_, s) => QuotesWallScreen(
+          slug: s.pathParameters['slug']!,
+          storyName: s.uri.queryParameters['name'] ?? '',
+        ),
+      ),
 
       // Media
       GoRoute(path: '/telegram', builder: (_, __) => const TelegramScreen()),
