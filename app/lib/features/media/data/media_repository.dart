@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
@@ -314,14 +316,30 @@ class MediaRepository {
 final mediaRepositoryProvider =
     Provider<MediaRepository>((ref) => MediaRepository(ref.watch(apiClientProvider)));
 
-final telegramFeedProvider = FutureProvider<List<TelegramMessage>>(
-    (ref) => ref.watch(mediaRepositoryProvider).telegram());
+/// Auto-refreshing social feed providers — poll every 2 seconds for real-time updates.
+final telegramFeedProvider = FutureProvider<List<TelegramMessage>>((ref) {
+  final timer = Timer.periodic(const Duration(seconds: 2), (_) {
+    ref.invalidateSelf();
+  });
+  ref.onDispose(timer.cancel);
+  return ref.watch(mediaRepositoryProvider).telegram();
+});
 
-final twitterFeedProvider = FutureProvider<List<TwitterMessage>>(
-    (ref) => ref.watch(mediaRepositoryProvider).twitter());
+final twitterFeedProvider = FutureProvider<List<TwitterMessage>>((ref) {
+  final timer = Timer.periodic(const Duration(seconds: 2), (_) {
+    ref.invalidateSelf();
+  });
+  ref.onDispose(timer.cancel);
+  return ref.watch(mediaRepositoryProvider).twitter();
+});
 
-final youtubeFeedProvider = FutureProvider<List<YoutubeVideo>>(
-    (ref) => ref.watch(mediaRepositoryProvider).youtube());
+final youtubeFeedProvider = FutureProvider<List<YoutubeVideo>>((ref) {
+  final timer = Timer.periodic(const Duration(seconds: 2), (_) {
+    ref.invalidateSelf();
+  });
+  ref.onDispose(timer.cancel);
+  return ref.watch(mediaRepositoryProvider).youtube();
+});
 
 final reelsProvider =
     FutureProvider<List<ReelItem>>((ref) => ref.watch(mediaRepositoryProvider).reels());
