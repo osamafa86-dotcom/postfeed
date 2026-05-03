@@ -1,5 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:dio/dio.dart' show Options;
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -1190,13 +1190,14 @@ class _WeatherInfo {
 
 final _weatherProvider = FutureProvider<_WeatherInfo?>((ref) async {
   try {
-    final api = ref.watch(apiClientProvider);
-    final res = await api.raw.get('https://wttr.in/?format=j1',
-      options: Options(
-        receiveTimeout: const Duration(seconds: 5),
-        headers: {'Accept': 'application/json'},
-      ),
-    );
+    // Use a standalone Dio instance — the apiClient's baseUrl and auth
+    // interceptors interfere with external APIs like wttr.in.
+    final dio = Dio(BaseOptions(
+      connectTimeout: const Duration(seconds: 5),
+      receiveTimeout: const Duration(seconds: 5),
+      headers: {'Accept': 'application/json'},
+    ));
+    final res = await dio.get('https://wttr.in/?format=j1');
     final data = res.data as Map<String, dynamic>;
     final current = (data['current_condition'] as List?)?.first as Map?;
     if (current == null) return null;

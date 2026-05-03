@@ -34,6 +34,22 @@ if (empty($url) || !preg_match('#^https?://#i', $url)) {
     exit('Bad URL');
 }
 
+// SSRF protection: block internal/private IPs
+$parsedHost = parse_url($url, PHP_URL_HOST);
+if ($parsedHost) {
+    $resolvedIps = gethostbynamel($parsedHost);
+    if ($resolvedIps) {
+        foreach ($resolvedIps as $ip) {
+            if (
+                filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false
+            ) {
+                http_response_code(403);
+                exit('Blocked: private/reserved IP');
+            }
+        }
+    }
+}
+
 // Snap width to nearest allowed size
 if ($w > 0) {
     $best = $ALLOWED_WIDTHS[0];
@@ -71,7 +87,7 @@ $ctx = stream_context_create([
         'follow_location' => true,
         'max_redirects' => 3,
     ],
-    'ssl' => ['verify_peer' => false, 'verify_peer_name' => false],
+    'ssl' => ['verify_peer' => true, 'verify_peer_name' => true],
 ]);
 
 $imgData = @file_get_contents($url, false, $ctx);

@@ -57,9 +57,5 @@ RewriteRule ^([^/]+)/([^/]+)/?$                $1/$2.php [QSA,L]
 RewriteRule ^([^/]+)/?$                        $1.php [QSA,L]
 </IfModule>
 
-# CORS preflight passthrough.
-<IfModule mod_headers.c>
-  Header set Access-Control-Allow-Origin "*"
-  Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Device-Id, X-App-Version, X-Platform"
-  Header set Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-</IfModule>
+# CORS is handled dynamically in _bootstrap.php (origin whitelist).
+# Do NOT set a blanket Access-Control-Allow-Origin here.

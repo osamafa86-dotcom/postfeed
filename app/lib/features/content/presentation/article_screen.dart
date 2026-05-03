@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
@@ -90,26 +92,36 @@ class _ReadProgressBar extends StatefulWidget {
 
 class _ReadProgressBarState extends State<_ReadProgressBar> {
   double _progress = 0;
+  ScrollController? _controller;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Listen to primary scroll controller
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final controller = PrimaryScrollController.of(context);
-      controller.addListener(_onScroll);
+      if (_controller == controller) return;
+      _controller?.removeListener(_onScroll);
+      _controller = controller;
+      _controller!.addListener(_onScroll);
     });
   }
 
   void _onScroll() {
-    final controller = PrimaryScrollController.of(context);
-    if (!controller.hasClients) return;
+    final controller = _controller;
+    if (controller == null || !controller.hasClients) return;
     final max = controller.position.maxScrollExtent;
     if (max <= 0) return;
     final progress = (controller.offset / max).clamp(0.0, 1.0);
     if (mounted && (progress - _progress).abs() > 0.005) {
       setState(() => _progress = progress);
     }
+  }
+
+  @override
+  void dispose() {
+    _controller?.removeListener(_onScroll);
+    super.dispose();
   }
 
   @override
@@ -292,9 +304,13 @@ class _TtsPlayerState extends ConsumerState<_TtsPlayer> {
   _TtsState _state = _TtsState.idle;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
+  final List<StreamSubscription> _subs = [];
 
   @override
   void dispose() {
+    for (final sub in _subs) {
+      sub.cancel();
+    }
     _player?.dispose();
     super.dispose();
   }
@@ -319,7 +335,7 @@ class _TtsPlayerState extends ConsumerState<_TtsPlayer> {
       final player = AudioPlayer();
       await player.setUrl(result.audioUrl);
 
-      player.playerStateStream.listen((s) {
+      _subs.add(player.playerStateStream.listen((s) {
         if (!mounted) return;
         setState(() {
           if (s.processingState == ProcessingState.completed) {
@@ -333,15 +349,15 @@ class _TtsPlayerState extends ConsumerState<_TtsPlayer> {
             _state = _TtsState.paused;
           }
         });
-      });
+      }));
 
-      player.positionStream.listen((p) {
+      _subs.add(player.positionStream.listen((p) {
         if (mounted) setState(() => _position = p);
-      });
+      }));
 
-      player.durationStream.listen((d) {
+      _subs.add(player.durationStream.listen((d) {
         if (mounted && d != null) setState(() => _duration = d);
-      });
+      }));
 
       _player = player;
       player.play();

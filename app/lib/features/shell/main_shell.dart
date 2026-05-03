@@ -7,7 +7,7 @@ import '../content/presentation/summaries_screen.dart';
 import '../user/presentation/follow_screen.dart';
 import '../user/presentation/profile_screen.dart';
 
-class MainShell extends StatelessWidget {
+class MainShell extends StatefulWidget {
   const MainShell({super.key, required this.state, required this.child});
   final GoRouterState state;
   final Widget child;
@@ -20,9 +20,23 @@ class MainShell extends StatelessWidget {
     _TabSpec(path: '/profile',    icon: Icons.person_outline,           sel: Icons.person,          label: 'حسابي'),
   ];
 
+  @override
+  State<MainShell> createState() => _MainShellState();
+}
+
+class _MainShellState extends State<MainShell> {
+  // Pages are created once and kept alive via IndexedStack.
+  final _pages = const [
+    HomeScreen(),
+    DiscoverScreen(),
+    SummariesScreen(),
+    FollowScreen(),
+    ProfileScreen(),
+  ];
+
   int _indexFor(String location) {
-    for (var i = 0; i < _tabs.length; i++) {
-      if (location == _tabs[i].path) return i;
+    for (var i = 0; i < MainShell._tabs.length; i++) {
+      if (location == MainShell._tabs[i].path) return i;
     }
     if (location.startsWith('/discover')) return 1;
     if (location.startsWith('/summaries')) return 2;
@@ -31,29 +45,21 @@ class MainShell extends StatelessWidget {
     return 0;
   }
 
-  Widget _bodyFor(int index) {
-    return switch (index) {
-      0 => const HomeScreen(),
-      1 => const DiscoverScreen(),
-      2 => const SummariesScreen(),
-      3 => const FollowScreen(),
-      4 => const ProfileScreen(),
-      _ => const HomeScreen(),
-    };
-  }
-
   @override
   Widget build(BuildContext context) {
-    final loc = state.uri.toString();
+    final loc = widget.state.uri.toString();
     final index = _indexFor(loc);
 
     return Scaffold(
-      body: _bodyFor(index),
+      body: IndexedStack(
+        index: index,
+        children: _pages,
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: index,
-        onTap: (i) => context.go(_tabs[i].path),
+        onTap: (i) => context.go(MainShell._tabs[i].path),
         items: [
-          for (final t in _tabs)
+          for (final t in MainShell._tabs)
             BottomNavigationBarItem(
               icon: Icon(t.icon),
               activeIcon: Icon(t.sel),

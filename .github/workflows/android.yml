@@ -57,6 +57,7 @@ jobs:
         working-directory: app
         run: |
           flutter build apk --release \
+            --obfuscate --split-debug-info=build/debug-info \
             --dart-define=API_BASE=https://feedsnews.net/api/v1
 
       - name: Upload debug APK
@@ -77,6 +78,7 @@ jobs:
         working-directory: app
         run: |
           flutter build appbundle --release \
+            --obfuscate --split-debug-info=build/debug-info \
             --dart-define=API_BASE=https://feedsnews.net/api/v1
 
       - name: Upload AAB

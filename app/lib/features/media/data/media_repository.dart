@@ -316,9 +316,10 @@ class MediaRepository {
 final mediaRepositoryProvider =
     Provider<MediaRepository>((ref) => MediaRepository(ref.watch(apiClientProvider)));
 
-/// Auto-refreshing social feed providers — poll every 15 seconds for near-real-time updates.
+/// Auto-refreshing social feed providers — poll every 60 seconds.
+/// Polling only starts when the provider has active listeners (i.e. the UI is visible).
 final telegramFeedProvider = FutureProvider<List<TelegramMessage>>((ref) {
-  final timer = Timer.periodic(const Duration(seconds: 15), (_) {
+  final timer = Timer.periodic(const Duration(seconds: 60), (_) {
     ref.invalidateSelf();
   });
   ref.onDispose(timer.cancel);
@@ -326,7 +327,7 @@ final telegramFeedProvider = FutureProvider<List<TelegramMessage>>((ref) {
 });
 
 final twitterFeedProvider = FutureProvider<List<TwitterMessage>>((ref) {
-  final timer = Timer.periodic(const Duration(seconds: 15), (_) {
+  final timer = Timer.periodic(const Duration(seconds: 60), (_) {
     ref.invalidateSelf();
   });
   ref.onDispose(timer.cancel);
@@ -334,7 +335,7 @@ final twitterFeedProvider = FutureProvider<List<TwitterMessage>>((ref) {
 });
 
 final youtubeFeedProvider = FutureProvider<List<YoutubeVideo>>((ref) {
-  final timer = Timer.periodic(const Duration(seconds: 15), (_) {
+  final timer = Timer.periodic(const Duration(seconds: 60), (_) {
     ref.invalidateSelf();
   });
   ref.onDispose(timer.cancel);

@@ -2,8 +2,7 @@ plugins {
     id("com.android.application")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
-    // Firebase is added later — comment out until google-services.json is committed.
-    // id("com.google.gms.google-services")
+    id("com.google.gms.google-services")
 }
 
 import java.util.Properties
@@ -17,7 +16,7 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "net.feedsnews.app"
-    compileSdk = 34
+    compileSdk = 35
     ndkVersion = "26.1.10909125"
 
     compileOptions {
@@ -29,7 +28,7 @@ android {
     defaultConfig {
         applicationId = "net.feedsnews.app"
         minSdk = 23
-        targetSdk = 34
+        targetSdk = 35
         versionCode = (project.findProperty("flutter.versionCode") ?: "1").toString().toInt()
         versionName = project.findProperty("flutter.versionName")?.toString() ?: "1.23.0"
         multiDexEnabled = true

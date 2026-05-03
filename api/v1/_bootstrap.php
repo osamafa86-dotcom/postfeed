@@ -21,7 +21,19 @@ declare(strict_types=1);
 // CORS — must run BEFORE any include so preflight always succeeds,
 // even if the includes throw or warn.
 // -------------------------------------------------
-header('Access-Control-Allow-Origin: *');
+// CORS — mobile apps don't need CORS, but web panel does.
+$allowedOrigins = [
+    'https://feedsnews.net',
+    'https://www.feedsnews.net',
+    'http://localhost:3000', // dev only
+];
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if (in_array($origin, $allowedOrigins, true)) {
+    header("Access-Control-Allow-Origin: $origin");
+} else {
+    // Mobile apps don't send Origin header, so no CORS header needed.
+    // Browsers without matching Origin get no ACAO header → blocked.
+}
 header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Device-Id, X-App-Version, X-Platform');
 header('Access-Control-Max-Age: 86400');
