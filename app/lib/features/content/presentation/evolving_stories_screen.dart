@@ -19,7 +19,9 @@ class EvolvingStoriesScreen extends ConsumerWidget {
         error: (e, _) => ErrorRetryView(message: '$e', onRetry: () => ref.invalidate(evolvingStoriesProvider)),
         data: (list) => list.isEmpty
             ? const EmptyView(message: 'لا توجد قصص متاحة')
-            : ListView.separated(
+            : RefreshIndicator(
+                onRefresh: () async => ref.invalidate(evolvingStoriesProvider),
+                child: ListView.separated(
                 padding: const EdgeInsets.all(16),
                 itemCount: list.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
@@ -82,6 +84,7 @@ class EvolvingStoriesScreen extends ConsumerWidget {
                   );
                 },
               ),
+            ),
       ),
     );
   }

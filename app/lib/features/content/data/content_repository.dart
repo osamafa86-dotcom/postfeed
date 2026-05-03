@@ -185,7 +185,7 @@ final sourcesProvider = FutureProvider<List<Source>>((ref) {
   return ref.watch(contentRepositoryProvider).sources();
 });
 
-final evolvingStoriesProvider = FutureProvider<List<EvolvingStory>>((ref) {
+final evolvingStoriesProvider = FutureProvider.autoDispose<List<EvolvingStory>>((ref) {
   return ref.watch(contentRepositoryProvider).evolvingStories();
 });
 

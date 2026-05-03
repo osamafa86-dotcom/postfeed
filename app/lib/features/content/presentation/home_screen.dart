@@ -898,7 +898,10 @@ class _EvolvingStoriesSection extends ConsumerWidget {
     final stories = ref.watch(evolvingStoriesProvider);
     return stories.when(
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (e, st) {
+        debugPrint('⚠️ EvolvingStories error: $e\n$st');
+        return const SizedBox.shrink();
+      },
       data: (list) {
         if (list.isEmpty) return const SizedBox.shrink();
         final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -925,7 +928,7 @@ class _EvolvingStoriesSection extends ConsumerWidget {
                       color: isDark ? Colors.white : AppColors.textLight)),
                   const Spacer(),
                   GestureDetector(
-                    onTap: () => context.push('/stories-network'),
+                    onTap: () => context.push('/stories'),
                     child: const Text('عرض الكل',
                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
                         color: AppColors.primary)),
