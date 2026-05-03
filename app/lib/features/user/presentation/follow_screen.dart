@@ -180,7 +180,7 @@ class _FollowedSourcesTab extends ConsumerWidget {
               leading: Container(
                 width: 40, height: 40,
                 decoration: BoxDecoration(
-                  color: const AppColors.primary.withOpacity(0.12),
+                  color: AppColors.primary.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 alignment: Alignment.center,

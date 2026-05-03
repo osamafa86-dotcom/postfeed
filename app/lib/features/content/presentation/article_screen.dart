@@ -393,7 +393,7 @@ class _TtsPlayerState extends ConsumerState<_TtsPlayer> {
             child: Container(
               width: 38, height: 38,
               decoration: BoxDecoration(
-                color: const AppColors.primary,
+                color: AppColors.primary,
                 borderRadius: BorderRadius.circular(10),
               ),
               alignment: Alignment.center,
@@ -431,9 +431,9 @@ class _TtsPlayerState extends ConsumerState<_TtsPlayer> {
                           data: SliderThemeData(
                             trackHeight: 3,
                             thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
-                            activeTrackColor: const AppColors.primary,
+                            activeTrackColor: AppColors.primary,
                             inactiveTrackColor: isDark ? Colors.white12 : const Color(0xFFE0F2FE),
-                            thumbColor: const AppColors.primary,
+                            thumbColor: AppColors.primary,
                             overlayShape: SliderComponentShape.noOverlay,
                           ),
                           child: Slider(

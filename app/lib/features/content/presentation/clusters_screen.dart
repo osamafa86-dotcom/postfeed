@@ -120,7 +120,7 @@ class _ClusterCardState extends State<_ClusterCard> {
                           .map((src) => Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                 decoration: BoxDecoration(
-                                  color: const AppColors.primary.withOpacity(0.1),
+                                  color: AppColors.primary.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(src.name,

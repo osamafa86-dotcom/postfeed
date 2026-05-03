@@ -354,7 +354,7 @@ class _ActionBarState extends ConsumerState<_ActionBar> {
           // Bookmark
           _ActionButton(
             icon: isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_outline_rounded,
-            color: isBookmarked ? _kSourceBlue : muted,
+            color: isBookmarked ? _kSourceGreen : muted,
             iconSize: iconSize,
             fontSize: fontSize,
             onTap: () async {
