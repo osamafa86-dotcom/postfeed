@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>فيد نيوز — معاينة تحسينات UI/UX</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --primary: #0D6EFD;
+    --accent: #D97706;
+    --breaking: #DC2626;
+    --bg: #0B1220;
+    --card: #111827;
+    --card-hover: #1a2236;
+    --text: #E5E7EB;
+    --text-muted: #94A3B8;
+    --border: #1F2937;
+    --sky: #38BDF8;
+    --purple: #6366F1;
+    --green: #10B981;
+    --teal: #0D9488;
+    --amber: #F59E0B;
+  }
+
+  body {
+    font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif;
+    background: #060a14;
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  /* ── Page Header ── */
+  .page-header {
+    text-align: center;
+    margin-bottom: 30px;
+    max-width: 800px;
+  }
+  .page-header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--sky), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+  .page-header p { color: var(--text-muted); font-size: 14px; }
+
+  /* ── Controls Bar ── */
+  .controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 30px;
+  }
+  .ctrl-btn {
+    padding: 8px 18px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s;
+  }
+  .ctrl-btn:hover, .ctrl-btn.active {
+    background: var(--purple);
+    border-color: var(--purple);
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(99,102,241,0.3);
+  }
+
+  /* ── Phone Frame ── */
+  .phone-container {
+    display: flex;
+    gap: 40px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .phone {
+    width: 390px;
+    height: 844px;
+    background: var(--bg);
+    border-radius: 44px;
+    border: 3px solid #2a2a3a;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 20px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05);
+  }
+
+  /* Notch */
+  .phone::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 150px;
+    height: 34px;
+    background: #000;
+    border-radius: 0 0 20px 20px;
+    z-index: 100;
+  }
+
+  .phone-scroll {
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+  .phone-scroll::-webkit-scrollbar { display: none; }
+
+  /* ── Status Bar ── */
+  .status-bar {
+    height: 54px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 0 24px 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+    position: sticky;
+    top: 0;
+    z-index: 90;
+    background: transparent;
+  }
+
+  /* ── App Bar (overlaid on hero) ── */
+  .app-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 20px 10px;
+    position: sticky;
+    top: 48px;
+    z-index: 80;
+  }
+  .app-bar .logo {
+    font-size: 19px;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  }
+  .app-bar .icons { display: flex; gap: 12px; }
+  .app-bar .icon-btn {
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.1);
+    backdrop-filter: blur(10px);
+    font-size: 16px;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  .app-bar .icon-btn:hover { transform: scale(1.1); }
+
+  /* ════════════════════════════════════════
+     1. HERO CARD with Parallax
+  ════════════════════════════════════════ */
+  .hero-card {
+    position: relative;
+    height: 360px;
+    margin-top: -104px;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .hero-img {
+    width: 100%;
+    height: 120%;
+    object-fit: cover;
+    position: absolute;
+    top: -10%;
+    transition: transform 0.1s linear;
+    will-change: transform;
+  }
+  .hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, transparent 35%, rgba(0,0,0,0.92) 100%);
+  }
+  .hero-content {
+    position: absolute;
+    bottom: 24px;
+    right: 20px;
+    left: 20px;
+  }
+  .hero-badge {
+    display: inline-block;
+    padding: 5px 14px;
+    background: var(--breaking);
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 10px;
+  }
+  .hero-title {
+    font-size: 21px;
+    font-weight: 800;
+    line-height: 1.5;
+    color: #fff;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    margin-bottom: 12px;
+  }
+  .hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.7);
+  }
+  .hero-source {
+    color: var(--sky);
+    font-weight: 600;
+  }
+  .hero-source-icon {
+    width: 28px; height: 28px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 13px; color: #fff;
+  }
+  .hero-dot {
+    width: 4px; height: 4px;
+    background: rgba(255,255,255,0.5);
+    border-radius: 50%;
+  }
+
+  /* ════════════════════════════════════════
+     2. GREETING STRIP
+  ════════════════════════════════════════ */
+  .greeting {
+    margin: 12px 16px 4px;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: 0;
+    transform: translateY(15px);
+    animation: staggerIn 0.5s ease forwards;
+    animation-delay: 0.1s;
+  }
+  .greeting-icon { font-size: 22px; }
+  .greeting-name { font-weight: 800; font-size: 15px; }
+  .greeting-date { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+  /* ════════════════════════════════════════
+     3. BREAKING STRIP (auto-scroll)
+  ════════════════════════════════════════ */
+  .breaking-strip {
+    margin: 10px 16px 0;
+    padding: 10px 12px;
+    background: rgba(220,38,38,0.08);
+    border: 1px solid rgba(220,38,38,0.3);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    opacity: 0;
+    transform: translateY(15px);
+    animation: staggerIn 0.5s ease forwards;
+    animation-delay: 0.2s;
+  }
+  .breaking-badge {
+    padding: 4px 8px;
+    background: var(--breaking);
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 800;
+    color: #fff;
+    white-space: nowrap;
+  }
+  .breaking-text-container {
+    flex: 1;
+    height: 24px;
+    overflow: hidden;
+    position: relative;
+  }
+  .breaking-slider {
+    display: flex;
+    flex-direction: column;
+    animation: breakingScroll 12s ease-in-out infinite;
+  }
+  .breaking-item {
+    height: 24px;
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+  }
+  @keyframes breakingScroll {
+    0%, 28% { transform: translateY(0); }
+    33%, 61% { transform: translateY(-24px); }
+    66%, 95% { transform: translateY(-48px); }
+    100% { transform: translateY(0); }
+  }
+
+  /* ════════════════════════════════════════
+     4. TRENDING CHIPS (horizontal scroll)
+  ════════════════════════════════════════ */
+  .trending-section {
+    opacity: 0;
+    transform: translateY(15px);
+    animation: staggerIn 0.5s ease forwards;
+    animation-delay: 0.3s;
+  }
+  .section-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px 8px;
+  }
+  .section-row .title-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .section-title {
+    font-weight: 800;
+    font-size: 14px;
+  }
+  .section-link {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--sky);
+    cursor: pointer;
+  }
+  .chips-rail {
+    display: flex;
+    gap: 6px;
+    padding: 0 14px 4px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .chips-rail::-webkit-scrollbar { display: none; }
+  .chip {
+    padding: 7px 14px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.25s;
+    color: var(--text-muted);
+  }
+  .chip:hover {
+    background: var(--purple);
+    color: #fff;
+    transform: scale(1.05);
+  }
+
+  /* ════════════════════════════════════════
+     5. QUICK ACCESS — 3 Cards
+  ════════════════════════════════════════ */
+  .quick-row {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px 4px;
+    opacity: 0;
+    transform: translateY(15px);
+    animation: staggerIn 0.5s ease forwards;
+    animation-delay: 0.4s;
+  }
+  .quick-card {
+    flex: 1;
+    height: 100px;
+    border-radius: 18px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+  .quick-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+  }
+  .quick-card.ai { background: linear-gradient(135deg, #6366F1, #4338CA); }
+  .quick-card.morning { background: linear-gradient(135deg, #F59E0B, #B45309); }
+  .quick-card.weekly { background: linear-gradient(135deg, #10B981, #047857); }
+  .quick-icon {
+    width: 32px; height: 32px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    margin-bottom: auto;
+  }
+  .quick-title { font-weight: 800; font-size: 12px; color: #fff; }
+  .quick-sub { font-size: 10px; color: rgba(255,255,255,0.5); margin-top: 1px; }
+
+  /* ════════════════════════════════════════
+     6. ARTICLE CARDS — Staggered + Flip
+  ════════════════════════════════════════ */
+  .articles-section {
+    padding: 0 16px;
+  }
+  .article-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 10px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.3s;
+    opacity: 0;
+    transform: translateY(20px);
+    perspective: 1000px;
+  }
+  .article-card.visible {
+    animation: staggerIn 0.5s ease forwards;
+  }
+  .article-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+    border-color: rgba(255,255,255,0.1);
+  }
+
+  .card-inner {
+    position: relative;
+    transition: transform 0.6s;
+    transform-style: preserve-3d;
+  }
+  .article-card.flipped .card-inner {
+    transform: rotateY(180deg);
+  }
+  .card-front, .card-back {
+    backface-visibility: hidden;
+  }
+  .card-back {
+    position: absolute;
+    inset: 0;
+    transform: rotateY(180deg);
+    background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(67,56,202,0.05));
+    border-radius: 10px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .card-back .ai-badge {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 800; color: #818CF8;
+    margin-bottom: 8px;
+  }
+  .card-back .ai-text {
+    font-size: 12px; line-height: 1.7;
+    color: rgba(255,255,255,0.75);
+  }
+
+  .card-image {
+    width: 100%;
+    aspect-ratio: 16/9;
+    border-radius: 10px;
+    object-fit: cover;
+    background: linear-gradient(135deg, var(--border), var(--card));
+    display: block;
+    position: relative;
+    overflow: hidden;
+  }
+  .card-image-placeholder {
+    width: 100%;
+    aspect-ratio: 16/9;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #1a2236, #111827);
+    position: relative;
+    overflow: hidden;
+  }
+  /* Shimmer effect */
+  .shimmer {
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.05) 50%, transparent 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    position: absolute;
+    inset: 0;
+  }
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  .card-img-wrapper {
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .reading-time {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    padding: 3px 8px;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .flip-hint {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    padding: 3px 8px;
+    background: linear-gradient(135deg, #6366F1, #4338CA);
+    border-radius: 6px;
+    font-size: 9px;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  .flip-hint:hover { transform: scale(1.05); }
+
+  .card-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .cat-chip {
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .cat-chip.political { background: rgba(29,78,216,0.12); color: #3B82F6; }
+  .cat-chip.economic { background: rgba(5,150,105,0.12); color: #10B981; }
+  .cat-chip.sports { background: rgba(8,145,178,0.12); color: #06B6D4; }
+  .breaking-chip { background: var(--breaking); color: #fff; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+
+  .card-title {
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.5;
+    margin-top: 6px;
+  }
+  .card-excerpt {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin-top: 4px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .card-source-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .source-badge {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+  }
+  .source-name { font-size: 12px; font-weight: 600; color: var(--sky); }
+  .card-time { font-size: 11px; color: var(--text-muted); margin-right: auto; }
+
+  /* ── Action Bar ── */
+  .action-bar {
+    display: flex;
+    align-items: center;
+    padding-top: 8px;
+    margin-top: 8px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    gap: 4px;
+  }
+  .action-btn {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    background: none;
+    font-family: inherit;
+  }
+  .action-btn:hover { background: rgba(255,255,255,0.06); }
+  .action-btn.liked { color: #EF4444; }
+  .action-btn.bookmarked { color: var(--sky); }
+  .action-btn .emoji { font-size: 16px; }
+  .action-spacer { flex: 1; }
+
+  /* Swipe indicator */
+  .swipe-indicator {
+    display: none;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 10px 16px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .swipe-indicator.bookmark {
+    left: 10px;
+    background: var(--sky);
+  }
+
+  /* ════════════════════════════════════════
+     7. EVOLVING STORIES CAROUSEL
+  ════════════════════════════════════════ */
+  .stories-section {
+    opacity: 0;
+    transform: translateY(15px);
+    animation: staggerIn 0.5s ease forwards;
+    animation-delay: 0.7s;
+  }
+  .stories-carousel {
+    display: flex;
+    gap: 8px;
+    padding: 0 12px 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .stories-carousel::-webkit-scrollbar { display: none; }
+  .story-card {
+    min-width: 200px;
+    max-width: 200px;
+    border-radius: 18px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s;
+    flex-shrink: 0;
+    background: var(--card);
+  }
+  .story-card:hover { transform: translateY(-3px); }
+  .story-cover {
+    height: 110px;
+    position: relative;
+    overflow: hidden;
+  }
+  .story-cover-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: linear-gradient(135deg, rgba(13,148,136,0.2), rgba(13,148,136,0.05));
+  }
+  .story-cover-gradient {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.5) 100%);
+  }
+  .story-accent-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .story-live {
+    position: absolute;
+    top: 8px; left: 8px;
+    padding: 2px 6px;
+    background: var(--breaking);
+    border-radius: 6px;
+    font-size: 9px;
+    font-weight: 800;
+    color: #fff;
+  }
+  .story-count {
+    position: absolute;
+    bottom: 8px; left: 8px;
+    padding: 2px 6px;
+    background: rgba(0,0,0,0.5);
+    border-radius: 6px;
+    font-size: 9px;
+    font-weight: 700;
+    color: #fff;
+  }
+  .story-text {
+    padding: 10px;
+  }
+  .story-name {
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .story-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.4;
+    margin-top: 4px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* ════════════════════════════════════════
+     8. BOTTOM NAV
+  ════════════════════════════════════════ */
+  .bottom-nav {
+    position: sticky;
+    bottom: 0;
+    background: var(--card);
+    border-top: 1px solid var(--border);
+    display: flex;
+    padding: 6px 0 28px;
+    z-index: 100;
+  }
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    font-size: 10px;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding-top: 6px;
+    transition: all 0.2s;
+    border: none;
+    background: none;
+    font-family: inherit;
+  }
+  .nav-item.active { color: var(--primary); }
+  .nav-item .nav-icon { font-size: 20px; }
+  .nav-item:hover { color: var(--primary); }
+
+  /* ── FAB ── */
+  .fab {
+    position: absolute;
+    bottom: 80px;
+    left: 20px;
+    width: 52px;
+    height: 52px;
+    background: linear-gradient(135deg, #6366F1, #4338CA);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 6px 24px rgba(99,102,241,0.4);
+    z-index: 90;
+    transition: transform 0.2s;
+  }
+  .fab:hover { transform: scale(1.08); }
+
+  /* ── Reaction Picker ── */
+  .reaction-picker {
+    position: absolute;
+    display: none;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 6px 8px;
+    gap: 4px;
+    z-index: 200;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+  }
+  .reaction-picker.show { display: flex; }
+  .reaction-picker span {
+    font-size: 24px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 12px;
+    transition: transform 0.15s, background 0.15s;
+  }
+  .reaction-picker span:hover {
+    transform: scale(1.4);
+    background: rgba(255,255,255,0.08);
+  }
+
+  /* ════════════════════════════════════════
+     ANNOTATIONS PANEL
+  ════════════════════════════════════════ */
+  .annotations {
+    max-width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-top: 40px;
+  }
+  .annotation {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    position: relative;
+    transition: all 0.3s;
+    border-right: 3px solid var(--purple);
+  }
+  .annotation:hover { border-color: var(--purple); }
+  .annotation .num {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 24px; height: 24px;
+    background: var(--purple);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 800; color: #fff;
+  }
+  .annotation .label {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    color: #fff;
+  }
+  .annotation .desc {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+  .annotation .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 9px;
+    font-weight: 700;
+    margin-top: 8px;
+  }
+  .tag.easy { background: rgba(16,185,129,0.15); color: #10B981; }
+  .tag.medium { background: rgba(245,158,11,0.15); color: #F59E0B; }
+  .tag.hard { background: rgba(239,68,68,0.15); color: #EF4444; }
+
+  /* ═══ Stagger Animation ═══ */
+  @keyframes staggerIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ═══ Haptic pulse ═══ */
+  @keyframes hapticPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.92); }
+    100% { transform: scale(1); }
+  }
+  .haptic { animation: hapticPulse 0.15s ease; }
+
+  /* ═══ Transition overlay ═══ */
+  .transition-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 500;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .transition-overlay.show { display: flex; }
+  .transition-card {
+    width: 360px;
+    background: var(--card);
+    border-radius: 20px;
+    overflow: hidden;
+    animation: zoomIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes zoomIn {
+    from { transform: scale(0.85); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .transition-close {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    width: 36px; height: 36px;
+    background: rgba(0,0,0,0.5);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    color: #fff;
+    font-size: 18px;
+    z-index: 10;
+  }
+
+  /* ═══ Responsive ═══ */
+  @media (max-width: 900px) {
+    .phone-container { flex-direction: column; align-items: center; }
+    .annotations { max-width: 390px; padding-top: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>فيد نيوز — معاينة تحسينات UI/UX</h1>
+  <p>اضغط على العناصر للتفاعل معها • اسحب للأسفل لرؤية المزيد • اضغط مطولاً على ❤️ لعرض التفاعلات</p>
+</div>
+
+<div class="controls">
+  <button class="ctrl-btn active" onclick="resetDemo()">🔄 إعادة التشغيل</button>
+  <button class="ctrl-btn" onclick="toggleFlip()">🃏 قلب البطاقة</button>
+  <button class="ctrl-btn" onclick="showTransition()">🚀 Shared Transition</button>
+  <button class="ctrl-btn" onclick="triggerHaptic()">📳 Haptic Feedback</button>
+</div>
+
+<div class="phone-container">
+
+  <!-- ═══ PHONE MOCKUP ═══ -->
+  <div class="phone" id="phone">
+    <div class="phone-scroll" id="phoneScroll">
+
+      <!-- Status Bar -->
+      <div class="status-bar">
+        <span>9:41</span>
+        <span>●●● WiFi 🔋</span>
+      </div>
+
+      <!-- App Bar -->
+      <div class="app-bar">
+        <div class="icons">
+          <div class="icon-btn">🔍</div>
+        </div>
+        <div class="logo">فيد نيوز</div>
+        <div class="icons">
+          <div class="icon-btn">🔔</div>
+        </div>
+      </div>
+
+      <!-- 1. Hero Card -->
+      <div class="hero-card" id="heroCard">
+        <div class="card-image-placeholder hero-img" id="heroImg" style="background: linear-gradient(135deg, #1a365d, #2d1b4e, #1a1a2e); display: flex; align-items: center; justify-content: center;">
+          <div style="text-align: center; opacity: 0.3;">
+            <div style="font-size: 48px;">📰</div>
+            <div style="font-size: 12px; margin-top: 8px; color: #fff;">Hero Image — Parallax</div>
+          </div>
+        </div>
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+          <span class="hero-badge">🔴 سياسة</span>
+          <div class="hero-title">مجلس الأمن يعقد جلسة طارئة لمناقشة التطورات الأخيرة في المنطقة</div>
+          <div class="hero-meta">
+            <div class="hero-source-icon">ر</div>
+            <span class="hero-source">رويترز</span>
+            <div class="hero-dot"></div>
+            <span>منذ 12 دقيقة</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Greeting Strip -->
+      <div class="greeting">
+        <div class="greeting-icon">☀️</div>
+        <div>
+          <div class="greeting-name">مساء الخير، أسامة</div>
+          <div class="greeting-date">السبت، 3 مايو 2025</div>
+        </div>
+      </div>
+
+      <!-- 3. Breaking Strip -->
+      <div class="breaking-strip">
+        <div class="breaking-badge">عاجل</div>
+        <div class="breaking-text-container">
+          <div class="breaking-slider">
+            <div class="breaking-item">وزير الخارجية يصل القاهرة لبحث المستجدات</div>
+            <div class="breaking-item">البنك المركزي يخفض سعر الفائدة بمقدار 50 نقطة</div>
+            <div class="breaking-item">اتفاق جديد لوقف إطلاق النار يدخل حيز التنفيذ</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Trending Chips -->
+      <div class="trending-section">
+        <div class="section-row">
+          <div class="title-group">
+            <span style="color: #EF4444;">🔥</span>
+            <span class="section-title">الأكثر تداولاً</span>
+          </div>
+          <span class="section-link">عرض الكل</span>
+        </div>
+        <div class="chips-rail">
+          <div class="chip"># وقف_إطلاق_النار</div>
+          <div class="chip"># أسعار_الذهب</div>
+          <div class="chip"># دوري_أبطال_أوروبا</div>
+          <div class="chip"># تغير_المناخ</div>
+          <div class="chip"># الذكاء_الاصطناعي</div>
+          <div class="chip"># فلسطين</div>
+        </div>
+      </div>
+
+      <!-- 5. Quick Access -->
+      <div class="quick-row">
+        <div class="quick-card ai" onclick="this.classList.add('haptic'); setTimeout(()=>this.classList.remove('haptic'),200)">
+          <div class="quick-icon">✨</div>
+          <div class="quick-title">اسأل الأخبار</div>
+          <div class="quick-sub">ذكاء اصطناعي</div>
+        </div>
+        <div class="quick-card morning" onclick="this.classList.add('haptic'); setTimeout(()=>this.classList.remove('haptic'),200)">
+          <div class="quick-icon">☀️</div>
+          <div class="quick-title">بريفينغ الصباح</div>
+          <div class="quick-sub">ملخص يومك</div>
+        </div>
+        <div class="quick-card weekly" onclick="this.classList.add('haptic'); setTimeout(()=>this.classList.remove('haptic'),200)">
+          <div class="quick-icon">📅</div>
+          <div class="quick-title">مراجعة الأسبوع</div>
+          <div class="quick-sub">أبرز الأحداث</div>
+        </div>
+      </div>
+
+      <!-- Section: Latest Articles -->
+      <div class="section-row">
+        <div class="title-group">
+          <span>📰</span>
+          <span class="section-title">آخر الأخبار</span>
+        </div>
+        <span class="section-link">عرض الكل</span>
+      </div>
+
+      <!-- Article Cards -->
+      <div class="articles-section">
+
+        <!-- Card 1 -->
+        <div class="article-card" id="card1">
+          <div class="card-inner">
+            <div class="card-front">
+              <div class="card-img-wrapper">
+                <div class="card-image-placeholder" style="background: linear-gradient(135deg, #1e3a5f, #0f1f36); display: flex; align-items: center; justify-content: center;">
+                  <span style="font-size: 32px; opacity: 0.2;">📸</span>
+                </div>
+                <div class="reading-time">⏱ 4 دقائق قراءة</div>
+                <div class="flip-hint" onclick="event.stopPropagation(); document.getElementById('card1').classList.toggle('flipped')">✨ ملخص AI</div>
+              </div>
+              <div class="card-meta">
+                <span class="cat-chip political">🏛 سياسة</span>
+                <span style="flex:1"></span>
+                <span style="font-size:11px; color: var(--text-muted)">منذ 25 دقيقة</span>
+              </div>
+              <div class="card-title">الأمم المتحدة تدعو لحوار شامل بين جميع الأطراف لتحقيق السلام المستدام</div>
+              <div class="card-excerpt">دعا الأمين العام للأمم المتحدة جميع الأطراف إلى الجلوس على طاولة الحوار والعمل نحو حل سياسي شامل</div>
+              <div class="card-source-row">
+                <div class="source-badge" style="background: rgba(56,189,248,0.15); color: var(--sky);">ج</div>
+                <span class="source-name">الجزيرة</span>
+              </div>
+              <div class="action-bar">
+                <button class="action-btn" id="likeBtn1" onclick="event.stopPropagation(); toggleLike(this)" oncontextmenu="event.preventDefault(); showReactions(event, this)">
+                  <span class="emoji">🤍</span> <span>42</span>
+                </button>
+                <button class="action-btn" onclick="event.stopPropagation()"><span class="emoji">💬</span> 12</button>
+                <button class="action-btn" id="bookBtn1" onclick="event.stopPropagation(); toggleBookmark(this)"><span class="emoji">🔖</span></button>
+                <span class="action-spacer"></span>
+                <button class="action-btn" onclick="event.stopPropagation()"><span class="emoji">↗️</span></button>
+              </div>
+            </div>
+            <div class="card-back" onclick="event.stopPropagation(); document.getElementById('card1').classList.toggle('flipped')">
+              <div class="ai-badge">✨ ملخص AI</div>
+              <div class="ai-text">دعا الأمين العام للأمم المتحدة كافة الأطراف المعنية إلى حوار سياسي شامل، مؤكداً أن الحل العسكري لن يحقق سلاماً مستداماً. وطالب المجتمع الدولي بتوفير الدعم اللازم لإنجاح المفاوضات.</div>
+              <div style="font-size:10px; color: var(--text-muted); margin-top:10px;">اضغط للرجوع ←</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2 (Compact) -->
+        <div class="article-card" id="card2">
+          <div class="card-front">
+            <div style="display: flex; gap: 10px;">
+              <div style="flex:1">
+                <div class="card-meta" style="margin-top:0">
+                  <span class="cat-chip economic">💰 اقتصاد</span>
+                </div>
+                <div class="card-title" style="font-size:14px; margin-top:4px;">أسعار الذهب تسجل ارتفاعاً قياسياً جديداً في الأسواق العالمية</div>
+                <div style="display:flex; align-items:center; gap:6px; margin-top:6px;">
+                  <span class="source-name" style="font-size:11px;">بلومبرغ</span>
+                  <span style="font-size:10px; color: var(--text-muted);">منذ ساعة</span>
+                </div>
+              </div>
+              <div style="width:84px; height:84px; border-radius:8px; background: linear-gradient(135deg, #1a3a2f, #0f1f16); display: flex; align-items: center; justify-content: center; flex-shrink:0;">
+                <span style="font-size: 24px; opacity: 0.3;">📸</span>
+              </div>
+            </div>
+            <div class="action-bar">
+              <button class="action-btn"><span class="emoji">🤍</span> 78</button>
+              <button class="action-btn"><span class="emoji">💬</span> 5</button>
+              <button class="action-btn"><span class="emoji">🔖</span></button>
+              <span class="action-spacer"></span>
+              <button class="action-btn"><span class="emoji">↗️</span></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 3 (Compact) -->
+        <div class="article-card" id="card3">
+          <div class="card-front">
+            <div style="display: flex; gap: 10px;">
+              <div style="flex:1">
+                <div class="card-meta" style="margin-top:0">
+                  <span class="cat-chip sports">⚽ رياضة</span>
+                </div>
+                <div class="card-title" style="font-size:14px; margin-top:4px;">ريال مدريد يتأهل لنهائي دوري أبطال أوروبا بفوز مثير</div>
+                <div style="display:flex; align-items:center; gap:6px; margin-top:6px;">
+                  <span class="source-name" style="font-size:11px;">بي إن سبورتس</span>
+                  <span style="font-size:10px; color: var(--text-muted);">منذ ساعتين</span>
+                </div>
+              </div>
+              <div style="width:84px; height:84px; border-radius:8px; background: linear-gradient(135deg, #1a2a3f, #0f1526); display: flex; align-items: center; justify-content: center; flex-shrink:0;">
+                <span style="font-size: 24px; opacity: 0.3;">📸</span>
+              </div>
+            </div>
+            <div class="action-bar">
+              <button class="action-btn"><span class="emoji">🤍</span> 156</button>
+              <button class="action-btn"><span class="emoji">💬</span> 34</button>
+              <button class="action-btn"><span class="emoji">🔖</span></button>
+              <span class="action-spacer"></span>
+              <button class="action-btn"><span class="emoji">↗️</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 7. Evolving Stories -->
+      <div class="stories-section">
+        <div class="section-row">
+          <div class="title-group">
+            <span>📖</span>
+            <span class="section-title">القصص المتطوّرة</span>
+          </div>
+          <span class="section-link">عرض الكل</span>
+        </div>
+        <div class="stories-carousel">
+          <div class="story-card">
+            <div class="story-cover">
+              <div class="story-cover-img" style="background: linear-gradient(135deg, rgba(13,148,136,0.3), rgba(13,148,136,0.05)); display: flex; align-items: center; justify-content: center;">
+                <span style="font-size: 36px;">🇵🇸</span>
+              </div>
+              <div class="story-cover-gradient"></div>
+              <div class="story-accent-bar" style="background: #0D9488;"></div>
+              <div class="story-live">مباشر</div>
+              <div class="story-count">47 تقرير</div>
+            </div>
+            <div class="story-text">
+              <div class="story-name">🇵🇸 حرب غزة</div>
+              <div class="story-desc">تغطية مستمرة للتطورات الميدانية والسياسية</div>
+            </div>
+          </div>
+          <div class="story-card">
+            <div class="story-cover">
+              <div class="story-cover-img" style="background: linear-gradient(135deg, rgba(245,158,11,0.3), rgba(245,158,11,0.05)); display: flex; align-items: center; justify-content: center;">
+                <span style="font-size: 36px;">💰</span>
+              </div>
+              <div class="story-cover-gradient"></div>
+              <div class="story-accent-bar" style="background: #F59E0B;"></div>
+              <div class="story-count">23 تقرير</div>
+            </div>
+            <div class="story-text">
+              <div class="story-name">💰 أزمة الاقتصاد</div>
+              <div class="story-desc">تداعيات التضخم وارتفاع الأسعار على المنطقة</div>
+            </div>
+          </div>
+          <div class="story-card">
+            <div class="story-cover">
+              <div class="story-cover-img" style="background: linear-gradient(135deg, rgba(99,102,241,0.3), rgba(99,102,241,0.05)); display: flex; align-items: center; justify-content: center;">
+                <span style="font-size: 36px;">🤖</span>
+              </div>
+              <div class="story-cover-gradient"></div>
+              <div class="story-accent-bar" style="background: #6366F1;"></div>
+              <div class="story-count">15 تقرير</div>
+            </div>
+            <div class="story-text">
+              <div class="story-name">🤖 ثورة AI</div>
+              <div class="story-desc">آخر التطورات في عالم الذكاء الاصطناعي</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="height: 20px;"></div>
+
+      <!-- Bottom Nav -->
+      <div class="bottom-nav">
+        <button class="nav-item active">
+          <span class="nav-icon">🏠</span>
+          <span>الرئيسية</span>
+        </button>
+        <button class="nav-item">
+          <span class="nav-icon">🔍</span>
+          <span>استكشف</span>
+        </button>
+        <button class="nav-item">
+          <span class="nav-icon">📋</span>
+          <span>ملخصات</span>
+        </button>
+        <button class="nav-item">
+          <span class="nav-icon">👤</span>
+          <span>متابعتي</span>
+        </button>
+        <button class="nav-item">
+          <span class="nav-icon">⚙️</span>
+          <span>حسابي</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- FAB -->
+    <div class="fab" onclick="this.classList.add('haptic'); setTimeout(()=>this.classList.remove('haptic'),200)">✨</div>
+
+    <!-- Reaction Picker (floating) -->
+    <div class="reaction-picker" id="reactionPicker">
+      <span onclick="selectReaction('👍')">👍</span>
+      <span onclick="selectReaction('❤️')">❤️</span>
+      <span onclick="selectReaction('😮')">😮</span>
+      <span onclick="selectReaction('😢')">😢</span>
+      <span onclick="selectReaction('😡')">😡</span>
+      <span onclick="selectReaction('🔥')">🔥</span>
+    </div>
+  </div>
+
+  <!-- ═══ ANNOTATIONS ═══ -->
+  <div class="annotations">
+    <div class="annotation">
+      <div class="num">1</div>
+      <div class="label">Hero Parallax</div>
+      <div class="desc">الصورة الرئيسية تتحرك بسرعة أقل من باقي المحتوى عند التمرير — يعطي إحساس بالعمق. مرّر في الهاتف لتشاهد التأثير.</div>
+      <span class="tag easy">سهل — ساعتان</span>
+    </div>
+    <div class="annotation">
+      <div class="num">2</div>
+      <div class="label">Staggered Entry</div>
+      <div class="desc">البطاقات تظهر واحدة تلو الأخرى بتأخير 100ms — بدل ظهور كل شيء مرة واحدة. اضغط "إعادة التشغيل" لمشاهدتها.</div>
+      <span class="tag easy">سهل — ساعة</span>
+    </div>
+    <div class="annotation">
+      <div class="num">3</div>
+      <div class="label">Card Flip → AI Summary</div>
+      <div class="desc">اضغط على "✨ ملخص AI" في البطاقة الأولى — البطاقة تنقلب لتعرض ملخص الذكاء الاصطناعي. تجربة ممتعة ومفيدة.</div>
+      <span class="tag medium">متوسط — 3 ساعات</span>
+    </div>
+    <div class="annotation">
+      <div class="num">4</div>
+      <div class="label">Reading Time</div>
+      <div class="desc">وقت القراءة المتوقع يظهر على كل بطاقة — يساعد المستخدم على اتخاذ قرار سريع: هل عنده وقت يقرأ الآن أم يحفظها لاحقاً؟</div>
+      <span class="tag easy">سهل — 30 دقيقة</span>
+    </div>
+    <div class="annotation">
+      <div class="num">5</div>
+      <div class="label">Reaction Picker</div>
+      <div class="desc">اضغط مطولاً على زر القلب — تظهر 6 تفاعلات متحركة كفيسبوك. التفاعلات الحالية تعمل بالفعل لكن بدون أنيميشن.</div>
+      <span class="tag medium">متوسط — ساعتان</span>
+    </div>
+    <div class="annotation">
+      <div class="num">6</div>
+      <div class="label">Floating AI Button</div>
+      <div class="desc">زر عائم دائم للوصول السريع لميزة "اسأل الأخبار" — أهم ميزة في التطبيق يجب أن تكون بضغطة واحدة من أي مكان.</div>
+      <span class="tag easy">سهل — 30 دقيقة</span>
+    </div>
+    <div class="annotation">
+      <div class="num">7</div>
+      <div class="label">Shared Transition</div>
+      <div class="desc">اضغط "Shared Transition" في الأعلى — الصورة تتحرك بسلاسة من البطاقة للشاشة الكاملة. Flutter يدعم هذا عبر Hero widget.</div>
+      <span class="tag medium">متوسط — 3 ساعات</span>
+    </div>
+    <div class="annotation">
+      <div class="num">8</div>
+      <div class="label">Stories Carousel</div>
+      <div class="desc">القصص المتطورة تعرض كـ carousel أفقي بدل الصندوق المبوّب — أسرع في التصفح وأجمل بصرياً. تم تطبيقه بالفعل!</div>
+      <span class="tag easy">✅ مطبّق</span>
+    </div>
+  </div>
+</div>
+
+<!-- Transition Overlay -->
+<div class="transition-overlay" id="transitionOverlay" onclick="hideTransition()">
+  <div class="transition-close" onclick="hideTransition()">✕</div>
+  <div class="transition-card" onclick="event.stopPropagation()">
+    <div style="height: 240px; background: linear-gradient(135deg, #1a365d, #2d1b4e); display: flex; align-items: center; justify-content: center;">
+      <span style="font-size: 48px; opacity: 0.3;">📸</span>
+    </div>
+    <div style="padding: 20px;">
+      <span class="cat-chip political" style="margin-bottom: 8px; display: inline-block;">🏛 سياسة</span>
+      <div style="font-size: 18px; font-weight: 800; line-height: 1.5; margin-top: 8px;">الأمم المتحدة تدعو لحوار شامل بين جميع الأطراف لتحقيق السلام المستدام</div>
+      <div style="font-size: 13px; color: var(--text-muted); line-height: 1.7; margin-top: 12px;">
+        دعا الأمين العام للأمم المتحدة جميع الأطراف إلى الجلوس على طاولة الحوار والعمل نحو حل سياسي شامل يضمن حقوق جميع الشعوب.
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; margin-top:16px;">
+        <div class="source-badge" style="background: rgba(56,189,248,0.15); color: var(--sky);">ج</div>
+        <span class="source-name">الجزيرة</span>
+        <div class="hero-dot"></div>
+        <span style="font-size:12px; color: var(--text-muted);">منذ 25 دقيقة</span>
+        <span style="flex:1"></span>
+        <span style="font-size:12px; color: var(--text-muted);">⏱ 4 دقائق قراءة</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Parallax on scroll
+  const phoneScroll = document.getElementById('phoneScroll');
+  const heroImg = document.getElementById('heroImg');
+  phoneScroll.addEventListener('scroll', () => {
+    const scrollY = phoneScroll.scrollTop;
+    if (heroImg) {
+      heroImg.style.transform = `translateY(${scrollY * 0.3}px)`;
+    }
+  });
+
+  // Staggered entry with IntersectionObserver
+  const cards = document.querySelectorAll('.article-card');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, i) => {
+      if (entry.isIntersecting) {
+        const delay = Array.from(cards).indexOf(entry.target) * 0.12;
+        entry.target.style.animationDelay = `${delay + 0.5}s`;
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1 });
+  cards.forEach(card => observer.observe(card));
+
+  // Toggle like
+  function toggleLike(btn) {
+    btn.classList.toggle('liked');
+    const emoji = btn.querySelector('.emoji');
+    emoji.textContent = btn.classList.contains('liked') ? '❤️' : '🤍';
+    btn.classList.add('haptic');
+    setTimeout(() => btn.classList.remove('haptic'), 200);
+  }
+
+  // Toggle bookmark
+  function toggleBookmark(btn) {
+    btn.classList.toggle('bookmarked');
+    const emoji = btn.querySelector('.emoji');
+    emoji.textContent = btn.classList.contains('bookmarked') ? '🔖' : '🔖';
+    btn.classList.add('haptic');
+    setTimeout(() => btn.classList.remove('haptic'), 200);
+  }
+
+  // Reaction picker
+  let currentReactionBtn = null;
+  function showReactions(e, btn) {
+    e.preventDefault();
+    currentReactionBtn = btn;
+    const picker = document.getElementById('reactionPicker');
+    const rect = btn.getBoundingClientRect();
+    const phoneRect = document.getElementById('phone').getBoundingClientRect();
+    picker.style.right = (phoneRect.right - rect.right) + 'px';
+    picker.style.bottom = (phoneRect.bottom - rect.top + 8) + 'px';
+    picker.classList.add('show');
+    setTimeout(() => {
+      document.addEventListener('click', hideReactions, { once: true });
+    }, 10);
+  }
+  function hideReactions() {
+    document.getElementById('reactionPicker').classList.remove('show');
+  }
+  function selectReaction(emoji) {
+    if (currentReactionBtn) {
+      currentReactionBtn.querySelector('.emoji').textContent = emoji;
+      currentReactionBtn.classList.add('liked', 'haptic');
+      setTimeout(() => currentReactionBtn.classList.remove('haptic'), 200);
+    }
+    hideReactions();
+  }
+
+  // Long press for reactions on mobile
+  let longPressTimer;
+  document.querySelectorAll('.action-btn').forEach(btn => {
+    if (btn.id && btn.id.startsWith('like')) {
+      btn.addEventListener('touchstart', (e) => {
+        longPressTimer = setTimeout(() => showReactions(e, btn), 500);
+      });
+      btn.addEventListener('touchend', () => clearTimeout(longPressTimer));
+    }
+  });
+
+  // Card flip
+  function toggleFlip() {
+    document.getElementById('card1').classList.toggle('flipped');
+  }
+
+  // Shared transition
+  function showTransition() {
+    document.getElementById('transitionOverlay').classList.add('show');
+  }
+  function hideTransition() {
+    document.getElementById('transitionOverlay').classList.remove('show');
+  }
+
+  // Haptic simulation
+  function triggerHaptic() {
+    document.querySelectorAll('.quick-card').forEach((card, i) => {
+      setTimeout(() => {
+        card.classList.add('haptic');
+        setTimeout(() => card.classList.remove('haptic'), 200);
+      }, i * 100);
+    });
+  }
+
+  // Reset demo
+  function resetDemo() {
+    cards.forEach(card => {
+      card.classList.remove('visible');
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(20px)';
+    });
+    const greeting = document.querySelector('.greeting');
+    const breaking = document.querySelector('.breaking-strip');
+    const trending = document.querySelector('.trending-section');
+    const quick = document.querySelector('.quick-row');
+    const stories = document.querySelector('.stories-section');
+
+    [greeting, breaking, trending, quick, stories].forEach(el => {
+      el.style.animation = 'none';
+      el.style.opacity = '0';
+      el.offsetHeight; // force reflow
+    });
+
+    phoneScroll.scrollTo({ top: 0, behavior: 'smooth' });
+
+    setTimeout(() => {
+      greeting.style.animation = 'staggerIn 0.5s ease forwards 0.1s';
+      breaking.style.animation = 'staggerIn 0.5s ease forwards 0.2s';
+      trending.style.animation = 'staggerIn 0.5s ease forwards 0.3s';
+      quick.style.animation = 'staggerIn 0.5s ease forwards 0.4s';
+      stories.style.animation = 'staggerIn 0.5s ease forwards 0.7s';
+      cards.forEach(card => observer.observe(card));
+    }, 300);
+  }
+</script>
+
+</body>
+</html>

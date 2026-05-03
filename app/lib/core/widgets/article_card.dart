@@ -74,45 +74,56 @@ class ArticleCard extends StatelessWidget {
                     style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
               ),
             ],
-            const Spacer(),
-            if (article.publishedAt != null)
-              Text(
-                timeago.format(article.publishedAt!, locale: 'ar'),
-                style: theme.textTheme.bodySmall,
-              ),
           ],
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         Text(
           article.title,
-          style: theme.textTheme.titleMedium?.copyWith(height: 1.45),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            height: 1.5,
+            color: isDark ? Colors.white : const Color(0xFF0F172A),
+            letterSpacing: -0.2,
+          ),
           maxLines: 3,
           overflow: TextOverflow.ellipsis,
         ),
         if (article.excerpt != null && article.excerpt!.isNotEmpty) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             article.excerpt!,
-            style: theme.textTheme.bodySmall,
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.6,
+              color: isDark ? Colors.white54 : const Color(0xFF64748B),
+              fontWeight: FontWeight.w400,
+            ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
         ],
 
-        // ── Source row (sky blue) ──
-        if (article.source != null) ...[
-          const SizedBox(height: 8),
-          Row(
-            children: [
+        // ── Source + time row ──
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            if (article.source != null) ...[
               _sourceBadge(article.source!.logoLetter ?? '', article.source!.logoColor),
               const SizedBox(width: 6),
               Text(article.source!.name,
                 style: const TextStyle(color: _kSourceBlue, fontSize: 12, fontWeight: FontWeight.w600)),
             ],
-          ),
-        ],
+            const Spacer(),
+            if (article.publishedAt != null)
+              Text(
+                timeago.format(article.publishedAt!, locale: 'ar'),
+                style: TextStyle(fontSize: 11, color: isDark ? Colors.white30 : const Color(0xFF94A3B8)),
+              ),
+          ],
+        ),
 
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
 
         // ── Interactive action bar ──
         _ActionBar(article: article, isDark: isDark),
@@ -299,15 +310,15 @@ class _ActionBarState extends ConsumerState<_ActionBar> {
   Widget build(BuildContext context) {
     final bookmarks = ref.watch(bookmarkedIdsProvider);
     final isBookmarked = bookmarks.contains(widget.article.id);
-    final muted = widget.isDark ? Colors.white54 : AppColors.textMutedLight;
-    final iconSize = widget.small ? 16.0 : 18.0;
-    final fontSize = widget.small ? 10.0 : 11.0;
+    final muted = widget.isDark ? Colors.white38 : const Color(0xFF94A3B8);
+    final iconSize = widget.small ? 17.0 : 19.0;
+    final fontSize = widget.small ? 11.0 : 12.0;
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
         border: Border(top: BorderSide(
-          color: widget.isDark ? Colors.white.withOpacity(0.06) : Colors.grey.withOpacity(0.12),
+          color: widget.isDark ? Colors.white.withOpacity(0.06) : const Color(0xFFF1F5F9),
         )),
       ),
       child: Row(
@@ -330,22 +341,22 @@ class _ActionBarState extends ConsumerState<_ActionBar> {
               },
             ),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 2),
 
           // Comments
           _ActionButton(
-            icon: Icons.chat_bubble_outline,
+            icon: Icons.mode_comment_outlined,
             color: muted,
             label: widget.article.comments > 0 ? '${widget.article.comments}' : '',
             iconSize: iconSize,
             fontSize: fontSize,
             onTap: () => showCommentsSheet(context, widget.article.id),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 2),
 
           // Bookmark
           _ActionButton(
-            icon: isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+            icon: isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_outline_rounded,
             color: isBookmarked ? _kSourceBlue : muted,
             iconSize: iconSize,
             fontSize: fontSize,
@@ -370,13 +381,13 @@ class _ActionBarState extends ConsumerState<_ActionBar> {
 
           // Share
           _ActionButton(
-            icon: Icons.share_outlined,
+            icon: Icons.ios_share_rounded,
             color: muted,
             iconSize: iconSize,
             fontSize: fontSize,
-            onTap: () {
+            onTap: () async {
               final url = 'https://feedsnews.net/article/${widget.article.slug ?? widget.article.id}';
-              Share.share('${widget.article.title}\n$url');
+              await Share.share('${widget.article.title}\n$url');
               // Fire-and-forget share tracking
               ref.read(userRepositoryProvider).trackShare(widget.article.id);
             },
@@ -414,20 +425,28 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: iconSize, color: color),
-            if (label != null && label!.isNotEmpty) ...[
-              const SizedBox(width: 3),
-              Text(label!, style: TextStyle(color: color, fontSize: fontSize, fontWeight: FontWeight.w600)),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.white.withOpacity(0.04) : const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: iconSize, color: color),
+              if (label != null && label!.isNotEmpty) ...[
+                const SizedBox(width: 4),
+                Text(label!, style: TextStyle(color: color, fontSize: fontSize, fontWeight: FontWeight.w600)),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

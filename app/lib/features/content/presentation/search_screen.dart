@@ -6,15 +6,23 @@ import '../../../core/widgets/loading_state.dart';
 import '../data/content_repository.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
-  const SearchScreen({super.key});
+  const SearchScreen({super.key, this.initialQuery = ''});
+  final String initialQuery;
 
   @override
   ConsumerState<SearchScreen> createState() => _SearchScreenState();
 }
 
 class _SearchScreenState extends ConsumerState<SearchScreen> {
-  final _ctrl = TextEditingController();
-  String _query = '';
+  late final TextEditingController _ctrl;
+  late String _query;
+
+  @override
+  void initState() {
+    super.initState();
+    _query = widget.initialQuery;
+    _ctrl = TextEditingController(text: _query);
+  }
 
   @override
   void dispose() {
@@ -28,7 +36,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       appBar: AppBar(
         title: TextField(
           controller: _ctrl,
-          autofocus: true,
+          autofocus: widget.initialQuery.isEmpty,
           textInputAction: TextInputAction.search,
           decoration: const InputDecoration(
             hintText: 'ابحث في الأخبار...',

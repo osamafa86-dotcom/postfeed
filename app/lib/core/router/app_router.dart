@@ -75,7 +75,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: '/trending', builder: (_, __) => const TrendingScreen()),
       GoRoute(path: '/clusters', builder: (_, __) => const ClustersScreen()),
-      GoRoute(path: '/search', builder: (_, __) => const SearchScreen()),
+      GoRoute(path: '/search', builder: (_, state) {
+        final q = state.uri.queryParameters['q'] ?? '';
+        return SearchScreen(initialQuery: q);
+      }),
 
       // Evolving stories
       GoRoute(path: '/stories', builder: (_, __) => const EvolvingStoriesScreen()),

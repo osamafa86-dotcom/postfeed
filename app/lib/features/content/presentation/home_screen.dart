@@ -84,8 +84,11 @@ class _HomeBody extends ConsumerWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         // ── 1. Hero Card — full-bleed at the very top ──
-        if (payload.hero != null)
-          SliverToBoxAdapter(child: _HeroCard(article: payload.hero!)),
+        // Uses API hero, falls back to latest article if none provided
+        if (payload.hero != null || payload.latest.isNotEmpty)
+          SliverToBoxAdapter(child: _HeroCard(
+            article: payload.hero ?? payload.latest.first,
+          )),
 
         // ── 2. Personal Greeting ──
         SliverToBoxAdapter(child: _GreetingStrip()),
@@ -235,7 +238,7 @@ class _CategoriesBoxState extends State<_CategoriesBox> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final bucket = widget.buckets[_selected];
-    final articles = bucket.articles.take(5).toList();
+    final articles = bucket.articles.take(6).toList();
     final color = AppColors.categoryColors[bucket.category.color] ?? AppColors.primary;
 
     return Container(
@@ -686,8 +689,15 @@ class _YoutubePreview extends ConsumerWidget {
     return feed.when(
       loading: () => const SizedBox(height: 200, child: Center(
         child: CircularProgressIndicator(color: Color(0xFFDC2626), strokeWidth: 2))),
-      error: (_, __) => const Padding(padding: EdgeInsets.all(24),
-        child: Text('تعذّر التحميل', style: TextStyle(color: Colors.white54))),
+      error: (e, __) => Padding(padding: const EdgeInsets.all(24),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text('تعذّر تحميل الفيديوهات', style: TextStyle(color: Colors.white54)),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: () => ref.invalidate(youtubeFeedProvider),
+            child: const Text('إعادة المحاولة', style: TextStyle(color: Color(0xFFDC2626), fontWeight: FontWeight.w700, fontSize: 12)),
+          ),
+        ])),
       data: (videos) {
         final preview = videos.take(5).toList();
         if (preview.isEmpty) return const Padding(padding: EdgeInsets.all(24),
@@ -924,7 +934,7 @@ class _EvolvingStoriesSection extends ConsumerWidget {
 
             // ── Horizontal cards carousel ──
             SizedBox(
-              height: 220,
+              height: 260,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -935,8 +945,8 @@ class _EvolvingStoriesSection extends ConsumerWidget {
                   return GestureDetector(
                     onTap: () => context.push('/stories/${story.slug}'),
                     child: Container(
-                      width: 200,
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      width: 240,
+                      margin: const EdgeInsets.symmetric(horizontal: 5),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(
@@ -949,7 +959,7 @@ class _EvolvingStoriesSection extends ConsumerWidget {
                           ClipRRect(
                             borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
                             child: SizedBox(
-                              height: 110,
+                              height: 140,
                               width: double.infinity,
                               child: Stack(fit: StackFit.expand, children: [
                                 if (story.coverImage != null)
@@ -1068,7 +1078,7 @@ class _QuickAccessRow extends StatelessWidget {
             title: 'اسأل الأخبار',
             subtitle: 'ذكاء اصطناعي',
             icon: Icons.auto_awesome,
-            colors: const [Color(0xFF6366F1), Color(0xFF4338CA)],
+            color: const Color(0xFF6366F1),
             onTap: () => context.push('/ask'),
           )),
           const SizedBox(width: 8),
@@ -1077,7 +1087,7 @@ class _QuickAccessRow extends StatelessWidget {
             title: 'بريفينغ الصباح',
             subtitle: 'ملخص يومك',
             icon: Icons.wb_sunny,
-            colors: const [Color(0xFFF59E0B), Color(0xFFB45309)],
+            color: const Color(0xFFF59E0B),
             onTap: () => context.push('/sabah'),
           )),
           const SizedBox(width: 8),
@@ -1086,7 +1096,7 @@ class _QuickAccessRow extends StatelessWidget {
             title: 'مراجعة الأسبوع',
             subtitle: 'أبرز الأحداث',
             icon: Icons.calendar_view_week,
-            colors: const [Color(0xFF10B981), Color(0xFF047857)],
+            color: const Color(0xFF10B981),
             onTap: () => context.push('/summaries'),
           )),
         ],
@@ -1098,46 +1108,50 @@ class _QuickAccessRow extends StatelessWidget {
 class _QuickCard extends StatelessWidget {
   const _QuickCard({
     required this.title, required this.subtitle,
-    required this.icon, required this.colors, required this.onTap,
+    required this.icon, required this.color, required this.onTap,
   });
   final String title, subtitle;
   final IconData icon;
-  final List<Color> colors;
+  final Color color;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 100,
-        padding: const EdgeInsets.all(12),
+        height: 64,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topRight, end: Alignment.bottomLeft,
-            colors: colors,
-          ),
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(color: colors[0].withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 5)),
-          ],
+          color: isDark ? Colors.white.withOpacity(0.05) : color.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withOpacity(isDark ? 0.15 : 0.12)),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
             Container(
-              width: 32, height: 32,
+              width: 36, height: 36,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(9),
+                color: color.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(10),
               ),
               alignment: Alignment.center,
-              child: Icon(icon, color: Colors.white, size: 16),
+              child: Icon(icon, color: color, size: 18),
             ),
-            const Spacer(),
-            Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12)),
-            const SizedBox(height: 1),
-            Text(subtitle, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 10)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(title, style: TextStyle(color: isDark ? Colors.white : AppColors.textLight,
+                    fontWeight: FontWeight.w700, fontSize: 11)),
+                  Text(subtitle, style: TextStyle(color: isDark ? Colors.white38 : AppColors.textMutedLight,
+                    fontSize: 9)),
+                ],
+              ),
+            ),
           ],
         ),
       ),
