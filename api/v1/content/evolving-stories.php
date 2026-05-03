@@ -20,7 +20,7 @@ $latestByStory = [];
 if (!empty($storyIds)) {
     $placeholders = implode(',', array_fill(0, count($storyIds), '?'));
     $latestRows = $db->prepare("
-        SELECT esa.story_id, a.id AS article_id, a.title, a.published_at
+        SELECT esa.story_id, a.id AS article_id, a.title, a.published_at, a.image_url
         FROM evolving_story_articles esa
         JOIN articles a ON a.id = esa.article_id
         WHERE esa.story_id IN ($placeholders)
@@ -35,6 +35,7 @@ if (!empty($storyIds)) {
                 'id' => (int)$lr['article_id'],
                 'title' => $lr['title'],
                 'published_at' => $lr['published_at'],
+                'image_url' => api_image_url($lr['image_url']),
             ];
         }
     }

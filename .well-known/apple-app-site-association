@@ -2,7 +2,7 @@
   "applinks": {
     "details": [
       {
-        "appIDs": ["TEAM_ID.net.feedsnews.app"],
+        "appIDs": ["Y4R9ZHWK9Y.net.feedsnews.newsfeed"],
         "components": [
           { "/": "/article*" },
           { "/": "/article.php*" },
@@ -14,6 +14,6 @@
     ]
   },
   "webcredentials": {
-    "apps": ["TEAM_ID.net.feedsnews.app"]
+    "apps": ["Y4R9ZHWK9Y.net.feedsnews.newsfeed"]
   }
 }

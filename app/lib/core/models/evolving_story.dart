@@ -54,11 +54,13 @@ class StoryPreviewArticle {
     required this.id,
     required this.title,
     this.publishedAt,
+    this.imageUrl,
   });
 
   final int id;
   final String title;
   final DateTime? publishedAt;
+  final String? imageUrl;
 
   factory StoryPreviewArticle.fromJson(Map<String, dynamic> j) =>
       StoryPreviewArticle(
@@ -67,6 +69,7 @@ class StoryPreviewArticle {
         publishedAt: j['published_at'] != null
             ? DateTime.tryParse(j['published_at'].toString().replaceFirst(' ', 'T'))
             : null,
+        imageUrl: j['image_url'] as String?,
       );
 }
 

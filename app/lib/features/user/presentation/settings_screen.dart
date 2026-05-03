@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
+import '../../auth/data/auth_repository.dart';
 import '../../auth/data/auth_storage.dart';
 import 'info_pages.dart';
 
@@ -79,7 +80,58 @@ class SettingsScreen extends ConsumerWidget {
           const ListTile(
             leading: Icon(Icons.info_outline),
             title: Text('الإصدار'),
-            subtitle: Text('1.23.0'),
+            subtitle: Text('2.0.0'),
+          ),
+
+          // ── حذف الحساب ──
+          if (AuthStorage.isAuthenticated) ...[
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.delete_forever, color: Colors.red),
+              title: const Text('حذف الحساب', style: TextStyle(color: Colors.red)),
+              subtitle: const Text('حذف حسابك نهائياً مع جميع بياناتك'),
+              onTap: () => _showDeleteAccountDialog(context, ref),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteAccountDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('حذف الحساب'),
+        content: const Text(
+          'هل أنت متأكد من حذف حسابك؟ سيتم حذف جميع بياناتك بشكل نهائي ولا يمكن التراجع عن هذا الإجراء.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              try {
+                await ref.read(authRepositoryProvider).deleteAccount();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('تم حذف حسابك بنجاح')),
+                  );
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                }
+              } catch (_) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('تعذّر حذف الحساب، حاول مرة أخرى')),
+                  );
+                }
+              }
+            },
+            child: const Text('حذف نهائي'),
           ),
         ],
       ),

@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dio/dio.dart' show Options;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -106,9 +107,13 @@ class _HomeBody extends ConsumerWidget {
         // ── 5. Quick Access — AI + Morning Briefing + Weekly Review ──
         SliverToBoxAdapter(child: _QuickAccessRow()),
 
-        // ── 6. Categories Box — premium tabbed design ──
+        // ── 6. Categories Box — premium tabbed design (exclude عاجل) ──
         if (payload.buckets.isNotEmpty)
-          SliverToBoxAdapter(child: _CategoriesBox(buckets: payload.buckets)),
+          SliverToBoxAdapter(child: _CategoriesBox(
+            buckets: payload.buckets.where((b) =>
+              b.category.slug != 'breaking' && b.category.name != 'عاجل'
+            ).toList(),
+          )),
 
         // ── 7. For You — personalized feed ──
         if (AuthStorage.isAuthenticated)
@@ -687,15 +692,25 @@ class _YoutubePreview extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final feed = ref.watch(youtubeFeedProvider);
     return feed.when(
-      loading: () => const SizedBox(height: 200, child: Center(
+      loading: () => const SizedBox(height: 150, child: Center(
         child: CircularProgressIndicator(color: Color(0xFFDC2626), strokeWidth: 2))),
       error: (e, __) => Padding(padding: const EdgeInsets.all(24),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Text('تعذّر تحميل الفيديوهات', style: TextStyle(color: Colors.white54)),
+          const Icon(Icons.error_outline, color: Colors.white30, size: 28),
           const SizedBox(height: 8),
+          const Text('تعذّر تحميل الفيديوهات', style: TextStyle(color: Colors.white54, fontSize: 13)),
+          const SizedBox(height: 10),
           GestureDetector(
             onTap: () => ref.invalidate(youtubeFeedProvider),
-            child: const Text('إعادة المحاولة', style: TextStyle(color: Color(0xFFDC2626), fontWeight: FontWeight.w700, fontSize: 12)),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFDC2626).withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text('إعادة المحاولة',
+                style: TextStyle(color: Color(0xFFDC2626), fontWeight: FontWeight.w700, fontSize: 12)),
+            ),
           ),
         ])),
       data: (videos) {
@@ -934,7 +949,7 @@ class _EvolvingStoriesSection extends ConsumerWidget {
 
             // ── Horizontal cards carousel ──
             SizedBox(
-              height: 260,
+              height: 290,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -942,10 +957,13 @@ class _EvolvingStoriesSection extends ConsumerWidget {
                 itemBuilder: (_, i) {
                   final story = list[i];
                   final accent = _storyAccent(story.accentColor);
+                  // Use cover_image, or fallback to first article's image
+                  final coverUrl = story.coverImage ??
+                      (story.latest.isNotEmpty ? story.latest.first.imageUrl : null);
                   return GestureDetector(
                     onTap: () => context.push('/stories/${story.slug}'),
                     child: Container(
-                      width: 240,
+                      width: 260,
                       margin: const EdgeInsets.symmetric(horizontal: 5),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(18),
@@ -959,12 +977,12 @@ class _EvolvingStoriesSection extends ConsumerWidget {
                           ClipRRect(
                             borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
                             child: SizedBox(
-                              height: 140,
+                              height: 160,
                               width: double.infinity,
                               child: Stack(fit: StackFit.expand, children: [
-                                if (story.coverImage != null)
+                                if (coverUrl != null)
                                   CachedNetworkImage(
-                                    imageUrl: story.coverImage!,
+                                    imageUrl: coverUrl,
                                     fit: BoxFit.cover,
                                     placeholder: (_, __) => Container(color: accent.withOpacity(0.1)),
                                     errorWidget: (_, __, ___) => Container(color: accent.withOpacity(0.1)),
@@ -1160,7 +1178,49 @@ class _QuickCard extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// GREETING STRIP — تحية شخصية
+// WEATHER PROVIDER — حالة الطقس
+// ═══════════════════════════════════════════════════════════════
+
+class _WeatherInfo {
+  const _WeatherInfo({required this.temp, required this.desc, required this.icon});
+  final String temp;
+  final String desc;
+  final String icon;
+}
+
+final _weatherProvider = FutureProvider<_WeatherInfo?>((ref) async {
+  try {
+    final api = ref.watch(apiClientProvider);
+    final res = await api.raw.get('https://wttr.in/?format=j1',
+      options: Options(
+        receiveTimeout: const Duration(seconds: 5),
+        headers: {'Accept': 'application/json'},
+      ),
+    );
+    final data = res.data as Map<String, dynamic>;
+    final current = (data['current_condition'] as List?)?.first as Map?;
+    if (current == null) return null;
+    final tempC = current['temp_C']?.toString() ?? '';
+    // Arabic weather description
+    final descList = current['lang_ar'] as List? ?? current['weatherDesc'] as List? ?? [];
+    final desc = descList.isNotEmpty ? (descList.first['value']?.toString() ?? '') : '';
+    final code = int.tryParse(current['weatherCode']?.toString() ?? '') ?? 0;
+    String icon;
+    if (code == 113) icon = '☀️';
+    else if (code == 116) icon = '⛅';
+    else if (code == 119 || code == 122) icon = '☁️';
+    else if (code >= 176 && code <= 356) icon = '🌧️';
+    else if (code >= 368 && code <= 395) icon = '❄️';
+    else if (code >= 200 && code <= 232) icon = '⛈️';
+    else icon = '🌤️';
+    return _WeatherInfo(temp: tempC, desc: desc, icon: icon);
+  } catch (_) {
+    return null;
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// GREETING STRIP — تحية شخصية + طقس
 // ═══════════════════════════════════════════════════════════════
 
 class _GreetingStrip extends ConsumerWidget {
@@ -1177,6 +1237,10 @@ class _GreetingStrip extends ConsumerWidget {
       data: (u) => u?.name,
       orElse: () => null,
     );
+
+    // Weather
+    final weather = ref.watch(_weatherProvider);
+    final weatherInfo = weather.maybeWhen(data: (w) => w, orElse: () => null);
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -1215,6 +1279,22 @@ class _GreetingStrip extends ConsumerWidget {
               ],
             ),
           ),
+          // Weather badge
+          if (weatherInfo != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white.withOpacity(0.06) : const Color(0xFFE0F2FE),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Text(weatherInfo.icon, style: const TextStyle(fontSize: 16)),
+                const SizedBox(width: 4),
+                Text('${weatherInfo.temp}°',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14,
+                    color: isDark ? Colors.white : AppColors.textLight)),
+              ]),
+            ),
         ],
       ),
     );

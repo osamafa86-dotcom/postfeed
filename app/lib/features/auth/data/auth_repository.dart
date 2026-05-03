@@ -62,6 +62,11 @@ class AuthRepository {
     await AuthStorage.clear();
   }
 
+  Future<void> deleteAccount() async {
+    await _api.delete('/auth/account');
+    await AuthStorage.clear();
+  }
+
   Future<AppUser> updateProfile(Map<String, dynamic> patch) async {
     final res = await _api.patch<Map<String, dynamic>>(
       '/user/profile',

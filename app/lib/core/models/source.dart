@@ -8,6 +8,7 @@ class Source {
     this.logoBg,
     this.url,
     this.articlesToday = 0,
+    this.followersCount = 0,
   });
 
   final int id;
@@ -18,6 +19,7 @@ class Source {
   final String? logoBg;
   final String? url;
   final int articlesToday;
+  final int followersCount;
 
   factory Source.fromJson(Map<String, dynamic> j) => Source(
         id: (j['id'] as num).toInt(),
@@ -28,5 +30,6 @@ class Source {
         logoBg: j['logo_bg'] as String?,
         url: j['url'] as String?,
         articlesToday: (j['articles_today'] as num?)?.toInt() ?? 0,
+        followersCount: (j['followers_count'] as num?)?.toInt() ?? 0,
       );
 }

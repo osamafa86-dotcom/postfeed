@@ -64,6 +64,7 @@ class SourceScreen extends ConsumerWidget {
                 child: _StatsBar(
                   totalArticles: profile.articles.total,
                   todayCount: profile.source.articlesToday,
+                  followersCount: profile.source.followersCount,
                   isDark: isDark,
                 ),
               ),
@@ -252,10 +253,12 @@ class _StatsBar extends StatelessWidget {
   const _StatsBar({
     required this.totalArticles,
     required this.todayCount,
+    required this.followersCount,
     required this.isDark,
   });
   final int totalArticles;
   final int todayCount;
+  final int followersCount;
   final bool isDark;
 
   @override
@@ -295,6 +298,17 @@ class _StatsBar extends StatelessWidget {
             icon: Icons.today,
             value: '$todayCount',
             label: 'أخبار اليوم',
+            isDark: isDark,
+          ),
+          Container(
+            width: 1,
+            height: 32,
+            color: isDark ? Colors.white10 : AppColors.borderLight,
+          ),
+          _StatItem(
+            icon: Icons.people_outline,
+            value: '$followersCount',
+            label: 'متابع',
             isDark: isDark,
           ),
         ],

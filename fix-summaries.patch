@@ -1,0 +1,185 @@
+diff --git a/api/v1/content/daily-summary.php b/api/v1/content/daily-summary.php
+new file mode 100644
+index 0000000..10b8742
+--- /dev/null
++++ b/api/v1/content/daily-summary.php
+@@ -0,0 +1,38 @@
++<?php
++/**
++ * GET /api/v1/content/daily-summary
++ * Returns the daily AI summary (sourced from the morning brief / sabah).
++ */
++require_once __DIR__ . '/../_bootstrap.php';
++
++api_method('GET');
++api_rate_limit('content:daily-summary', 120, 60);
++
++$date = trim((string)($_GET['date'] ?? date('Y-m-d')));
++$brief = null;
++
++try {
++    $db = getDB();
++
++    // Try today first, then fall back to the most recent available brief.
++    $st = $db->prepare("SELECT * FROM sabah_briefs WHERE brief_date = ? ORDER BY id DESC LIMIT 1");
++    $st->execute([$date]);
++    $brief = $st->fetch(PDO::FETCH_ASSOC) ?: null;
++
++    if (!$brief) {
++        $st = $db->query("SELECT * FROM sabah_briefs ORDER BY brief_date DESC, id DESC LIMIT 1");
++        $brief = $st->fetch(PDO::FETCH_ASSOC) ?: null;
++    }
++} catch (Throwable $e) {
++    error_log('daily-summary: ' . $e->getMessage());
++}
++
++if (!$brief) {
++    api_err('not_found', 'لا يوجد ملخص يومي متاح حالياً', 404);
++}
++
++api_ok([
++    'date'    => $brief['brief_date'] ?? $date,
++    'title'   => $brief['title'] ?? 'ملخص أخبار اليوم',
++    'summary' => $brief['summary'] ?? ($brief['body'] ?? ''),
++]);
+diff --git a/api/v1/index.php b/api/v1/index.php
+index 3b38bc3..8c7fb14 100644
+--- a/api/v1/index.php
++++ b/api/v1/index.php
+@@ -50,6 +50,7 @@ api_ok([
+             'GET /api/v1/content/evolving-story/book?slug=',
+             'GET /api/v1/content/news-map',
+             'GET /api/v1/content/sabah',
++            'GET /api/v1/content/daily-summary',
+             'GET /api/v1/content/weekly-rewind',
+             'GET /api/v1/content/editorial',
+             'GET /api/v1/content/corrections',
+@@ -67,6 +68,7 @@ api_ok([
+             'GET /api/v1/media/twitter',
+             'GET /api/v1/media/youtube',
+             'POST /api/v1/media/tts',
++            'GET  /api/v1/media/social-summary?platform=telegram|twitter',
+             'POST /api/v1/media/ask',
+         ],
+         'user' => [
+diff --git a/api/v1/media/social-summary.php b/api/v1/media/social-summary.php
+new file mode 100644
+index 0000000..eea5765
+--- /dev/null
++++ b/api/v1/media/social-summary.php
+@@ -0,0 +1,72 @@
++<?php
++/**
++ * GET /api/v1/media/social-summary?platform=telegram|twitter
++ * Returns the latest AI-generated summary for a social platform.
++ */
++require_once __DIR__ . '/../_bootstrap.php';
++require_once __DIR__ . '/../../../includes/ai_helper.php';
++
++api_method('GET');
++api_rate_limit('media:social-summary', 120, 60);
++
++$platform = strtolower(trim((string)($_GET['platform'] ?? '')));
++
++if (!in_array($platform, ['telegram', 'twitter'], true)) {
++    api_err('invalid_platform', 'يرجى تحديد المنصة: telegram أو twitter', 400);
++}
++
++// ── Telegram summary ──
++if ($platform === 'telegram') {
++    $latest = tg_summary_get_latest();
++    if (!$latest) {
++        api_err('not_found', 'لا يوجد ملخص تلغرام متاح حالياً', 404);
++    }
++    api_ok([
++        'platform'   => 'telegram',
++        'summary'    => $latest['summary'] ?? '',
++        'headline'   => $latest['headline'] ?? '',
++        'sections'   => $latest['sections'] ?? [],
++        'topics'     => $latest['topics'] ?? [],
++        'generated_at' => $latest['generated_at'] ?? null,
++    ]);
++}
++
++// ── Twitter summary ──
++if ($platform === 'twitter') {
++    $summary = null;
++    try {
++        $db = getDB();
++        // Try to get from twitter_summaries table if it exists
++        $tables = $db->query("SHOW TABLES LIKE 'twitter_summaries'")->fetchAll();
++        if (!empty($tables)) {
++            $row = $db->query("SELECT * FROM twitter_summaries ORDER BY created_at DESC LIMIT 1")
++                      ->fetch(PDO::FETCH_ASSOC);
++            if ($row) {
++                $summary = $row['summary'] ?? ($row['body'] ?? '');
++            }
++        }
++
++        // Fallback: generate a simple summary from recent tweets
++        if (!$summary) {
++            $tables = $db->query("SHOW TABLES LIKE 'tweets'")->fetchAll();
++            if (!empty($tables)) {
++                $tweets = $db->query("SELECT text FROM tweets WHERE is_active = 1 ORDER BY posted_at DESC LIMIT 20")
++                             ->fetchAll(PDO::FETCH_COLUMN);
++                if (!empty($tweets)) {
++                    $summary = 'أبرز ما نُشر على تويتر: ' . implode(' | ', array_slice($tweets, 0, 5));
++                }
++            }
++        }
++    } catch (Throwable $e) {
++        error_log('social-summary twitter: ' . $e->getMessage());
++    }
++
++    if (!$summary) {
++        api_err('not_found', 'لا يوجد ملخص تويتر متاح حالياً', 404);
++    }
++
++    api_ok([
++        'platform' => 'twitter',
++        'summary'  => $summary,
++    ]);
++}
+diff --git a/app/lib/features/content/presentation/summaries_screen.dart b/app/lib/features/content/presentation/summaries_screen.dart
+index aac4ed8..c47de9b 100644
+--- a/app/lib/features/content/presentation/summaries_screen.dart
++++ b/app/lib/features/content/presentation/summaries_screen.dart
+@@ -260,12 +260,33 @@ class _SummaryCard extends StatelessWidget {
+                     style: TextStyle(fontSize: 13, color: isDark ? Colors.white38 : AppColors.textMutedLight)),
+                 ],
+               ),
+-              error: (_, __) => Row(
++              error: (e, __) => Column(
++                crossAxisAlignment: CrossAxisAlignment.start,
+                 children: [
+-                  Icon(Icons.error_outline, size: 16, color: isDark ? Colors.white30 : AppColors.textMutedLight),
+-                  const SizedBox(width: 8),
+-                  Text('تعذّر تحميل الملخص',
+-                    style: TextStyle(fontSize: 13, color: isDark ? Colors.white38 : AppColors.textMutedLight)),
++                  Row(
++                    children: [
++                      Icon(Icons.error_outline, size: 16, color: isDark ? Colors.white30 : AppColors.textMutedLight),
++                      const SizedBox(width: 8),
++                      Expanded(
++                        child: Text('تعذّر تحميل الملخص',
++                          style: TextStyle(fontSize: 13, color: isDark ? Colors.white38 : AppColors.textMutedLight)),
++                      ),
++                    ],
++                  ),
++                  const SizedBox(height: 8),
++                  SizedBox(
++                    height: 30,
++                    child: TextButton.icon(
++                      onPressed: () => ref.invalidate(provider),
++                      icon: Icon(Icons.refresh, size: 14, color: gradient[0]),
++                      label: Text('إعادة المحاولة', style: TextStyle(fontSize: 12, color: gradient[0])),
++                      style: TextButton.styleFrom(
++                        padding: const EdgeInsets.symmetric(horizontal: 10),
++                        minimumSize: Size.zero,
++                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
++                      ),
++                    ),
++                  ),
+                 ],
+               ),
+               data: (summary) {

@@ -54,6 +54,13 @@ $trends = [];
 try {
     $trends = $db->query("SELECT id, title, tweet_count, search_count FROM trends ORDER BY sort_order, id LIMIT 10")->fetchAll();
 } catch (Throwable $e) {}
+// Fallback: essential Palestine topics if trends table is empty
+if (empty($trends)) {
+    $fallback = ['فلسطين', 'غزة', 'الضفة', 'الأسرى', 'القدس', 'الاستيطان'];
+    foreach ($fallback as $i => $t) {
+        $trends[] = ['id' => $i + 1, 'title' => $t, 'tweet_count' => 0, 'search_count' => 0];
+    }
+}
 
 // Ticker items.
 $ticker = [];
