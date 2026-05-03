@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../api/api_client.dart';
 import '../../features/auth/data/auth_storage.dart';
@@ -79,10 +80,11 @@ class PushService {
       return;
     }
     try {
+      final info = await PackageInfo.fromPlatform();
       await api.post('/user/devices', body: {
         'token': token,
         'platform': Platform.isIOS ? 'ios' : 'android',
-        'app_version': '1.23.0',
+        'app_version': info.version,
         'locale': 'ar',
       });
     } catch (e) {

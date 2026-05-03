@@ -288,15 +288,15 @@ class _CategoriesBoxState extends State<_CategoriesBox> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
+                    color: AppColors.primary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     Container(width: 6, height: 6,
-                      decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle)),
+                      decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle)),
                     const SizedBox(width: 4),
                     Text('مباشر', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
-                      color: Colors.green.shade700)),
+                      color: AppColors.primaryDark)),
                   ]),
                 ),
               ],
@@ -486,7 +486,7 @@ class _PlatformsBoxState extends ConsumerState<_PlatformsBox> {
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      decoration: NeoDecoration.raised(isDark: true, radius: 24, color: const Color(0xFF1A1F2E)),
+      decoration: NeoDecoration.raised(isDark: true, radius: 24, color: const Color(0xFF2A2518)),
       child: Column(
         children: [
           // ── Header ──
@@ -511,16 +511,16 @@ class _PlatformsBoxState extends ConsumerState<_PlatformsBox> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.15),
+                    color: AppColors.breaking.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red.withOpacity(0.2)),
+                    border: Border.all(color: AppColors.breaking.withOpacity(0.2)),
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     Container(width: 6, height: 6,
-                      decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle)),
+                      decoration: BoxDecoration(color: AppColors.breaking, shape: BoxShape.circle)),
                     const SizedBox(width: 4),
-                    const Text('LIVE', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800,
-                      color: Colors.red, letterSpacing: 1)),
+                    Text('LIVE', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800,
+                      color: AppColors.breaking, letterSpacing: 1)),
                   ]),
                 ),
               ],
@@ -785,7 +785,7 @@ class _SocialAiSummary extends ConsumerWidget {
               Container(
                 width: 28, height: 28,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFF6366F1), Color(0xFF4338CA)]),
+                  gradient: LinearGradient(colors: [AppColors.accent, Color(0xFF7A5F3F)]),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 alignment: Alignment.center,
@@ -916,7 +916,7 @@ class _EvolvingStoriesSection extends ConsumerWidget {
                   Container(
                     width: 32, height: 32,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [Color(0xFF0D9488), Color(0xFF14B8A6)]),
+                      gradient: LinearGradient(colors: [AppColors.primary, AppColors.primaryLight]),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     alignment: Alignment.center,
@@ -1353,7 +1353,7 @@ class _TrendingChips extends StatelessWidget {
                           color: AppColors.primary)),
                         const SizedBox(width: 4),
                         Text(t.title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
-                          color: isDark ? AppColors.textDark : const Color(0xFF1A1A2E))),
+                          color: isDark ? AppColors.textDark : AppColors.textLight)),
                       ],
                     ),
                   ),
@@ -1391,7 +1391,7 @@ class _ForYouSection extends ConsumerWidget {
                 Container(
                   width: 32, height: 32,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [Color(0xFFF59E0B), Color(0xFFEF4444)]),
+                    gradient: LinearGradient(colors: [AppColors.warning, AppColors.accent]),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   alignment: Alignment.center,

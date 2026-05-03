@@ -61,9 +61,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
             begin: Alignment.topRight,
             end: Alignment.bottomLeft,
             colors: [
-              Color(0xFF1A1A2E),
-              Color(0xFF16213E),
-              Color(0xFF0F3460),
+              Color(0xFF2C2416),
+              Color(0xFF1E1F18),
+              Color(0xFF3D5A28),
             ],
           ),
         ),

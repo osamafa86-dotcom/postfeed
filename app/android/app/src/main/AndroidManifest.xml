@@ -15,7 +15,6 @@
     <application
         android:label="فيد نيوز"
         android:icon="@mipmap/ic_launcher"
-        android:requestLegacyExternalStorage="true"
         android:usesCleartextTraffic="false"
         android:allowBackup="false"
         android:fullBackupContent="false"

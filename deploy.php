@@ -19,7 +19,11 @@ $pendingFile = sys_get_temp_dir() . '/postfeed_deploy_pending.flag';
 $logFile     = __DIR__ . '/deploy_log.txt';
 
 // --- 1. Verify HMAC signature first -----------------------------------
-$secret = getenv('DEPLOY_SECRET') ?: 'postfeed_deploy_2026';
+$secret = getenv('DEPLOY_SECRET');
+if (!$secret) {
+    http_response_code(500);
+    die('DEPLOY_SECRET env not set');
+}
 $signature = $_SERVER['HTTP_X_HUB_SIGNATURE_256'] ?? '';
 $payload = file_get_contents('php://input');
 $hash = 'sha256=' . hash_hmac('sha256', $payload, $secret);

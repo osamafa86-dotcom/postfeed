@@ -4,62 +4,63 @@ import 'package:flutter/material.dart';
 // فيد نيوز — Palestinian Identity + Neomorphism Design System
 // ═══════════════════════════════════════════════════════════════
 
-/// Palestinian flag-inspired brand palette.
+/// 🫒 زيتوني ترابي — Olive & Earth palette
+/// Inspired by Palestinian olive groves and earth.
 class AppColors {
   // ── Palestinian Identity ──
   static const Color palestineGreen  = Color(0xFF1B7A3D);
   static const Color palestineRed    = Color(0xFFCE1126);
-  static const Color palestineBlack  = Color(0xFF1A1A2E);
-  static const Color palestineWhite  = Color(0xFFF8F9FA);
+  static const Color palestineBlack  = Color(0xFF2C2416);
+  static const Color palestineWhite  = Color(0xFFF2EEE8);
 
-  // ── Primary (Green scale) ──
-  static const Color primary         = Color(0xFF1B7A3D);
-  static const Color primaryLight    = Color(0xFF43A047);
-  static const Color primaryDark     = Color(0xFF0F5722);
-  static const Color primarySurface  = Color(0xFFE0F2E5);
+  // ── Primary (Olive Green scale) ──
+  static const Color primary         = Color(0xFF5B7F3B);
+  static const Color primaryLight    = Color(0xFF7BA05A);
+  static const Color primaryDark     = Color(0xFF3D5A28);
+  static const Color primarySurface  = Color(0xFFE8EFE0);
 
   // ── Accent & Status ──
-  static const Color accent          = Color(0xFFD4A853);
+  static const Color accent          = Color(0xFF9C7B5B);
   static const Color breaking        = Color(0xFFCE1126);
-  static const Color success         = Color(0xFF10B981);
-  static const Color warning         = Color(0xFFF59E0B);
-  static const Color error           = Color(0xFFEF4444);
-  static const Color info            = Color(0xFF3B82F6);
+  static const Color success         = Color(0xFF5B7F3B);
+  static const Color warning         = Color(0xFFB8860B);
+  static const Color error           = Color(0xFFCE1126);
+  static const Color info            = Color(0xFF5A7FA0);
 
-  // ── Neomorphism Light Surfaces ──
-  static const Color neoSurface      = Color(0xFFEEF2F7);
-  static const Color neoSurfaceMid   = Color(0xFFE4E9EF);
-  static const Color neoShadowDark   = Color(0xFFC5CAD1);
+  // ── Neomorphism Light Surfaces (warm) ──
+  static const Color neoSurface      = Color(0xFFF2EEE8);
+  static const Color neoSurfaceMid   = Color(0xFFE8E3DB);
+  static const Color neoShadowDark   = Color(0xFFC5BFAB);
   static const Color neoShadowLight  = Color(0xFFFFFFFF);
-  static const Color neoCardBg       = Color(0xFFEEF2F7);
+  static const Color neoCardBg       = Color(0xFFF7F3ED);
 
-  // ── Neomorphism Dark Surfaces ──
-  static const Color neoDarkSurface  = Color(0xFF1E2230);
-  static const Color neoDarkMid      = Color(0xFF252A3A);
-  static const Color neoDarkShadow   = Color(0xFF161923);
-  static const Color neoDarkHighlight = Color(0xFF2A3045);
+  // ── Neomorphism Dark Surfaces (olive-tinted) ──
+  static const Color neoDarkSurface  = Color(0xFF1E1F18);
+  static const Color neoDarkMid      = Color(0xFF282A20);
+  static const Color neoDarkShadow   = Color(0xFF141510);
+  static const Color neoDarkHighlight = Color(0xFF323428);
 
   // ── Legacy aliases (for backward compat) ──
   static const Color surfaceLight    = neoSurface;
   static const Color surfaceDark     = neoDarkSurface;
   static const Color cardLight       = neoCardBg;
   static const Color cardDark        = neoDarkMid;
-  static const Color textLight       = Color(0xFF0F172A);
-  static const Color textDark        = Color(0xFFE5E7EB);
-  static const Color textMutedLight  = Color(0xFF64748B);
-  static const Color textMutedDark   = Color(0xFF94A3B8);
-  static const Color borderLight     = Color(0xFFDADFE6);
-  static const Color borderDark      = Color(0xFF2D3348);
+  static const Color textLight       = Color(0xFF2C2416);
+  static const Color textDark        = Color(0xFFE5E2D9);
+  static const Color textMutedLight  = Color(0xFF7A6E5D);
+  static const Color textMutedDark   = Color(0xFFA09882);
+  static const Color borderLight     = Color(0xFFDDD5C7);
+  static const Color borderDark      = Color(0xFF3A3828);
 
   // ── Category colors ──
   static const Map<String, Color> categoryColors = {
     'cat-breaking':  palestineRed,
-    'cat-political': Color(0xFF1B7A3D),
-    'cat-economic':  Color(0xFF3B82F6),
+    'cat-political': Color(0xFF5B7F3B),
+    'cat-economic':  Color(0xFF5A7FA0),
     'cat-sports':    Color(0xFFCE1126),
-    'cat-arts':      Color(0xFF7C3AED),
-    'cat-media':     Color(0xFFD97706),
-    'cat-reports':   Color(0xFF0891B2),
+    'cat-arts':      Color(0xFF8B6E9B),
+    'cat-media':     Color(0xFFB8860B),
+    'cat-reports':   Color(0xFF5A8F8F),
   };
 }
 

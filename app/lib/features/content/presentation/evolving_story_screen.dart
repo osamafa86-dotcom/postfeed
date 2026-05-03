@@ -107,7 +107,7 @@ class _StoryBody extends StatelessWidget {
                     colorBlendMode: BlendMode.darken,
                   )
                 else
-                  Container(color: const Color(0xFF1A1A2E)),
+                  Container(color: const Color(0xFF2C2416)),
 
                 // Shade overlay
                 DecoratedBox(

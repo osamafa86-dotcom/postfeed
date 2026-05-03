@@ -108,10 +108,10 @@ try {
     echo json_encode($response, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
 } catch (Exception $e) {
+    error_log('Search error: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode([
         'success' => false,
         'error' => 'خطأ في البحث',
-        'message' => $e->getMessage()
     ], JSON_UNESCAPED_UNICODE);
 }

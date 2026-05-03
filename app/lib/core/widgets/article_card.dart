@@ -80,7 +80,7 @@ class ArticleCard extends StatelessWidget {
             fontSize: 16,
             fontWeight: FontWeight.w800,
             height: 1.5,
-            color: isDark ? Colors.white : const Color(0xFF0F172A),
+            color: isDark ? Colors.white : AppColors.textLight,
             letterSpacing: -0.2,
           ),
           maxLines: 3,
@@ -93,7 +93,7 @@ class ArticleCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               height: 1.6,
-              color: isDark ? Colors.white54 : const Color(0xFF64748B),
+              color: isDark ? Colors.white54 : AppColors.textMutedLight,
               fontWeight: FontWeight.w400,
             ),
             maxLines: 2,
@@ -115,7 +115,7 @@ class ArticleCard extends StatelessWidget {
             if (article.publishedAt != null)
               Text(
                 timeago.format(article.publishedAt!, locale: 'ar'),
-                style: TextStyle(fontSize: 11, color: isDark ? Colors.white30 : const Color(0xFF94A3B8)),
+                style: TextStyle(fontSize: 11, color: isDark ? Colors.white30 : AppColors.textMutedLight),
               ),
           ],
         ),
@@ -307,7 +307,7 @@ class _ActionBarState extends ConsumerState<_ActionBar> {
   Widget build(BuildContext context) {
     final bookmarks = ref.watch(bookmarkedIdsProvider);
     final isBookmarked = bookmarks.contains(widget.article.id);
-    final muted = widget.isDark ? Colors.white38 : const Color(0xFF94A3B8);
+    final muted = widget.isDark ? Colors.white38 : AppColors.textMutedLight;
     final iconSize = widget.small ? 17.0 : 19.0;
     final fontSize = widget.small ? 11.0 : 12.0;
 
