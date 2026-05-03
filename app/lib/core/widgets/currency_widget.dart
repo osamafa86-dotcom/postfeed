@@ -84,13 +84,7 @@ class CurrencyWidget extends ConsumerWidget {
                     width: 120,
                     margin: const EdgeInsets.symmetric(horizontal: 4),
                     padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.white.withOpacity(0.04) : Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isDark ? Colors.white.withOpacity(0.06) : const Color(0xFFE2E8F0),
-                      ),
-                    ),
+                    decoration: NeoDecoration.soft(isDark: isDark, radius: 14),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -105,7 +99,7 @@ class CurrencyWidget extends ConsumerWidget {
                         const SizedBox(height: 6),
                         Text(r.rate.toStringAsFixed(r.rate < 1 ? 4 : 2),
                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900,
-                            color: const Color(0xFF38BDF8))),
+                            color: AppColors.primary)),
                         Text(r.name,
                           style: TextStyle(fontSize: 9,
                             color: isDark ? Colors.white38 : AppColors.textMutedLight),

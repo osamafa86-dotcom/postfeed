@@ -30,6 +30,7 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final home = ref.watch(homeProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -43,16 +44,28 @@ class HomeScreen extends ConsumerWidget {
             shadows: [Shadow(color: Colors.black38, blurRadius: 6)],
           ),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.search_rounded, color: Colors.white,
-            shadows: [Shadow(color: Colors.black38, blurRadius: 6)]),
-          onPressed: () => context.push('/search'),
+        leading: Container(
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.search_rounded, color: Colors.white, size: 20),
+            onPressed: () => context.push('/search'),
+          ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: Colors.white,
-              shadows: [Shadow(color: Colors.black38, blurRadius: 6)]),
-            onPressed: () => context.push('/notifications'),
+          Container(
+            margin: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.notifications_outlined, color: Colors.white, size: 20),
+              onPressed: () => context.push('/notifications'),
+            ),
           ),
         ],
       ),
@@ -63,6 +76,7 @@ class HomeScreen extends ConsumerWidget {
           onRetry: () => ref.invalidate(homeProvider),
         ),
         data: (data) => RefreshIndicator(
+          color: AppColors.primary,
           onRefresh: () async => ref.invalidate(homeProvider),
           child: _HomeBody(payload: data),
         ),
@@ -208,7 +222,7 @@ class _HeroCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(article.source!.name,
-                    style: const TextStyle(color: Color(0xFF38BDF8), fontSize: 13, fontWeight: FontWeight.w600)),
+                    style: const TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w600)),
                   Container(margin: const EdgeInsets.symmetric(horizontal: 8), width: 4, height: 4,
                     decoration: BoxDecoration(color: Colors.white.withOpacity(0.5), shape: BoxShape.circle)),
                   if (article.publishedAt != null)
@@ -248,20 +262,7 @@ class _CategoriesBoxState extends State<_CategoriesBox> {
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: isDark
-              ? [const Color(0xFF1A1A2E), const Color(0xFF16213E)]
-              : [Colors.white, const Color(0xFFF8FAFC)],
-        ),
-        boxShadow: [
-          BoxShadow(color: color.withOpacity(0.15), blurRadius: 24, offset: const Offset(0, 8)),
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2)),
-        ],
-      ),
+      decoration: NeoDecoration.raised(isDark: isDark, radius: 24),
       child: Column(
         children: [
           // ── Header with gradient accent ──
@@ -322,16 +323,13 @@ class _CategoriesBoxState extends State<_CategoriesBox> {
                       duration: const Duration(milliseconds: 250),
                       curve: Curves.easeOutCubic,
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        gradient: isActive
-                            ? LinearGradient(colors: [catColor, catColor.withOpacity(0.8)])
-                            : null,
-                        color: isActive ? null : (isDark ? Colors.white.withOpacity(0.06) : Colors.grey.withOpacity(0.08)),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: isActive
-                            ? [BoxShadow(color: catColor.withOpacity(0.35), blurRadius: 10, offset: const Offset(0, 3))]
-                            : [],
-                      ),
+                      decoration: isActive
+                          ? BoxDecoration(
+                              gradient: LinearGradient(colors: [catColor, catColor.withOpacity(0.8)]),
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [BoxShadow(color: catColor.withOpacity(0.35), blurRadius: 10, offset: const Offset(0, 3))],
+                            )
+                          : NeoDecoration.soft(isDark: isDark, radius: 20),
                       child: Text(
                         '${c.icon ?? ''} ${c.name}'.trim(),
                         style: TextStyle(
@@ -406,7 +404,7 @@ class _CategoriesBoxState extends State<_CategoriesBox> {
                               Row(children: [
                                 if (a.source != null)
                                   Text(a.source!.name, style: const TextStyle(fontSize: 11,
-                                    color: Color(0xFF38BDF8), fontWeight: FontWeight.w600)),
+                                    color: AppColors.primary, fontWeight: FontWeight.w600)),
                                 if (a.source != null && a.publishedAt != null)
                                   Text(' • ', style: TextStyle(fontSize: 11,
                                     color: isDark ? Colors.white38 : AppColors.textMutedLight)),
@@ -488,18 +486,7 @@ class _PlatformsBoxState extends ConsumerState<_PlatformsBox> {
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [const Color(0xFF0F172A), const Color(0xFF1E293B)],
-        ),
-        boxShadow: [
-          BoxShadow(color: color1.withOpacity(0.2), blurRadius: 24, offset: const Offset(0, 8)),
-          BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 8, offset: const Offset(0, 2)),
-        ],
-      ),
+      decoration: NeoDecoration.raised(isDark: true, radius: 24, color: const Color(0xFF1A1F2E)),
       child: Column(
         children: [
           // ── Header ──
@@ -941,7 +928,7 @@ class _EvolvingStoriesSection extends ConsumerWidget {
                     onTap: () => context.push('/stories-network'),
                     child: const Text('عرض الكل',
                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
-                        color: Color(0xFF38BDF8))),
+                        color: AppColors.primary)),
                   ),
                 ],
               ),
@@ -965,11 +952,7 @@ class _EvolvingStoriesSection extends ConsumerWidget {
                     child: Container(
                       width: 260,
                       margin: const EdgeInsets.symmetric(horizontal: 5),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: isDark ? Colors.white.withOpacity(0.06) : const Color(0xFFE2E8F0)),
-                      ),
+                      decoration: NeoDecoration.raised(isDark: isDark, radius: 18, intensity: 0.7),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -1139,23 +1122,25 @@ class _QuickCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 64,
+        height: 68,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: isDark ? Colors.white.withOpacity(0.05) : color.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withOpacity(isDark ? 0.15 : 0.12)),
-        ),
+        decoration: NeoDecoration.soft(isDark: isDark, radius: 16),
         child: Row(
           children: [
             Container(
-              width: 36, height: 36,
+              width: 38, height: 38,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(10),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft, end: Alignment.bottomRight,
+                  colors: [color, color.withOpacity(0.7)],
+                ),
+                borderRadius: BorderRadius.circular(11),
+                boxShadow: [
+                  BoxShadow(color: color.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 3)),
+                ],
               ),
               alignment: Alignment.center,
-              child: Icon(icon, color: color, size: 18),
+              child: Icon(icon, color: Colors.white, size: 18),
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -1165,6 +1150,7 @@ class _QuickCard extends StatelessWidget {
                 children: [
                   Text(title, style: TextStyle(color: isDark ? Colors.white : AppColors.textLight,
                     fontWeight: FontWeight.w700, fontSize: 11)),
+                  const SizedBox(height: 1),
                   Text(subtitle, style: TextStyle(color: isDark ? Colors.white38 : AppColors.textMutedLight,
                     fontSize: 9)),
                 ],
@@ -1245,23 +1231,22 @@ class _GreetingStrip extends ConsumerWidget {
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isDark
-              ? [Colors.white.withOpacity(0.04), Colors.white.withOpacity(0.02)]
-              : [const Color(0xFFF0F9FF), const Color(0xFFF8FAFC)],
-        ),
-        borderRadius: BorderRadius.circular(14),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: NeoDecoration.raised(isDark: isDark, radius: 16, intensity: 0.7),
       child: Row(
         children: [
-          Icon(
-            hour < 18 ? Icons.wb_sunny_rounded : Icons.nightlight_round,
-            color: hour < 18 ? const Color(0xFFF59E0B) : const Color(0xFF818CF8),
-            size: 22,
+          // Sun/moon icon in neo circle
+          Container(
+            width: 42, height: 42,
+            decoration: NeoDecoration.soft(isDark: isDark, radius: 12),
+            alignment: Alignment.center,
+            child: Icon(
+              hour < 18 ? Icons.wb_sunny_rounded : Icons.nightlight_round,
+              color: hour < 18 ? const Color(0xFFF59E0B) : const Color(0xFF818CF8),
+              size: 20,
+            ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1280,19 +1265,19 @@ class _GreetingStrip extends ConsumerWidget {
               ],
             ),
           ),
-          // Weather badge
+          // Weather badge — neo inset
           if (weatherInfo != null)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: isDark ? Colors.white.withOpacity(0.06) : const Color(0xFFE0F2FE),
-                borderRadius: BorderRadius.circular(10),
+                color: isDark ? AppColors.neoDarkShadow.withOpacity(0.5) : AppColors.neoSurfaceMid,
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Text(weatherInfo.icon, style: const TextStyle(fontSize: 16)),
-                const SizedBox(width: 4),
+                Text(weatherInfo.icon, style: const TextStyle(fontSize: 18)),
+                const SizedBox(width: 6),
                 Text('${weatherInfo.temp}°',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14,
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15,
                     color: isDark ? Colors.white : AppColors.textLight)),
               ]),
             ),
@@ -1320,23 +1305,31 @@ class _TrendingChips extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
           child: Row(
             children: [
-              const Icon(Icons.trending_up, size: 18, color: Color(0xFFEF4444)),
-              const SizedBox(width: 6),
+              Container(
+                width: 28, height: 28,
+                decoration: BoxDecoration(
+                  color: AppColors.breaking.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                alignment: Alignment.center,
+                child: const Icon(Icons.trending_up, size: 16, color: AppColors.breaking),
+              ),
+              const SizedBox(width: 8),
               Text('الأكثر تداولاً',
                 style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14,
                   color: isDark ? Colors.white : AppColors.textLight)),
               const Spacer(),
               GestureDetector(
                 onTap: () => context.push('/trending'),
-                child: const Text('عرض الكل',
+                child: Text('عرض الكل',
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
-                    color: Color(0xFF38BDF8))),
+                    color: AppColors.primary)),
               ),
             ],
           ),
         ),
         SizedBox(
-          height: 38,
+          height: 42,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -1344,15 +1337,23 @@ class _TrendingChips extends StatelessWidget {
             itemBuilder: (_, i) {
               final t = trends[i];
               return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 3),
-                child: ActionChip(
-                  label: Text('# ${t.title}',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white70 : AppColors.textLight)),
-                  backgroundColor: isDark ? Colors.white.withOpacity(0.06) : const Color(0xFFF1F5F9),
-                  side: BorderSide.none,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  onPressed: () => context.push('/search?q=${Uri.encodeComponent(t.title)}'),
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: GestureDetector(
+                  onTap: () => context.push('/search?q=${Uri.encodeComponent(t.title)}'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: NeoDecoration.soft(isDark: isDark, radius: 20),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('#', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800,
+                          color: AppColors.primary)),
+                        const SizedBox(width: 4),
+                        Text(t.title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white70 : AppColors.textLight)),
+                      ],
+                    ),
+                  ),
                 ),
               );
             },
@@ -1402,7 +1403,7 @@ class _ForYouSection extends ConsumerWidget {
                   onTap: () => context.push('/follow'),
                   child: Text('تعديل',
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
-                      color: const Color(0xFF38BDF8))),
+                      color: AppColors.primary)),
                 ),
               ]),
             ),
@@ -1419,12 +1420,7 @@ class _ForYouSection extends ConsumerWidget {
                     child: Container(
                       width: 200,
                       margin: const EdgeInsets.symmetric(horizontal: 4),
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.white.withOpacity(0.04) : Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isDark ? Colors.white.withOpacity(0.06) : const Color(0xFFE2E8F0)),
-                      ),
+                      decoration: NeoDecoration.raised(isDark: isDark, radius: 16, intensity: 0.7),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -1457,7 +1453,7 @@ class _ForYouSection extends ConsumerWidget {
                                 if (a.source != null)
                                   Text(a.source!.name,
                                     style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600,
-                                      color: Color(0xFF38BDF8)),
+                                      color: AppColors.primary),
                                     overflow: TextOverflow.ellipsis),
                               ],
                             ),

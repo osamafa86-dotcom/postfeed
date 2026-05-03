@@ -11,8 +11,8 @@ import '../../features/auth/data/auth_storage.dart';
 import '../../features/user/data/user_repository.dart';
 import 'comments_sheet.dart';
 
-/// Sky blue color used for source names across the app.
-const _kSourceBlue = Color(0xFF38BDF8);
+/// Brand green color used for source names across the app.
+const _kSourceGreen = AppColors.primary;
 
 class ArticleCard extends StatelessWidget {
   const ArticleCard({super.key, required this.article, this.compact = false});
@@ -22,18 +22,15 @@ class ArticleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: () => context.push('/article/${article.id}'),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(18),
         child: Container(
-          decoration: BoxDecoration(
-            color: theme.cardColor,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: theme.dividerColor),
-          ),
-          padding: const EdgeInsets.all(10),
+          decoration: NeoDecoration.raised(isDark: isDark, radius: 18, intensity: 0.8),
+          padding: const EdgeInsets.all(12),
           child: compact ? _compactLayout(context, theme) : _fullLayout(context, theme),
         ),
       ),
@@ -47,7 +44,7 @@ class ArticleCard extends StatelessWidget {
       children: [
         if (article.imageUrl != null)
           ClipRRect(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(14),
             child: AspectRatio(
               aspectRatio: 16 / 9,
               child: CachedNetworkImage(
@@ -112,7 +109,7 @@ class ArticleCard extends StatelessWidget {
               _sourceBadge(article.source!.logoLetter ?? '', article.source!.logoColor),
               const SizedBox(width: 6),
               Text(article.source!.name,
-                style: const TextStyle(color: _kSourceBlue, fontSize: 12, fontWeight: FontWeight.w600)),
+                style: const TextStyle(color: _kSourceGreen, fontSize: 12, fontWeight: FontWeight.w600)),
             ],
             const Spacer(),
             if (article.publishedAt != null)
@@ -172,7 +169,7 @@ class ArticleCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             article.source!.name,
-                            style: const TextStyle(color: _kSourceBlue, fontSize: 12, fontWeight: FontWeight.w600),
+                            style: const TextStyle(color: _kSourceGreen, fontSize: 12, fontWeight: FontWeight.w600),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -434,7 +431,7 @@ class _ActionButton extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: isDark ? Colors.white.withOpacity(0.04) : const Color(0xFFF8FAFC),
+            color: isDark ? AppColors.neoDarkShadow.withOpacity(0.4) : AppColors.neoSurfaceMid,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Row(

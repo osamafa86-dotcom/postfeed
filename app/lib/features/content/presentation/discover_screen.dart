@@ -92,25 +92,43 @@ class DiscoverScreen extends ConsumerWidget {
 
   Widget _gridCard(String label, String path, Color color) {
     return Builder(builder: (context) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
       return InkWell(
         onTap: () => context.push(path),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         child: Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: color.withOpacity(0.25)),
-          ),
+          decoration: NeoDecoration.soft(isDark: isDark, radius: 16),
           child: Row(
             children: [
+              Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                alignment: Alignment.center,
+                child: Text(label.substring(0, label.indexOf(' ')),
+                  style: const TextStyle(fontSize: 16)),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  label,
-                  style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.w700),
+                  label.substring(label.indexOf(' ') + 1),
+                  style: TextStyle(
+                    color: isDark ? Colors.white : AppColors.textLight,
+                    fontSize: 15, fontWeight: FontWeight.w700),
                 ),
               ),
-              Icon(Icons.chevron_left, color: color),
+              Container(
+                width: 28, height: 28,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                alignment: Alignment.center,
+                child: Icon(Icons.chevron_left, color: color, size: 18),
+              ),
             ],
           ),
         ),

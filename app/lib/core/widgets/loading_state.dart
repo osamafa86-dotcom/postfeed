@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
+import '../theme/app_theme.dart';
 
 class LoadingShimmerList extends StatelessWidget {
   const LoadingShimmerList({super.key, this.itemCount = 6});
@@ -7,9 +8,9 @@ class LoadingShimmerList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final base = theme.brightness == Brightness.dark ? Colors.grey.shade800 : Colors.grey.shade300;
-    final hi   = theme.brightness == Brightness.dark ? Colors.grey.shade700 : Colors.grey.shade100;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final base = isDark ? AppColors.neoDarkMid : AppColors.neoSurfaceMid;
+    final hi   = isDark ? AppColors.neoDarkHighlight : AppColors.neoShadowLight;
     return Shimmer.fromColors(
       baseColor: base,
       highlightColor: hi,
@@ -20,8 +21,8 @@ class LoadingShimmerList extends StatelessWidget {
         itemBuilder: (_, __) => Container(
           height: 120,
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
+            color: isDark ? AppColors.neoDarkMid : AppColors.neoSurface,
+            borderRadius: BorderRadius.circular(18),
           ),
         ),
       ),
@@ -42,7 +43,7 @@ class ErrorRetryView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_off_rounded, size: 56, color: Colors.grey),
+            Icon(Icons.cloud_off_rounded, size: 56, color: AppColors.textMutedLight),
             const SizedBox(height: 12),
             Text(message, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyLarge),
             if (onRetry != null) ...[
@@ -73,7 +74,7 @@ class EmptyView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 56, color: Colors.grey),
+            Icon(icon, size: 56, color: AppColors.textMutedLight),
             const SizedBox(height: 12),
             Text(message,
                 textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyLarge),

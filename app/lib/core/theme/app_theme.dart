@@ -1,33 +1,250 @@
 import 'package:flutter/material.dart';
 
-/// Brand colors mirror the website (نيوز فيد / فيد نيوز).
-class AppColors {
-  static const Color primary       = Color(0xFF0D6EFD);
-  static const Color primaryDark   = Color(0xFF0A58CA);
-  static const Color accent        = Color(0xFFD97706);
-  static const Color breaking      = Color(0xFFDC2626);
-  static const Color surfaceLight  = Color(0xFFF8FAFC);
-  static const Color surfaceDark   = Color(0xFF0B1220);
-  static const Color cardLight     = Colors.white;
-  static const Color cardDark      = Color(0xFF111827);
-  static const Color textLight     = Color(0xFF0F172A);
-  static const Color textDark      = Color(0xFFE5E7EB);
-  static const Color textMutedLight = Color(0xFF64748B);
-  static const Color textMutedDark  = Color(0xFF94A3B8);
-  static const Color borderLight   = Color(0xFFE2E8F0);
-  static const Color borderDark    = Color(0xFF1F2937);
+// ═══════════════════════════════════════════════════════════════
+// فيد نيوز — Palestinian Identity + Neomorphism Design System
+// ═══════════════════════════════════════════════════════════════
 
-  // Category colors mirror the website's css_class palette.
+/// Palestinian flag-inspired brand palette.
+class AppColors {
+  // ── Palestinian Identity ──
+  static const Color palestineGreen  = Color(0xFF1B7A3D);
+  static const Color palestineRed    = Color(0xFFCE1126);
+  static const Color palestineBlack  = Color(0xFF1A1A2E);
+  static const Color palestineWhite  = Color(0xFFF8F9FA);
+
+  // ── Primary (Green scale) ──
+  static const Color primary         = Color(0xFF1B7A3D);
+  static const Color primaryLight    = Color(0xFF43A047);
+  static const Color primaryDark     = Color(0xFF0F5722);
+  static const Color primarySurface  = Color(0xFFE0F2E5);
+
+  // ── Accent & Status ──
+  static const Color accent          = Color(0xFFD4A853);
+  static const Color breaking        = Color(0xFFCE1126);
+  static const Color success         = Color(0xFF10B981);
+  static const Color warning         = Color(0xFFF59E0B);
+  static const Color error           = Color(0xFFEF4444);
+  static const Color info            = Color(0xFF3B82F6);
+
+  // ── Neomorphism Light Surfaces ──
+  static const Color neoSurface      = Color(0xFFEEF2F7);
+  static const Color neoSurfaceMid   = Color(0xFFE4E9EF);
+  static const Color neoShadowDark   = Color(0xFFC5CAD1);
+  static const Color neoShadowLight  = Color(0xFFFFFFFF);
+  static const Color neoCardBg       = Color(0xFFEEF2F7);
+
+  // ── Neomorphism Dark Surfaces ──
+  static const Color neoDarkSurface  = Color(0xFF1E2230);
+  static const Color neoDarkMid      = Color(0xFF252A3A);
+  static const Color neoDarkShadow   = Color(0xFF161923);
+  static const Color neoDarkHighlight = Color(0xFF2A3045);
+
+  // ── Legacy aliases (for backward compat) ──
+  static const Color surfaceLight    = neoSurface;
+  static const Color surfaceDark     = neoDarkSurface;
+  static const Color cardLight       = neoCardBg;
+  static const Color cardDark        = neoDarkMid;
+  static const Color textLight       = Color(0xFF0F172A);
+  static const Color textDark        = Color(0xFFE5E7EB);
+  static const Color textMutedLight  = Color(0xFF64748B);
+  static const Color textMutedDark   = Color(0xFF94A3B8);
+  static const Color borderLight     = Color(0xFFDADFE6);
+  static const Color borderDark      = Color(0xFF2D3348);
+
+  // ── Category colors ──
   static const Map<String, Color> categoryColors = {
-    'cat-breaking':  Color(0xFFDC2626),
-    'cat-political': Color(0xFF1D4ED8),
-    'cat-economic':  Color(0xFF059669),
-    'cat-sports':    Color(0xFF0891B2),
-    'cat-arts':      Color(0xFFA21CAF),
-    'cat-media':     Color(0xFFB91C1C),
-    'cat-reports':   Color(0xFF7C3AED),
+    'cat-breaking':  palestineRed,
+    'cat-political': Color(0xFF1B7A3D),
+    'cat-economic':  Color(0xFF3B82F6),
+    'cat-sports':    Color(0xFFCE1126),
+    'cat-arts':      Color(0xFF7C3AED),
+    'cat-media':     Color(0xFFD97706),
+    'cat-reports':   Color(0xFF0891B2),
   };
 }
+
+// ═══════════════════════════════════════════════════════════════
+// Neomorphism Design Helpers
+// ═══════════════════════════════════════════════════════════════
+
+class NeoDecoration {
+  /// Raised (embossed) neomorphism box — appears to float above the surface.
+  static BoxDecoration raised({
+    bool isDark = false,
+    double radius = 18,
+    Color? color,
+    double intensity = 1.0,
+  }) {
+    final bg = color ?? (isDark ? AppColors.neoDarkMid : AppColors.neoSurface);
+    return BoxDecoration(
+      color: bg,
+      borderRadius: BorderRadius.circular(radius),
+      boxShadow: isDark
+          ? [
+              BoxShadow(
+                color: AppColors.neoDarkShadow.withOpacity(0.6 * intensity),
+                offset: Offset(5 * intensity, 5 * intensity),
+                blurRadius: 14 * intensity,
+              ),
+              BoxShadow(
+                color: AppColors.neoDarkHighlight.withOpacity(0.25 * intensity),
+                offset: Offset(-5 * intensity, -5 * intensity),
+                blurRadius: 14 * intensity,
+              ),
+            ]
+          : [
+              BoxShadow(
+                color: AppColors.neoShadowDark.withOpacity(0.4 * intensity),
+                offset: Offset(5 * intensity, 5 * intensity),
+                blurRadius: 14 * intensity,
+              ),
+              BoxShadow(
+                color: AppColors.neoShadowLight.withOpacity(0.8 * intensity),
+                offset: Offset(-5 * intensity, -5 * intensity),
+                blurRadius: 14 * intensity,
+              ),
+            ],
+    );
+  }
+
+  /// Pressed (inset) neomorphism — appears sunken into the surface.
+  static BoxDecoration inset({
+    bool isDark = false,
+    double radius = 14,
+    Color? color,
+  }) {
+    final bg = color ?? (isDark ? AppColors.neoDarkMid : AppColors.neoSurface);
+    return BoxDecoration(
+      color: bg,
+      borderRadius: BorderRadius.circular(radius),
+      boxShadow: [], // outer shadows removed for inset
+    );
+    // Note: Flutter doesn't support inner shadow natively.
+    // Use a Container with gradient overlay for true inset effect.
+  }
+
+  /// Soft raised with a single subtle shadow — for smaller elements like chips.
+  static BoxDecoration soft({
+    bool isDark = false,
+    double radius = 14,
+    Color? color,
+  }) {
+    final bg = color ?? (isDark ? AppColors.neoDarkMid : AppColors.neoSurface);
+    return BoxDecoration(
+      color: bg,
+      borderRadius: BorderRadius.circular(radius),
+      boxShadow: isDark
+          ? [
+              BoxShadow(
+                color: AppColors.neoDarkShadow.withOpacity(0.4),
+                offset: const Offset(3, 3),
+                blurRadius: 8,
+              ),
+              BoxShadow(
+                color: AppColors.neoDarkHighlight.withOpacity(0.15),
+                offset: const Offset(-3, -3),
+                blurRadius: 8,
+              ),
+            ]
+          : [
+              BoxShadow(
+                color: AppColors.neoShadowDark.withOpacity(0.3),
+                offset: const Offset(3, 3),
+                blurRadius: 8,
+              ),
+              BoxShadow(
+                color: AppColors.neoShadowLight.withOpacity(0.6),
+                offset: const Offset(-3, -3),
+                blurRadius: 8,
+              ),
+            ],
+    );
+  }
+
+  /// Primary button decoration with brand glow.
+  static BoxDecoration primaryButton({double radius = 14}) {
+    return BoxDecoration(
+      color: AppColors.primary,
+      borderRadius: BorderRadius.circular(radius),
+      boxShadow: [
+        BoxShadow(
+          color: AppColors.primary.withOpacity(0.35),
+          offset: const Offset(0, 4),
+          blurRadius: 14,
+        ),
+        BoxShadow(
+          color: AppColors.primaryDark.withOpacity(0.2),
+          offset: const Offset(0, 8),
+          blurRadius: 24,
+        ),
+      ],
+    );
+  }
+
+  /// Flag-inspired gradient (green → red → black).
+  static LinearGradient palestineGradient({
+    AlignmentGeometry begin = Alignment.centerRight,
+    AlignmentGeometry end = Alignment.centerLeft,
+  }) {
+    return LinearGradient(
+      begin: begin,
+      end: end,
+      colors: const [
+        AppColors.palestineGreen,
+        AppColors.palestineRed,
+        AppColors.palestineBlack,
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Neomorphism Card Widget
+// ═══════════════════════════════════════════════════════════════
+
+class NeoCard extends StatelessWidget {
+  const NeoCard({
+    super.key,
+    required this.child,
+    this.radius = 18,
+    this.padding,
+    this.margin,
+    this.intensity = 1.0,
+    this.color,
+    this.onTap,
+  });
+
+  final Widget child;
+  final double radius;
+  final EdgeInsetsGeometry? padding;
+  final EdgeInsetsGeometry? margin;
+  final double intensity;
+  final Color? color;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: margin,
+        padding: padding,
+        decoration: NeoDecoration.raised(
+          isDark: isDark,
+          radius: radius,
+          color: color,
+          intensity: intensity,
+        ),
+        child: child,
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// App Theme
+// ═══════════════════════════════════════════════════════════════
 
 class AppTheme {
   static const String _fontFamily = 'IBMPlexSansArabic';
@@ -38,40 +255,61 @@ class AppTheme {
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.primary,
         brightness: Brightness.light,
-        surface: AppColors.surfaceLight,
+        surface: AppColors.neoSurface,
+        primary: AppColors.primary,
       ),
-      scaffoldBackgroundColor: AppColors.surfaceLight,
-      cardColor: AppColors.cardLight,
+      scaffoldBackgroundColor: AppColors.neoSurface,
+      cardColor: AppColors.neoCardBg,
       textTheme: _textTheme(base.textTheme, AppColors.textLight, AppColors.textMutedLight),
       appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.cardLight,
+        backgroundColor: AppColors.neoSurface,
         elevation: 0,
-        scrolledUnderElevation: 0.5,
+        scrolledUnderElevation: 0,
         centerTitle: true,
         titleTextStyle: TextStyle(
           fontFamily: _fontFamily,
           fontSize: 18,
-          fontWeight: FontWeight.w700,
-          color: AppColors.textLight,
+          fontWeight: FontWeight.w800,
+          color: AppColors.primary,
         ),
         iconTheme: const IconThemeData(color: AppColors.textLight),
       ),
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
         type: BottomNavigationBarType.fixed,
         selectedItemColor: AppColors.primary,
         unselectedItemColor: AppColors.textMutedLight,
         showUnselectedLabels: true,
-        backgroundColor: AppColors.cardLight,
-        elevation: 8,
+        backgroundColor: AppColors.neoSurface,
+        elevation: 0,
+        selectedLabelStyle: const TextStyle(fontFamily: _fontFamily, fontWeight: FontWeight.w700, fontSize: 10),
+        unselectedLabelStyle: const TextStyle(fontFamily: _fontFamily, fontWeight: FontWeight.w500, fontSize: 10),
       ),
-      cardTheme: const CardThemeData(
-        color: AppColors.cardLight,
+      cardTheme: CardThemeData(
+        color: AppColors.neoCardBg,
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(14)),
-          side: BorderSide(color: AppColors.borderLight, width: 1),
+          borderRadius: const BorderRadius.all(Radius.circular(18)),
+          side: BorderSide.none,
         ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          textStyle: const TextStyle(fontFamily: _fontFamily, fontWeight: FontWeight.w700, fontSize: 15),
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: AppColors.neoSurface,
+        selectedColor: AppColors.primarySurface,
+        labelStyle: const TextStyle(fontFamily: _fontFamily, fontWeight: FontWeight.w600, fontSize: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        side: BorderSide.none,
+        elevation: 0,
       ),
       dividerTheme: const DividerThemeData(color: AppColors.borderLight, space: 1, thickness: 1),
       snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
@@ -84,40 +322,61 @@ class AppTheme {
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.primary,
         brightness: Brightness.dark,
-        surface: AppColors.surfaceDark,
+        surface: AppColors.neoDarkSurface,
+        primary: AppColors.primaryLight,
       ),
-      scaffoldBackgroundColor: AppColors.surfaceDark,
-      cardColor: AppColors.cardDark,
+      scaffoldBackgroundColor: AppColors.neoDarkSurface,
+      cardColor: AppColors.neoDarkMid,
       textTheme: _textTheme(base.textTheme, AppColors.textDark, AppColors.textMutedDark),
       appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.cardDark,
+        backgroundColor: AppColors.neoDarkSurface,
         elevation: 0,
-        scrolledUnderElevation: 0.5,
+        scrolledUnderElevation: 0,
         centerTitle: true,
         titleTextStyle: TextStyle(
           fontFamily: _fontFamily,
           fontSize: 18,
-          fontWeight: FontWeight.w700,
-          color: AppColors.textDark,
+          fontWeight: FontWeight.w800,
+          color: AppColors.primaryLight,
         ),
         iconTheme: const IconThemeData(color: AppColors.textDark),
       ),
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppColors.primary,
+        selectedItemColor: AppColors.primaryLight,
         unselectedItemColor: AppColors.textMutedDark,
         showUnselectedLabels: true,
-        backgroundColor: AppColors.cardDark,
-        elevation: 8,
+        backgroundColor: AppColors.neoDarkSurface,
+        elevation: 0,
+        selectedLabelStyle: const TextStyle(fontFamily: _fontFamily, fontWeight: FontWeight.w700, fontSize: 10),
+        unselectedLabelStyle: const TextStyle(fontFamily: _fontFamily, fontWeight: FontWeight.w500, fontSize: 10),
       ),
-      cardTheme: const CardThemeData(
-        color: AppColors.cardDark,
+      cardTheme: CardThemeData(
+        color: AppColors.neoDarkMid,
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(14)),
-          side: BorderSide(color: AppColors.borderDark, width: 1),
+          borderRadius: const BorderRadius.all(Radius.circular(18)),
+          side: BorderSide.none,
         ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primaryLight,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          textStyle: const TextStyle(fontFamily: _fontFamily, fontWeight: FontWeight.w700, fontSize: 15),
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: AppColors.neoDarkMid,
+        selectedColor: AppColors.primaryDark,
+        labelStyle: const TextStyle(fontFamily: _fontFamily, fontWeight: FontWeight.w600, fontSize: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        side: BorderSide.none,
+        elevation: 0,
       ),
       dividerTheme: const DividerThemeData(color: AppColors.borderDark, space: 1, thickness: 1),
     );

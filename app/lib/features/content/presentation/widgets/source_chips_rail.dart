@@ -36,9 +36,22 @@ class SourceChipsRail extends StatelessWidget {
                     width: 56,
                     height: 56,
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.15),
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.neoDarkMid : AppColors.neoSurface,
                       shape: BoxShape.circle,
-                      border: Border.all(color: color.withOpacity(0.3)),
+                      boxShadow: Theme.of(context).brightness == Brightness.dark
+                          ? [
+                              BoxShadow(color: AppColors.neoDarkShadow.withOpacity(0.4),
+                                offset: const Offset(2, 2), blurRadius: 6),
+                              BoxShadow(color: AppColors.neoDarkHighlight.withOpacity(0.15),
+                                offset: const Offset(-2, -2), blurRadius: 6),
+                            ]
+                          : [
+                              BoxShadow(color: AppColors.neoShadowDark.withOpacity(0.3),
+                                offset: const Offset(2, 2), blurRadius: 6),
+                              BoxShadow(color: AppColors.neoShadowLight.withOpacity(0.6),
+                                offset: const Offset(-2, -2), blurRadius: 6),
+                            ],
                     ),
                     alignment: Alignment.center,
                     child: Text(

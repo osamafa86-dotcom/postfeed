@@ -180,13 +180,13 @@ class _FollowedSourcesTab extends ConsumerWidget {
               leading: Container(
                 width: 40, height: 40,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF38BDF8).withOpacity(0.12),
+                  color: const AppColors.primary.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 alignment: Alignment.center,
                 child: Text(src.logoLetter ?? src.name.substring(0, 1),
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700,
-                        color: Color(0xFF38BDF8))),
+                        color: AppColors.primary)),
               ),
               title: Text(src.name,
                   style: TextStyle(fontWeight: FontWeight.w700,

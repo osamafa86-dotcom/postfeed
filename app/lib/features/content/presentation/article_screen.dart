@@ -43,7 +43,7 @@ class ArticleScreen extends ConsumerWidget {
           ),
           IconButton(
             icon: Icon(isBookmarked ? Icons.bookmark : Icons.bookmark_outline),
-            color: isBookmarked ? const Color(0xFF38BDF8) : null,
+            color: isBookmarked ? AppColors.primary : null,
             onPressed: () async {
               if (!AuthStorage.isAuthenticated) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -130,7 +130,7 @@ class _ReadProgressBarState extends State<_ReadProgressBar> {
       value: _progress,
       minHeight: 2,
       backgroundColor: Colors.transparent,
-      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF38BDF8)),
+      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
     );
   }
 }
@@ -383,14 +383,8 @@ class _TtsPlayerState extends ConsumerState<_TtsPlayer> {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.04) : const Color(0xFFF0F9FF),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark ? Colors.white.withOpacity(0.06) : const Color(0xFFBAE6FD),
-        ),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: NeoDecoration.soft(isDark: isDark, radius: 14),
       child: Row(
         children: [
           // Play/Pause button
@@ -399,7 +393,7 @@ class _TtsPlayerState extends ConsumerState<_TtsPlayer> {
             child: Container(
               width: 38, height: 38,
               decoration: BoxDecoration(
-                color: const Color(0xFF38BDF8),
+                color: const AppColors.primary,
                 borderRadius: BorderRadius.circular(10),
               ),
               alignment: Alignment.center,
@@ -437,9 +431,9 @@ class _TtsPlayerState extends ConsumerState<_TtsPlayer> {
                           data: SliderThemeData(
                             trackHeight: 3,
                             thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
-                            activeTrackColor: const Color(0xFF38BDF8),
+                            activeTrackColor: const AppColors.primary,
                             inactiveTrackColor: isDark ? Colors.white12 : const Color(0xFFE0F2FE),
-                            thumbColor: const Color(0xFF38BDF8),
+                            thumbColor: const AppColors.primary,
                             overlayShape: SliderComponentShape.noOverlay,
                           ),
                           child: Slider(
@@ -497,13 +491,10 @@ class _QuickActions extends StatelessWidget {
   Widget _chip(IconData icon, String label, Color muted, bool isDark, {VoidCallback? onTap}) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(10),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: isDark ? Colors.white.withOpacity(0.04) : Colors.grey.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(8),
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: NeoDecoration.soft(isDark: isDark, radius: 10),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [

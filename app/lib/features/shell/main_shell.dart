@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../content/presentation/discover_screen.dart';
 import '../content/presentation/home_screen.dart';
 import '../content/presentation/summaries_screen.dart';
@@ -50,22 +51,46 @@ class _MainShellState extends State<MainShell> {
     final loc = widget.state.uri.toString();
     final index = _indexFor(loc);
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       body: IndexedStack(
         index: index,
         children: _pages,
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: index,
-        onTap: (i) => context.go(MainShell._tabs[i].path),
-        items: [
-          for (final t in MainShell._tabs)
-            BottomNavigationBarItem(
-              icon: Icon(t.icon),
-              activeIcon: Icon(t.sel),
-              label: t.label,
-            ),
-        ],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.neoDarkSurface : AppColors.neoSurface,
+          boxShadow: isDark
+              ? [
+                  BoxShadow(color: AppColors.neoDarkShadow.withOpacity(0.5),
+                    offset: const Offset(0, -3), blurRadius: 10),
+                ]
+              : [
+                  BoxShadow(color: AppColors.neoShadowDark.withOpacity(0.25),
+                    offset: const Offset(0, -3), blurRadius: 10),
+                  BoxShadow(color: AppColors.neoShadowLight.withOpacity(0.7),
+                    offset: const Offset(0, -1), blurRadius: 4),
+                ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: index,
+          onTap: (i) => context.go(MainShell._tabs[i].path),
+          items: [
+            for (final t in MainShell._tabs)
+              BottomNavigationBarItem(
+                icon: Icon(t.icon),
+                activeIcon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(t.sel, color: AppColors.primary),
+                ),
+                label: t.label,
+              ),
+          ],
+        ),
       ),
     );
   }
