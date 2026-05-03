@@ -1353,7 +1353,7 @@ class _TrendingChips extends StatelessWidget {
                           color: AppColors.primary)),
                         const SizedBox(width: 4),
                         Text(t.title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
-                          color: isDark ? Colors.white70 : AppColors.textLight)),
+                          color: isDark ? AppColors.textDark : const Color(0xFF1A1A2E))),
                       ],
                     ),
                   ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/article_card.dart';
 import '../../../core/widgets/loading_state.dart';
 import '../data/content_repository.dart';
@@ -29,7 +30,13 @@ class TrendingScreen extends ConsumerWidget {
                 children: [
                   for (final t in d.tags)
                     ActionChip(
-                      label: Text('# ${t.title}'),
+                      label: Text('# ${t.title}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppColors.textDark
+                              : AppColors.textLight,
+                        )),
                       onPressed: () => context.push('/search?q=${Uri.encodeComponent(t.title)}'),
                     ),
                 ],

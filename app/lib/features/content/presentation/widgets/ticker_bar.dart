@@ -65,7 +65,12 @@ class _TickerBarState extends State<TickerBar> {
                       t.text,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.textDark
+                            : AppColors.textLight,
+                      ),
                     ),
                   ),
                 );

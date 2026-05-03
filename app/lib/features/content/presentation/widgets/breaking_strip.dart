@@ -80,7 +80,12 @@ class _BreakingStripState extends State<BreakingStrip> {
                         a.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppColors.textDark
+                              : AppColors.textLight,
+                        ),
                       ),
                     ),
                   );
