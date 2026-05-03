@@ -317,7 +317,7 @@ class _ProfileHeader extends StatelessWidget {
                   radius: 44,
                   backgroundColor: AppColors.primary,
                   child: Text(
-                    user.avatarLetter ?? user.name.isNotEmpty ? user.name[0] : 'م',
+                    user.avatarLetter ?? (user.name.isNotEmpty ? user.name[0] : 'م'),
                     style: const TextStyle(
                       color: Colors.white, fontSize: 38, fontWeight: FontWeight.w900),
                   ),

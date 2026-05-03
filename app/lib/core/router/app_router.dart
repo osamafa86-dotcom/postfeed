@@ -51,12 +51,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/', builder: (_, __) => const _HomeRoot()),
           GoRoute(path: '/discover', builder: (_, __) => const _DiscoverRoot()),
           GoRoute(path: '/summaries', builder: (_, __) => const _SummariesRoot()),
-          GoRoute(path: '/platforms', builder: (_, __) => const PlatformsScreen()),
           GoRoute(path: '/follow', builder: (_, __) => const _FollowRoot()),
           GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
         ],
       ),
 
+      GoRoute(
+        path: '/platforms',
+        builder: (_, __) => const PlatformsScreen(),
+      ),
       GoRoute(
         path: '/article/:id',
         builder: (_, s) => ArticleScreen(id: int.parse(s.pathParameters['id']!)),
