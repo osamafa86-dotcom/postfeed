@@ -15,6 +15,50 @@ import '../../features/auth/data/auth_storage.dart';
 class PushService {
   static final FlutterLocalNotificationsPlugin _local = FlutterLocalNotificationsPlugin();
 
+  /// Android notification channels for smart notifications.
+  static const _channels = [
+    AndroidNotificationChannel(
+      'breaking', 'الأخبار العاجلة',
+      description: 'إشعارات الأخبار العاجلة والتحديثات الهامة',
+      importance: Importance.max,
+    ),
+    AndroidNotificationChannel(
+      'daily', 'ملخص الصباح',
+      description: 'ملخص يومي بأهم الأخبار',
+      importance: Importance.defaultImportance,
+    ),
+    AndroidNotificationChannel(
+      'categories', 'أقسامك المفضلة',
+      description: 'أخبار جديدة في الأقسام التي تتابعها',
+      importance: Importance.defaultImportance,
+    ),
+    AndroidNotificationChannel(
+      'sources', 'مصادرك المفضلة',
+      description: 'تحديثات من المصادر التي تتابعها',
+      importance: Importance.defaultImportance,
+    ),
+    AndroidNotificationChannel(
+      'stories', 'القصص المتطورة',
+      description: 'تطورات جديدة في القصص التي تتابعها',
+      importance: Importance.defaultImportance,
+    ),
+    AndroidNotificationChannel(
+      'trending', 'الأكثر تداولاً',
+      description: 'عندما يبدأ موضوع بالانتشار',
+      importance: Importance.low,
+    ),
+    AndroidNotificationChannel(
+      'weekly', 'مراجعة الأسبوع',
+      description: 'ملخص أسبوعي بأهم الأحداث',
+      importance: Importance.low,
+    ),
+    AndroidNotificationChannel(
+      'comments', 'ردود وتفاعلات',
+      description: 'عندما يرد أحد على تعليقك',
+      importance: Importance.defaultImportance,
+    ),
+  ];
+
   static Future<void> init({required ApiClient api}) async {
     try {
       await Firebase.initializeApp();
@@ -40,29 +84,45 @@ class PushService {
       const InitializationSettings(android: androidInit, iOS: iosInit),
     );
 
+    // Create all Android notification channels
+    if (Platform.isAndroid) {
+      final androidPlugin = _local.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      if (androidPlugin != null) {
+        for (final ch in _channels) {
+          await androidPlugin.createNotificationChannel(ch);
+        }
+      }
+    }
+
     if (Platform.isIOS) {
       await messaging.setForegroundNotificationPresentationOptions(
         alert: true, badge: true, sound: true,
       );
     }
 
-    // Foreground messages -> show local notification.
+    // Foreground messages -> show local notification with correct channel.
     FirebaseMessaging.onMessage.listen((msg) {
       final n = msg.notification;
       if (n == null) return;
+
+      // Determine which channel this notification belongs to
+      final channelId = msg.data['channel'] as String? ?? 'breaking';
+
       _local.show(
         msg.hashCode,
         n.title ?? 'فيد نيوز',
         n.body ?? '',
-        const NotificationDetails(
+        NotificationDetails(
           android: AndroidNotificationDetails(
-            'breaking',
-            'الأخبار العاجلة',
-            channelDescription: 'إشعارات الأخبار العاجلة والتحديثات الهامة',
-            importance: Importance.high,
-            priority: Priority.high,
+            channelId,
+            _channelName(channelId),
+            channelDescription: _channelDesc(channelId),
+            importance: channelId == 'breaking' ? Importance.max : Importance.high,
+            priority: channelId == 'breaking' ? Priority.max : Priority.high,
+            styleInformation: BigTextStyleInformation(n.body ?? ''),
           ),
-          iOS: DarwinNotificationDetails(),
+          iOS: const DarwinNotificationDetails(),
         ),
       );
     });
@@ -71,6 +131,20 @@ class PushService {
     final token = await messaging.getToken();
     if (token != null) await _registerToken(api, token);
     messaging.onTokenRefresh.listen((t) => _registerToken(api, t));
+  }
+
+  static String _channelName(String id) {
+    for (final ch in _channels) {
+      if (ch.id == id) return ch.name;
+    }
+    return 'الأخبار العاجلة';
+  }
+
+  static String _channelDesc(String id) {
+    for (final ch in _channels) {
+      if (ch.id == id) return ch.description ?? '';
+    }
+    return '';
   }
 
   static Future<void> _registerToken(ApiClient api, String token) async {

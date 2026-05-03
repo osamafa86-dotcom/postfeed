@@ -8,6 +8,7 @@ import '../../../core/theme/theme_controller.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/data/auth_storage.dart';
 import 'info_pages.dart';
+import 'notification_settings_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -19,6 +20,17 @@ class SettingsScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('الإعدادات')),
       body: ListView(
         children: [
+          // ── Notification Settings ──
+          ListTile(
+            leading: const Icon(Icons.notifications_active_outlined),
+            title: const Text('الإشعارات الذكية'),
+            subtitle: const Text('خصّص الأخبار التي تصلك'),
+            trailing: const Icon(Icons.chevron_left),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const NotificationSettingsScreen())),
+          ),
+          const Divider(),
+
           _ThemeTile(mode: mode, ref: ref),
           const Divider(),
 
