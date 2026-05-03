@@ -604,7 +604,7 @@ class _PlatformsBoxState extends ConsumerState<_PlatformsBox> {
 
           // ── View all button ──
           InkWell(
-            onTap: () => context.push('/platforms'),
+            onTap: () => context.go('/platforms'),
             borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
             child: Container(
               width: double.infinity,
