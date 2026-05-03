@@ -50,6 +50,7 @@ api_ok([
             'GET /api/v1/content/evolving-story/book?slug=',
             'GET /api/v1/content/news-map',
             'GET /api/v1/content/sabah',
+            'GET /api/v1/content/daily-summary',
             'GET /api/v1/content/weekly-rewind',
             'GET /api/v1/content/editorial',
             'GET /api/v1/content/corrections',
@@ -67,6 +68,7 @@ api_ok([
             'GET /api/v1/media/twitter',
             'GET /api/v1/media/youtube',
             'POST /api/v1/media/tts',
+            'GET  /api/v1/media/social-summary?platform=telegram|twitter',
             'POST /api/v1/media/ask',
         ],
         'user' => [

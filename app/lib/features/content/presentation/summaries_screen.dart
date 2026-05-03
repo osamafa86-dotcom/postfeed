@@ -260,12 +260,33 @@ class _SummaryCard extends StatelessWidget {
                     style: TextStyle(fontSize: 13, color: isDark ? Colors.white38 : AppColors.textMutedLight)),
                 ],
               ),
-              error: (_, __) => Row(
+              error: (e, __) => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.error_outline, size: 16, color: isDark ? Colors.white30 : AppColors.textMutedLight),
-                  const SizedBox(width: 8),
-                  Text('تعذّر تحميل الملخص',
-                    style: TextStyle(fontSize: 13, color: isDark ? Colors.white38 : AppColors.textMutedLight)),
+                  Row(
+                    children: [
+                      Icon(Icons.error_outline, size: 16, color: isDark ? Colors.white30 : AppColors.textMutedLight),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text('تعذّر تحميل الملخص',
+                          style: TextStyle(fontSize: 13, color: isDark ? Colors.white38 : AppColors.textMutedLight)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 30,
+                    child: TextButton.icon(
+                      onPressed: () => ref.invalidate(provider),
+                      icon: Icon(Icons.refresh, size: 14, color: gradient[0]),
+                      label: Text('إعادة المحاولة', style: TextStyle(fontSize: 12, color: gradient[0])),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                  ),
                 ],
               ),
               data: (summary) {
