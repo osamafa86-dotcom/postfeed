@@ -18,6 +18,12 @@ class _AskScreenState extends ConsumerState<AskScreen> {
   List<Map<String, dynamic>> _sources = [];
   String? _error;
 
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _ask() async {
     final q = _ctrl.text.trim();
     if (q.length < 3) return;

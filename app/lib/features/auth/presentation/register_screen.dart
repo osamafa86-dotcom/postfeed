@@ -17,6 +17,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _busy = false;
   String? _err;
 
+  @override
+  void dispose() {
+    _name.dispose();
+    _email.dispose();
+    _pass.dispose();
+    super.dispose();
+  }
+
   Future<void> _submit() async {
     setState(() { _busy = true; _err = null; });
     try {

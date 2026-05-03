@@ -262,7 +262,7 @@ class MediaRepository {
       query: {if (date != null) 'date': date},
       decode: (d) => GalleryDay.fromJson((d as Map).cast()),
     );
-    return res.data!;
+    return res.data ?? const GalleryDay(id: 0, date: '');
   }
 
   Future<List<MapPoint>> newsMap() async {
@@ -316,9 +316,9 @@ class MediaRepository {
 final mediaRepositoryProvider =
     Provider<MediaRepository>((ref) => MediaRepository(ref.watch(apiClientProvider)));
 
-/// Auto-refreshing social feed providers — poll every 2 seconds for real-time updates.
+/// Auto-refreshing social feed providers — poll every 15 seconds for near-real-time updates.
 final telegramFeedProvider = FutureProvider<List<TelegramMessage>>((ref) {
-  final timer = Timer.periodic(const Duration(seconds: 2), (_) {
+  final timer = Timer.periodic(const Duration(seconds: 15), (_) {
     ref.invalidateSelf();
   });
   ref.onDispose(timer.cancel);
@@ -326,7 +326,7 @@ final telegramFeedProvider = FutureProvider<List<TelegramMessage>>((ref) {
 });
 
 final twitterFeedProvider = FutureProvider<List<TwitterMessage>>((ref) {
-  final timer = Timer.periodic(const Duration(seconds: 2), (_) {
+  final timer = Timer.periodic(const Duration(seconds: 15), (_) {
     ref.invalidateSelf();
   });
   ref.onDispose(timer.cancel);
@@ -334,7 +334,7 @@ final twitterFeedProvider = FutureProvider<List<TwitterMessage>>((ref) {
 });
 
 final youtubeFeedProvider = FutureProvider<List<YoutubeVideo>>((ref) {
-  final timer = Timer.periodic(const Duration(seconds: 2), (_) {
+  final timer = Timer.periodic(const Duration(seconds: 15), (_) {
     ref.invalidateSelf();
   });
   ref.onDispose(timer.cancel);

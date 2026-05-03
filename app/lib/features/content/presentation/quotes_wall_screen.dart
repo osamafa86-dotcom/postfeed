@@ -57,7 +57,8 @@ class _QuoteCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = const Color(0xFF0D9488);
-    final initial = (quote.speaker ?? '؟').isNotEmpty ? quote.speaker!.substring(0, 1) : '؟';
+    final sp = quote.speaker ?? '';
+    final initial = sp.isNotEmpty ? sp.substring(0, 1) : '؟';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),

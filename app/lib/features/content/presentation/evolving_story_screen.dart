@@ -297,8 +297,8 @@ class _StoryBody extends StatelessWidget {
                 itemCount: quotes.length,
                 itemBuilder: (_, i) {
                   final q = quotes[i];
-                  final initial = (q.speaker ?? '؟').isNotEmpty
-                      ? q.speaker!.substring(0, 1) : '؟';
+                  final sp = q.speaker ?? '';
+                  final initial = sp.isNotEmpty ? sp.substring(0, 1) : '؟';
                   return Container(
                     width: 280,
                     margin: const EdgeInsets.only(left: 10),

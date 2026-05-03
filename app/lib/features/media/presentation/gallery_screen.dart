@@ -5,6 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/widgets/loading_state.dart';
 import '../data/media_repository.dart';
 
+String? _photoUrl(Map<String, dynamic> p) {
+  final url = p['image_url'] as String? ?? p['url'] as String?;
+  if (url == null || url.isEmpty) return null;
+  return url;
+}
+
 class GalleryScreen extends ConsumerWidget {
   const GalleryScreen({super.key});
 
@@ -27,16 +33,16 @@ class GalleryScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               child: Text(g.intro!, style: Theme.of(context).textTheme.bodyLarge),
             ),
-            for (final p in g.photos) Padding(
+            for (final p in g.photos)
+              if (_photoUrl(p) != null) Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (p['image_url'] != null || p['url'] != null)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(10),
                       child: CachedNetworkImage(
-                        imageUrl: (p['image_url'] ?? p['url']).toString(),
+                        imageUrl: _photoUrl(p)!,
                         fit: BoxFit.cover,
                         width: double.infinity,
                       ),

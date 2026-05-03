@@ -68,12 +68,8 @@
 	<string>يُستخدم الكاميرا لرفع صورة الملف الشخصي.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>يُستخدم لاختيار صورة من معرض الصور لاستخدامها كصورة ملف شخصي.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>غير مستخدم حالياً.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>عرض الأخبار القريبة على الخريطة الجغرافية.</string>
-	<key>NSUserTrackingUsageDescription</key>
-	<string>لا نتتبع المستخدمين عبر التطبيقات أو المواقع الأخرى.</string>
 
 	<!-- Universal links + custom scheme -->
 	<key>CFBundleURLTypes</key>
@@ -86,12 +82,6 @@
 				<string>feedsnews</string>
 			</array>
 		</dict>
-	</array>
-
-	<!-- Sign in with Apple support -->
-	<key>com.apple.developer.applesignin</key>
-	<array>
-		<string>Default</string>
 	</array>
 
 	<!-- Localized app name -->
