@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:intl/intl.dart';
+
 import '../../../core/models/article.dart';
 import '../../../core/models/evolving_story.dart';
 import '../../../core/models/home_payload.dart';
@@ -12,6 +14,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/article_card.dart';
 import '../../../core/widgets/loading_state.dart';
 import '../../../core/widgets/section_header.dart';
+import '../../auth/data/auth_repository.dart';
 import '../../auth/data/auth_storage.dart';
 import '../../media/data/media_repository.dart';
 import '../data/content_repository.dart';
@@ -80,40 +83,41 @@ class _HomeBody extends ConsumerWidget {
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
-        if (payload.ticker.isNotEmpty)
-          SliverToBoxAdapter(child: TickerBar(items: payload.ticker)),
-
-        if (payload.breaking.isNotEmpty)
-          SliverToBoxAdapter(child: BreakingStrip(items: payload.breaking)),
-
-        // ── Stats Strip ──
-        SliverToBoxAdapter(child: _StatsStrip(payload: payload)),
-
-        // ── For You — personalized feed ──
-        if (AuthStorage.isAuthenticated)
-          SliverToBoxAdapter(child: _ForYouSection()),
-
-        // ── Hero Card ──
+        // ── 1. Hero Card — full-bleed at the very top ──
         if (payload.hero != null)
           SliverToBoxAdapter(child: _HeroCard(article: payload.hero!)),
 
-        // ── Categories Box — premium tabbed design ──
+        // ── 2. Personal Greeting ──
+        SliverToBoxAdapter(child: _GreetingStrip()),
+
+        // ── 3. Breaking + Ticker ──
+        if (payload.breaking.isNotEmpty)
+          SliverToBoxAdapter(child: BreakingStrip(items: payload.breaking)),
+        if (payload.ticker.isNotEmpty)
+          SliverToBoxAdapter(child: TickerBar(items: payload.ticker)),
+
+        // ── 4. Trending — horizontal scrollable chips ──
+        if (payload.trends.isNotEmpty)
+          SliverToBoxAdapter(child: _TrendingChips(trends: payload.trends)),
+
+        // ── 5. Quick Access — AI + Morning Briefing + Weekly Review ──
+        SliverToBoxAdapter(child: _QuickAccessRow()),
+
+        // ── 6. Categories Box — premium tabbed design ──
         if (payload.buckets.isNotEmpty)
           SliverToBoxAdapter(child: _CategoriesBox(buckets: payload.buckets)),
 
-        // ── Quick Access — AI + Morning Briefing ──
-        SliverToBoxAdapter(child: _QuickAccessRow()),
+        // ── 7. For You — personalized feed ──
+        if (AuthStorage.isAuthenticated)
+          SliverToBoxAdapter(child: _ForYouSection()),
 
-        // ── Evolving Stories — قصص متطورة ──
+        // ── 8. Evolving Stories — horizontal carousel ──
         SliverToBoxAdapter(child: _EvolvingStoriesSection()),
 
-        // ── Platforms Box — Telegram / X / YouTube ──
+        // ── 9. Platforms Box — Telegram / X / YouTube ──
         SliverToBoxAdapter(child: _PlatformsBox()),
 
-        // ── Currency Rates ──
-        const SliverToBoxAdapter(child: CurrencyWidget()),
-
-        // ── Latest News ──
+        // ── 10. Latest News ──
         SliverToBoxAdapter(
           child: SectionHeader(title: 'آخر الأخبار', icon: Icons.fiber_new),
         ),
@@ -126,33 +130,16 @@ class _HomeBody extends ConsumerWidget {
           ),
         ),
 
-        // ── Sources ──
+        // ── 11. Currency Rates ──
+        const SliverToBoxAdapter(child: CurrencyWidget()),
+
+        // ── 12. Sources ──
         if (payload.sources.isNotEmpty) ...[
           SliverToBoxAdapter(
             child: SectionHeader(title: 'مصادر الأخبار', icon: Icons.public,
               onMore: () => context.push('/discover')),
           ),
           SliverToBoxAdapter(child: SourceChipsRail(sources: payload.sources)),
-        ],
-
-        // ── Trending ──
-        if (payload.trends.isNotEmpty) ...[
-          SliverToBoxAdapter(
-            child: SectionHeader(title: 'الأكثر تداولاً', icon: Icons.trending_up,
-              onMore: () => context.push('/trending')),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Wrap(spacing: 8, runSpacing: 8, children: [
-                for (final t in payload.trends)
-                  ActionChip(
-                    label: Text('# ${t.title}'),
-                    onPressed: () => context.push('/search?q=${Uri.encodeComponent(t.title)}'),
-                  ),
-              ]),
-            ),
-          ),
         ],
 
         const SliverToBoxAdapter(child: SizedBox(height: 24)),
@@ -893,337 +880,172 @@ Color _storyAccent(String hex) {
   }
 }
 
-class _EvolvingStoriesSection extends ConsumerStatefulWidget {
+class _EvolvingStoriesSection extends ConsumerWidget {
   @override
-  ConsumerState<_EvolvingStoriesSection> createState() => _EvolvingStoriesSectionState();
-}
-
-class _EvolvingStoriesSectionState extends ConsumerState<_EvolvingStoriesSection> {
-  int _selected = 0;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final stories = ref.watch(evolvingStoriesProvider);
     return stories.when(
       loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
       data: (list) {
         if (list.isEmpty) return const SizedBox.shrink();
-        final theme = Theme.of(context);
-        final isDark = theme.brightness == Brightness.dark;
-        if (_selected >= list.length) _selected = 0;
-        final story = list[_selected];
-        final accent = _storyAccent(story.accentColor);
+        final isDark = Theme.of(context).brightness == Brightness.dark;
 
-        // Total articles across all stories
-        int totalArticles = 0;
-        for (final s in list) totalArticles += s.articleCount;
-
-        return Container(
-          margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            gradient: LinearGradient(
-              begin: Alignment.topRight,
-              end: Alignment.bottomLeft,
-              colors: isDark
-                  ? [const Color(0xFF1A1A2E), const Color(0xFF16213E)]
-                  : [Colors.white, const Color(0xFFFEF3C7)],
+        return Column(
+          children: [
+            // ── Header ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32, height: 32,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [Color(0xFF0D9488), Color(0xFF14B8A6)]),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(Icons.auto_stories, color: Colors.white, size: 16),
+                  ),
+                  const SizedBox(width: 8),
+                  Text('القصص المتطوّرة',
+                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16,
+                      color: isDark ? Colors.white : AppColors.textLight)),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => context.push('/stories-network'),
+                    child: const Text('عرض الكل',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+                        color: Color(0xFF38BDF8))),
+                  ),
+                ],
+              ),
             ),
-            boxShadow: [
-              BoxShadow(color: accent.withOpacity(0.12), blurRadius: 24, offset: const Offset(0, 8)),
-              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2)),
-            ],
-          ),
-          child: Column(
-            children: [
-              // ── Header ──
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 36, height: 36,
+
+            // ── Horizontal cards carousel ──
+            SizedBox(
+              height: 220,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                itemCount: list.length,
+                itemBuilder: (_, i) {
+                  final story = list[i];
+                  final accent = _storyAccent(story.accentColor);
+                  return GestureDetector(
+                    onTap: () => context.push('/stories/${story.slug}'),
+                    child: Container(
+                      width: 200,
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(colors: [Color(0xFF0D9488), Color(0xFF14B8A6)]),
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: [BoxShadow(color: const Color(0xFF0D9488).withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 3))],
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: isDark ? Colors.white.withOpacity(0.06) : const Color(0xFFE2E8F0)),
                       ),
-                      alignment: Alignment.center,
-                      child: const Icon(Icons.auto_stories, color: Colors.white, size: 18),
-                    ),
-                    const SizedBox(width: 10),
-                    Text('القصص المتطوّرة',
-                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17,
-                        color: isDark ? Colors.white : AppColors.textLight)),
-                    const Spacer(),
-                    // Eyebrow badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEF4444).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.2)),
-                      ),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Container(width: 6, height: 6,
-                          decoration: const BoxDecoration(color: Color(0xFFEF4444), shape: BoxShape.circle)),
-                        const SizedBox(width: 4),
-                        Text('متابعة دائمة', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800,
-                          color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFFDC2626))),
-                      ]),
-                    ),
-                  ],
-                ),
-              ),
-
-              // ── Stats row ──
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
-                child: Row(children: [
-                  Text('📅 ${list.length} قصة',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
-                      color: isDark ? Colors.white54 : AppColors.textMutedLight)),
-                  const SizedBox(width: 14),
-                  Text('📰 $totalArticles تقرير',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
-                      color: isDark ? Colors.white54 : AppColors.textMutedLight)),
-                  const SizedBox(width: 14),
-                  Text('⚙️ تُحدَّث تلقائياً',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white30 : AppColors.textMutedLight)),
-                ]),
-              ),
-              const SizedBox(height: 14),
-
-              // ── Scrollable story tabs ──
-              SizedBox(
-                height: 40,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  itemCount: list.length,
-                  itemBuilder: (_, i) {
-                    final s = list[i];
-                    final sAccent = _storyAccent(s.accentColor);
-                    final isActive = i == _selected;
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 3),
-                      child: GestureDetector(
-                        onTap: () => setState(() => _selected = i),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 250),
-                          curve: Curves.easeOutCubic,
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(
-                            gradient: isActive
-                                ? LinearGradient(colors: [sAccent, sAccent.withOpacity(0.8)])
-                                : null,
-                            color: isActive ? null : (isDark ? Colors.white.withOpacity(0.06) : Colors.grey.withOpacity(0.08)),
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: isActive
-                                ? [BoxShadow(color: sAccent.withOpacity(0.35), blurRadius: 10, offset: const Offset(0, 3))]
-                                : [],
-                          ),
-                          child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            if (s.icon.isNotEmpty) ...[
-                              Text(s.icon, style: const TextStyle(fontSize: 14)),
-                              const SizedBox(width: 5),
-                            ],
-                            Text(s.name,
-                              style: TextStyle(
-                                color: isActive ? Colors.white : (isDark ? Colors.white70 : AppColors.textMutedLight),
-                                fontWeight: isActive ? FontWeight.w800 : FontWeight.w500,
-                                fontSize: 12,
-                              )),
-                          ]),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 6),
-
-              // ── Animated accent bar ──
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                margin: const EdgeInsets.symmetric(horizontal: 18),
-                height: 3,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [accent, accent.withOpacity(0.2), Colors.transparent]),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-
-              // ── Selected story content ──
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 250),
-                child: Padding(
-                  key: ValueKey(_selected),
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Cover image preview
-                      if (story.coverImage != null)
-                        GestureDetector(
-                          onTap: () => context.push('/stories/${story.slug}'),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Cover image
+                          ClipRRect(
+                            borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
                             child: SizedBox(
-                              height: 140,
+                              height: 110,
                               width: double.infinity,
-                              child: Stack(
-                                fit: StackFit.expand,
-                                children: [
+                              child: Stack(fit: StackFit.expand, children: [
+                                if (story.coverImage != null)
                                   CachedNetworkImage(
                                     imageUrl: story.coverImage!,
                                     fit: BoxFit.cover,
                                     placeholder: (_, __) => Container(color: accent.withOpacity(0.1)),
                                     errorWidget: (_, __, ___) => Container(color: accent.withOpacity(0.1)),
-                                  ),
-                                  // Gradient overlay
-                                  DecoratedBox(decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      stops: const [0.4, 1.0],
-                                      colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
+                                  )
+                                else
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(colors: [accent.withOpacity(0.2), accent.withOpacity(0.05)]),
                                     ),
-                                  )),
-                                  // Accent bar
-                                  Positioned(top: 0, left: 0, right: 0,
-                                    child: Container(height: 4, color: accent)),
-                                  // Badge + LIVE
-                                  Positioned(top: 10, left: 10,
+                                    alignment: Alignment.center,
+                                    child: Text(story.icon.isNotEmpty ? story.icon : '📅',
+                                      style: const TextStyle(fontSize: 32)),
+                                  ),
+                                // Gradient overlay
+                                DecoratedBox(decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    stops: const [0.5, 1.0],
+                                    colors: [Colors.transparent, Colors.black.withOpacity(0.5)],
+                                  ),
+                                )),
+                                // Accent top bar
+                                Positioned(top: 0, left: 0, right: 0,
+                                  child: Container(height: 3, color: accent)),
+                                // LIVE badge
+                                if (story.isLive)
+                                  Positioned(top: 8, left: 8,
                                     child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.92),
-                                        borderRadius: BorderRadius.circular(999),
+                                        color: const Color(0xFFDC2626),
+                                        borderRadius: BorderRadius.circular(6),
                                       ),
-                                      child: Text('📰 ${story.articleCount} تقرير',
-                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800)),
+                                      child: const Text('مباشر',
+                                        style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800)),
                                     ),
                                   ),
-                                  if (story.isLive)
-                                    Positioned(top: 10, right: 10,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFDC2626),
-                                          borderRadius: BorderRadius.circular(999),
-                                        ),
-                                        child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                          Container(width: 6, height: 6,
-                                            decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
-                                          const SizedBox(width: 4),
-                                          const Text('مباشر', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800)),
-                                        ]),
-                                      ),
+                                // Article count
+                                Positioned(bottom: 8, left: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.5),
+                                      borderRadius: BorderRadius.circular(6),
                                     ),
-                                  // Icon + Name
-                                  Positioned(bottom: 10, right: 10, left: 10,
-                                    child: Row(children: [
-                                      Container(
-                                        width: 36, height: 36,
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.95),
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                        alignment: Alignment.center,
-                                        child: Text(story.icon.isNotEmpty ? story.icon : '📅',
-                                          style: const TextStyle(fontSize: 18)),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(child: Text(story.name,
-                                        style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w900,
-                                          shadows: [Shadow(color: Colors.black54, blurRadius: 6)]),
-                                        maxLines: 1, overflow: TextOverflow.ellipsis)),
-                                    ]),
+                                    child: Text('${story.articleCount} تقرير',
+                                      style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
                                   ),
+                                ),
+                              ]),
+                            ),
+                          ),
+                          // Text content
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.all(10),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(children: [
+                                    if (story.icon.isNotEmpty)
+                                      Text(story.icon, style: const TextStyle(fontSize: 14)),
+                                    if (story.icon.isNotEmpty) const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(story.name,
+                                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800,
+                                          color: isDark ? Colors.white : AppColors.textLight),
+                                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                                    ),
+                                  ]),
+                                  const SizedBox(height: 4),
+                                  if (story.description != null)
+                                    Expanded(
+                                      child: Text(story.description!,
+                                        style: TextStyle(fontSize: 11, height: 1.4,
+                                          color: isDark ? Colors.white38 : AppColors.textMutedLight),
+                                        maxLines: 3, overflow: TextOverflow.ellipsis),
+                                    ),
                                 ],
                               ),
                             ),
                           ),
-                        ),
-
-                      // Description
-                      if (story.description != null && story.description!.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 10),
-                          child: Text(story.description!,
-                            style: TextStyle(fontSize: 12.5, height: 1.7,
-                              color: isDark ? Colors.white54 : AppColors.textMutedLight),
-                            maxLines: 2, overflow: TextOverflow.ellipsis),
-                        ),
-
-                      // ── Latest 3 articles with colored bullets ──
-                      if (story.latest.isNotEmpty) ...[
-                        const SizedBox(height: 10),
-                        ...story.latest.map((article) => InkWell(
-                          onTap: () => context.push('/article/${article.id}'),
-                          borderRadius: BorderRadius.circular(8),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 7),
-                                  child: Container(width: 6, height: 6,
-                                    decoration: BoxDecoration(color: accent, shape: BoxShape.circle)),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(child: Text(
-                                  article.title.length > 80 ? '${article.title.substring(0, 80)}…' : article.title,
-                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, height: 1.5,
-                                    color: isDark ? Colors.white : AppColors.textLight),
-                                )),
-                                if (article.publishedAt != null) ...[
-                                  const SizedBox(width: 8),
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 3),
-                                    child: Text(timeago.format(article.publishedAt!, locale: 'ar'),
-                                      style: TextStyle(fontSize: 10,
-                                        color: isDark ? Colors.white30 : AppColors.textMutedLight)),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        )),
-                      ],
-                    ],
-                  ),
-                ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
-
-              // ── View all button ──
-              InkWell(
-                onTap: () => context.push('/stories/${story.slug}'),
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [accent.withOpacity(0.08), accent.withOpacity(0.03)]),
-                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('متابعة ${story.name}',
-                        style: TextStyle(color: accent, fontWeight: FontWeight.w800, fontSize: 13)),
-                      const SizedBox(width: 4),
-                      Icon(Icons.arrow_back_ios_new, size: 12, color: accent),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         );
       },
     );
@@ -1231,7 +1053,7 @@ class _EvolvingStoriesSectionState extends ConsumerState<_EvolvingStoriesSection
 }
 
 // ═══════════════════════════════════════════════════════════════
-// QUICK ACCESS ROW — AI + Morning Briefing
+// QUICK ACCESS ROW — AI + Morning Briefing + Weekly Review
 // ═══════════════════════════════════════════════════════════════
 
 class _QuickAccessRow extends StatelessWidget {
@@ -1242,146 +1064,205 @@ class _QuickAccessRow extends StatelessWidget {
       child: Row(
         children: [
           // AI Card
-          Expanded(
-            child: GestureDetector(
-              onTap: () => context.push('/ask'),
-              child: Container(
-                height: 110,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topRight, end: Alignment.bottomLeft,
-                    colors: [Color(0xFF6366F1), Color(0xFF4338CA)],
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(color: const Color(0xFF6366F1).withOpacity(0.3), blurRadius: 14, offset: const Offset(0, 6)),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 36, height: 36,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      alignment: Alignment.center,
-                      child: const Icon(Icons.auto_awesome, color: Colors.white, size: 18),
-                    ),
-                    const Spacer(),
-                    const Text('اسأل الأخبار', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)),
-                    const SizedBox(height: 2),
-                    Text('بالذكاء الاصطناعي', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11)),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Morning Briefing Card
-          Expanded(
-            child: GestureDetector(
-              onTap: () => context.push('/sabah'),
-              child: Container(
-                height: 110,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topRight, end: Alignment.bottomLeft,
-                    colors: [Color(0xFFF59E0B), Color(0xFFB45309)],
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(color: const Color(0xFFD97706).withOpacity(0.3), blurRadius: 14, offset: const Offset(0, 6)),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 36, height: 36,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      alignment: Alignment.center,
-                      child: const Icon(Icons.wb_sunny, color: Colors.white, size: 18),
-                    ),
-                    const Spacer(),
-                    const Text('بريفينغ الصباح', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)),
-                    const SizedBox(height: 2),
-                    Text('ملخص يومك الإخباري', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11)),
-                  ],
-                ),
-              ),
-            ),
-          ),
+          Expanded(child: _QuickCard(
+            title: 'اسأل الأخبار',
+            subtitle: 'ذكاء اصطناعي',
+            icon: Icons.auto_awesome,
+            colors: const [Color(0xFF6366F1), Color(0xFF4338CA)],
+            onTap: () => context.push('/ask'),
+          )),
+          const SizedBox(width: 8),
+          // Morning Briefing
+          Expanded(child: _QuickCard(
+            title: 'بريفينغ الصباح',
+            subtitle: 'ملخص يومك',
+            icon: Icons.wb_sunny,
+            colors: const [Color(0xFFF59E0B), Color(0xFFB45309)],
+            onTap: () => context.push('/sabah'),
+          )),
+          const SizedBox(width: 8),
+          // Weekly Review
+          Expanded(child: _QuickCard(
+            title: 'مراجعة الأسبوع',
+            subtitle: 'أبرز الأحداث',
+            icon: Icons.calendar_view_week,
+            colors: const [Color(0xFF10B981), Color(0xFF047857)],
+            onTap: () => context.push('/summaries'),
+          )),
         ],
       ),
     );
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// STATS STRIP — أرقام سريعة
-// ═══════════════════════════════════════════════════════════════
-
-class _StatsStrip extends StatelessWidget {
-  const _StatsStrip({required this.payload});
-  final HomePayload payload;
+class _QuickCard extends StatelessWidget {
+  const _QuickCard({
+    required this.title, required this.subtitle,
+    required this.icon, required this.colors, required this.onTap,
+  });
+  final String title, subtitle;
+  final IconData icon;
+  final List<Color> colors;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 100,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topRight, end: Alignment.bottomLeft,
+            colors: colors,
+          ),
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(color: colors[0].withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 5)),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 32, height: 32,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              alignment: Alignment.center,
+              child: Icon(icon, color: Colors.white, size: 16),
+            ),
+            const Spacer(),
+            Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12)),
+            const SizedBox(height: 1),
+            Text(subtitle, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 10)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GREETING STRIP — تحية شخصية
+// ═══════════════════════════════════════════════════════════════
+
+class _GreetingStrip extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final totalArticles = payload.latest.length + payload.breaking.length;
-    final totalSources = payload.sources.length;
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12 ? 'صباح الخير' : hour < 18 ? 'مساء الخير' : 'مساء النور';
+    final dateStr = DateFormat('EEEE، d MMMM yyyy', 'ar').format(DateTime.now());
+
+    // Try to get user name
+    final user = ref.watch(currentUserProvider);
+    final name = user.maybeWhen(
+      data: (u) => u?.name,
+      orElse: () => null,
+    );
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.04) : const Color(0xFFF8FAFC),
+        gradient: LinearGradient(
+          colors: isDark
+              ? [Colors.white.withOpacity(0.04), Colors.white.withOpacity(0.02)]
+              : [const Color(0xFFF0F9FF), const Color(0xFFF8FAFC)],
+        ),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isDark ? Colors.white.withOpacity(0.06) : const Color(0xFFE2E8F0)),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _StatItem(value: '$totalArticles+', label: 'خبر', icon: Icons.article_outlined, isDark: isDark),
-          Container(width: 1, height: 28,
-            color: isDark ? Colors.white.withOpacity(0.08) : const Color(0xFFE2E8F0)),
-          _StatItem(value: '$totalSources', label: 'مصدر', icon: Icons.public, isDark: isDark),
-          Container(width: 1, height: 28,
-            color: isDark ? Colors.white.withOpacity(0.08) : const Color(0xFFE2E8F0)),
-          _StatItem(value: '${payload.buckets.length}', label: 'قسم', icon: Icons.grid_view, isDark: isDark),
-          Container(width: 1, height: 28,
-            color: isDark ? Colors.white.withOpacity(0.08) : const Color(0xFFE2E8F0)),
-          _StatItem(value: '${payload.trends.length}', label: 'ترند', icon: Icons.trending_up, isDark: isDark),
+          Icon(
+            hour < 18 ? Icons.wb_sunny_rounded : Icons.nightlight_round,
+            color: hour < 18 ? const Color(0xFFF59E0B) : const Color(0xFF818CF8),
+            size: 22,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name != null ? '$greeting، $name' : greeting,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800, fontSize: 15,
+                    color: isDark ? Colors.white : AppColors.textLight,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(dateStr,
+                  style: TextStyle(fontSize: 11,
+                    color: isDark ? Colors.white38 : AppColors.textMutedLight)),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _StatItem extends StatelessWidget {
-  const _StatItem({required this.value, required this.label, required this.icon, required this.isDark});
-  final String value, label;
-  final IconData icon;
-  final bool isDark;
+// ═══════════════════════════════════════════════════════════════
+// TRENDING CHIPS — الأكثر تداولاً (horizontal scrollable)
+// ═══════════════════════════════════════════════════════════════
+
+class _TrendingChips extends StatelessWidget {
+  const _TrendingChips({required this.trends});
+  final List<TrendTag> trends;
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 16, color: const Color(0xFF38BDF8)),
-        const SizedBox(height: 4),
-        Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900,
-          color: isDark ? Colors.white : AppColors.textLight)),
-        Text(label, style: TextStyle(fontSize: 10,
-          color: isDark ? Colors.white38 : AppColors.textMutedLight)),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+          child: Row(
+            children: [
+              const Icon(Icons.trending_up, size: 18, color: Color(0xFFEF4444)),
+              const SizedBox(width: 6),
+              Text('الأكثر تداولاً',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14,
+                  color: isDark ? Colors.white : AppColors.textLight)),
+              const Spacer(),
+              GestureDetector(
+                onTap: () => context.push('/trending'),
+                child: const Text('عرض الكل',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+                    color: Color(0xFF38BDF8))),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 38,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            itemCount: trends.length,
+            itemBuilder: (_, i) {
+              final t = trends[i];
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                child: ActionChip(
+                  label: Text('# ${t.title}',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white70 : AppColors.textLight)),
+                  backgroundColor: isDark ? Colors.white.withOpacity(0.06) : const Color(0xFFF1F5F9),
+                  side: BorderSide.none,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  onPressed: () => context.push('/search?q=${Uri.encodeComponent(t.title)}'),
+                ),
+              );
+            },
+          ),
+        ),
       ],
     );
   }

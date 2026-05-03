@@ -1,12 +1,43 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/models/article.dart';
 import '../../../../core/theme/app_theme.dart';
 
-class BreakingStrip extends StatelessWidget {
+class BreakingStrip extends StatefulWidget {
   const BreakingStrip({super.key, required this.items});
   final List<Article> items;
+
+  @override
+  State<BreakingStrip> createState() => _BreakingStripState();
+}
+
+class _BreakingStripState extends State<BreakingStrip> {
+  late final PageController _ctl = PageController();
+  Timer? _timer;
+  int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.items.length > 1) {
+      _timer = Timer.periodic(const Duration(seconds: 5), (_) {
+        if (!mounted) return;
+        _index = (_index + 1) % widget.items.length;
+        _ctl.animateToPage(_index,
+          duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _ctl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,11 +67,11 @@ class BreakingStrip extends StatelessWidget {
             child: SizedBox(
               height: 28,
               child: PageView.builder(
-                controller: PageController(viewportFraction: 1),
+                controller: _ctl,
                 scrollDirection: Axis.vertical,
-                itemCount: items.length,
+                itemCount: widget.items.length,
                 itemBuilder: (_, i) {
-                  final a = items[i];
+                  final a = widget.items[i];
                   return InkWell(
                     onTap: () => context.push('/article/${a.id}'),
                     child: Align(
