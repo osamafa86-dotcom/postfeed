@@ -12,7 +12,9 @@ function user_dashboard_migrate(): void {
     if ($done) return;
 
     $flagDir  = __DIR__ . '/../storage/cache';
-    $flagFile = $flagDir . '/user_dashboard_migrated_v3.flag';
+    // Bumped to v4: adds comment moderation tables (reports, blocks)
+    // and is_deleted column on article_comments.
+    $flagFile = $flagDir . '/user_dashboard_migrated_v4.flag';
     if (is_file($flagFile)) { $done = true; return; }
 
     try {
@@ -155,11 +157,45 @@ function user_dashboard_migrate(): void {
                 `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 PRIMARY KEY (`article_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // App Store moderation: per-user mute list.
+            'user_blocks' => "CREATE TABLE IF NOT EXISTS `user_blocks` (
+                `blocker_id` INT(11) NOT NULL,
+                `blocked_id` INT(11) NOT NULL,
+                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`blocker_id`, `blocked_id`),
+                KEY `idx_ub_blocked` (`blocked_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // App Store moderation: abuse reports queue.
+            'comment_reports' => "CREATE TABLE IF NOT EXISTS `comment_reports` (
+                `id` INT(11) NOT NULL AUTO_INCREMENT,
+                `comment_id` INT(11) NOT NULL,
+                `reporter_id` INT(11) NOT NULL,
+                `reason` VARCHAR(50) NOT NULL DEFAULT 'other',
+                `note` VARCHAR(500) DEFAULT NULL,
+                `status` ENUM('pending','reviewed','actioned','dismissed') NOT NULL DEFAULT 'pending',
+                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                `reviewed_at` TIMESTAMP NULL DEFAULT NULL,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `uniq_reporter_comment` (`reporter_id`, `comment_id`),
+                KEY `idx_cr_status` (`status`, `created_at`),
+                KEY `idx_cr_comment` (`comment_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
         ];
         foreach ($tables as $name => $ddl) {
             if (!$tableExists($db, $name)) {
                 try { $db->exec($ddl); } catch (Throwable $e) {}
             }
+        }
+
+        // Add soft-delete column to article_comments (idempotent).
+        if ($tableExists($db, 'article_comments') && !$tableHasColumn($db, 'article_comments', 'is_deleted')) {
+            try {
+                $db->exec("ALTER TABLE `article_comments`
+                           ADD COLUMN `is_deleted` TINYINT(1) NOT NULL DEFAULT 0 AFTER `is_hidden`,
+                           ADD COLUMN `deleted_at` TIMESTAMP NULL DEFAULT NULL AFTER `is_deleted`");
+            } catch (Throwable $e) {}
         }
     } catch (Throwable $e) {
         // don't block pages on migration errors

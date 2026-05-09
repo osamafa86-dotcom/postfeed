@@ -25,15 +25,52 @@ class Comment {
   final int? parentId;
   final DateTime? createdAt;
 
-  factory Comment.fromJson(Map<String, dynamic> j) => Comment(
-        id: (j['id'] as num).toInt(),
-        body: j['body'] as String,
-        userId: (j['user_id'] as num?)?.toInt(),
-        userName: j['user_name'] as String?,
-        parentId: (j['parent_id'] as num?)?.toInt(),
-        createdAt: j['created_at'] != null
-            ? DateTime.tryParse(j['created_at'].toString().replaceFirst(' ', 'T'))
-            : null,
+  factory Comment.fromJson(Map<String, dynamic> j) {
+    final user = j['user'];
+    return Comment(
+      id: (j['id'] as num).toInt(),
+      body: j['body'] as String,
+      userId: (j['user_id'] as num?)?.toInt() ??
+          (user is Map ? (user['id'] as num?)?.toInt() : null),
+      userName: (j['user_name'] as String?) ??
+          (user is Map ? user['name'] as String? : null),
+      parentId: (j['parent_id'] as num?)?.toInt(),
+      createdAt: j['created_at'] != null
+          ? DateTime.tryParse(j['created_at'].toString().replaceFirst(' ', 'T'))
+          : null,
+    );
+  }
+}
+
+/// Reasons a user can pick when reporting a comment.
+/// The string values are sent to the API and must match the
+/// allow-list in /api/v1/user/comment_reports.php.
+enum CommentReportReason {
+  spam('spam', 'سبام أو إعلان'),
+  harassment('harassment', 'تنمّر أو تحرّش'),
+  hate('hate', 'كراهية أو عنصريّة'),
+  sexual('sexual', 'محتوى جنسي'),
+  violence('violence', 'تحريض على عنف'),
+  misinformation('misinformation', 'معلومات مضلّلة'),
+  copyright('copyright', 'انتهاك حقوق نشر'),
+  other('other', 'سبب آخر');
+
+  const CommentReportReason(this.code, this.label);
+  final String code;
+  final String label;
+}
+
+class BlockedUser {
+  const BlockedUser({required this.userId, this.name, this.avatarLetter});
+
+  final int userId;
+  final String? name;
+  final String? avatarLetter;
+
+  factory BlockedUser.fromJson(Map<String, dynamic> j) => BlockedUser(
+        userId: (j['user_id'] as num).toInt(),
+        name: j['name'] as String?,
+        avatarLetter: j['avatar_letter'] as String?,
       );
 }
 
@@ -167,7 +204,61 @@ class UserRepository {
       },
       decode: (d) => Comment.fromJson((d as Map).cast()),
     );
-    return res.data!;
+    final data = res.data;
+    if (data == null) {
+      throw StateError('addComment returned no data');
+    }
+    return data;
+  }
+
+  /// Soft-delete the user's own comment. The server enforces ownership.
+  Future<void> deleteComment(int commentId) async {
+    await _api.delete('/user/comments', query: {'id': '$commentId'});
+  }
+
+  // ── Moderation: report a comment ──
+
+  /// Flag a comment for moderator review (App Store Guideline 1.2).
+  /// The server treats duplicate reports as a no-op.
+  Future<void> reportComment(
+    int commentId, {
+    CommentReportReason reason = CommentReportReason.other,
+    String? note,
+  }) async {
+    await _api.post<void>(
+      '/user/comment_reports',
+      body: {
+        'comment_id': commentId,
+        'reason': reason.code,
+        if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+      },
+      decode: (_) {},
+    );
+  }
+
+  // ── Moderation: block / unblock a user ──
+
+  Future<List<BlockedUser>> blockedUsers() async {
+    final res = await _api.get<List<BlockedUser>>(
+      '/user/blocks',
+      decode: (d) => (d as List)
+          .whereType<Map>()
+          .map((m) => BlockedUser.fromJson(m.cast()))
+          .toList(),
+    );
+    return res.data ?? const [];
+  }
+
+  Future<void> blockUser(int userId) async {
+    await _api.post<void>(
+      '/user/blocks',
+      body: {'user_id': userId},
+      decode: (_) {},
+    );
+  }
+
+  Future<void> unblockUser(int userId) async {
+    await _api.delete('/user/blocks', query: {'user_id': '$userId'});
   }
 
   // ── Reactions ──

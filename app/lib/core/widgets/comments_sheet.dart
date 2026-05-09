@@ -74,6 +74,7 @@ class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final comments = ref.watch(_commentsProvider(widget.articleId));
+    final currentUserId = AuthStorage.userId;
 
     return Column(
       children: [
@@ -136,7 +137,14 @@ class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
                     padding: const EdgeInsets.all(16),
                     itemCount: list.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (_, i) => _CommentTile(comment: list[i], isDark: isDark),
+                    itemBuilder: (_, i) => _CommentTile(
+                      comment: list[i],
+                      isDark: isDark,
+                      currentUserId: currentUserId,
+                      onDelete: () => _onDelete(list[i]),
+                      onReport: () => _onReport(list[i]),
+                      onBlock: () => _onBlock(list[i]),
+                    ),
                   ),
           ),
         ),
@@ -184,21 +192,159 @@ class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
               ),
             ),
           ),
+          // Community Guidelines reminder (Apple App Store requirement).
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6, right: 16, left: 16),
+            child: Text(
+              'بالنشر فإنّك توافق على شروط الاستخدام (سياسة عدم تهاون مع المحتوى المسيء).',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 10,
+                color: isDark ? Colors.white38 : Colors.grey,
+              ),
+            ),
+          ),
         ],
       ],
     );
   }
+
+  // ─── Moderation actions ──────────────────────────────────────────
+
+  Future<void> _onDelete(Comment c) async {
+    final confirmed = await _confirm(
+      title: 'حذف التعليق',
+      message: 'هل تريد حذف تعليقك؟ لا يمكن التراجع عن هذا الإجراء.',
+      confirmLabel: 'حذف',
+      destructive: true,
+    );
+    if (confirmed != true) return;
+    try {
+      await ref.read(userRepositoryProvider).deleteComment(c.id);
+      if (!mounted) return;
+      ref.invalidate(_commentsProvider(widget.articleId));
+      _toast('تمّ حذف التعليق');
+    } catch (e) {
+      _toast('تعذّر الحذف: $e');
+    }
+  }
+
+  Future<void> _onReport(Comment c) async {
+    final reason = await showModalBottomSheet<CommentReportReason>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                'سبب الإبلاغ',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+              ),
+            ),
+            for (final r in CommentReportReason.values)
+              ListTile(
+                title: Text(r.label),
+                onTap: () => Navigator.of(ctx).pop(r),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (reason == null || !mounted) return;
+    try {
+      await ref.read(userRepositoryProvider).reportComment(c.id, reason: reason);
+      if (!mounted) return;
+      _toast('تمّ استلام البلاغ. سيراجعه فريقنا خلال ٢٤ ساعة.');
+    } catch (e) {
+      _toast('تعذّر الإبلاغ: $e');
+    }
+  }
+
+  Future<void> _onBlock(Comment c) async {
+    final uid = c.userId;
+    if (uid == null) return;
+    final confirmed = await _confirm(
+      title: 'حظر هذا المستخدم؟',
+      message: 'لن تظهر لك تعليقاته بعد الآن. يمكنك إلغاء الحظر من إعدادات الحساب.',
+      confirmLabel: 'حظر',
+      destructive: true,
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await ref.read(userRepositoryProvider).blockUser(uid);
+      if (!mounted) return;
+      ref.invalidate(_commentsProvider(widget.articleId));
+      _toast('تمّ حظر المستخدم');
+    } catch (e) {
+      _toast('تعذّر الحظر: $e');
+    }
+  }
+
+  Future<bool?> _confirm({
+    required String title,
+    required String message,
+    required String confirmLabel,
+    bool destructive = false,
+  }) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('إلغاء'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: destructive ? Colors.red : null,
+            ),
+            child: Text(confirmLabel),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _toast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
 }
 
 class _CommentTile extends StatelessWidget {
-  const _CommentTile({required this.comment, required this.isDark});
+  const _CommentTile({
+    required this.comment,
+    required this.isDark,
+    required this.currentUserId,
+    required this.onDelete,
+    required this.onReport,
+    required this.onBlock,
+  });
+
   final Comment comment;
   final bool isDark;
+  final int? currentUserId;
+  final VoidCallback onDelete;
+  final VoidCallback onReport;
+  final VoidCallback onBlock;
+
+  bool get _isMine =>
+      currentUserId != null && comment.userId != null && currentUserId == comment.userId;
 
   @override
   Widget build(BuildContext context) {
-    final initial = (comment.userName ?? '؟').isNotEmpty
-        ? comment.userName!.substring(0, 1).toUpperCase()
+    final name = comment.userName;
+    final initial = (name != null && name.isNotEmpty)
+        ? name.substring(0, 1).toUpperCase()
         : '؟';
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -216,7 +362,7 @@ class _CommentTile extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Text(comment.userName ?? 'مجهول',
+                  Text(name ?? 'مجهول',
                     style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13,
                       color: isDark ? Colors.white : AppColors.textLight)),
                   const SizedBox(width: 8),
@@ -224,6 +370,62 @@ class _CommentTile extends StatelessWidget {
                     Text(timeago.format(comment.createdAt!, locale: 'ar'),
                       style: TextStyle(fontSize: 11,
                         color: isDark ? Colors.white38 : AppColors.textMutedLight)),
+                  const Spacer(),
+                  // Apple Guideline 1.2: every UGC item needs a moderation menu.
+                  PopupMenuButton<String>(
+                    tooltip: 'خيارات',
+                    icon: Icon(Icons.more_horiz,
+                        size: 18,
+                        color: isDark ? Colors.white38 : Colors.grey),
+                    padding: EdgeInsets.zero,
+                    onSelected: (value) {
+                      switch (value) {
+                        case 'delete':
+                          onDelete();
+                          break;
+                        case 'report':
+                          onReport();
+                          break;
+                        case 'block':
+                          onBlock();
+                          break;
+                      }
+                    },
+                    itemBuilder: (_) => [
+                      if (_isMine)
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Row(children: [
+                            Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text('حذف تعليقي', style: TextStyle(color: Colors.red)),
+                          ]),
+                        ),
+                      if (!_isMine && currentUserId != null) ...[
+                        const PopupMenuItem(
+                          value: 'report',
+                          child: Row(children: [
+                            Icon(Icons.flag_outlined, size: 18),
+                            SizedBox(width: 8),
+                            Text('بلّغ عن التعليق'),
+                          ]),
+                        ),
+                        const PopupMenuItem(
+                          value: 'block',
+                          child: Row(children: [
+                            Icon(Icons.block, size: 18),
+                            SizedBox(width: 8),
+                            Text('حظر هذا المستخدم'),
+                          ]),
+                        ),
+                      ],
+                      if (currentUserId == null)
+                        const PopupMenuItem(
+                          enabled: false,
+                          child: Text('سجّل دخولك للإبلاغ'),
+                        ),
+                    ],
+                  ),
                 ],
               ),
               const SizedBox(height: 4),

@@ -63,7 +63,7 @@ class FeedsNewsApp extends ConsumerWidget {
                     maxScaleFactor: 1.3,
                   ),
             ),
-            child: child!,
+            child: child ?? const SizedBox.shrink(),
           ),
         );
       },
