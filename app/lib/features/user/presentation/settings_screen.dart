@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/data/auth_storage.dart';
+import 'blocked_users_screen.dart';
 import 'info_pages.dart';
 import 'notification_settings_screen.dart';
 
@@ -52,6 +53,20 @@ class SettingsScreen extends ConsumerWidget {
               MaterialPageRoute(builder: (_) => const PrivacyPolicyPage())),
           ),
           ListTile(
+            leading: const Icon(Icons.description_outlined),
+            title: const Text('شروط الاستخدام'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const TermsOfServicePage())),
+          ),
+          if (AuthStorage.isAuthenticated)
+            ListTile(
+              leading: const Icon(Icons.block),
+              title: const Text('المستخدمون المحظورون'),
+              subtitle: const Text('إدارة قائمة الحظر'),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const BlockedUsersScreen())),
+            ),
+          ListTile(
             leading: const Icon(Icons.gavel_outlined),
             title: const Text('السياسة التحريرية'),
             onTap: () => Navigator.of(context).push(
@@ -73,7 +88,7 @@ class SettingsScreen extends ConsumerWidget {
           const ListTile(
             leading: Icon(Icons.info_outline),
             title: Text('الإصدار'),
-            subtitle: Text('2.0.0'),
+            subtitle: Text('2.2.0'),
           ),
 
           // ── حذف الحساب ──
