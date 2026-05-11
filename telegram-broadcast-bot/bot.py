@@ -392,17 +392,31 @@ async def process_download(
         if result.uploader:
             caption += f"\n👤 {escape(result.uploader)}"
 
-        with result.file_path.open("rb") as f:
+        video_arg: Any
+        if config.USE_LOCAL_API:
+            video_arg = str(result.file_path.absolute())
             await context.bot.send_video(
                 chat_id=chat.id,
-                video=f,
+                video=video_arg,
                 caption=caption,
                 parse_mode=ParseMode.HTML,
                 supports_streaming=True,
                 duration=result.duration,
-                read_timeout=120,
-                write_timeout=120,
+                read_timeout=600,
+                write_timeout=600,
             )
+        else:
+            with result.file_path.open("rb") as f:
+                await context.bot.send_video(
+                    chat_id=chat.id,
+                    video=f,
+                    caption=caption,
+                    parse_mode=ParseMode.HTML,
+                    supports_streaming=True,
+                    duration=result.duration,
+                    read_timeout=300,
+                    write_timeout=300,
+                )
 
         await status.delete()
         await db.increment_download_count(chat.id)
@@ -490,12 +504,20 @@ async def post_init(application: Application) -> None:
 
 
 def main() -> None:
-    application = (
+    builder = (
         Application.builder()
         .token(config.BOT_TOKEN)
         .post_init(post_init)
-        .build()
     )
+    if config.USE_LOCAL_API:
+        builder = (
+            builder
+            .base_url(config.LOCAL_API_BASE_URL)
+            .base_file_url(config.LOCAL_API_FILE_URL)
+            .local_mode(True)
+        )
+        logger.info("Using LOCAL Bot API server at %s", config.LOCAL_API_BASE_URL)
+    application = builder.build()
 
     application.add_handler(CommandHandler("start", start_cmd))
     application.add_handler(CommandHandler("help", help_cmd))

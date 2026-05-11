@@ -127,25 +127,114 @@ sudo systemctl enable --now tg-bot
 sudo systemctl status tg-bot
 ```
 
+## رفع حد الإرسال إلى 150MB+ (Local Bot API Server)
+
+Bot API الرسمي محدود بـ **50MB**. لرفع الحد إلى 2GB يجب تشغيل خادم تلغرام محلياً.
+
+### الخطوات
+
+#### 1) احصل على `api_id` و `api_hash`
+- ادخل إلى https://my.telegram.org/apps بحساب تلغرامك
+- أنشئ تطبيقاً وانسخ `App api_id` و `App api_hash`
+
+#### 2) ركّب الخادم (compile من المصدر)
+على Ubuntu / Debian:
+
+```bash
+cd telegram-broadcast-bot
+./scripts/install_local_api.sh
+```
+
+السكربت يثبّت اعتماديات البناء، يستنسخ المستودع، ويبني البايناري في `/usr/local/bin/telegram-bot-api`. (يستغرق 10–20 دقيقة)
+
+#### 3) إعداد المستخدم والخدمة
+
+```bash
+sudo ./scripts/setup_service.sh
+```
+
+السكربت رح:
+- ينشئ مستخدم نظام `telegram-bot-api`
+- ينشئ مجلدات `/var/lib/telegram-bot-api` و `/var/log/telegram-bot-api`
+- يسألك عن `TELEGRAM_API_ID` و `TELEGRAM_API_HASH` ويحفظهم في `/etc/telegram-bot-api.env` (مغلّق على root، 600)
+- يثبّت ويشغّل خدمة systemd
+
+تحقق من الخدمة:
+
+```bash
+sudo systemctl status telegram-bot-api
+curl http://127.0.0.1:8081/
+# المتوقع: تجاوب بـ 404 NOT FOUND - هذا يعني الخادم شغّال
+```
+
+#### 4) سجّل خروج البوت من الخادم السحابي
+**خطوة لمرة واحدة فقط:**
+
+```bash
+# تأكد إن USE_LOCAL_API=false في .env
+source venv/bin/activate
+python scripts/migrate_to_local.py
+```
+
+#### 5) فعّل الوضع المحلي في `.env`
+
+```env
+USE_LOCAL_API=true
+MAX_FILE_SIZE_MB=150
+LOCAL_API_BASE_URL=http://localhost:8081/bot
+LOCAL_API_FILE_URL=http://localhost:8081/file/bot
+```
+
+#### 6) أعد تشغيل البوت
+
+```bash
+sudo systemctl restart tg-bot   # لو ركّبته كخدمة
+# أو
+python bot.py
+```
+
+من السطر الأول من الـ log رح تشوف:
+```
+Using LOCAL Bot API server at http://localhost:8081/bot
+```
+
+### العودة للخادم السحابي
+- أوقف `telegram-bot-api`: `sudo systemctl stop telegram-bot-api`
+- غيّر `.env`: `USE_LOCAL_API=false` و `MAX_FILE_SIZE_MB=48`
+- أعد تشغيل البوت — سيعود تلقائياً للسحابي
+
+### استكشاف الأخطاء
+- **`429 Conflict`** بعد التبديل: لم يتم `logOut` بنجاح. أعد تشغيل `migrate_to_local.py`.
+- **`Connection refused` على 8081**: الخدمة لا تعمل. راجع `journalctl -u telegram-bot-api -n 100`.
+- **ملفات تكبر في `/var/lib/telegram-bot-api`**: الخادم يخزّن نسخاً مؤقتة. نظّف دورياً:
+  ```bash
+  sudo find /var/lib/telegram-bot-api -type f -mtime +7 -delete
+  ```
+
 ## ملاحظات هامة
 
-- **حد حجم الملف**: Bot API الرسمي يسمح بإرسال 50MB كحد أقصى. الافتراضي 48MB. إذا أردت ملفات أكبر (حتى 2GB) ركّب [Local Bot API Server](https://github.com/tdlib/telegram-bot-api).
+- **حد حجم الملف**: السحابي 50MB، المحلي حتى 2GB. الافتراضي هنا 150MB (يحتاج المحلي).
 - **سرعة التحميل**: تعتمد على سرعة الخادم وعلى المنصة. تيك توك أسرع، يوتيوب الطويل أبطأ.
-- **Instagram / Facebook**: بعض المحتوى الخاص أو الذي يتطلب تسجيل دخول لا يمكن تحميله بدون كوكيز. يمكنك إضافة ملف cookies إلى `yt-dlp` إن لزم.
+- **Instagram / Facebook**: بعض المحتوى الخاص يتطلب كوكيز. يمكنك إضافة `cookiefile` إلى `yt-dlp` إن لزم.
 - **قاعدة البيانات**: ملف SQLite `bot.db` يُنشأ تلقائياً. خذ نسخة احتياطية منه دوريًا.
 
 ## الهيكل
 
 ```
 telegram-broadcast-bot/
-├── bot.py              # الملف الرئيسي - المعالجات والمنطق
-├── downloader.py       # تغليف yt-dlp
-├── database.py         # SQLite (users + channels)
-├── config.py           # تحميل المتغيرات من .env
-├── requirements.txt    # المكتبات
-├── .env.example        # نموذج للإعدادات
+├── bot.py                     # الملف الرئيسي - المعالجات والمنطق
+├── downloader.py              # تغليف yt-dlp
+├── database.py                # SQLite (users + channels)
+├── config.py                  # تحميل المتغيرات من .env
+├── requirements.txt           # المكتبات
+├── .env.example               # نموذج للإعدادات
 ├── .gitignore
-└── README.md
+├── README.md
+└── scripts/
+    ├── install_local_api.sh       # تركيب telegram-bot-api من المصدر
+    ├── setup_service.sh           # إعداد المستخدم + systemd
+    ├── telegram-bot-api.service   # قالب خدمة systemd
+    └── migrate_to_local.py        # تسجيل خروج لمرة واحدة من السحابي
 ```
 
 ## الترخيص
