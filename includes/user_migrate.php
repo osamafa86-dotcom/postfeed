@@ -17,6 +17,14 @@ function user_dashboard_migrate(): void {
     $flagFile = $flagDir . '/user_dashboard_migrated_v4.flag';
     if (is_file($flagFile)) { $done = true; return; }
 
+    // Mark done IMMEDIATELY so concurrent requests don't pile up and
+    // failed/slow ALTERs don't re-run on every page load. Individual
+    // try/catches inside the work block already swallow per-statement
+    // errors — the flag landing here just guarantees we never loop.
+    $done = true;
+    if (!is_dir($flagDir)) @mkdir($flagDir, 0775, true);
+    @file_put_contents($flagFile, date('c'));
+
     try {
         $db = getDB();
     } catch (Throwable $e) {
@@ -198,12 +206,7 @@ function user_dashboard_migrate(): void {
             } catch (Throwable $e) {}
         }
     } catch (Throwable $e) {
-        // don't block pages on migration errors
+        // don't block pages on migration errors; flag is already written above
         error_log('user_dashboard_migrate: ' . $e->getMessage());
-        return;
     }
-
-    if (!is_dir($flagDir)) @mkdir($flagDir, 0775, true);
-    @file_put_contents($flagFile, date('c'));
-    $done = true;
 }
