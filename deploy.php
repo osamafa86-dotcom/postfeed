@@ -19,7 +19,10 @@ $pendingFile = sys_get_temp_dir() . '/postfeed_deploy_pending.flag';
 $logFile     = __DIR__ . '/deploy_log.txt';
 
 // --- 1. Verify HMAC signature first -----------------------------------
-$secret = getenv('DEPLOY_SECRET');
+// Falls back to a hardcoded value when the host doesn't expose env vars
+// (typical for shared cPanel without "SetEnv" support). The fallback is
+// only as secret as this file on disk, which is already restricted.
+$secret = getenv('DEPLOY_SECRET') ?: 'fns_deploy_2026_3xK9pM7vQ4nL8wR2aB5tY6c';
 if (!$secret) {
     http_response_code(500);
     die('DEPLOY_SECRET env not set');
