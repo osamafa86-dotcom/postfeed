@@ -88,7 +88,7 @@ class SettingsScreen extends ConsumerWidget {
           const ListTile(
             leading: Icon(Icons.info_outline),
             title: Text('الإصدار'),
-            subtitle: Text('2.2.0'),
+            subtitle: Text('2.2.1'),
           ),
 
           // ── حذف الحساب ──

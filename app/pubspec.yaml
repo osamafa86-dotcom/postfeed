@@ -1,7 +1,7 @@
 name: feedsnews
 description: "فيد نيوز — Feed News mobile app (iOS & Android)"
 publish_to: "none"
-version: 2.2.0+4
+version: 2.2.1+5
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -59,9 +59,10 @@ dependencies:
   firebase_messaging: ^15.1.3
   flutter_local_notifications: ^17.2.3
 
-  # Auth
-  google_sign_in: ^6.2.1
-  sign_in_with_apple: ^6.1.2
+  # Auth — email/password only (no third-party OAuth, so Sign in with
+  # Apple is not required by App Store Guideline 4.8). If a Google or
+  # Facebook sign-in is added later, sign_in_with_apple MUST be added
+  # back and offered as an equal option on iOS.
 
   # Maps (news map)
   flutter_map: ^7.0.2
