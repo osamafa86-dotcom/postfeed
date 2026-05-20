@@ -103,7 +103,7 @@ class _ReadProgressBarState extends State<_ReadProgressBar> {
       if (_controller == controller) return;
       _controller?.removeListener(_onScroll);
       _controller = controller;
-      _controller!.addListener(_onScroll);
+      _controller?.addListener(_onScroll);
     });
   }
 
