@@ -95,12 +95,55 @@ class SettingsScreen extends ConsumerWidget {
           if (AuthStorage.isAuthenticated) ...[
             const Divider(),
             ListTile(
+              leading: const Icon(Icons.logout),
+              title: const Text('تسجيل الخروج'),
+              subtitle: const Text('تخرج من حسابك مع الاحتفاظ ببياناتك'),
+              onTap: () => _showLogoutDialog(context, ref),
+            ),
+            ListTile(
               leading: const Icon(Icons.delete_forever, color: Colors.red),
               title: const Text('حذف الحساب', style: TextStyle(color: Colors.red)),
               subtitle: const Text('حذف حسابك نهائياً مع جميع بياناتك'),
               onTap: () => _showDeleteAccountDialog(context, ref),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('تسجيل الخروج'),
+        content: const Text('هل تريد تسجيل الخروج من حسابك؟ يمكنك العودة في أيّ وقت.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              try {
+                await ref.read(authRepositoryProvider).logout();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('تمّ تسجيل الخروج')),
+                  );
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                }
+              } catch (_) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('تعذّر تسجيل الخروج')),
+                  );
+                }
+              }
+            },
+            child: const Text('تسجيل الخروج'),
+          ),
         ],
       ),
     );
