@@ -12,12 +12,11 @@
 .site-header {
   /* Light warm header — matches mobile app neoSurface */
   background:
-    radial-gradient(1200px 300px at 75% -50%, rgba(91,127,59,.10), transparent 60%),
-    radial-gradient(900px 260px at 10% -40%, rgba(156,123,91,.08), transparent 55%),
-    linear-gradient(180deg, #F2EEE8 0%, #F7F3ED 55%, #E8E3DB 100%);
+    radial-gradient(1200px 300px at 75% -50%, rgba(91,127,59,.06), transparent 60%),
+    linear-gradient(180deg, #F2EEE8 0%, #EDE8DF 100%);
   position:sticky; top:0; z-index:1000;
-  box-shadow:0 6px 20px rgba(60,40,20,.08);
-  border-bottom:1px solid rgba(91,127,59,.12);
+  box-shadow:0 4px 14px rgba(60,40,20,.10);
+  border-bottom:1px solid rgba(91,127,59,.18);
 }
 .site-header-inner {
   max-width:1500px; margin:0 auto;
@@ -45,32 +44,31 @@
   filter:blur(8px); z-index:-1;
 }
 .site-header .logo-text-wrap { display:flex; flex-direction:column; line-height:1; }
-.site-header .logo-text { font-size:22px; font-weight:900; color:#2C2416; letter-spacing:-0.5px; margin:0; font-family:inherit; }
-.site-header .logo-sub { font-size:10.5px; color:#7A6E5D; margin-top:4px; letter-spacing:.3px; font-weight:500; }
+.site-header .logo-text { font-size:22px; font-weight:900; color:#1E1F18; letter-spacing:-0.5px; margin:0; font-family:inherit; }
+.site-header .logo-sub { font-size:10.5px; color:#5B7F3B; margin-top:4px; letter-spacing:.3px; font-weight:700; }
 
 .site-header .header-center { display:flex; justify-content:center; min-width:0; }
 .site-header .search-box {
   display:flex; align-items:center; gap:10px;
-  background:rgba(255,255,255,.55);
-  border:1px solid rgba(91,127,59,.18);
+  background:#FFFFFF;
+  border:1px solid rgba(91,127,59,.30);
   border-radius:12px;
   padding:10px 16px;
   width:100%; max-width:460px;
   transition:all .25s ease;
-  backdrop-filter:blur(6px);
 }
-.site-header .search-box:hover { background:rgba(255,255,255,.75); border-color:rgba(91,127,59,.28); }
+.site-header .search-box:hover { background:#FFFFFF; border-color:rgba(91,127,59,.50); }
 .site-header .search-box:focus-within {
-  border-color:rgba(91,127,59,.55);
-  background:rgba(255,255,255,.85);
-  box-shadow:0 0 0 4px rgba(91,127,59,.14), 0 6px 20px rgba(91,127,59,.12);
+  border-color:#5B7F3B;
+  background:#FFFFFF;
+  box-shadow:0 0 0 4px rgba(91,127,59,.16), 0 6px 20px rgba(91,127,59,.14);
 }
 .site-header .search-box input {
   background:none; border:none; outline:none;
   color:#2C2416; font-size:13.5px; width:100%;
   font-family:inherit;
 }
-.site-header .search-box input::placeholder { color:rgba(44,36,22,.45); }
+.site-header .search-box input::placeholder { color:rgba(44,36,22,.65); }
 .site-header .search-box .search-icon { color:#5B7F3B; font-size:14px; }
 .site-header .search-box { position:relative; }
 .site-header .search-kbd {
@@ -161,20 +159,20 @@
 
 .site-header .icon-btn {
   width:40px; height:40px; border-radius:11px;
-  background:rgba(255,255,255,.55);
-  border:1px solid rgba(91,127,59,.18);
+  background:rgba(255,255,255,.7);
+  border:1px solid rgba(91,127,59,.25);
   display:inline-flex; align-items:center; justify-content:center;
   cursor:pointer; transition:all .2s ease;
-  position:relative; color:#4A4030;
+  position:relative; color:#2C2416;
   font-size:16px; font-family:inherit;
   text-decoration:none;
 }
 .site-header .icon-btn:hover {
-  background:rgba(91,127,59,.10);
-  border-color:rgba(91,127,59,.35);
+  background:rgba(91,127,59,.14);
+  border-color:rgba(91,127,59,.45);
   color:#3D5A28;
   transform:translateY(-1px);
-  box-shadow:0 6px 16px rgba(91,127,59,.18);
+  box-shadow:0 6px 16px rgba(91,127,59,.22);
 }
 .site-header .icon-btn-wide {
   width:auto; min-width:70px; padding:0 12px; gap:6px;
@@ -218,8 +216,8 @@
 
 /* MAIN NAV — always right-aligned in RTL */
 .site-nav {
-  border-top:1px solid rgba(91,127,59,.12);
-  background:rgba(247,243,237,.7);
+  border-top:1px solid rgba(91,127,59,.20);
+  background:#EDE8DF;
   backdrop-filter:blur(8px);
 }
 .site-nav-inner {
@@ -234,8 +232,8 @@
   position:relative;
   padding:14px 18px;
   text-decoration:none;
-  color:#4A4030;
-  font-size:13.5px; font-weight:600;
+  color:#2C2416;
+  font-size:13.5px; font-weight:700;
   white-space:nowrap;
   transition:color .2s ease;
   display:inline-flex; align-items:center; gap:6px;
