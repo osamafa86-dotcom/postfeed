@@ -144,7 +144,7 @@ $dateStr = (function() {
 
 $siteName = getSetting('site_name', SITE_NAME);
 $subject  = "نشرة $siteName اليومية — $dateStr";
-$brand    = '#1a5c5c';
+$brand    = '#282A20';
 
 $articlesHtml = '';
 foreach ($articles as $i => $a) {
@@ -162,20 +162,20 @@ foreach ($articles as $i => $a) {
     if ($img !== '' && preg_match('#^https?://#', $img)) {
         $imgHtml = '<img src="' . e($img) . '" alt="" style="display:block;width:100%;max-height:240px;object-fit:cover;border-radius:8px;margin-bottom:12px;">';
     }
-    $articlesHtml .= '<div style="margin:0 0 28px;padding-bottom:24px;border-bottom:1px solid #e2e8f0;">'
+    $articlesHtml .= '<div style="margin:0 0 28px;padding-bottom:24px;border-bottom:1px solid #E8E3DB;">'
                    . $imgHtml
                    . '<div style="font-size:11px;color:' . $brand . ';font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">' . $cat . ' · ' . $src . '</div>'
-                   . '<h2 style="font-size:18px;line-height:1.4;margin:0 0 10px;color:#0f172a;"><a href="' . e($url) . '" style="color:#0f172a;text-decoration:none;">' . $title . '</a></h2>'
-                   . '<p style="font-size:14px;line-height:1.7;color:#475569;margin:0 0 12px;">' . $sumE . '</p>'
+                   . '<h2 style="font-size:18px;line-height:1.4;margin:0 0 10px;color:#1E1F18;"><a href="' . e($url) . '" style="color:#1E1F18;text-decoration:none;">' . $title . '</a></h2>'
+                   . '<p style="font-size:14px;line-height:1.7;color:#4A4030;margin:0 0 12px;">' . $sumE . '</p>'
                    . '<a href="' . e($url) . '" style="display:inline-block;background:' . $brand . ';color:#fff;padding:8px 18px;border-radius:6px;font-size:13px;font-weight:700;text-decoration:none;">اقرأ المقال ›</a>'
                    . '</div>';
 }
 
-$introHtml = '<p style="margin:0 0 8px;font-size:18px;font-weight:700;color:#0f172a;">صباح الخير ☀️</p>'
-           . '<p style="margin:0 0 24px;font-size:15px;color:#64748b;">إليك ملخّص أبرز ما رصدناه اليوم. اضغط على أي خبر لقراءته كاملًا.</p>';
+$introHtml = '<p style="margin:0 0 8px;font-size:18px;font-weight:700;color:#1E1F18;">صباح الخير ☀️</p>'
+           . '<p style="margin:0 0 24px;font-size:15px;color:#7A6E5D;">إليك ملخّص أبرز ما رصدناه اليوم. اضغط على أي خبر لقراءته كاملًا.</p>';
 
 $bodyHtml = $introHtml . $articlesHtml
-          . '<p style="text-align:center;margin:24px 0 8px;"><a href="' . e(SITE_URL) . '" style="background:#f59e0b;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">زيارة ' . e($siteName) . ' ←</a></p>';
+          . '<p style="text-align:center;margin:24px 0 8px;"><a href="' . e(SITE_URL) . '" style="background:#C99624;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">زيارة ' . e($siteName) . ' ←</a></p>';
 
 // 5. Send loop.
 $success = 0; $fail = 0;

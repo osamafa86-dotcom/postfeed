@@ -45,15 +45,15 @@ $siteName = e(getSetting('site_name', SITE_NAME));
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
 <style>
-body { margin:0;font-family:'Tajawal',Tahoma,sans-serif;background:linear-gradient(135deg,#f1f5f9 0%,#e2e8f0 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;color:#0f172a; }
+body { margin:0;font-family:'Tajawal',Tahoma,sans-serif;background:linear-gradient(135deg,#F7F3ED 0%,#E8E3DB 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;color:#1E1F18; }
 .card { background:#fff;max-width:520px;width:100%;padding:48px 36px;border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.10);text-align:center; }
 .icon { font-size:64px;margin-bottom:16px;line-height:1; }
 h1 { font-size:24px;margin:0 0 12px;font-weight:800; }
-p { color:#64748b;font-size:15px;line-height:1.7;margin:0 0 24px; }
-.email { display:inline-block;background:#f1f5f9;padding:6px 14px;border-radius:6px;color:#1a5c5c;font-weight:700;direction:ltr; }
-.btn { display:inline-block;background:#1a5c5c;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:700;transition:transform .15s; }
+p { color:#7A6E5D;font-size:15px;line-height:1.7;margin:0 0 24px; }
+.email { display:inline-block;background:#F7F3ED;padding:6px 14px;border-radius:6px;color:#282A20;font-weight:700;direction:ltr; }
+.btn { display:inline-block;background:#282A20;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:700;transition:transform .15s; }
 .btn:hover { transform:translateY(-2px); }
-.error { color:#dc2626; }
+.error { color:#CE1126; }
 </style>
 </head>
 <body>

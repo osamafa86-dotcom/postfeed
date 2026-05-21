@@ -166,20 +166,20 @@ if ($viewerId && !empty($articles)) {
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap"></noscript>
 <style>
   :root {
-    --bg: #faf6ec;
-    --bg2: #fdfaf2;
-    --bg3: #e4e6eb;
+    --bg: #F2EEE8;
+    --bg2: #F7F3ED;
+    --bg3: #E8E3DB;
     --card: #ffffff;
-    --border: #e0e3e8;
-    --accent: #1a73e8;
-    --accent2: #0d9488;
-    --accent3: #16a34a;
-    --red: #dc2626;
-    --text: #1a1a2e;
-    --muted: #6b7280;
-    --muted2: #9ca3af;
-    --gold: #d97706;
-    --header-bg: #1a1a2e;
+    --border: #DDD5C7;
+    --accent: #5B7F3B;
+    --accent2: #3D5A28;
+    --accent3: #1B7A3D;
+    --red: #CE1126;
+    --text: #2C2416;
+    --muted: #7A6E5D;
+    --muted2: #968B78;
+    --gold: #B8860B;
+    --header-bg: #2C2416;
   }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif; background:var(--bg); color:var(--text); overflow-x:hidden; line-height:1.6; }
@@ -187,7 +187,7 @@ if ($viewerId && !empty($articles)) {
 
   ::-webkit-scrollbar { width:6px; }
   ::-webkit-scrollbar-track { background:transparent; }
-  ::-webkit-scrollbar-thumb { background:#c1c5cc; border-radius:3px; }
+  ::-webkit-scrollbar-thumb { background:#C5BFAB; border-radius:3px; }
 
   .container { max-width:1400px; margin:0 auto; padding:0 24px; }
 
@@ -220,7 +220,7 @@ if ($viewerId && !empty($articles)) {
   .news-card:hover {
     transform:translateY(-5px);
     box-shadow:0 10px 40px rgba(0,0,0,.12);
-    border-color:rgba(26,115,232,.2);
+    border-color:rgba(91,127,59,.2);
   }
   .card-img { height:175px; overflow:hidden; position:relative; background:var(--bg3); }
   .card-img::after {
@@ -234,13 +234,13 @@ if ($viewerId && !empty($articles)) {
     font-size:10px; font-weight:700; padding:4px 10px; border-radius:6px;
     display:inline-block; margin-bottom:10px; letter-spacing:.3px;
   }
-  .cat-political { background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; }
-  .cat-economic { background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; }
-  .cat-sports { background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; }
-  .cat-arts { background:#faf5ff; color:#7c3aed; border:1px solid #ddd6fe; }
-  .cat-reports { background:#fffbeb; color:#b45309; border:1px solid #fde68a; }
-  .cat-media { background:#fdf4ff; color:#a21caf; border:1px solid #f0abfc; }
-  .cat-breaking { background:#fef2f2; color:#dc2626; border:1px solid #fca5a5; }
+  .cat-political { background:#FAEEEE; color:#A40D1F; border:1px solid #E5A0A8; }
+  .cat-economic { background:#F0F4E5; color:#1B7A3D; border:1px solid #D6E2C6; }
+  .cat-sports { background:#F0F4E5; color:#3D5A28; border:1px solid #D6E0C6; }
+  .cat-arts { background:#F2EEE8; color:#9C7B5B; border:1px solid #E8DECC; }
+  .cat-reports { background:#F8F0DD; color:#8A5F08; border:1px solid #E2C264; }
+  .cat-media { background:#F2EEE8; color:#9C7B5B; border:1px solid #D4A88E; }
+  .cat-breaking { background:#FAEEEE; color:#CE1126; border:1px solid #E5A0A8; }
   .card-title { font-size:15px; font-weight:700; line-height:1.6; margin-bottom:10px; color:var(--text); }
   .card-meta { display:flex; align-items:center; justify-content:space-between; }
   .card-source { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); font-weight:500; }
@@ -269,13 +269,13 @@ if ($viewerId && !empty($articles)) {
     color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,.04);
   }
   .pagination a:hover {
-    background:rgba(26,115,232,.08); border-color:var(--accent);
+    background:rgba(91,127,59,.08); border-color:var(--accent);
     color:var(--accent);
   }
   .pagination .current {
     background:var(--accent); color:#fff;
     border:1px solid var(--accent);
-    box-shadow:0 4px 12px rgba(26,115,232,.3);
+    box-shadow:0 4px 12px rgba(91,127,59,.3);
   }
   .pagination .dots { background:none; border:none; color:var(--muted); min-width:auto; padding:0 4px; }
   .pagination .prev-next { font-size:13px; gap:4px; }
@@ -287,10 +287,10 @@ if ($viewerId && !empty($articles)) {
     flex-wrap:wrap; gap:16px; color:rgba(255,255,255,.5);
   }
   .footer-logo { font-size:22px; font-weight:900; color:#fff; }
-  .footer-logo span { color:#60a5fa; }
+  .footer-logo span { color:#7BA05A; }
   .footer-links { display:flex; gap:20px; }
   .footer-links a { font-size:12px; color:rgba(255,255,255,.4); text-decoration:none; transition:color .2s; }
-  .footer-links a:hover { color:#60a5fa; }
+  .footer-links a:hover { color:#7BA05A; }
   .footer-copy { font-size:11px; color:rgba(255,255,255,.3); }
 
   @media(max-width:900px) {

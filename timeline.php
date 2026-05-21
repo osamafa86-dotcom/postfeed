@@ -116,11 +116,11 @@ $metaDesc = $timeline && !empty($timeline['intro'])
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap"></noscript>
 <style>
   :root {
-    --bg:#faf6ec; --bg2:#fdfaf2; --bg3:#eef1f6;
-    --card:#fff; --border:#e0e3e8;
-    --accent:#1a73e8; --accent2:#0d9488; --accent3:#16a34a;
-    --gold:#f59e0b; --gold2:#fcd34d; --gold-bg:#fef3c7; --gold-text:#92400e;
-    --red:#dc2626; --text:#1a1a2e; --muted:#6b7280; --muted2:#9ca3af;
+    --bg:#F2EEE8; --bg2:#F7F3ED; --bg3:#F2EEE8;
+    --card:#fff; --border:#DDD5C7;
+    --accent:#5B7F3B; --accent2:#3D5A28; --accent3:#1B7A3D;
+    --gold:#C99624; --gold2:#E2C264; --gold-bg:#F5EBCE; --gold-text:#6B4F0B;
+    --red:#CE1126; --text:#2C2416; --muted:#7A6E5D; --muted2:#968B78;
     --line:#d7dce4;
   }
   * { margin:0; padding:0; box-sizing:border-box; }
@@ -131,9 +131,9 @@ $metaDesc = $timeline && !empty($timeline['intro'])
   /* ============ HERO ============ */
   .tl-hero {
     background:linear-gradient(135deg,#fff 0%, #f0fdfa 100%);
-    border:1px solid rgba(13,148,136,.25); border-radius:18px;
+    border:1px solid rgba(61,90,40,.25); border-radius:18px;
     padding:32px 28px; margin:28px 0 24px;
-    box-shadow:0 4px 24px -10px rgba(13,148,136,.16);
+    box-shadow:0 4px 24px -10px rgba(61,90,40,.16);
     position:relative; overflow:hidden;
   }
   .tl-hero::before {
@@ -143,20 +143,20 @@ $metaDesc = $timeline && !empty($timeline['intro'])
   }
   .tl-eyebrow {
     display:inline-flex; align-items:center; gap:8px;
-    background:rgba(13,148,136,.08); color:var(--accent2);
-    border:1px solid rgba(13,148,136,.22); padding:6px 14px;
+    background:rgba(61,90,40,.08); color:var(--accent2);
+    border:1px solid rgba(61,90,40,.22); padding:6px 14px;
     border-radius:999px; font-size:12px; font-weight:800;
     margin-bottom:14px; position:relative;
   }
   .tl-eyebrow .live-dot {
-    width:8px; height:8px; border-radius:50%; background:#ef4444;
-    box-shadow:0 0 0 0 rgba(239,68,68,.5);
+    width:8px; height:8px; border-radius:50%; background:#CE1126;
+    box-shadow:0 0 0 0 rgba(206,17,38,.5);
     animation:tl-pulse 2s infinite;
   }
   @keyframes tl-pulse {
-    0% { box-shadow:0 0 0 0 rgba(239,68,68,.5); }
-    70% { box-shadow:0 0 0 10px rgba(239,68,68,0); }
-    100% { box-shadow:0 0 0 0 rgba(239,68,68,0); }
+    0% { box-shadow:0 0 0 0 rgba(206,17,38,.5); }
+    70% { box-shadow:0 0 0 10px rgba(206,17,38,0); }
+    100% { box-shadow:0 0 0 0 rgba(206,17,38,0); }
   }
   .tl-title {
     font-size:30px; font-weight:900; line-height:1.4;
@@ -235,7 +235,7 @@ $metaDesc = $timeline && !empty($timeline['intro'])
   .tl-event:hover {
     transform:translateX(-3px);
     box-shadow:0 12px 32px -14px rgba(15,23,42,.14);
-    border-color:rgba(13,148,136,.3);
+    border-color:rgba(61,90,40,.3);
   }
   .tl-event::before {
     content:''; position:absolute; top:26px; right:-32px;
@@ -246,7 +246,7 @@ $metaDesc = $timeline && !empty($timeline['intro'])
   .tl-event.first::before { border-color:var(--gold); }
   .tl-event.last::before {
     border-color:var(--red); background:var(--red);
-    box-shadow:0 0 0 4px var(--bg), 0 0 0 0 rgba(239,68,68,.4);
+    box-shadow:0 0 0 4px var(--bg), 0 0 0 0 rgba(206,17,38,.4);
     animation:tl-pulse 2s infinite;
   }
 
@@ -303,7 +303,7 @@ $metaDesc = $timeline && !empty($timeline['intro'])
 
   .tl-event.hidden { display:none; }
   .tl-event.highlight {
-    background:linear-gradient(135deg, #fff 0%, #fef3c7 100%);
+    background:linear-gradient(135deg, #fff 0%, #F5EBCE 100%);
     border-color:var(--gold);
   }
 
@@ -322,31 +322,31 @@ $metaDesc = $timeline && !empty($timeline['intro'])
     text-transform:uppercase; letter-spacing:.3px;
   }
   .tl-event-sev.tl-sev-breaking {
-    background:#fef2f2; color:#991b1b; border-color:#fecaca;
+    background:#FAEEEE; color:#8A0B1A; border-color:#E5A0A8;
     animation:tlSevPulse 2.4s ease-in-out infinite;
   }
   .tl-event-sev.tl-sev-major {
-    background:#fff7ed; color:#9a3412; border-color:#fed7aa;
+    background:#F5EBCE; color:#6B4F0B; border-color:#E5C49C;
   }
   .tl-event-sev.tl-sev-update {
-    background:#ecfeff; color:#155e75; border-color:#a5f3fc;
+    background:#ecfeff; color:#1E3015; border-color:#a5f3fc;
   }
   .tl-event-sev.tl-sev-context {
-    background:#f3f4f6; color:#4b5563; border-color:#d1d5db;
+    background:#EFE8DA; color:#5A5040; border-color:#DDD5C7;
   }
   @keyframes tlSevPulse {
-    0%, 100% { box-shadow:0 0 0 0 rgba(220,38,38,.35); }
-    50%      { box-shadow:0 0 0 6px rgba(220,38,38,0); }
+    0%, 100% { box-shadow:0 0 0 0 rgba(206,17,38,.35); }
+    50%      { box-shadow:0 0 0 6px rgba(206,17,38,0); }
   }
 
   /* Severity colors the rail dot too — strongest visual signal of
      where the breaking moments are when scanning the rail. */
   .tl-event[data-sev="breaking"]::before {
     border-color:var(--red); background:#fff;
-    box-shadow:0 0 0 4px var(--bg), 0 0 0 8px rgba(220,38,38,.18);
+    box-shadow:0 0 0 4px var(--bg), 0 0 0 8px rgba(206,17,38,.18);
   }
-  .tl-event[data-sev="major"]::before { border-color:#f97316; }
-  .tl-event[data-sev="context"]::before { border-color:#9ca3af; }
+  .tl-event[data-sev="major"]::before { border-color:#C99624; }
+  .tl-event[data-sev="context"]::before { border-color:#968B78; }
 
   /* "What's new" diff line — shows up between the title and summary.
      Visually a soft teal callout so it never competes with the title
@@ -355,7 +355,7 @@ $metaDesc = $timeline && !empty($timeline['intro'])
     display:flex; align-items:flex-start; gap:8px;
     margin:-4px 0 12px;
     padding:8px 12px;
-    background:linear-gradient(90deg, rgba(13,148,136,.08), transparent);
+    background:linear-gradient(90deg, rgba(61,90,40,.08), transparent);
     border-right:3px solid var(--accent2);
     border-radius:0 8px 8px 0;
     font-size:12.5px; font-weight:600;
@@ -376,10 +376,10 @@ $metaDesc = $timeline && !empty($timeline['intro'])
     border:1px solid var(--border);
     background:#fff;
   }
-  .tl-event-traj.tl-traj-escalation    { color:#b91c1c; border-color:#fecaca; background:#fef2f2; }
-  .tl-event-traj.tl-traj-de-escalation { color:#15803d; border-color:#bbf7d0; background:#f0fdf4; }
-  .tl-event-traj.tl-traj-steady        { color:#475569; border-color:#e2e8f0; background:#f8fafc; }
-  .tl-event-traj.tl-traj-shift         { color:#7c3aed; border-color:#ddd6fe; background:#f5f3ff; }
+  .tl-event-traj.tl-traj-escalation    { color:#A40D1F; border-color:#E5A0A8; background:#FAEEEE; }
+  .tl-event-traj.tl-traj-de-escalation { color:#1B7A3D; border-color:#D6E2C6; background:#F0F4E5; }
+  .tl-event-traj.tl-traj-steady        { color:#4A4030; border-color:#E8E3DB; background:#f8fafc; }
+  .tl-event-traj.tl-traj-shift         { color:#9C7B5B; border-color:#E8DECC; background:#f5f3ff; }
 
   /* ============ SIDEBAR (full coverage) ============ */
   .tl-side-card {
@@ -449,14 +449,14 @@ $metaDesc = $timeline && !empty($timeline['intro'])
      once the final event is fully in view. */
   .tl-progress-bar {
     position:fixed; top:0; left:0; right:0;
-    height:3px; background:rgba(13,148,136,.08);
+    height:3px; background:rgba(61,90,40,.08);
     z-index:1000; pointer-events:none;
   }
   .tl-progress-fill {
     height:100%; width:0%;
     background:linear-gradient(90deg, var(--accent2) 0%, var(--gold) 50%, var(--red) 100%);
     transition:width .08s linear;
-    box-shadow:0 0 10px rgba(13,148,136,.5);
+    box-shadow:0 0 10px rgba(61,90,40,.5);
   }
 
   /* ============ STICKY DATE RAIL (left edge in RTL = start) ============
@@ -509,7 +509,7 @@ $metaDesc = $timeline && !empty($timeline['intro'])
   }
   .tl-date-nav a.active {
     background:var(--accent2); color:#fff;
-    box-shadow:0 4px 12px -4px rgba(13,148,136,.5);
+    box-shadow:0 4px 12px -4px rgba(61,90,40,.5);
   }
   .tl-date-nav a.active::before {
     background:#fff;
@@ -530,7 +530,7 @@ $metaDesc = $timeline && !empty($timeline['intro'])
     background:var(--accent2); color:#fff;
     font-size:12px; font-weight:800;
     border-radius:999px;
-    box-shadow:0 6px 18px -6px rgba(13,148,136,.5);
+    box-shadow:0 6px 18px -6px rgba(61,90,40,.5);
   }
   @media(max-width:1100px) {
     .tl-current-date-pill { display:block; }
@@ -639,7 +639,7 @@ $metaDesc = $timeline && !empty($timeline['intro'])
     background:var(--accent2);
     border-color:var(--accent2);
     color:#fff;
-    box-shadow:0 6px 18px -6px rgba(13,148,136,.45);
+    box-shadow:0 6px 18px -6px rgba(61,90,40,.45);
   }
   .tl-entity-chip .ent-name {
     display:block;
@@ -707,9 +707,9 @@ $metaDesc = $timeline && !empty($timeline['intro'])
   /* Brief flash when a date-rail link smooth-scrolls to an event —
      lets the reader see *which* event the click landed on. */
   @keyframes tlFlash {
-    0%   { box-shadow:0 0 0 0 rgba(13,148,136,.55); }
-    60%  { box-shadow:0 0 0 10px rgba(13,148,136,0); }
-    100% { box-shadow:0 0 0 0 rgba(13,148,136,0); }
+    0%   { box-shadow:0 0 0 0 rgba(61,90,40,.55); }
+    60%  { box-shadow:0 0 0 10px rgba(61,90,40,0); }
+    100% { box-shadow:0 0 0 0 rgba(61,90,40,0); }
   }
   .tl-event.tl-flash {
     animation:tlFlash 1.1s ease-out;
@@ -745,7 +745,7 @@ $metaDesc = $timeline && !empty($timeline['intro'])
     display:inline-flex; align-items:center; gap:6px;
     padding:7px 13px;
     background:rgba(255,255,255,.8);
-    border:1px solid rgba(13,148,136,.28);
+    border:1px solid rgba(61,90,40,.28);
     border-radius:999px;
     font-size:12px; font-weight:800;
     color:var(--accent2);
@@ -767,7 +767,7 @@ $metaDesc = $timeline && !empty($timeline['intro'])
     background:var(--accent2);
     color:#fff;
     border-color:var(--accent2);
-    box-shadow:0 8px 24px -10px rgba(13,148,136,.55);
+    box-shadow:0 8px 24px -10px rgba(61,90,40,.55);
   }
 
   /* Reader-mode global adjustments */
@@ -820,7 +820,7 @@ $metaDesc = $timeline && !empty($timeline['intro'])
     padding-right:36px;
   }
   body.tl-reader-mode .tl-rail::before {
-    background:linear-gradient(180deg, rgba(13,148,136,.35), rgba(245,158,11,.35));
+    background:linear-gradient(180deg, rgba(61,90,40,.35), rgba(245,158,11,.35));
   }
   body.tl-reader-mode .tl-event {
     background:rgba(255,253,246,.8);
@@ -850,7 +850,7 @@ $metaDesc = $timeline && !empty($timeline['intro'])
     color:#4b3f15;
   }
   body.tl-reader-mode .tl-whats-new {
-    background:linear-gradient(90deg, rgba(13,148,136,.12), transparent);
+    background:linear-gradient(90deg, rgba(61,90,40,.12), transparent);
     color:#0f5a55;
   }
 
@@ -1056,7 +1056,7 @@ include __DIR__ . '/includes/components/site_header.php';
                       $src = $articlesById[(int)$sid] ?? null;
                       if (!$src) continue;
                       $initial = mb_substr((string)($src['source_name'] ?? '?'), 0, 1);
-                      $color   = $src['logo_color'] ?? '#0d9488';
+                      $color   = $src['logo_color'] ?? '#3D5A28';
                   ?>
                     <a class="tl-src-chip" href="<?php echo articleUrl($src); ?>">
                       <span class="src-dot" style="background:<?php echo e($color); ?>"><?php echo e($initial); ?></span>
@@ -1150,7 +1150,7 @@ include __DIR__ . '/includes/components/site_header.php';
             <?php foreach ($articles as $a): ?>
               <a class="tl-side-item" href="<?php echo articleUrl($a); ?>">
                 <div class="when">
-                  <span class="src-dot" style="background:<?php echo e($a['logo_color'] ?? '#0d9488'); ?>"></span>
+                  <span class="src-dot" style="background:<?php echo e($a['logo_color'] ?? '#3D5A28'); ?>"></span>
                   <?php echo e($a['source_name'] ?? '—'); ?>
                   · <?php echo e(timeAgo($a['published_at'])); ?>
                 </div>

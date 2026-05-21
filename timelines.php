@@ -126,16 +126,16 @@ $metaDesc = 'فهرس القصص المتطوّرة على نيوز فيد — '
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 <style>
   :root {
-    --bg:#faf6ec; --bg2:#fdfaf2; --card:#fff; --border:#e0e3e8;
-    --accent2:#0d9488; --gold:#f59e0b; --text:#1a1a2e; --muted:#6b7280;
+    --bg:#F2EEE8; --bg2:#F7F3ED; --card:#fff; --border:#DDD5C7;
+    --accent2:#3D5A28; --gold:#C99624; --text:#2C2416; --muted:#7A6E5D;
   }
   body { background:var(--bg); font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif; color:var(--text); }
   .tli-container { max-width:1200px; margin:0 auto; padding:0 24px; }
   .tli-hero {
     background:linear-gradient(135deg,#fff 0%, #f0fdfa 100%);
-    border:1px solid rgba(13,148,136,.25); border-radius:18px;
+    border:1px solid rgba(61,90,40,.25); border-radius:18px;
     padding:32px 28px; margin:28px 0 24px;
-    box-shadow:0 4px 24px -10px rgba(13,148,136,.16);
+    box-shadow:0 4px 24px -10px rgba(61,90,40,.16);
     position:relative; overflow:hidden;
   }
   .tli-hero::before {
@@ -145,20 +145,20 @@ $metaDesc = 'فهرس القصص المتطوّرة على نيوز فيد — '
   }
   .tli-eyebrow {
     display:inline-flex; align-items:center; gap:8px;
-    background:rgba(13,148,136,.08); color:var(--accent2);
-    border:1px solid rgba(13,148,136,.22); padding:6px 14px;
+    background:rgba(61,90,40,.08); color:var(--accent2);
+    border:1px solid rgba(61,90,40,.22); padding:6px 14px;
     border-radius:999px; font-size:12px; font-weight:800;
     margin-bottom:14px; position:relative;
   }
   .tli-eyebrow .live-dot {
-    width:8px; height:8px; border-radius:50%; background:#ef4444;
-    box-shadow:0 0 0 0 rgba(239,68,68,.5);
+    width:8px; height:8px; border-radius:50%; background:#CE1126;
+    box-shadow:0 0 0 0 rgba(206,17,38,.5);
     animation:tli-pulse 2s infinite;
   }
   @keyframes tli-pulse {
-    0% { box-shadow:0 0 0 0 rgba(239,68,68,.5); }
-    70% { box-shadow:0 0 0 10px rgba(239,68,68,0); }
-    100% { box-shadow:0 0 0 0 rgba(239,68,68,0); }
+    0% { box-shadow:0 0 0 0 rgba(206,17,38,.5); }
+    70% { box-shadow:0 0 0 10px rgba(206,17,38,0); }
+    100% { box-shadow:0 0 0 0 rgba(206,17,38,0); }
   }
   .tli-title { font-size:30px; font-weight:900; line-height:1.4; margin-bottom:10px; position:relative; }
   .tli-lede  { font-size:15px; line-height:1.85; color:#3a3a52; max-width:760px; position:relative; }

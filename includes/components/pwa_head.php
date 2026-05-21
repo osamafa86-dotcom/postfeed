@@ -12,7 +12,7 @@
  *                             defaults to the brand teal
  */
 
-$pwa_theme_color = $pwa_theme_color ?? '#1a5c5c';
+$pwa_theme_color = $pwa_theme_color ?? '#282A20';
 ?>
 <script>
 // Set the boot flag *before* any layout happens. install-prompt.js

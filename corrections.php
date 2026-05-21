@@ -47,7 +47,7 @@ static_page_open(
 <h2>٤. مدّة الاستجابة</h2>
 <table style="width:100%;border-collapse:collapse;margin:16px 0;">
   <thead>
-    <tr style="background:#f1f5f9;">
+    <tr style="background:#F7F3ED;">
       <th style="padding:12px;border:1px solid var(--border);text-align:right;">نوع الخطأ</th>
       <th style="padding:12px;border:1px solid var(--border);text-align:right;">مدة المعالجة</th>
     </tr>

@@ -158,10 +158,10 @@ $pageTitleText = $keyword !== '' ? '#' . $keyword : 'الموضوعات الأك
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap"></noscript>
 <style>
   :root {
-    --bg:#faf6ec; --bg2:#fdfaf2; --bg3:#e4e6eb;
-    --card:#fff; --border:#e0e3e8;
-    --accent:#1a73e8; --accent2:#0d9488; --accent3:#16a34a;
-    --red:#dc2626; --text:#1a1a2e; --muted:#6b7280; --muted2:#9ca3af;
+    --bg:#F2EEE8; --bg2:#F7F3ED; --bg3:#E8E3DB;
+    --card:#fff; --border:#DDD5C7;
+    --accent:#5B7F3B; --accent2:#3D5A28; --accent3:#1B7A3D;
+    --red:#CE1126; --text:#2C2416; --muted:#7A6E5D; --muted2:#968B78;
   }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
@@ -190,12 +190,12 @@ $pageTitleText = $keyword !== '' ? '#' . $keyword : 'الموضوعات الأك
 
   .news-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-bottom:32px; }
   .news-card { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; transition:all .3s; box-shadow:0 1px 3px rgba(0,0,0,.04); display:block; }
-  .news-card:hover { transform:translateY(-5px); box-shadow:0 10px 40px rgba(0,0,0,.12); border-color:rgba(13,148,136,.25); }
+  .news-card:hover { transform:translateY(-5px); box-shadow:0 10px 40px rgba(0,0,0,.12); border-color:rgba(61,90,40,.25); }
   .card-img { height:175px; overflow:hidden; position:relative; background:var(--bg3); }
   .card-img img { width:100%; height:100%; object-fit:cover; transition:transform .5s ease; }
   .news-card:hover .card-img img { transform:scale(1.06); }
   .card-body { padding:16px; }
-  .card-cat { font-size:10px; font-weight:700; padding:4px 10px; border-radius:6px; display:inline-block; margin-bottom:10px; letter-spacing:.3px; background:#f0fdfa; color:#0d9488; border:1px solid #99f6e4; }
+  .card-cat { font-size:10px; font-weight:700; padding:4px 10px; border-radius:6px; display:inline-block; margin-bottom:10px; letter-spacing:.3px; background:#f0fdfa; color:#3D5A28; border:1px solid #99f6e4; }
   .card-title { font-size:15px; font-weight:700; line-height:1.6; margin-bottom:10px; color:var(--text); }
   .card-meta { display:flex; align-items:center; justify-content:space-between; }
   .card-source { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); font-weight:500; }
@@ -209,7 +209,7 @@ $pageTitleText = $keyword !== '' ? '#' . $keyword : 'الموضوعات الأك
   .pagination { display:flex; align-items:center; justify-content:center; gap:6px; padding:24px 0 48px; flex-wrap:wrap; }
   .pagination a, .pagination span { min-width:40px; height:40px; display:flex; align-items:center; justify-content:center; border-radius:10px; font-size:14px; font-weight:600; text-decoration:none; padding:0 12px; }
   .pagination a { background:var(--card); border:1px solid var(--border); color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,.04); }
-  .pagination a:hover { background:rgba(13,148,136,.08); border-color:var(--accent2); color:var(--accent2); }
+  .pagination a:hover { background:rgba(61,90,40,.08); border-color:var(--accent2); color:var(--accent2); }
   .pagination .current { background:var(--accent2); color:#fff; border:1px solid var(--accent2); }
 
   @media(max-width:900px) { .news-grid { grid-template-columns:repeat(2,1fr); } .page-title { font-size:22px; } }
@@ -285,7 +285,7 @@ include __DIR__ . '/includes/components/site_header.php';
             <div class="card-title"><?php echo e(mb_strlen($article['title']) > 80 ? mb_substr($article['title'], 0, 80) . '...' : $article['title']); ?></div>
             <div class="card-meta">
               <div class="card-source">
-                <span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#0d9488'); ?>"></span>
+                <span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#3D5A28'); ?>"></span>
                 <?php echo e($article['source_name'] ?? ''); ?>
               </div>
               <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>

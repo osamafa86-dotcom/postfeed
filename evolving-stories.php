@@ -53,14 +53,14 @@ $metaDesc = 'القصص المتطوّرة على نيوز فيد — متابع
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 <style>
   :root {
-    --bg:#faf6ec; --bg2:#fdfaf2; --card:#fff; --border:#e0e3e8;
-    --accent2:#0d9488; --text:#1a1a2e; --muted:#6b7280;
+    --bg:#F2EEE8; --bg2:#F7F3ED; --card:#fff; --border:#DDD5C7;
+    --accent2:#3D5A28; --text:#2C2416; --muted:#7A6E5D;
   }
   body { background:var(--bg); font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif; color:var(--text); }
   .es-container { max-width:1200px; margin:0 auto; padding:0 24px; }
 
   .es-hero {
-    background:linear-gradient(135deg,#fff 0%, #fef3c7 100%);
+    background:linear-gradient(135deg,#fff 0%, #F5EBCE 100%);
     border:1px solid rgba(217,119,6,.25); border-radius:20px;
     padding:36px 30px; margin:28px 0 28px;
     box-shadow:0 8px 28px -14px rgba(217,119,6,.22);
@@ -68,25 +68,25 @@ $metaDesc = 'القصص المتطوّرة على نيوز فيد — متابع
   }
   .es-hero::before {
     content:''; position:absolute; inset:0;
-    background:radial-gradient(circle at 88% 12%, rgba(13,148,136,.1), transparent 60%);
+    background:radial-gradient(circle at 88% 12%, rgba(61,90,40,.1), transparent 60%);
     pointer-events:none;
   }
   .es-eyebrow {
     display:inline-flex; align-items:center; gap:8px;
-    background:rgba(217,119,6,.10); color:#b45309;
+    background:rgba(217,119,6,.10); color:#8A5F08;
     border:1px solid rgba(217,119,6,.28); padding:7px 15px;
     border-radius:999px; font-size:12px; font-weight:800;
     margin-bottom:14px; position:relative;
   }
   .es-eyebrow .live-dot {
-    width:8px; height:8px; border-radius:50%; background:#ef4444;
-    box-shadow:0 0 0 0 rgba(239,68,68,.5);
+    width:8px; height:8px; border-radius:50%; background:#CE1126;
+    box-shadow:0 0 0 0 rgba(206,17,38,.5);
     animation:es-pulse 2s infinite;
   }
   @keyframes es-pulse {
-    0% { box-shadow:0 0 0 0 rgba(239,68,68,.5); }
-    70% { box-shadow:0 0 0 10px rgba(239,68,68,0); }
-    100% { box-shadow:0 0 0 0 rgba(239,68,68,0); }
+    0% { box-shadow:0 0 0 0 rgba(206,17,38,.5); }
+    70% { box-shadow:0 0 0 10px rgba(206,17,38,0); }
+    100% { box-shadow:0 0 0 0 rgba(206,17,38,0); }
   }
   .es-title { font-size:32px; font-weight:900; line-height:1.4; margin-bottom:10px; position:relative; }
   .es-lede  { font-size:15.5px; line-height:1.85; color:#3a3a52; max-width:800px; position:relative; }
@@ -98,15 +98,15 @@ $metaDesc = 'القصص المتطوّرة على نيوز فيد — متابع
   .es-network-cta {
     display:inline-flex; align-items:center; gap:8px;
     margin-top:18px; padding:10px 18px;
-    background:linear-gradient(135deg, #0d9488 0%, #14b8a6 100%);
+    background:linear-gradient(135deg, #3D5A28 0%, #5B7F3B 100%);
     color:#fff; border-radius:999px;
     font-size:13px; font-weight:800; position:relative;
-    box-shadow:0 6px 18px -8px rgba(13,148,136,.45);
+    box-shadow:0 6px 18px -8px rgba(61,90,40,.45);
     transition:transform .2s ease, box-shadow .2s ease;
   }
   .es-network-cta:hover {
     transform:translateY(-2px);
-    box-shadow:0 10px 24px -10px rgba(13,148,136,.55);
+    box-shadow:0 10px 24px -10px rgba(61,90,40,.55);
   }
   .es-network-cta span { font-size:16px; }
 
@@ -124,12 +124,12 @@ $metaDesc = 'القصص المتطوّرة على نيوز فيد — متابع
   }
   .es-card:hover {
     transform:translateY(-4px);
-    box-shadow:0 18px 40px -20px rgba(13,148,136,.25);
-    border-color:rgba(13,148,136,.3);
+    box-shadow:0 18px 40px -20px rgba(61,90,40,.25);
+    border-color:rgba(61,90,40,.3);
   }
   .es-card-cover {
     height:180px; background-size:cover; background-position:center;
-    background-color:#e5e7eb; position:relative;
+    background-color:#DDD5C7; position:relative;
   }
   .es-card-cover::after {
     content:''; position:absolute; inset:0;
@@ -151,16 +151,16 @@ $metaDesc = 'القصص المتطوّرة على نيوز فيد — متابع
   .es-card-name { font-size:19px; font-weight:900; line-height:1.3; text-shadow:0 2px 6px rgba(0,0,0,.4); }
   .es-card-count {
     position:absolute; top:12px; left:12px; z-index:2;
-    background:rgba(255,255,255,.95); color:#1a1a2e;
+    background:rgba(255,255,255,.95); color:#2C2416;
     padding:5px 12px; border-radius:999px; font-size:12px; font-weight:800;
     box-shadow:0 2px 8px rgba(0,0,0,.2);
   }
   .es-card-live {
     position:absolute; top:12px; right:12px; z-index:2;
-    background:#dc2626; color:#fff;
+    background:#CE1126; color:#fff;
     padding:5px 11px; border-radius:999px; font-size:11px; font-weight:800;
     display:flex; align-items:center; gap:6px;
-    box-shadow:0 2px 8px rgba(220,38,38,.4);
+    box-shadow:0 2px 8px rgba(206,17,38,.4);
   }
   .es-card-live .dot {
     width:7px; height:7px; border-radius:50%; background:#fff;
@@ -255,7 +255,7 @@ include __DIR__ . '/includes/components/site_header.php';
       <?php foreach ($stories as $st):
         $sUrl   = evolving_story_url($st);
         $sCover = !empty($st['cover_image']) ? $st['cover_image'] : placeholderImage(600, 300);
-        $color  = $st['accent_color'] ?: '#0d9488';
+        $color  = $st['accent_color'] ?: '#3D5A28';
       ?>
         <a class="es-card" href="<?php echo e($sUrl); ?>">
           <div class="es-card-cover" style="background-image:url('<?php echo e($sCover); ?>');">
