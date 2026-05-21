@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:just_audio_background/just_audio_background.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 import 'core/router/app_router.dart';
 import 'core/storage/hive_init.dart';
@@ -16,6 +17,8 @@ Future<void> main() async {
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(statusBarColor: Colors.transparent),
   );
+
+  timeago.setLocaleMessages('ar', timeago.ArMessages());
 
   await Hive.initFlutter();
   await initHiveBoxes();
