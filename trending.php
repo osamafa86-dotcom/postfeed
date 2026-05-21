@@ -70,17 +70,17 @@ include __DIR__ . '/includes/components/site_header.php';
     <p class="sub">
       أخبار ترتفع قراءاتها بسرعة الآن — مرتبة حسب درجة السرعة (آخر ساعة × 4 + آخر 6 ساعات)
       <?php if ($readersNow > 0): ?>
-        · <b style="color:#dc2626;"><?php echo number_format($readersNow); ?></b> يقرأ الآن
+        · <b style="color:#CE1126;"><?php echo number_format($readersNow); ?></b> يقرأ الآن
       <?php endif; ?>
     </p>
   </div>
 
   <?php if (empty($trendingTop)): ?>
-    <div style="text-align:center;padding:50px 20px;color:#64748b;">
+    <div style="text-align:center;padding:50px 20px;color:#7A6E5D;">
       <div style="font-size:48px;margin-bottom:12px;">📊</div>
-      <h3 style="margin:0 0 6px;color:#0f172a;">لا توجد بيانات سرعة بعد</h3>
+      <h3 style="margin:0 0 6px;color:#1E1F18;">لا توجد بيانات سرعة بعد</h3>
       <p>سيتم تحديث هذه الصفحة فور بدء القراء بمشاهدة المقالات.</p>
-      <p style="margin-top:18px;"><a href="index.php" style="color:#1a5c5c;font-weight:700;">↩ العودة للصفحة الرئيسية</a></p>
+      <p style="margin-top:18px;"><a href="index.php" style="color:#282A20;font-weight:700;">↩ العودة للصفحة الرئيسية</a></p>
     </div>
   <?php else: ?>
     <div class="trending-list">

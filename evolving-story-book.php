@@ -89,24 +89,24 @@ $pageTitle   = $story['name'] . ' — كتاب القصة · ' . $siteName;
 <style>
   :root {
     --es-accent: <?php echo e($story['accent_color']); ?>;
-    --ink:#1a1a2e; --ink2:#3a3a52; --muted:#6b7280;
-    --paper:#ffffff; --cream:#faf6ec; --border:#d5d8de; --gold:#f59e0b;
+    --ink:#2C2416; --ink2:#3a3a52; --muted:#7A6E5D;
+    --paper:#ffffff; --cream:#F2EEE8; --border:#d5d8de; --gold:#C99624;
   }
   * { box-sizing:border-box; }
-  html, body { margin:0; padding:0; background:#e5e7eb; color:var(--ink); }
+  html, body { margin:0; padding:0; background:#DDD5C7; color:var(--ink); }
   body { font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif; font-size:13pt; line-height:1.85; }
   a { color:var(--es-accent); text-decoration:none; }
 
   /* Screen-only toolbar with the Print button. Hidden at print time. */
   .book-toolbar {
     position:sticky; top:0; z-index:10;
-    background:#1a1a2e; color:#fff;
+    background:#2C2416; color:#fff;
     padding:14px 24px;
     display:flex; justify-content:space-between; align-items:center;
     gap:16px; flex-wrap:wrap;
     box-shadow:0 4px 14px rgba(0,0,0,.2);
   }
-  .book-toolbar .hint { font-size:12px; color:#cbd5e1; }
+  .book-toolbar .hint { font-size:12px; color:#C5BFAB; }
   .book-toolbar .hint b { color:#fff; }
   .book-toolbar .actions { display:flex; gap:10px; }
   .book-toolbar button, .book-toolbar a.btn {
@@ -139,7 +139,7 @@ $pageTitle   = $story['name'] . ' — كتاب القصة · ' . $siteName;
   /* ============== COVER PAGE ============== */
   .cover {
     position:relative;
-    background:linear-gradient(160deg, var(--es-accent) 0%, #1a1a2e 130%);
+    background:linear-gradient(160deg, var(--es-accent) 0%, #2C2416 130%);
     color:#fff;
     padding:42mm 24mm;
     min-height:297mm;
@@ -159,7 +159,7 @@ $pageTitle   = $story['name'] . ' — كتاب القصة · ' . $siteName;
   .cover-main { flex:1; display:flex; flex-direction:column; justify-content:center; }
   .cover-icon {
     width:90px; height:90px; border-radius:22px;
-    background:rgba(255,255,255,.95); color:#1a1a2e;
+    background:rgba(255,255,255,.95); color:#2C2416;
     display:flex; align-items:center; justify-content:center;
     font-size:48pt; margin-bottom:22px;
     box-shadow:0 10px 30px rgba(0,0,0,.3);
@@ -174,7 +174,7 @@ $pageTitle   = $story['name'] . ' — كتاب القصة · ' . $siteName;
     color:#fff; text-shadow:0 3px 14px rgba(0,0,0,.35);
   }
   .cover-sub {
-    font-size:14pt; line-height:1.9; color:#e5e7eb; max-width:150mm;
+    font-size:14pt; line-height:1.9; color:#DDD5C7; max-width:150mm;
   }
   .cover-stats {
     display:grid; grid-template-columns:repeat(4,1fr);
@@ -186,7 +186,7 @@ $pageTitle   = $story['name'] . ' — كتاب القصة · ' . $siteName;
     border-radius:12px; padding:12px 14px;
   }
   .cover-stat .n { font-size:22pt; font-weight:900; color:#fff; line-height:1; font-variant-numeric:tabular-nums; }
-  .cover-stat .l { font-size:9pt; color:#cbd5e1; font-weight:700; margin-top:6px; }
+  .cover-stat .l { font-size:9pt; color:#C5BFAB; font-weight:700; margin-top:6px; }
   .cover-footer {
     display:flex; justify-content:space-between; align-items:end;
     color:rgba(255,255,255,.75); font-size:10pt;
@@ -233,10 +233,10 @@ $pageTitle   = $story['name'] . ' — كتاب القصة · ' . $siteName;
   }
   .tl-head { display:flex; gap:10px; align-items:center; margin-bottom:8px; flex-wrap:wrap; }
   .tl-date {
-    background:#fef3c7; color:#92400e;
+    background:#F5EBCE; color:#6B4F0B;
     padding:3px 11px; border-radius:999px;
     font-size:9pt; font-weight:800;
-    border:1px solid #fcd34d;
+    border:1px solid #E2C264;
   }
   .tl-icon { font-size:13pt; }
   .tl-title { font-size:13pt; font-weight:800; line-height:1.55; margin:0 0 6px; }
@@ -253,7 +253,7 @@ $pageTitle   = $story['name'] . ' — كتاب القصة · ' . $siteName;
   .article-title { font-size:12.5pt; font-weight:800; line-height:1.55; margin:0 0 6px; color:var(--ink); }
   .article-excerpt { font-size:10.5pt; line-height:1.85; color:var(--ink2); margin:0 0 6px; }
   .article-meta { font-size:9pt; color:var(--muted); font-weight:600; }
-  .article-meta .sep { margin:0 6px; color:#cbd5e1; }
+  .article-meta .sep { margin:0 6px; color:#C5BFAB; }
 
   /* ============ @media print ============ */
   @page {

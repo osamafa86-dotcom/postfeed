@@ -96,7 +96,7 @@ include __DIR__ . '/includes/components/site_header.php';
 // canvas without knowing the CDN is the problem.
 if (typeof L === 'undefined') {
   document.getElementById('mapSideBody').innerHTML =
-    '<p style="padding:20px;background:#fee;color:#991b1b;border-radius:8px;font-size:13px;line-height:1.7;">'
+    '<p style="padding:20px;background:#fee;color:#8A0B1A;border-radius:8px;font-size:13px;line-height:1.7;">'
     + '⚠ فشل تحميل مكتبة Leaflet من CDN.<br>'
     + 'تحقّقي من الاتصال أو جدار الحماية / CSP.'
     + '</p>';

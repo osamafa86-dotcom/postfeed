@@ -75,9 +75,9 @@ $pageUrl  = SITE_URL . '/evolving-story/' . rawurlencode($slug) . '/quotes';
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 <style>
   :root {
-    --es-accent: <?php echo !$notFound ? e($story['accent_color']) : '#0d9488'; ?>;
-    --bg:#faf6ec; --bg2:#fdfaf2; --card:#fff; --border:#e0e3e8;
-    --text:#1a1a2e; --muted:#6b7280; --gold:#f59e0b;
+    --es-accent: <?php echo !$notFound ? e($story['accent_color']) : '#3D5A28'; ?>;
+    --bg:#F2EEE8; --bg2:#F7F3ED; --card:#fff; --border:#DDD5C7;
+    --text:#2C2416; --muted:#7A6E5D; --gold:#C99624;
   }
   body { font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif; background:var(--bg); color:var(--text); }
   a { text-decoration:none; color:inherit; }
@@ -85,7 +85,7 @@ $pageUrl  = SITE_URL . '/evolving-story/' . rawurlencode($slug) . '/quotes';
 
   .qw-hero {
     margin:28px 0 24px; padding:38px 32px 32px;
-    background:linear-gradient(135deg, var(--es-accent) 0%, #1a1a2e 120%);
+    background:linear-gradient(135deg, var(--es-accent) 0%, #2C2416 120%);
     border-radius:22px; color:#fff; position:relative; overflow:hidden;
     box-shadow:0 12px 40px -18px rgba(0,0,0,.35);
   }

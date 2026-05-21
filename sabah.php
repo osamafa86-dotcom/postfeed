@@ -59,13 +59,13 @@ if ($requestDate) {
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap"></noscript>
 <style>
-:root{--bg:#faf6ec;--bg2:#fdfaf2;--card:#fff;--border:#e0e3e8;--accent2:#0d9488;--gold:#f59e0b;--gold2:#fcd34d;--gold-bg:#fef3c7;--gold-text:#92400e;--text:#1a1a2e;--muted:#6b7280}
+:root{--bg:#F2EEE8;--bg2:#F7F3ED;--card:#fff;--border:#DDD5C7;--accent2:#3D5A28;--gold:#C99624;--gold2:#E2C264;--gold-bg:#F5EBCE;--gold-text:#6B4F0B;--text:#2C2416;--muted:#7A6E5D}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.7}
 a{text-decoration:none;color:inherit}
 .container{max-width:820px;margin:0 auto;padding:0 24px}
 .sabah-hero{
-  background:linear-gradient(135deg,#fffbeb 0%,#fef3c7 50%,#fefce8 100%);
+  background:linear-gradient(135deg,#F8F0DD 0%,#F5EBCE 50%,#F5EBCE 100%);
   border:1px solid var(--gold2);border-radius:20px;
   padding:36px 32px;margin:28px 0;
   box-shadow:0 4px 24px -10px rgba(245,158,11,.2);
@@ -90,12 +90,12 @@ a{text-decoration:none;color:inherit}
   box-shadow:0 1px 3px rgba(0,0,0,.03);
 }
 .sabah-section h3{font-size:17px;font-weight:800;margin-bottom:10px;display:flex;align-items:center;gap:8px}
-.sabah-section p{font-size:15px;line-height:1.85;color:#374151}
+.sabah-section p{font-size:15px;line-height:1.85;color:#4A4030}
 .sabah-closing{
   text-align:center;padding:28px 24px;margin:24px 0;
   background:linear-gradient(135deg,#f0fdfa,#ecfdf5);
-  border:1px solid rgba(13,148,136,.2);border-radius:16px;
-  font-size:18px;font-weight:800;color:#0f766e;line-height:1.6;
+  border:1px solid rgba(61,90,40,.2);border-radius:16px;
+  font-size:18px;font-weight:800;color:#2D4520;line-height:1.6;
 }
 .sabah-archive{margin:32px 0 48px}
 .sabah-archive h3{font-size:16px;font-weight:800;margin-bottom:14px}

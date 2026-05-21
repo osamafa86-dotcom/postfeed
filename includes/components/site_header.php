@@ -49,9 +49,9 @@ $__nfVer = app_version();
     // Eye-catching so QA can tell which build rendered the page at a glance.
     console.log(
       '%c نيوز فيد %c v' + v.full + ' %c ' + deployed + ' UTC ',
-      'background:#0d9488;color:#fff;padding:2px 8px;border-radius:4px 0 0 4px;font-weight:700',
-      'background:#134e4a;color:#5eead4;padding:2px 8px;font-family:monospace',
-      'background:#1f2937;color:#d1d5db;padding:2px 8px;border-radius:0 4px 4px 0;font-family:monospace'
+      'background:#3D5A28;color:#fff;padding:2px 8px;border-radius:4px 0 0 4px;font-weight:700',
+      'background:#2D4520;color:#A6C098;padding:2px 8px;font-family:monospace',
+      'background:#282A20;color:#DDD5C7;padding:2px 8px;border-radius:0 4px 4px 0;font-family:monospace'
     );
     window.__NF_VERSION = v;
   } catch (_) {}

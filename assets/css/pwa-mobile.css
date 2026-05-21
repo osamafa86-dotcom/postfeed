@@ -31,7 +31,7 @@ html {
   text-size-adjust: 100%;
   /* Match the themed background so back-navigation never shows a
      white canvas between the cached paint and the style bundle. */
-  background-color: var(--bg, #faf6ec);
+  background-color: var(--bg, #F2EEE8);
 }
 [data-theme="dark"] html,
 html[data-theme="dark"] {

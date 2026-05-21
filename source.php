@@ -99,16 +99,16 @@ if ($viewerId && !empty($articles)) {
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap"></noscript>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:'Tajawal',sans-serif; background:#faf6ec; color:#1a1a2e; line-height:1.6; }
+  body { font-family:'Tajawal',sans-serif; background:#F2EEE8; color:#2C2416; line-height:1.6; }
   a { text-decoration:none; color:inherit; }
-  .top-bar { background:#1a1a2e; color:#fff; padding:14px 20px; display:flex; justify-content:space-between; align-items:center; }
+  .top-bar { background:#2C2416; color:#fff; padding:14px 20px; display:flex; justify-content:space-between; align-items:center; }
   .top-bar .back { color:#fff; background:rgba(255,255,255,.1); padding:8px 16px; border-radius:20px; font-size:13px; }
   .container { max-width:900px; margin:0 auto; padding:20px; }
   .profile-card { background:#fff; border-radius:16px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,.06); margin-bottom:24px; }
   .cover {
     height:240px;
     background: <?php echo e($source['logo_bg'] ?? '#5a85b0'); ?>;
-    background-image: <?php if(!empty($source['cover_image'])): ?>url('<?php echo e($source['cover_image']); ?>')<?php else: ?>linear-gradient(135deg,<?php echo e($source['logo_bg'] ?? '#5a85b0'); ?>,#1a1a2e)<?php endif; ?>;
+    background-image: <?php if(!empty($source['cover_image'])): ?>url('<?php echo e($source['cover_image']); ?>')<?php else: ?>linear-gradient(135deg,<?php echo e($source['logo_bg'] ?? '#5a85b0'); ?>,#2C2416)<?php endif; ?>;
     background-size:cover; background-position:center;
     position:relative;
   }
@@ -124,32 +124,32 @@ if ($viewerId && !empty($articles)) {
   .name { font-size:26px; font-weight:900; margin-bottom:6px; }
   .meta { color:#666; font-size:13px; margin-bottom:14px; }
   .stats { display:flex; gap:24px; margin-bottom:20px; }
-  .stat strong { display:block; font-size:22px; font-weight:900; color:#1a1a2e; }
+  .stat strong { display:block; font-size:22px; font-weight:900; color:#2C2416; }
   .stat span { font-size:12px; color:#666; }
   .actions { display:flex; gap:10px; flex-wrap:wrap; }
   .btn-follow {
     padding:11px 28px; border-radius:24px; border:0; cursor:pointer;
     font-family:inherit; font-size:14px; font-weight:700;
-    background:#1a73e8; color:#fff; transition:all .2s;
+    background:#5B7F3B; color:#fff; transition:all .2s;
   }
   .btn-follow:hover { background:#1557b0; }
-  .btn-follow.following { background:#e8f0fe; color:#1a73e8; border:1px solid #1a73e8; }
+  .btn-follow.following { background:#e8f0fe; color:#5B7F3B; border:1px solid #5B7F3B; }
   .btn-visit {
-    padding:11px 22px; border-radius:24px; border:1px solid #e4e6eb;
-    background:#fff; color:#1a1a2e; font-weight:600; font-size:14px;
+    padding:11px 22px; border-radius:24px; border:1px solid #E8E3DB;
+    background:#fff; color:#2C2416; font-weight:600; font-size:14px;
   }
   .description { color:#444; font-size:14px; margin-top:14px; line-height:1.8; }
 
   .articles-section { background:#fff; border-radius:16px; padding:24px; box-shadow:0 4px 20px rgba(0,0,0,.06); }
-  .section-title { font-size:20px; font-weight:800; margin-bottom:20px; padding-right:14px; border-right:4px solid #1a73e8; }
+  .section-title { font-size:20px; font-weight:800; margin-bottom:20px; padding-right:14px; border-right:4px solid #5B7F3B; }
   .article-item {
     display:flex; gap:14px; padding:16px 0; border-bottom:1px solid #f0f2f5;
   }
   .article-item:last-child { border-bottom:0; }
   .article-item img { width:140px; height:90px; object-fit:cover; border-radius:10px; flex-shrink:0; }
   .article-body { flex:1; min-width:0; }
-  .article-title { font-size:15px; font-weight:700; margin-bottom:6px; color:#1a1a2e; }
-  .article-item:hover .article-title { color:#1a73e8; }
+  .article-title { font-size:15px; font-weight:700; margin-bottom:6px; color:#2C2416; }
+  .article-item:hover .article-title { color:#5B7F3B; }
   .article-excerpt { font-size:13px; color:#666; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
   .article-meta { font-size:11px; color:#999; margin-top:8px; }
 
@@ -179,7 +179,7 @@ if ($viewerId && !empty($articles)) {
       <h1 class="name"><?php echo e($source['name']); ?></h1>
       <div class="meta">
         <?php if (!empty($source['url'])): ?>
-          <a href="<?php echo e($source['url']); ?>" target="_blank" style="color:#1a73e8;">🔗 <?php echo e(parse_url($source['url'], PHP_URL_HOST)); ?></a>
+          <a href="<?php echo e($source['url']); ?>" target="_blank" style="color:#5B7F3B;">🔗 <?php echo e(parse_url($source['url'], PHP_URL_HOST)); ?></a>
         <?php endif; ?>
       </div>
       <div class="stats">

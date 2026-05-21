@@ -335,19 +335,19 @@ include __DIR__ . '/includes/components/site_header.php';
   .wr-banner { position: relative; max-width: 1400px; margin: 12px auto 0; padding: 0 20px; }
   .wr-banner[hidden] { display: none !important; }
   .wr-banner-link { display: flex; align-items: center; gap: 14px; padding: 14px 18px;
-    background: linear-gradient(135deg, #0f172a 0%, #1a5c5c 100%); color: #fff;
+    background: linear-gradient(135deg, #1E1F18 0%, #282A20 100%); color: #fff;
     border-radius: 14px; text-decoration: none; box-shadow: 0 10px 28px -12px rgba(13, 148, 136, 0.6);
     border: 1px solid rgba(245, 158, 11, 0.35); }
   .wr-banner-ico { flex: 0 0 48px; width: 48px; height: 48px; display: inline-flex;
     align-items: center; justify-content: center; font-size: 26px; background: rgba(245, 158, 11, 0.95);
-    color: #1a1a2e; border-radius: 12px; }
+    color: #2C2416; border-radius: 12px; }
   .wr-banner-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
   .wr-banner-body strong { font-size: 15px; font-weight: 800; line-height: 1.35;
     color: #fff; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .wr-banner-body em { font-size: 13px; font-style: normal; color: rgba(255,255,255,0.82);
     line-height: 1.55; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .wr-banner-cta { flex: 0 0 auto; font-size: 13px; font-weight: 800;
-    background: #f59e0b; color: #1a1a2e; padding: 8px 16px; border-radius: 8px; white-space: nowrap; }
+    background: #C99624; color: #2C2416; padding: 8px 16px; border-radius: 8px; white-space: nowrap; }
   .wr-banner-x { position: absolute; top: 4px; left: 4px; background: transparent; color: rgba(255,255,255,0.7);
     border: 0; font-size: 22px; width: 32px; height: 32px; cursor: pointer; line-height: 1; border-radius: 8px; }
   .wr-banner-x:hover { background: rgba(255,255,255,0.1); color: #fff; }
@@ -441,7 +441,7 @@ include __DIR__ . '/includes/components/site_header.php';
           <div class="foryou-card-meta">
             <?php if (!empty($pf['source_name'])): ?>
               <span class="foryou-source">
-                <span class="src-dot" style="background:<?php echo e($pf['logo_color'] ?? '#0d9488'); ?>"><?php echo e(mb_substr($pf['source_name'], 0, 1)); ?></span>
+                <span class="src-dot" style="background:<?php echo e($pf['logo_color'] ?? '#3D5A28'); ?>"><?php echo e(mb_substr($pf['source_name'], 0, 1)); ?></span>
                 <?php echo e($pf['source_name']); ?>
               </span>
               <span class="sep">·</span>
@@ -548,7 +548,7 @@ $__featRest  = array_slice($latestArticles, 7);
 
     <!-- PALESTINE NEWS -->
     <div id="palestine" class="section-header">
-      <div class="section-title"><div class="line" style="background:#16a34a"></div>🇵🇸 أحدث الأخبار الفلسطينية</div>
+      <div class="section-title"><div class="line" style="background:#1B7A3D"></div>🇵🇸 أحدث الأخبار الفلسطينية</div>
     </div>
     <?php if (!empty($palestineNews)): ?>
       <?php $psFirst = $palestineNews[0]; ?>
@@ -607,14 +607,14 @@ $__featRest  = array_slice($latestArticles, 7);
     <!-- EVOLVING STORIES RAIL — admin-curated persistent topics -->
     <?php if (!empty($evolvingRail)): ?>
       <div id="evolving-rail" class="section-header">
-        <div class="section-title"><div class="line" style="background:#d97706"></div>📅 قصص متطوّرة — متابعة دائمة</div>
+        <div class="section-title"><div class="line" style="background:#B8860B"></div>📅 قصص متطوّرة — متابعة دائمة</div>
         <a class="see-all" href="/evolving-stories">عرض الكل ›</a>
       </div>
       <div class="evrail-grid">
         <?php foreach ($evolvingRail as $st):
           $sUrl   = evolving_story_url($st);
           $sCover = !empty($st['cover_image']) ? $st['cover_image'] : placeholderImage(500, 280);
-          $color  = $st['accent_color'] ?: '#0d9488';
+          $color  = $st['accent_color'] ?: '#3D5A28';
         ?>
           <a class="evrail-card" href="<?php echo e($sUrl); ?>">
             <div class="evrail-cover" style="background-image:url('<?php echo e($sCover); ?>');">
@@ -657,7 +657,7 @@ $__featRest  = array_slice($latestArticles, 7);
           gap:16px; margin-bottom:32px;
         }
         .evrail-card {
-          background:#fff; border:1px solid #e0e3e8; border-radius:16px;
+          background:#fff; border:1px solid #DDD5C7; border-radius:16px;
           overflow:hidden; text-decoration:none; color:inherit;
           display:grid; grid-template-columns:minmax(260px, 38%) 1fr;
           transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease;
@@ -665,12 +665,12 @@ $__featRest  = array_slice($latestArticles, 7);
         }
         .evrail-card:hover {
           transform:translateY(-3px);
-          box-shadow:0 14px 30px -16px rgba(13,148,136,.26);
+          box-shadow:0 14px 30px -16px rgba(61,90,40,.26);
           border-color:rgba(217,119,6,.3);
         }
         .evrail-cover {
           min-height:220px; background-size:cover; background-position:center;
-          position:relative; background-color:#e5e7eb;
+          position:relative; background-color:#DDD5C7;
         }
         .evrail-cover::after {
           content:''; position:absolute; inset:0;
@@ -679,9 +679,9 @@ $__featRest  = array_slice($latestArticles, 7);
         .evrail-accent { position:absolute; top:0; left:0; right:0; height:4px; z-index:2; }
         .evrail-live {
           position:absolute; top:10px; right:10px; z-index:3;
-          background:#dc2626; color:#fff; padding:4px 10px; border-radius:999px;
+          background:#CE1126; color:#fff; padding:4px 10px; border-radius:999px;
           font-size:10.5px; font-weight:800; display:flex; align-items:center; gap:5px;
-          box-shadow:0 2px 8px rgba(220,38,38,.4);
+          box-shadow:0 2px 8px rgba(206,17,38,.4);
         }
         .evrail-live .dot {
           width:6px; height:6px; border-radius:50%; background:#fff;
@@ -698,7 +698,7 @@ $__featRest  = array_slice($latestArticles, 7);
         }
         .evrail-icon {
           width:38px; height:38px; border-radius:10px;
-          background:rgba(255,255,255,.96); color:#1a1a2e;
+          background:rgba(255,255,255,.96); color:#2C2416;
           display:flex; align-items:center; justify-content:center;
           font-size:20px; flex-shrink:0;
           box-shadow:0 3px 10px rgba(0,0,0,.3);
@@ -718,13 +718,13 @@ $__featRest  = array_slice($latestArticles, 7);
         .evrail-latest .bullet {
           width:6px; height:6px; border-radius:50%; margin-top:7px; flex-shrink:0;
         }
-        .evrail-latest .txt { flex:1; color:#1a1a2e; font-weight:600; }
+        .evrail-latest .txt { flex:1; color:#2C2416; font-weight:600; }
         .evrail-foot {
-          margin-top:auto; padding-top:10px; border-top:1px solid #e0e3e8;
+          margin-top:auto; padding-top:10px; border-top:1px solid #DDD5C7;
           display:flex; align-items:center; justify-content:space-between;
-          font-size:11.5px; color:#6b7280;
+          font-size:11.5px; color:#7A6E5D;
         }
-        .evrail-foot b { color:#1a1a2e; font-weight:800; }
+        .evrail-foot b { color:#2C2416; font-weight:800; }
         @media(max-width:640px) {
           .evrail-card { grid-template-columns:1fr; }
           .evrail-cover { min-height:160px; }
@@ -1088,7 +1088,7 @@ $__featRest  = array_slice($latestArticles, 7);
       <div class="mr2-desc" data-mr2-desc="velocity" hidden>
         أخبار ترتفع قراءاتها بسرعة <b>الآن</b> — مرتبة بدرجة السرعة (آخر ساعة × 4 + آخر 6 ساعات).
         <?php if ($trendingReaders > 0): ?>
-          · <b style="color:#dc2626;"><?php echo number_format($trendingReaders); ?></b> يقرأ الآن
+          · <b style="color:#CE1126;"><?php echo number_format($trendingReaders); ?></b> يقرأ الآن
         <?php endif; ?>
       </div>
       <?php endif; ?>
@@ -1152,7 +1152,7 @@ $__featRest  = array_slice($latestArticles, 7);
                 <?php if (!empty($__t['cat_name'])): ?>
                   <span class="mr2-cat"><?php echo e($__t['cat_name']); ?></span>
                 <?php endif; ?>
-                <span class="mr2-views" style="color:#dc2626;font-weight:800;">⚡ <?php echo number_format($__velocity); ?></span>
+                <span class="mr2-views" style="color:#CE1126;font-weight:800;">⚡ <?php echo number_format($__velocity); ?></span>
                 <?php if ($__vh > 0): ?>
                   <span class="mr2-views">⏱ <?php echo number_format($__vh); ?>/ساعة</span>
                 <?php endif; ?>
@@ -1477,10 +1477,10 @@ $__featRest  = array_slice($latestArticles, 7);
   document.querySelectorAll('.save-btn').forEach(btn => {
     btn.addEventListener('click', function() {
       this.textContent = 'تم الحفظ بنجاح!';
-      this.style.background = 'linear-gradient(135deg,#0d9488,#0f766e)';
+      this.style.background = 'linear-gradient(135deg,#3D5A28,#2D4520)';
       setTimeout(() => {
         this.textContent = 'حفظ التفضيلات';
-        this.style.background = 'linear-gradient(135deg,#1a73e8,#4f46e5)';
+        this.style.background = 'linear-gradient(135deg,#5B7F3B,#3D5A28)';
       }, 2000);
     });
   });
