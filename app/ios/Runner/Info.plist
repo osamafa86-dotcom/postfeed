@@ -8,6 +8,13 @@
 	<string>فيد نيوز</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
+
+	<!-- App uses only standard iOS encryption (HTTPS) — exempt from
+	     the U.S. Export Administration Regulations annual filing.
+	     Skipping this key forces App Store Connect to ask on every
+	     build upload; declaring it here answers the question once. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
