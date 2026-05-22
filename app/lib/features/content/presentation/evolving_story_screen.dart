@@ -6,6 +6,7 @@ import 'package:timeago/timeago.dart' as timeago;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/models/evolving_story.dart';
+import '../../../core/utils/safe_launch.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/article_card.dart';
 import '../../../core/widgets/loading_state.dart';
@@ -242,7 +243,7 @@ class _StoryBody extends StatelessWidget {
                   child: OutlinedButton.icon(
                     onPressed: () {
                       final url = 'https://feedsnews.net/evolving-story/${story.slug}/book?print=1';
-                      launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                      safeLaunch(context, url, mode: LaunchMode.externalApplication);
                     },
                     icon: const Text('📖', style: TextStyle(fontSize: 14)),
                     label: const Text('صدِّر ككتاب', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),

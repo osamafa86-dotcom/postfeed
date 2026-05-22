@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/utils/safe_launch.dart';
 import '../../../core/widgets/loading_state.dart';
 import '../data/media_repository.dart';
 
@@ -23,10 +24,10 @@ class YoutubeScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(16),
             itemCount: vids.length,
             separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (_, i) {
+            itemBuilder: (ctx, i) {
               final v = vids[i];
               return InkWell(
-                onTap: () => launchUrl(Uri.parse(v.videoUrl)),
+                onTap: () => safeLaunch(ctx, v.videoUrl),
                 borderRadius: BorderRadius.circular(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

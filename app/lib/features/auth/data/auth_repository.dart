@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/api/api_exception.dart';
 import '../../../core/models/user.dart';
 import 'auth_storage.dart';
 
@@ -24,10 +25,7 @@ class AuthRepository {
       },
       decode: (d) => (d as Map).cast<String, dynamic>(),
     );
-    final data = res.data!;
-    final user = AppUser.fromJson((data['user'] as Map).cast());
-    await AuthStorage.save(data['token'] as String, user.id);
-    return user;
+    return _persistAuthFromResponse(res.data);
   }
 
   Future<AppUser> login({required String email, required String password}) async {
@@ -36,9 +34,20 @@ class AuthRepository {
       body: {'email': email, 'password': password},
       decode: (d) => (d as Map).cast<String, dynamic>(),
     );
-    final data = res.data!;
-    final user = AppUser.fromJson((data['user'] as Map).cast());
-    await AuthStorage.save(data['token'] as String, user.id);
+    return _persistAuthFromResponse(res.data);
+  }
+
+  Future<AppUser> _persistAuthFromResponse(Map<String, dynamic>? data) async {
+    if (data == null) {
+      throw const ApiException('invalid_response', 'استجابة غير متوقعة من الخادم');
+    }
+    final userMap = data['user'];
+    final token = data['token'];
+    if (userMap is! Map || token is! String || token.isEmpty) {
+      throw const ApiException('invalid_response', 'استجابة غير متوقعة من الخادم');
+    }
+    final user = AppUser.fromJson(userMap.cast<String, dynamic>());
+    await AuthStorage.save(token, user.id);
     return user;
   }
 
@@ -49,7 +58,9 @@ class AuthRepository {
         '/auth/me',
         decode: (d) => (d as Map).cast<String, dynamic>(),
       );
-      return AppUser.fromJson((res.data!['user'] as Map).cast());
+      final userMap = res.data?['user'];
+      if (userMap is! Map) return null;
+      return AppUser.fromJson(userMap.cast<String, dynamic>());
     } catch (_) {
       return null;
     }
@@ -73,7 +84,11 @@ class AuthRepository {
       body: patch,
       decode: (d) => (d as Map).cast<String, dynamic>(),
     );
-    return AppUser.fromJson((res.data!['user'] as Map).cast());
+    final userMap = res.data?['user'];
+    if (userMap is! Map) {
+      throw const ApiException('invalid_response', 'تعذّر تحديث الملف الشخصي');
+    }
+    return AppUser.fromJson(userMap.cast<String, dynamic>());
   }
 }
 

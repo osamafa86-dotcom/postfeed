@@ -13,7 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     [$page, $limit, $offset] = api_pagination(20, 100);
     $st = $db->prepare("SELECT id, type, title, body, icon, link, is_read, created_at
                         FROM user_notifications WHERE user_id=?
-                        ORDER BY created_at DESC LIMIT $limit OFFSET $offset");
+                        ORDER BY created_at DESC LIMIT " . (int)$limit . " OFFSET " . (int)$offset);
     $st->execute([(int)$user['id']]);
     $rows = $st->fetchAll();
 

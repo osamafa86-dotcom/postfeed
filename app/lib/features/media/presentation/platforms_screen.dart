@@ -5,6 +5,7 @@ import 'package:timeago/timeago.dart' as timeago;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/safe_launch.dart';
 import '../../../core/widgets/loading_state.dart';
 import '../data/media_repository.dart';
 
@@ -187,7 +188,7 @@ class _MessageCard extends StatelessWidget {
           if (msg.postUrl != null)
             Padding(padding: const EdgeInsets.only(top: 8),
               child: GestureDetector(
-                onTap: () => launchUrl(Uri.parse(msg.postUrl!)),
+                onTap: () => safeLaunch(context, msg.postUrl!),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Icon(Icons.open_in_new, size: 14, color: platformColor),
                   const SizedBox(width: 4),
@@ -208,7 +209,7 @@ class _YoutubeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return GestureDetector(
-      onTap: () => launchUrl(Uri.parse(video.videoUrl)),
+      onTap: () => safeLaunch(context, video.videoUrl),
       child: Container(
         decoration: BoxDecoration(
           color: theme.cardColor,

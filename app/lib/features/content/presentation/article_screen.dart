@@ -10,6 +10,7 @@ import 'package:share_plus/share_plus.dart' show Share;
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/utils/safe_launch.dart';
 import '../../../core/models/article.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/article_card.dart';
@@ -66,7 +67,13 @@ class ArticleScreen extends ConsumerWidget {
               }
               try {
                 await ref.read(bookmarkedIdsProvider.notifier).toggle(id);
-              } catch (_) {}
+              } catch (_) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('تعذّر حفظ المقال — حاول لاحقاً')),
+                  );
+                }
+              }
             },
           ),
         ],
@@ -271,7 +278,7 @@ class _ArticleBody extends StatelessWidget {
                 OutlinedButton.icon(
                   icon: const Icon(Icons.open_in_new),
                   label: const Text('قراءة المصدر الأصلي'),
-                  onPressed: () => launchUrl(Uri.parse(article.sourceUrl!)),
+                  onPressed: () => safeLaunch(context, article.sourceUrl!),
                 ),
               ],
             ],

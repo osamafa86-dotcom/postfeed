@@ -53,8 +53,13 @@ $tryDelete($db, "DELETE FROM user_notifications     WHERE user_id = ?", [$userId
 $tryDelete($db, "DELETE FROM user_blocks            WHERE blocker_id = ? OR blocked_id = ?", [$userId, $userId]);
 $tryDelete($db, "DELETE FROM comment_reports        WHERE reporter_id = ?", [$userId]);
 
-// ── Optional tables that older installs may not have ───────────
+// ── Device tokens for push notifications ───────────────────────
+// Tied to user_id; not removing them means push to a re-issued user_id
+// could still reach the old device. Both names exist across deploys.
+$tryDelete($db, "DELETE FROM user_devices           WHERE user_id = ?", [$userId]);
 $tryDelete($db, "DELETE FROM push_tokens            WHERE user_id = ?", [$userId]);
+
+// ── Optional tables that older installs may not have ───────────
 $tryDelete($db, "DELETE FROM newsletter_subscribers WHERE user_id = ?", [$userId]);
 
 // ── The account itself — this MUST succeed ─────────────────────

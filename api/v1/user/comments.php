@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
               AND COALESCE(ac.is_deleted, 0) = 0
               $blockClause
             ORDER BY ac.created_at DESC
-            LIMIT $limit OFFSET $offset";
+            LIMIT " . (int)$limit . " OFFSET " . (int)$offset;
 
     $st = $db->prepare($sql);
     $st->execute($params);

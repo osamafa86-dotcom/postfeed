@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/models/home_payload.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/safe_launch.dart';
 
 class TickerBar extends StatefulWidget {
   const TickerBar({super.key, required this.items});
@@ -55,12 +56,12 @@ class _TickerBarState extends State<TickerBar> {
               controller: _ctl,
               scrollDirection: Axis.vertical,
               itemCount: widget.items.length,
-              itemBuilder: (_, i) {
+              itemBuilder: (ctx, i) {
                 final t = widget.items[i];
                 return Align(
                   alignment: AlignmentDirectional.centerStart,
                   child: GestureDetector(
-                    onTap: t.link != null ? () => launchUrl(Uri.parse(t.link!)) : null,
+                    onTap: t.link != null ? () => safeLaunch(ctx, t.link!) : null,
                     child: Text(
                       t.text,
                       maxLines: 1,

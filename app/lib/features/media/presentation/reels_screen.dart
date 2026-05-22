@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/utils/safe_launch.dart';
 import '../../../core/widgets/loading_state.dart';
 import '../data/media_repository.dart';
 
@@ -26,10 +27,10 @@ class ReelsScreen extends ConsumerWidget {
             mainAxisSpacing: 8,
           ),
           itemCount: items.length,
-          itemBuilder: (_, i) {
+          itemBuilder: (ctx, i) {
             final r = items[i];
             return InkWell(
-              onTap: () => launchUrl(Uri.parse(r.url)),
+              onTap: () => safeLaunch(ctx, r.url),
               borderRadius: BorderRadius.circular(12),
               child: Stack(
                 fit: StackFit.expand,

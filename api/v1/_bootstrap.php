@@ -132,9 +132,10 @@ function jwt_secret(): string {
 
 /**
  * Issue a signed JWT for a user.
- * Default lifetime: 30 days (mobile-friendly; refresh on use).
+ * Default lifetime: 7 days. Stolen-device exposure window matters more
+ * than the few extra logins per month for mobile users.
  */
-function jwt_issue(int $userId, int $ttlSeconds = 2592000, array $extra = []): string {
+function jwt_issue(int $userId, int $ttlSeconds = 604800, array $extra = []): string {
     $now = time();
     $header = ['alg' => 'HS256', 'typ' => 'JWT'];
     $payload = array_merge([
