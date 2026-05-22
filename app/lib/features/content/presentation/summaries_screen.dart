@@ -527,7 +527,15 @@ class _SummaryContent extends StatelessWidget {
             _MiniAction(
               icon: Icons.ios_share_rounded,
               color: isDark ? Colors.white38 : AppColors.textMutedLight,
-              onTap: () => Share.share(data.toFullText(cardTitle)),
+              onTap: () {
+                final box = context.findRenderObject() as RenderBox?;
+                Share.share(
+                  data.toFullText(cardTitle),
+                  sharePositionOrigin: box != null
+                      ? box.localToGlobal(Offset.zero) & box.size
+                      : null,
+                );
+              },
             ),
           ],
         ),

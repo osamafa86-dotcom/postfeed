@@ -384,7 +384,13 @@ class _ActionBarState extends ConsumerState<_ActionBar> {
             fontSize: fontSize,
             onTap: () async {
               final url = 'https://feedsnews.net/article/${widget.article.slug ?? widget.article.id}';
-              await Share.share('${widget.article.title}\n$url');
+              final box = context.findRenderObject() as RenderBox?;
+              await Share.share(
+                '${widget.article.title}\n$url',
+                sharePositionOrigin: box != null
+                    ? box.localToGlobal(Offset.zero) & box.size
+                    : null,
+              );
               // Fire-and-forget share tracking
               ref.read(userRepositoryProvider).trackShare(widget.article.id);
             },

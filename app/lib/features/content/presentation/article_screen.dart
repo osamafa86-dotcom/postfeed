@@ -34,10 +34,20 @@ class ArticleScreen extends ConsumerWidget {
       appBar: AppBar(
         actions: [
           asy.maybeWhen(
-            data: (d) => IconButton(
-              icon: const Icon(Icons.share_outlined),
-              onPressed: () => Share.share(d.article.title +
-                  (d.article.sourceUrl != null ? '\n${d.article.sourceUrl}' : '')),
+            data: (d) => Builder(
+              builder: (btnCtx) => IconButton(
+                icon: const Icon(Icons.share_outlined),
+                onPressed: () {
+                  final box = btnCtx.findRenderObject() as RenderBox?;
+                  Share.share(
+                    d.article.title +
+                        (d.article.sourceUrl != null ? '\n${d.article.sourceUrl}' : ''),
+                    sharePositionOrigin: box != null
+                        ? box.localToGlobal(Offset.zero) & box.size
+                        : null,
+                  );
+                },
+              ),
             ),
             orElse: () => const SizedBox.shrink(),
           ),
@@ -222,8 +232,8 @@ class _ArticleBody extends StatelessWidget {
 
               const SizedBox(height: 14),
 
-              // ── TTS Player ──
-              _TtsPlayer(articleId: article.id),
+              // TTS hidden until the production server has a TTS provider key
+              // configured. _TtsPlayer is kept below for the next release.
 
               // ── Quick actions row ──
               _QuickActions(article: article),
