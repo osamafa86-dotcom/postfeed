@@ -367,14 +367,14 @@ class _StoryBody extends StatelessWidget {
           ),
         ],
 
-        // ── All Articles Header ──
+        // ── Timeline header ──
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
             child: Row(children: [
-              Text('📋', style: const TextStyle(fontSize: 18)),
+              Text('🕰️', style: const TextStyle(fontSize: 18)),
               const SizedBox(width: 8),
-              Text('كل التقارير',
+              Text('تطوّر القصة',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900,
                   color: isDark ? Colors.white : AppColors.textLight)),
               const Spacer(),
@@ -385,7 +385,7 @@ class _StoryBody extends StatelessWidget {
           ),
         ),
 
-        // ── Articles List ──
+        // ── Articles, grouped by date as a vertical timeline ──
         if (articles.isEmpty)
           SliverToBoxAdapter(
             child: Padding(
@@ -405,17 +405,204 @@ class _StoryBody extends StatelessWidget {
             ),
           )
         else
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            sliver: SliverList.separated(
-              itemCount: articles.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (_, i) => ArticleCard(article: articles[i]),
-            ),
+          SliverToBoxAdapter(
+            child: _ArticlesTimeline(articles: articles, accent: accent),
           ),
 
         const SliverToBoxAdapter(child: SizedBox(height: 32)),
       ],
+    );
+  }
+}
+
+/// Vertical timeline of articles grouped by day. RTL-aware: the line
+/// runs on the right side, dots mark each article, day headers float
+/// across as section breaks. Newest day first.
+class _ArticlesTimeline extends StatelessWidget {
+  const _ArticlesTimeline({required this.articles, required this.accent});
+  final List articles;
+  final Color accent;
+
+  String _dayLabel(DateTime when) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(when.year, when.month, when.day);
+    final diff = today.difference(day).inDays;
+    if (diff == 0) return 'اليوم';
+    if (diff == 1) return 'أمس';
+    if (diff < 7) return 'قبل $diff أيام';
+    const months = [
+      '', 'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+      'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+    ];
+    final monthName = (when.month >= 1 && when.month <= 12) ? months[when.month] : '';
+    return '${when.day} $monthName';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Group by day. Articles without a date fall under "بدون تاريخ".
+    final groups = <String, List>{};
+    final order = <String>[];
+    for (final a in articles) {
+      final dt = a.publishedAt as DateTime?;
+      final key = dt == null
+          ? 'بدون تاريخ'
+          : '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+      if (!groups.containsKey(key)) {
+        groups[key] = [];
+        order.add(key);
+      }
+      groups[key]!.add(a);
+    }
+
+    final children = <Widget>[];
+    for (var g = 0; g < order.length; g++) {
+      final key = order[g];
+      final dayArticles = groups[key]!;
+      final firstDt = dayArticles.first.publishedAt as DateTime?;
+      final label = firstDt != null ? _dayLabel(firstDt) : key;
+
+      children.add(_DayHeader(label: label, count: dayArticles.length, accent: accent));
+
+      for (var i = 0; i < dayArticles.length; i++) {
+        final isLastInDay = i == dayArticles.length - 1;
+        final isVeryLast = g == order.length - 1 && isLastInDay;
+        children.add(_TimelineRow(
+          accent: accent,
+          isDark: isDark,
+          showLine: !isVeryLast,
+          child: ArticleCard(article: dayArticles[i]),
+        ));
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(children: children),
+    );
+  }
+}
+
+class _DayHeader extends StatelessWidget {
+  const _DayHeader({required this.label, required this.count, required this.accent});
+  final String label;
+  final int count;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.only(top: 18, bottom: 10),
+      child: Row(
+        children: [
+          Container(
+            width: 14,
+            height: 14,
+            decoration: BoxDecoration(
+              color: accent,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+                width: 3,
+              ),
+              boxShadow: [
+                BoxShadow(color: accent.withOpacity(0.35), blurRadius: 10, spreadRadius: 1),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+              color: isDark ? Colors.white : AppColors.textLight,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: accent.withOpacity(isDark ? 0.20 : 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              '$count',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: accent),
+            ),
+          ),
+          const Spacer(),
+          Expanded(
+            child: Container(
+              height: 1,
+              color: isDark ? Colors.white.withOpacity(0.06) : const Color(0xFFE7E9EE),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TimelineRow extends StatelessWidget {
+  const _TimelineRow({
+    required this.accent,
+    required this.isDark,
+    required this.showLine,
+    required this.child,
+  });
+  final Color accent;
+  final bool isDark;
+  final bool showLine;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 30,
+            child: Column(
+              children: [
+                const SizedBox(height: 10),
+                Container(
+                  width: 9,
+                  height: 9,
+                  decoration: BoxDecoration(
+                    color: accent.withOpacity(0.85),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+                      width: 2,
+                    ),
+                  ),
+                ),
+                if (showLine)
+                  Expanded(
+                    child: Container(
+                      width: 2,
+                      color: isDark
+                          ? Colors.white.withOpacity(0.08)
+                          : const Color(0xFFE7E9EE),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: child,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
