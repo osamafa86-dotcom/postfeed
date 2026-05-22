@@ -246,7 +246,15 @@ class _ArticleBody extends StatelessWidget {
               _QuickActions(article: article),
 
               const Divider(height: 32),
-              if (article.excerpt != null && article.excerpt!.isNotEmpty) ...[
+
+              // ── AI summary + key points (when available) ──
+              if (article.aiSummary != null || article.aiKeyPoints.isNotEmpty) ...[
+                _ArticleAiBrief(
+                  summary: article.aiSummary,
+                  keyPoints: article.aiKeyPoints,
+                ),
+                const SizedBox(height: 20),
+              ] else if (article.excerpt != null && article.excerpt!.isNotEmpty) ...[
                 Text(
                   article.excerpt!,
                   style: theme.textTheme.bodyLarge?.copyWith(
@@ -520,6 +528,108 @@ class _QuickActions extends StatelessWidget {
             Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: muted)),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// AI-generated brief shown before the article body.
+/// Combines the smart-summary block plus a bulleted "أهم النقاط" list
+/// when key points were extracted. The article's full content still
+/// follows below, so this is a read-aid not a replacement.
+class _ArticleAiBrief extends StatelessWidget {
+  const _ArticleAiBrief({this.summary, this.keyPoints = const []});
+  final String? summary;
+  final List<String> keyPoints;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = AppColors.primary;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+      decoration: BoxDecoration(
+        color: isDark ? accent.withOpacity(0.10) : accent.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border(
+          right: BorderSide(color: accent.withOpacity(isDark ? 0.55 : 0.45), width: 4),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('✨', style: TextStyle(fontSize: 14, color: accent)),
+              const SizedBox(width: 6),
+              Text(
+                'ملخّص ذكي',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: accent,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+          if (summary != null && summary!.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              summary!,
+              style: TextStyle(
+                fontSize: 15,
+                height: 1.75,
+                fontWeight: FontWeight.w500,
+                color: isDark ? Colors.white : AppColors.textLight,
+              ),
+            ),
+          ],
+          if (keyPoints.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Text(
+              'أبرز النقاط',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: accent.withOpacity(0.85),
+                letterSpacing: 0.3,
+              ),
+            ),
+            const SizedBox(height: 6),
+            for (final point in keyPoints.take(5))
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 7),
+                      child: Container(
+                        width: 5,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: accent.withOpacity(0.75),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        point,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          height: 1.7,
+                          color: isDark ? Colors.white70 : AppColors.textLight,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ],
       ),
     );
   }

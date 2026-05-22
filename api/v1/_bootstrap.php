@@ -237,6 +237,15 @@ function api_image_url(?string $url): ?string {
 }
 
 function api_format_article(array $a): array {
+    // AI key points are stored as JSON-encoded array. Decode to native
+    // list so clients don't have to parse a string field.
+    $keyPoints = null;
+    if (!empty($a['ai_key_points'])) {
+        $decoded = json_decode((string)$a['ai_key_points'], true);
+        if (is_array($decoded)) {
+            $keyPoints = array_values(array_filter(array_map('strval', $decoded), 'strlen'));
+        }
+    }
     return [
         'id'            => (int)$a['id'],
         'title'         => (string)$a['title'],
@@ -245,6 +254,8 @@ function api_format_article(array $a): array {
         'content'       => $a['content'] ?? null,
         'image_url'     => api_image_url($a['image_url'] ?? null),
         'source_url'    => $a['source_url'] ?? null,
+        'ai_summary'    => $a['ai_summary'] ?? null,
+        'ai_key_points' => $keyPoints,
         'category' => isset($a['category_slug']) ? [
             'id'    => (int)($a['category_id'] ?? 0),
             'name'  => $a['category_name'] ?? null,

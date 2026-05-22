@@ -16,20 +16,12 @@ class FollowScreen extends ConsumerWidget {
     if (!AuthStorage.isAuthenticated) {
       return Scaffold(
         appBar: AppBar(title: const Text('متابعتي')),
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.person_outline, size: 64, color: Colors.grey),
-              const SizedBox(height: 12),
-              const Text('سجّل دخولك لمتابعة المصادر والأقسام'),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: () => context.push('/login'),
-                child: const Text('دخول'),
-              ),
-            ],
-          ),
+        body: EmptyView(
+          icon: Icons.person_outline,
+          message: 'سجّل دخولك لمتابعة المصادر',
+          hint: 'تابع مصادرك وأقسامك المفضّلة لتحصل على فيد مخصّص لك.',
+          actionLabel: 'تسجيل الدخول',
+          onAction: () => context.push('/login'),
         ),
       );
     }
@@ -76,7 +68,13 @@ class _BookmarksTab extends ConsumerWidget {
         onRetry: () => ref.invalidate(_userBookmarksProvider),
       ),
       data: (list) => list.isEmpty
-          ? const EmptyView(message: 'لا توجد مقالات محفوظة بعد', icon: Icons.bookmark_border)
+          ? EmptyView(
+              icon: Icons.bookmark_border,
+              message: 'لا توجد مقالات محفوظة بعد',
+              hint: 'احفظ مقالاً بالضغط على أيقونة 🔖 لتجده هنا لاحقاً.',
+              actionLabel: 'تصفّح الأخبار',
+              onAction: () => context.go('/'),
+            )
           : RefreshIndicator(
               onRefresh: () async => ref.invalidate(_userBookmarksProvider),
               child: ListView.separated(
