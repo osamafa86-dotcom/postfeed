@@ -25,6 +25,7 @@ require_once __DIR__ . '/includes/user_auth.php';
 require_once __DIR__ . '/includes/user_functions.php';
 require_once __DIR__ . '/includes/article_cluster.php';
 require_once __DIR__ . '/includes/smart_brevity.php';
+require_once __DIR__ . '/includes/news_mirror.php';
 
 $viewer    = current_user();
 $viewerId  = $viewer ? (int)$viewer['id'] : 0;
@@ -287,6 +288,75 @@ $pageUrl = SITE_URL . '/cluster/' . $key;
   .brevity-quote .qt { font-size:13px; line-height:1.7; color:var(--text); font-style:italic; }
   .brevity-quote .sp { font-size:11px; color:var(--muted); font-weight:700; margin-top:4px; }
 
+  /* NEWS MIRROR — مرايا الأخبار */
+  .mirror-card {
+    background:linear-gradient(135deg,#FBF7EE 0%,#F2F0F6 55%,#EAF0F4 100%);
+    border:1px solid var(--gold2); border-radius:16px;
+    padding:0; margin:0 0 24px; overflow:hidden;
+    box-shadow:0 2px 12px -4px rgba(31,41,55,.12);
+  }
+  .mirror-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 22px; cursor:pointer; user-select:none;
+    background:rgba(201,150,36,.08);
+    border-bottom:1px solid rgba(201,150,36,.18);
+  }
+  .mirror-header:hover { background:rgba(201,150,36,.13); }
+  .mirror-header h3 { font-size:15px; font-weight:800; color:var(--gold-text); margin:0; }
+  .mirror-header .toggle { font-size:18px; transition:transform .3s; }
+  .mirror-header.collapsed .toggle { transform:rotate(-90deg); }
+  .mirror-body { padding:20px 22px; display:grid; gap:22px; }
+  .mirror-body.hidden { display:none; }
+
+  .mirror-block h4 {
+    font-size:13px; font-weight:800; color:var(--accent2);
+    margin-bottom:10px; display:flex; align-items:center; gap:6px;
+  }
+  .mirror-neutral p {
+    font-size:14px; line-height:1.8; color:var(--text);
+    background:#fff; border:1px solid var(--border);
+    border-right:3px solid var(--accent); border-radius:0 10px 10px 0;
+    padding:12px 16px;
+  }
+
+  .mirror-term { margin-bottom:14px; }
+  .mirror-term:last-child { margin-bottom:0; }
+  .mirror-concept {
+    font-size:13px; font-weight:800; color:var(--text);
+    margin-bottom:8px; display:flex; align-items:center; gap:6px;
+  }
+  .mirror-concept::before { content:"≡"; color:var(--gold); font-weight:900; }
+  .mirror-variants { display:flex; flex-wrap:wrap; gap:8px; }
+  .mirror-chip {
+    display:inline-flex; flex-direction:column; gap:2px;
+    background:#fff; border:1px solid var(--border);
+    border-radius:10px; padding:8px 13px; max-width:100%;
+  }
+  .mirror-chip .term { font-size:14px; font-weight:800; line-height:1.4; }
+  .mirror-chip .src  { font-size:11px; color:var(--muted); font-weight:600; }
+  .mirror-chip.tone-neg { border-color:rgba(206,17,38,.45); background:#FDECEE; }
+  .mirror-chip.tone-neg .term { color:#9F0D1D; }
+  .mirror-chip.tone-pos { border-color:rgba(27,122,61,.45); background:#E8F6EE; }
+  .mirror-chip.tone-pos .term { color:#1B7A3D; }
+  .mirror-chip.tone-neutral { border-color:var(--gold2); background:var(--gold-bg); }
+  .mirror-chip.tone-neutral .term { color:var(--gold-text); }
+
+  .mirror-framings-list { display:grid; gap:10px; }
+  .mirror-framing {
+    background:#fff; border:1px solid var(--border); border-radius:10px;
+    padding:12px 16px;
+  }
+  .mirror-framing .fr-src {
+    font-size:12px; font-weight:800; color:var(--accent2); margin-bottom:4px;
+  }
+  .mirror-framing .fr-angle { font-size:14px; font-weight:700; color:var(--text); }
+  .mirror-framing .fr-emph { font-size:13px; color:var(--muted); line-height:1.7; margin-top:3px; }
+
+  .mirror-disclaimer {
+    font-size:11px; color:var(--muted2); line-height:1.6;
+    border-top:1px dashed var(--border); padding-top:12px;
+  }
+
   .empty-state { text-align:center; padding:80px 20px; color:var(--muted); }
   .empty-state .icon { font-size:56px; margin-bottom:18px; }
   .empty-state h3 { font-size:20px; margin-bottom:8px; color:var(--text); font-weight:800; }
@@ -441,6 +511,12 @@ include __DIR__ . '/includes/components/site_header.php';
       </div>
     </div>
     <?php endif; ?>
+
+    <!-- NEWS MIRROR — مرايا الأخبار -->
+    <?php
+      $mirror = ($sourceCount >= 2) ? news_mirror_for_cluster($key, $articles) : null;
+      include __DIR__ . '/includes/components/news_mirror_card.php';
+    ?>
 
     <!-- COVERAGE LIST -->
     <div class="coverage-list">
