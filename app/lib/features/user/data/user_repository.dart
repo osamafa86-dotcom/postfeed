@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/models/article.dart';
+import '../../../core/storage/interests_store.dart';
 import '../../auth/data/auth_storage.dart';
 
 // ═══════════════════════════════════════════════════════════════
@@ -362,7 +363,24 @@ class FollowIdsNotifier extends StateNotifier<Map<String, Set<int>>> {
     try {
       final data = await _repo.follows();
       state = data.map((k, v) => MapEntry(k, v.toSet()));
+      await _replayPendingInterests();
     } catch (_) {}
+  }
+
+  /// Categories the user picked during anonymous onboarding are stored
+  /// locally. On first authenticated load, turn them into real follows
+  /// then clear the local store so this runs only once.
+  Future<void> _replayPendingInterests() async {
+    final pending = await InterestsStore.load();
+    if (pending.isEmpty) return;
+    final followed = state['category'] ?? const {};
+    for (final id in pending) {
+      if (followed.contains(id)) continue;
+      try {
+        await toggle('category', id);
+      } catch (_) {}
+    }
+    await InterestsStore.clear();
   }
 
   bool isFollowing(String type, int id) => state[type]?.contains(id) ?? false;
