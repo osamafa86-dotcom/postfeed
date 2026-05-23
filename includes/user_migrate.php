@@ -12,9 +12,9 @@ function user_dashboard_migrate(): void {
     if ($done) return;
 
     $flagDir  = __DIR__ . '/../storage/cache';
-    // Bumped to v4: adds comment moderation tables (reports, blocks)
-    // and is_deleted column on article_comments.
-    $flagFile = $flagDir . '/user_dashboard_migrated_v4.flag';
+    // Bumped to v5: adds CASCADE foreign keys to all user-owned tables
+    // (App Store 5.1.1(v) — account deletion must be complete).
+    $flagFile = $flagDir . '/user_dashboard_migrated_v5.flag';
     if (is_file($flagFile)) { $done = true; return; }
 
     // Mark done IMMEDIATELY so concurrent requests don't pile up and
