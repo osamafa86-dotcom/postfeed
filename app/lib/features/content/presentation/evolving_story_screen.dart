@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/models/article.dart';
 import '../../../core/models/evolving_story.dart';
 import '../../../core/utils/safe_launch.dart';
 import '../../../core/theme/app_theme.dart';
@@ -59,7 +60,7 @@ class EvolvingStoryScreen extends ConsumerWidget {
 class _StoryBody extends StatelessWidget {
   const _StoryBody({required this.story, required this.articles, required this.quotes});
   final EvolvingStory story;
-  final List articles;
+  final List<Article> articles;
   final List<StoryQuote> quotes;
 
   Color get _accent {
@@ -420,7 +421,7 @@ class _StoryBody extends StatelessWidget {
 /// across as section breaks. Newest day first.
 class _ArticlesTimeline extends StatelessWidget {
   const _ArticlesTimeline({required this.articles, required this.accent});
-  final List articles;
+  final List<Article> articles;
   final Color accent;
 
   String _dayLabel(DateTime when) {
