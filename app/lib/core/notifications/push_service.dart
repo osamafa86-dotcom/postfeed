@@ -2,11 +2,13 @@ import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../api/api_client.dart';
+import '../router/app_router.dart';
 import '../../features/auth/data/auth_storage.dart';
 
 /// Bootstraps Firebase + FCM + APNs and registers the token with our backend
@@ -38,6 +40,10 @@ class PushService {
     );
     await _local.initialize(
       const InitializationSettings(android: androidInit, iOS: iosInit),
+      onDidReceiveNotificationResponse: (resp) {
+        final payload = resp.payload;
+        if (payload != null && payload.isNotEmpty) _navigateTo(payload);
+      },
     );
 
     if (Platform.isIOS) {
@@ -70,13 +76,39 @@ class PushService {
           ),
           iOS: const DarwinNotificationDetails(),
         ),
+        payload: _linkFrom(msg.data),
       );
     });
+
+    // Tap handling: background→foreground, and cold start.
+    FirebaseMessaging.onMessageOpenedApp.listen((msg) => _navigateTo(_linkFrom(msg.data)));
+    final initial = await messaging.getInitialMessage();
+    if (initial != null) {
+      _navigateTo(_linkFrom(initial.data));
+    }
 
     // Initial token + listener for refreshes.
     final token = await messaging.getToken();
     if (token != null) await _registerToken(api, token);
     messaging.onTokenRefresh.listen((t) => _registerToken(api, t));
+  }
+
+  /// Extract an in-app route from a message's data payload. Falls back
+  /// to an article deep link when only article_id is present.
+  static String _linkFrom(Map<String, dynamic> data) {
+    final link = data['link']?.toString();
+    if (link != null && link.startsWith('/')) return link;
+    final articleId = data['article_id']?.toString();
+    if (articleId != null && articleId.isNotEmpty) return '/article/$articleId';
+    return '';
+  }
+
+  static void _navigateTo(String route) {
+    if (route.isEmpty) return;
+    // The router may not be mounted yet on cold start; defer a frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      rootNavigatorKey.currentContext?.push(route);
+    });
   }
 
   /// Channel display names for Android notifications.

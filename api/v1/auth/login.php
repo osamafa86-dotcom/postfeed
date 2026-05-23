@@ -13,12 +13,20 @@ if ($email === '' || $password === '') {
     api_err('invalid_input', 'يرجى إدخال البريد وكلمة المرور', 422);
 }
 
+// Lock account after 5 failed attempts within 15 min (peek only, do not
+// bump until we actually see a bad password).
+$failKey = 'auth:login:fail:' . $email;
+if (!rate_limit_peek($failKey, 5, 900)) {
+    api_err('account_locked', 'تم تعليق محاولات الدخول مؤقتاً لحماية حسابك. حاول بعد 15 دقيقة.', 429);
+}
+
 try {
     $db = getDB();
     $stmt = $db->prepare("SELECT id, password, is_active FROM users WHERE email=? AND role IN ('reader','viewer','editor','admin') LIMIT 1");
     $stmt->execute([$email]);
     $row = $stmt->fetch();
     if (!$row || !password_verify($password, $row['password'])) {
+        rate_limit_bump($failKey, 900);
         api_err('invalid_credentials', 'بيانات الدخول غير صحيحة', 401);
     }
     if (isset($row['is_active']) && (int)$row['is_active'] === 0) {

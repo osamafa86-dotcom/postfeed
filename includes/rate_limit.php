@@ -65,6 +65,28 @@ function rate_limit_gc($window) {
 }
 
 /**
+ * Read the current count for a bucket without incrementing.
+ * Returns true if the count is under $limit (allowed), false if exceeded.
+ * Use for "is this account locked?" checks where you only increment on
+ * the actual failure (e.g. wrong password).
+ */
+function rate_limit_peek($key, $limit, $window) {
+    $bucket = (int)(time() / $window);
+    $file = rate_limit_dir() . '/' . md5($key . ':' . $bucket) . '.rl';
+    if (!is_file($file)) return true;
+    $count = (int)@file_get_contents($file);
+    return $count < $limit;
+}
+
+/**
+ * Increment the counter for a bucket. No return value.
+ * Use after a failed authentication attempt.
+ */
+function rate_limit_bump($key, $window) {
+    rate_limit_check($key, PHP_INT_MAX, $window);
+}
+
+/**
  * Respond 429 and exit. For API endpoints.
  */
 function rate_limit_enforce_api($key, $limit, $window) {

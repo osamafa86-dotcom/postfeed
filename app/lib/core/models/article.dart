@@ -10,6 +10,8 @@ class Article {
     this.content,
     this.imageUrl,
     this.sourceUrl,
+    this.aiSummary,
+    this.aiKeyPoints = const [],
     this.category,
     this.source,
     this.isBreaking = false,
@@ -28,6 +30,8 @@ class Article {
   final String? content;
   final String? imageUrl;
   final String? sourceUrl;
+  final String? aiSummary;
+  final List<String> aiKeyPoints;
   final Category? category;
   final Source? source;
   final bool isBreaking;
@@ -46,6 +50,14 @@ class Article {
         content: j['content'] as String?,
         imageUrl: j['image_url'] as String?,
         sourceUrl: j['source_url'] as String?,
+        aiSummary: (j['ai_summary'] as String?)?.trim().isEmpty == true
+            ? null
+            : j['ai_summary'] as String?,
+        aiKeyPoints: (j['ai_key_points'] as List?)
+                ?.map((e) => e.toString())
+                .where((s) => s.isNotEmpty)
+                .toList() ??
+            const [],
         category: (j['category'] is Map) ? Category.fromJson((j['category'] as Map).cast()) : null,
         source: (j['source'] is Map) ? Source.fromJson((j['source'] as Map).cast()) : null,
         isBreaking: j['is_breaking'] == true,

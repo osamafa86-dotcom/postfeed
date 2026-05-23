@@ -18,7 +18,7 @@ if ($method === 'GET') {
     $sql = articles_select_sql() . "
         INNER JOIN user_bookmarks ub ON ub.article_id = a.id
         WHERE ub.user_id=? AND a.status='published'
-        ORDER BY ub.created_at DESC LIMIT $limit OFFSET $offset";
+        ORDER BY ub.created_at DESC LIMIT " . (int)$limit . " OFFSET " . (int)$offset;
     $st = $db->prepare($sql);
     $st->execute([(int)$user['id']]);
     $items = array_map('api_format_article', $st->fetchAll());

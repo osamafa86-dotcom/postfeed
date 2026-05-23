@@ -12,6 +12,7 @@
 require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/sabah.php';
+require_once __DIR__ . '/includes/push.php';
 
 if (PHP_SAPI !== 'cli') {
     $expected = getSetting('cron_key', '');
@@ -45,9 +46,24 @@ if (!$briefing || empty($briefing['hook'])) {
 $id = sabah_save($briefing, $today);
 $dt = round(microtime(true) - $t0, 2);
 
-if ($id) {
-    echo "ok: saved briefing #{$id} — \"{$briefing['headline']}\" ({$dt}s)\n";
-} else {
+if (!$id) {
     echo "generated but save failed ({$dt}s)\n";
     exit(1);
+}
+
+echo "ok: saved briefing #{$id} — \"{$briefing['headline']}\" ({$dt}s)\n";
+
+// Push "صباح الخير" to everyone who opted into the daily digest.
+$headline = trim((string)($briefing['headline'] ?? ''));
+$body = $headline !== '' ? $headline : 'ملخّص أخبار اليوم جاهز للقراءة.';
+$push = push_broadcast(
+    '☀️ صباح الخير — ملخّص اليوم',
+    $body,
+    ['channel' => 'daily', 'link' => '/sabah'],
+    'notify_digest'
+);
+if ($push['skipped']) {
+    echo "push: skipped (FCM not configured)\n";
+} else {
+    echo "push: sent {$push['sent']}, pruned {$push['pruned']} stale tokens\n";
 }

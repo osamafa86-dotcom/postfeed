@@ -36,8 +36,13 @@ import '../../features/user/presentation/notifications_screen.dart';
 import '../../features/user/presentation/profile_screen.dart';
 import '../../features/user/presentation/settings_screen.dart';
 
+/// Global navigator key so non-widget code (e.g. push notification
+/// handlers) can drive navigation through the router.
+final rootNavigatorKey = GlobalKey<NavigatorState>();
+
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
     routes: [
       GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),

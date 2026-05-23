@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/models/article.dart';
 import '../../../core/widgets/article_card.dart';
@@ -21,12 +22,24 @@ class BookmarksScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('المحفوظات')),
       body: !AuthStorage.isAuthenticated
-          ? const EmptyView(message: 'سجّل دخولك أولاً لحفظ المقالات')
+          ? EmptyView(
+              icon: Icons.bookmark_border,
+              message: 'سجّل دخولك أولاً',
+              hint: 'سجّل دخولك لحفظ المقالات والوصول إليها لاحقاً.',
+              actionLabel: 'تسجيل الدخول',
+              onAction: () => context.push('/login'),
+            )
           : asy.when(
               loading: () => const LoadingShimmerList(),
               error: (e, _) => ErrorRetryView(message: '$e', onRetry: () => ref.invalidate(_bookmarksProvider)),
               data: (list) => list.isEmpty
-                  ? const EmptyView(message: 'لا توجد مقالات محفوظة بعد', icon: Icons.bookmark_border)
+                  ? EmptyView(
+                      icon: Icons.bookmark_border,
+                      message: 'لا توجد مقالات محفوظة بعد',
+                      hint: 'اضغط أيقونة المرجعية 🔖 على أي مقال لإضافته إلى محفوظاتك.',
+                      actionLabel: 'تصفّح الأخبار',
+                      onAction: () => context.go('/'),
+                    )
                   : RefreshIndicator(
                       onRefresh: () async {
                         ref.invalidate(_bookmarksProvider);

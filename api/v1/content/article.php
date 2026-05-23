@@ -14,18 +14,13 @@ $db = getDB();
 $where = $id ? 'a.id = ?' : 'a.slug = ?';
 $param = $id ?: $slug;
 
-$sql = articles_select_sql() . ", a.content
-       FROM articles a
-       LEFT JOIN categories c ON c.id = a.category_id
-       LEFT JOIN sources    s ON s.id = a.source_id
-       WHERE $where AND a.status = 'published' LIMIT 1";
-
-// articles_select_sql() already starts with SELECT ... FROM articles a; rebuild precisely:
+// Mirrors articles_select_sql() but adds a.content for the detail view.
 $sql = "SELECT
         a.id, a.title, a.slug, a.excerpt, a.content, a.image_url, a.source_url,
         a.is_breaking, a.is_featured, a.is_hero,
         a.view_count, a.comments, a.published_at, a.created_at,
         a.category_id, a.source_id,
+        a.ai_summary, a.ai_key_points,
         c.name AS category_name, c.slug AS category_slug, c.icon AS category_icon, c.css_class,
         s.name AS source_name, s.slug AS source_slug, s.logo_letter, s.logo_color, s.logo_bg, s.url AS source_site
       FROM articles a

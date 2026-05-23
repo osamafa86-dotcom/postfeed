@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../user/data/user_repository.dart';
 import '../data/auth_repository.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -28,6 +29,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     try {
       await ref.read(authRepositoryProvider).login(email: _email.text, password: _pass.text);
       ref.invalidate(currentUserProvider);
+      ref.invalidate(followedIdsProvider);
       if (mounted) context.go('/');
     } catch (e) {
       setState(() => _err = '$e');

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/utils/safe_launch.dart';
 import '../../../core/widgets/loading_state.dart';
 import '../data/media_repository.dart';
 
@@ -70,7 +71,7 @@ class TelegramScreen extends ConsumerWidget {
                             child: TextButton.icon(
                               icon: const Icon(Icons.open_in_new, size: 16),
                               label: const Text('فتح في تيليجرام'),
-                              onPressed: () => launchUrl(Uri.parse(m.postUrl!)),
+                              onPressed: () => safeLaunch(context, m.postUrl!),
                             ),
                           ),
                         ],

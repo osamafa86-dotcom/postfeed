@@ -141,8 +141,17 @@ class _WeeklyBody extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  GestureDetector(
-                    onTap: () => Share.share('${rewind.title}\n${rewind.summary.substring(0, (rewind.summary.length).clamp(0, 120))}...\nhttps://feedsnews.net/weekly'),
+                  Builder(
+                    builder: (btnCtx) => GestureDetector(
+                    onTap: () {
+                      final box = btnCtx.findRenderObject() as RenderBox?;
+                      Share.share(
+                        '${rewind.title}\n${rewind.summary.substring(0, (rewind.summary.length).clamp(0, 120))}...\nhttps://feedsnews.net/weekly',
+                        sharePositionOrigin: box != null
+                            ? box.localToGlobal(Offset.zero) & box.size
+                            : null,
+                      );
+                    },
                     child: Container(
                       width: 38, height: 38,
                       decoration: BoxDecoration(
@@ -152,6 +161,7 @@ class _WeeklyBody extends StatelessWidget {
                       alignment: Alignment.center,
                       child: const Icon(Icons.share_outlined, color: Colors.white, size: 18),
                     ),
+                  ),
                   ),
                 ]),
                 const SizedBox(height: 24),

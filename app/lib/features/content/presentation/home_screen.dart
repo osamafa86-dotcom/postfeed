@@ -12,6 +12,7 @@ import '../../../core/models/article.dart';
 import '../../../core/models/evolving_story.dart';
 import '../../../core/models/home_payload.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/safe_launch.dart';
 import '../../../core/widgets/article_card.dart';
 import '../../../core/widgets/loading_state.dart';
 import '../../../core/widgets/section_header.dart';
@@ -709,10 +710,10 @@ class _YoutubePreview extends ConsumerWidget {
           physics: const NeverScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
           itemCount: preview.length,
-          itemBuilder: (_, i) {
+          itemBuilder: (ctx, i) {
             final v = preview[i];
             return InkWell(
-              onTap: () => launchUrl(Uri.parse(v.videoUrl)),
+              onTap: () => safeLaunch(ctx, v.videoUrl),
               borderRadius: BorderRadius.circular(12),
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),

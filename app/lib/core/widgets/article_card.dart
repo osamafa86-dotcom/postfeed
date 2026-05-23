@@ -86,7 +86,10 @@ class ArticleCard extends StatelessWidget {
           maxLines: 3,
           overflow: TextOverflow.ellipsis,
         ),
-        if (article.excerpt != null && article.excerpt!.isNotEmpty) ...[
+        if (article.aiSummary != null) ...[
+          const SizedBox(height: 8),
+          _AiSummaryBlock(text: article.aiSummary!, isDark: isDark),
+        ] else if (article.excerpt != null && article.excerpt!.isNotEmpty) ...[
           const SizedBox(height: 6),
           Text(
             article.excerpt!,
@@ -384,7 +387,13 @@ class _ActionBarState extends ConsumerState<_ActionBar> {
             fontSize: fontSize,
             onTap: () async {
               final url = 'https://feedsnews.net/article/${widget.article.slug ?? widget.article.id}';
-              await Share.share('${widget.article.title}\n$url');
+              final box = context.findRenderObject() as RenderBox?;
+              await Share.share(
+                '${widget.article.title}\n$url',
+                sharePositionOrigin: box != null
+                    ? box.localToGlobal(Offset.zero) & box.size
+                    : null,
+              );
               // Fire-and-forget share tracking
               ref.read(userRepositoryProvider).trackShare(widget.article.id);
             },
@@ -445,6 +454,62 @@ class _ActionButton extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// AI-generated 2–3 sentence summary, shown in card lists.
+/// Visually distinct from a plain excerpt so users learn to trust the
+/// brand mark — a small sparkle + "ملخّص ذكي" label, accent border.
+class _AiSummaryBlock extends StatelessWidget {
+  const _AiSummaryBlock({required this.text, required this.isDark});
+  final String text;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = AppColors.primary;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 9),
+      decoration: BoxDecoration(
+        color: isDark ? accent.withOpacity(0.10) : accent.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border(
+          right: BorderSide(color: accent.withOpacity(isDark ? 0.55 : 0.40), width: 3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('✨', style: TextStyle(fontSize: 11, color: accent)),
+              const SizedBox(width: 4),
+              Text(
+                'ملخّص ذكي',
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w800,
+                  color: accent,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.65,
+              color: isDark ? Colors.white70 : AppColors.textLight,
+              fontWeight: FontWeight.w500,
+            ),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }

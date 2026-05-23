@@ -53,6 +53,10 @@ class _ShareSheetState extends State<_ShareSheet> {
 
   Future<void> _doShare() async {
     setState(() => _sharing = true);
+    final sheetBox = context.findRenderObject() as RenderBox?;
+    final origin = sheetBox != null
+        ? sheetBox.localToGlobal(Offset.zero) & sheetBox.size
+        : null;
     try {
       // Capture the card as an image
       final boundary = _repaintKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
@@ -67,10 +71,14 @@ class _ShareSheetState extends State<_ShareSheet> {
       await Share.shareXFiles(
         [XFile.fromData(pngBytes, mimeType: 'image/png', name: 'feed_news.png')],
         text: '${widget.title}\n\n${widget.sourceUrl ?? 'عبر تطبيق فيد نيوز'}',
+        sharePositionOrigin: origin,
       );
     } catch (_) {
       // Fallback to text share
-      Share.share('${widget.title}\n${widget.sourceUrl ?? ''}');
+      Share.share(
+        '${widget.title}\n${widget.sourceUrl ?? ''}',
+        sharePositionOrigin: origin,
+      );
     }
     if (mounted) setState(() => _sharing = false);
   }
@@ -127,9 +135,16 @@ class _ShareSheetState extends State<_ShareSheet> {
               const SizedBox(width: 10),
               SizedBox(
                 height: 50,
-                child: ElevatedButton.icon(
+                child: Builder(
+                  builder: (btnCtx) => ElevatedButton.icon(
                   onPressed: () {
-                    Share.share('${widget.title}\n${widget.sourceUrl ?? ''}');
+                    final btnBox = btnCtx.findRenderObject() as RenderBox?;
+                    Share.share(
+                      '${widget.title}\n${widget.sourceUrl ?? ''}',
+                      sharePositionOrigin: btnBox != null
+                          ? btnBox.localToGlobal(Offset.zero) & btnBox.size
+                          : null,
+                    );
                     Navigator.pop(context);
                   },
                   icon: const Icon(Icons.text_fields),
@@ -140,6 +155,7 @@ class _ShareSheetState extends State<_ShareSheet> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     elevation: 0,
                   ),
+                ),
                 ),
               ),
             ],

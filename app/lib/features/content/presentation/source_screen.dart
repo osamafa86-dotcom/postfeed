@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/models/source.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/safe_launch.dart';
 import '../../../core/widgets/article_card.dart';
 import '../../../core/widgets/loading_state.dart';
 import '../../user/data/user_repository.dart';
@@ -226,7 +227,7 @@ class _SourceHeader extends StatelessWidget {
                 // URL
                 if (source.url != null)
                   GestureDetector(
-                    onTap: () => _openUrl(source.url!),
+                    onTap: () => _openUrl(context, source.url!),
                     child: Text(
                       _cleanUrl(source.url!),
                       style: TextStyle(
@@ -411,7 +412,7 @@ class _FollowRow extends ConsumerWidget {
               height: 46,
               width: 46,
               child: OutlinedButton(
-                onPressed: () => _openUrl(source.url!),
+                onPressed: () => _openUrl(context, source.url!),
                 style: OutlinedButton.styleFrom(
                   padding: EdgeInsets.zero,
                   side: BorderSide(
@@ -453,9 +454,7 @@ String _cleanUrl(String url) {
       .replaceFirst(RegExp(r'/$'), '');
 }
 
-Future<void> _openUrl(String url) async {
-  final uri = Uri.parse(url.startsWith('http') ? url : 'https://$url');
-  if (await canLaunchUrl(uri)) {
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-  }
+Future<void> _openUrl(BuildContext context, String url) async {
+  final normalized = url.startsWith('http') ? url : 'https://$url';
+  await safeLaunch(context, normalized, mode: LaunchMode.externalApplication);
 }

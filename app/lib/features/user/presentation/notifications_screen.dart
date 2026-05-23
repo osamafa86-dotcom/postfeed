@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import '../../../core/api/api_client.dart';
@@ -23,12 +24,22 @@ class NotificationsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('الإشعارات')),
       body: !AuthStorage.isAuthenticated
-          ? const EmptyView(message: 'سجّل دخولك لرؤية إشعاراتك')
+          ? EmptyView(
+              icon: Icons.notifications_outlined,
+              message: 'سجّل دخولك لرؤية الإشعارات',
+              hint: 'الإشعارات تبقيك على اطّلاع بالأخبار العاجلة من مصادرك المتابعَة.',
+              actionLabel: 'تسجيل الدخول',
+              onAction: () => context.push('/login'),
+            )
           : asy.when(
               loading: () => const LoadingShimmerList(),
               error: (e, _) => ErrorRetryView(message: '$e', onRetry: () => ref.invalidate(_notificationsProvider)),
               data: (list) => list.isEmpty
-                  ? const EmptyView(message: 'لا توجد إشعارات', icon: Icons.notifications_off)
+                  ? const EmptyView(
+                      icon: Icons.notifications_off_outlined,
+                      message: 'لا إشعارات بعد',
+                      hint: 'سنرسل لك تنبيهات حين تصلك أخبار عاجلة أو تحديثات من المصادر التي تتابعها.',
+                    )
                   : ListView.separated(
                       itemCount: list.length,
                       separatorBuilder: (_, __) => const Divider(height: 1),

@@ -12,9 +12,9 @@ function user_dashboard_migrate(): void {
     if ($done) return;
 
     $flagDir  = __DIR__ . '/../storage/cache';
-    // Bumped to v4: adds comment moderation tables (reports, blocks)
-    // and is_deleted column on article_comments.
-    $flagFile = $flagDir . '/user_dashboard_migrated_v4.flag';
+    // Bumped to v5: adds CASCADE foreign keys to all user-owned tables
+    // (App Store 5.1.1(v) — account deletion must be complete).
+    $flagFile = $flagDir . '/user_dashboard_migrated_v5.flag';
     if (is_file($flagFile)) { $done = true; return; }
 
     // Mark done IMMEDIATELY so concurrent requests don't pile up and
@@ -204,6 +204,58 @@ function user_dashboard_migrate(): void {
                            ADD COLUMN `is_deleted` TINYINT(1) NOT NULL DEFAULT 0 AFTER `is_hidden`,
                            ADD COLUMN `deleted_at` TIMESTAMP NULL DEFAULT NULL AFTER `is_deleted`");
             } catch (Throwable $e) {}
+        }
+
+        // FK constraints: required by App Store 5.1.1(v) so that account
+        // deletion truly removes every row owned by the user. Iterates
+        // (column → reference) for each child table, cleans orphans
+        // first (otherwise ALTER ADD CONSTRAINT errors out), then adds
+        // the constraint if it's missing.
+        $fkPlan = [
+            ['user_bookmarks',         'user_id',    'users',     'id', 'fk_ub_user',     'CASCADE'],
+            ['user_category_follows',  'user_id',    'users',     'id', 'fk_ucf_user',    'CASCADE'],
+            ['user_category_follows',  'category_id','categories','id', 'fk_ucf_cat',     'CASCADE'],
+            ['user_source_follows',    'user_id',    'users',     'id', 'fk_usf_user',    'CASCADE'],
+            ['user_source_follows',    'source_id',  'sources',   'id', 'fk_usf_source',  'CASCADE'],
+            ['user_reading_history',   'user_id',    'users',     'id', 'fk_urh_user',    'CASCADE'],
+            ['user_notifications',     'user_id',    'users',     'id', 'fk_un_user',     'CASCADE'],
+            ['article_comments',       'user_id',    'users',     'id', 'fk_ac_user',     'CASCADE'],
+            ['comment_likes',          'user_id',    'users',     'id', 'fk_cl_user',     'CASCADE'],
+            ['comment_likes',          'comment_id', 'article_comments', 'id', 'fk_cl_comment', 'CASCADE'],
+            ['article_reactions',      'user_id',    'users',     'id', 'fk_ar_user',     'CASCADE'],
+            ['user_blocks',            'blocker_id', 'users',     'id', 'fk_ub2_blocker', 'CASCADE'],
+            ['user_blocks',            'blocked_id', 'users',     'id', 'fk_ub2_blocked', 'CASCADE'],
+            ['comment_reports',        'reporter_id','users',     'id', 'fk_cr_reporter', 'CASCADE'],
+            ['comment_reports',        'comment_id', 'article_comments', 'id', 'fk_cr_comment', 'CASCADE'],
+        ];
+
+        $hasConstraint = function (PDO $db, string $table, string $name): bool {
+            try {
+                $st = $db->prepare(
+                    "SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
+                     WHERE CONSTRAINT_SCHEMA = DATABASE()
+                       AND TABLE_NAME = ? AND CONSTRAINT_NAME = ?"
+                );
+                $st->execute([$table, $name]);
+                return (int)$st->fetchColumn() > 0;
+            } catch (Throwable $e) { return true; /* be safe: assume present */ }
+        };
+
+        foreach ($fkPlan as [$child, $col, $parent, $pcol, $name, $onDelete]) {
+            if (!$tableExists($db, $child) || !$tableExists($db, $parent)) continue;
+            if ($hasConstraint($db, $child, $name)) continue;
+            try {
+                // Clean orphans so the ALTER doesn't fail.
+                $db->exec("DELETE FROM `$child`
+                           WHERE `$col` IS NOT NULL
+                             AND `$col` NOT IN (SELECT `$pcol` FROM `$parent`)");
+                $db->exec("ALTER TABLE `$child`
+                           ADD CONSTRAINT `$name`
+                           FOREIGN KEY (`$col`) REFERENCES `$parent`(`$pcol`)
+                           ON DELETE $onDelete");
+            } catch (Throwable $e) {
+                error_log("fk add failed: $child.$col -> $parent.$pcol: " . $e->getMessage());
+            }
         }
     } catch (Throwable $e) {
         // don't block pages on migration errors; flag is already written above

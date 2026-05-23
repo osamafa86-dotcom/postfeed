@@ -10,6 +10,7 @@ import 'package:share_plus/share_plus.dart' show Share;
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/utils/safe_launch.dart';
 import '../../../core/models/article.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/article_card.dart';
@@ -34,10 +35,20 @@ class ArticleScreen extends ConsumerWidget {
       appBar: AppBar(
         actions: [
           asy.maybeWhen(
-            data: (d) => IconButton(
-              icon: const Icon(Icons.share_outlined),
-              onPressed: () => Share.share(d.article.title +
-                  (d.article.sourceUrl != null ? '\n${d.article.sourceUrl}' : '')),
+            data: (d) => Builder(
+              builder: (btnCtx) => IconButton(
+                icon: const Icon(Icons.share_outlined),
+                onPressed: () {
+                  final box = btnCtx.findRenderObject() as RenderBox?;
+                  Share.share(
+                    d.article.title +
+                        (d.article.sourceUrl != null ? '\n${d.article.sourceUrl}' : ''),
+                    sharePositionOrigin: box != null
+                        ? box.localToGlobal(Offset.zero) & box.size
+                        : null,
+                  );
+                },
+              ),
             ),
             orElse: () => const SizedBox.shrink(),
           ),
@@ -56,7 +67,13 @@ class ArticleScreen extends ConsumerWidget {
               }
               try {
                 await ref.read(bookmarkedIdsProvider.notifier).toggle(id);
-              } catch (_) {}
+              } catch (_) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('تعذّر حفظ المقال — حاول لاحقاً')),
+                  );
+                }
+              }
             },
           ),
         ],
@@ -222,14 +239,22 @@ class _ArticleBody extends StatelessWidget {
 
               const SizedBox(height: 14),
 
-              // ── TTS Player ──
-              _TtsPlayer(articleId: article.id),
+              // TTS hidden until the production server has a TTS provider key
+              // configured. _TtsPlayer is kept below for the next release.
 
               // ── Quick actions row ──
               _QuickActions(article: article),
 
               const Divider(height: 32),
-              if (article.excerpt != null && article.excerpt!.isNotEmpty) ...[
+
+              // ── AI summary + key points (when available) ──
+              if (article.aiSummary != null || article.aiKeyPoints.isNotEmpty) ...[
+                _ArticleAiBrief(
+                  summary: article.aiSummary,
+                  keyPoints: article.aiKeyPoints,
+                ),
+                const SizedBox(height: 20),
+              ] else if (article.excerpt != null && article.excerpt!.isNotEmpty) ...[
                 Text(
                   article.excerpt!,
                   style: theme.textTheme.bodyLarge?.copyWith(
@@ -261,7 +286,7 @@ class _ArticleBody extends StatelessWidget {
                 OutlinedButton.icon(
                   icon: const Icon(Icons.open_in_new),
                   label: const Text('قراءة المصدر الأصلي'),
-                  onPressed: () => launchUrl(Uri.parse(article.sourceUrl!)),
+                  onPressed: () => safeLaunch(context, article.sourceUrl!),
                 ),
               ],
             ],
@@ -503,6 +528,108 @@ class _QuickActions extends StatelessWidget {
             Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: muted)),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// AI-generated brief shown before the article body.
+/// Combines the smart-summary block plus a bulleted "أهم النقاط" list
+/// when key points were extracted. The article's full content still
+/// follows below, so this is a read-aid not a replacement.
+class _ArticleAiBrief extends StatelessWidget {
+  const _ArticleAiBrief({this.summary, this.keyPoints = const []});
+  final String? summary;
+  final List<String> keyPoints;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = AppColors.primary;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+      decoration: BoxDecoration(
+        color: isDark ? accent.withOpacity(0.10) : accent.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border(
+          right: BorderSide(color: accent.withOpacity(isDark ? 0.55 : 0.45), width: 4),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('✨', style: TextStyle(fontSize: 14, color: accent)),
+              const SizedBox(width: 6),
+              Text(
+                'ملخّص ذكي',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: accent,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+          if (summary != null && summary!.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              summary!,
+              style: TextStyle(
+                fontSize: 15,
+                height: 1.75,
+                fontWeight: FontWeight.w500,
+                color: isDark ? Colors.white : AppColors.textLight,
+              ),
+            ),
+          ],
+          if (keyPoints.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Text(
+              'أبرز النقاط',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: accent.withOpacity(0.85),
+                letterSpacing: 0.3,
+              ),
+            ),
+            const SizedBox(height: 6),
+            for (final point in keyPoints.take(5))
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 7),
+                      child: Container(
+                        width: 5,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: accent.withOpacity(0.75),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        point,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          height: 1.7,
+                          color: isDark ? Colors.white70 : AppColors.textLight,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ],
       ),
     );
   }

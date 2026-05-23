@@ -15,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $sql = articles_select_sql() . "
         INNER JOIN user_reading_history urh ON urh.article_id = a.id
         WHERE urh.user_id=? AND a.status='published'
-        ORDER BY urh.read_at DESC LIMIT $limit OFFSET $offset";
+        ORDER BY urh.read_at DESC LIMIT " . (int)$limit . " OFFSET " . (int)$offset;
     $st = $db->prepare($sql);
     $st->execute([(int)$user['id']]);
     $items = array_map('api_format_article', $st->fetchAll());

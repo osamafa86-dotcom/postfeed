@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/safe_launch.dart';
 
 // ═══════════════════════════════════════════════════════════════
 // REUSABLE INFO PAGE SHELL
@@ -97,7 +98,7 @@ Widget _emailButton(String label, String email, BuildContext context) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 10),
     child: OutlinedButton.icon(
-      onPressed: () => launchUrl(Uri.parse('mailto:$email')),
+      onPressed: () => safeLaunch(context, 'mailto:$email'),
       icon: const Icon(Icons.email_outlined, size: 16),
       label: Text('$label — $email'),
       style: OutlinedButton.styleFrom(

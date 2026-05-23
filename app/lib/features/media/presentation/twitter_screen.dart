@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/utils/safe_launch.dart';
 import '../../../core/widgets/loading_state.dart';
 import '../data/media_repository.dart';
 
@@ -24,10 +25,10 @@ class TwitterScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(16),
             itemCount: msgs.length,
             separatorBuilder: (_, __) => const SizedBox(height: 10),
-            itemBuilder: (_, i) {
+            itemBuilder: (ctx, i) {
               final m = msgs[i];
               return InkWell(
-                onTap: m.postUrl != null ? () => launchUrl(Uri.parse(m.postUrl!)) : null,
+                onTap: m.postUrl != null ? () => safeLaunch(ctx, m.postUrl!) : null,
                 child: Container(
                   decoration: BoxDecoration(
                     color: Theme.of(context).cardColor,

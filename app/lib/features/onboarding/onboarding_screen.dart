@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/models/category.dart';
+import '../../core/storage/interests_store.dart';
 import '../../core/theme/app_theme.dart';
+import '../auth/data/auth_storage.dart';
+import '../content/data/content_repository.dart';
+import '../user/data/user_repository.dart';
 
-class OnboardingScreen extends StatefulWidget {
+class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
   static const _seenKey = 'onboarding_seen';
@@ -20,12 +26,18 @@ class OnboardingScreen extends StatefulWidget {
   }
 
   @override
-  State<OnboardingScreen> createState() => _OnboardingScreenState();
+  ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> {
+class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _ctl = PageController();
   int _page = 0;
+  final Set<int> _selectedCategories = {};
+
+  // Number of intro pages before the interactive interest picker.
+  static const _introCount = 4;
+  int get _totalPages => _introCount + 1;
+  int get _interestPageIndex => _introCount;
 
   static const _pages = [
     _PageData(
@@ -58,8 +70,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     ),
   ];
 
+  Color get _accentForPage =>
+      _page < _introCount ? _pages[_page].color : const Color(0xFFD97706);
+
+  String get _actionLabel {
+    if (_page < _totalPages - 1) return 'التالي';
+    if (_selectedCategories.isEmpty) return 'تخطّي والبدء';
+    return 'ابدأ الآن (${_selectedCategories.length})';
+  }
+
   void _next() {
-    if (_page < _pages.length - 1) {
+    if (_page < _totalPages - 1) {
       _ctl.nextPage(duration: const Duration(milliseconds: 350), curve: Curves.easeOutCubic);
     } else {
       _finish();
@@ -68,6 +89,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   void _finish() async {
     await OnboardingScreen.markSeen();
+
+    // Persist locally so the feed can personalize even before login.
+    if (_selectedCategories.isNotEmpty) {
+      await InterestsStore.save(_selectedCategories);
+      // If the user is already signed in, replay picks as server follows.
+      if (AuthStorage.isAuthenticated) {
+        final notifier = ref.read(followedIdsProvider.notifier);
+        for (final id in _selectedCategories) {
+          if (!notifier.isFollowing('category', id)) {
+            try {
+              await notifier.toggle('category', id);
+            } catch (_) {}
+          }
+        }
+      }
+    }
+
     if (mounted) context.go('/');
   }
 
@@ -79,20 +117,31 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           // Pages
           PageView.builder(
             controller: _ctl,
-            itemCount: _pages.length,
+            itemCount: _totalPages,
             onPageChanged: (i) => setState(() => _page = i),
-            itemBuilder: (_, i) => _OnboardingPage(data: _pages[i]),
+            itemBuilder: (_, i) => i < _introCount
+                ? _OnboardingPage(data: _pages[i])
+                : _InterestPicker(
+                    selected: _selectedCategories,
+                    onToggle: (id) => setState(() {
+                      if (_selectedCategories.contains(id)) {
+                        _selectedCategories.remove(id);
+                      } else {
+                        _selectedCategories.add(id);
+                      }
+                    }),
+                  ),
           ),
 
           // Skip button
           Positioned(
             top: MediaQuery.of(context).padding.top + 12,
             left: 16,
-            child: _page < _pages.length - 1
+            child: _page < _totalPages - 1
                 ? TextButton(
                     onPressed: _finish,
                     child: Text('تخطي', style: TextStyle(
-                      color: _pages[_page].color.withOpacity(0.6),
+                      color: _accentForPage.withOpacity(0.6),
                       fontWeight: FontWeight.w600,
                     )),
                   )
@@ -108,7 +157,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 // Page indicators
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(_pages.length, (i) {
+                  children: List.generate(_totalPages, (i) {
                     final isActive = i == _page;
                     return AnimatedContainer(
                       duration: const Duration(milliseconds: 250),
@@ -116,7 +165,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       width: isActive ? 28 : 8,
                       height: 8,
                       decoration: BoxDecoration(
-                        color: isActive ? _pages[_page].color : _pages[_page].color.withOpacity(0.2),
+                        color: isActive ? _accentForPage : _accentForPage.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(4),
                       ),
                     );
@@ -132,16 +181,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     child: ElevatedButton(
                       onPressed: _next,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _pages[_page].color,
+                        backgroundColor: _accentForPage,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
                         elevation: 4,
-                        shadowColor: _pages[_page].color.withOpacity(0.4),
+                        shadowColor: _accentForPage.withOpacity(0.4),
                       ),
                       child: Text(
-                        _page < _pages.length - 1 ? 'التالي' : 'ابدأ الآن',
+                        _actionLabel,
                         style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
                       ),
                     ),
@@ -232,4 +281,144 @@ class _PageData {
   final String title;
   final String subtitle;
   final String illustration;
+}
+
+/// Final onboarding step: pick the categories you care about. Selections
+/// are held in the parent state and persisted on finish. Encourages (but
+/// doesn't force) at least 3 so the feed has something to personalize.
+class _InterestPicker extends ConsumerWidget {
+  const _InterestPicker({required this.selected, required this.onToggle});
+  final Set<int> selected;
+  final ValueChanged<int> onToggle;
+
+  static const _accent = Color(0xFFD97706);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final categories = ref.watch(categoriesProvider);
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(24, MediaQuery.of(context).padding.top + 64, 24, 170),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 84,
+            height: 84,
+            decoration: BoxDecoration(
+              color: _accent.withOpacity(0.10),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: const Text('🎯', style: TextStyle(fontSize: 38)),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'ما الذي يهمّك؟',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: _accent),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'اختر المواضيع التي تريد متابعتها لنخصّص لك فيدك.\nيمكنك تغييرها لاحقاً في أي وقت.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.7,
+              color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.65),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Expanded(
+            child: categories.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (_, __) => Center(
+                child: Text(
+                  'تعذّر تحميل المواضيع — يمكنك المتابعة وتخصيصها لاحقاً.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: isDark ? Colors.white54 : Colors.black54),
+                ),
+              ),
+              data: (cats) => SingleChildScrollView(
+                child: Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    for (final cat in cats)
+                      _CategoryChip(
+                        category: cat,
+                        isSelected: selected.contains(cat.id),
+                        accent: _accent,
+                        isDark: isDark,
+                        onTap: () => onToggle(cat.id),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CategoryChip extends StatelessWidget {
+  const _CategoryChip({
+    required this.category,
+    required this.isSelected,
+    required this.accent,
+    required this.isDark,
+    required this.onTap,
+  });
+  final Category category;
+  final bool isSelected;
+  final Color accent;
+  final bool isDark;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? accent
+              : (isDark ? Colors.white.withOpacity(0.06) : Colors.grey.shade100),
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(
+            color: isSelected ? accent : (isDark ? Colors.white24 : Colors.grey.shade300),
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (category.icon != null && category.icon!.isNotEmpty) ...[
+              Text(category.icon!, style: const TextStyle(fontSize: 16)),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              category.name,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: isSelected
+                    ? Colors.white
+                    : (isDark ? Colors.white70 : AppColors.textLight),
+              ),
+            ),
+            if (isSelected) ...[
+              const SizedBox(width: 6),
+              const Icon(Icons.check_circle, size: 16, color: Colors.white),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 }
