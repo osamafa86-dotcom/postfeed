@@ -800,6 +800,15 @@ if (!empty($article['cat_slug']) && count($relatedArticles) < $relatedLimit) {
         .compare-coverage-cta .cc-text strong { font-size: 17px; font-weight: 900; color: #78350f; }
         .compare-coverage-cta .cc-text em { font-style: normal; font-size: 13px; color: #6B4F0B; line-height: 1.55; }
         .compare-coverage-cta .cc-arrow { font-size: 28px; font-weight: 900; color: #6B4F0B; flex-shrink: 0; }
+        .compare-coverage-cta .cc-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            align-self: flex-start; margin-top: 4px;
+            padding: 4px 10px;
+            background: rgba(255,255,255,.55);
+            border: 1px solid rgba(120,53,15,.25);
+            border-radius: 999px;
+            font-size: 12px; font-weight: 800; color: #6B4F0B; line-height: 1.4;
+        }
         [data-theme="dark"] .compare-coverage-cta {
             background: linear-gradient(135deg, rgba(120,53,15,.4) 0%, rgba(146,64,14,.5) 100%);
             border-color: rgba(245,158,11,.5);
@@ -808,6 +817,11 @@ if (!empty($article['cat_slug']) && count($relatedArticles) < $relatedLimit) {
         [data-theme="dark"] .compare-coverage-cta .cc-text strong,
         [data-theme="dark"] .compare-coverage-cta .cc-text em,
         [data-theme="dark"] .compare-coverage-cta .cc-arrow { color: #E2C264; }
+        [data-theme="dark"] .compare-coverage-cta .cc-badge {
+            background: rgba(0,0,0,.2);
+            border-color: rgba(245,158,11,.4);
+            color: #E2C264;
+        }
 
         /* === Source CTA (read full article) === */
         .source-cta {
@@ -1365,6 +1379,7 @@ if (!empty($article['cat_slug']) && count($relatedArticles) < $relatedLimit) {
                 <span class="cc-text">
                     <strong>قارن التغطية</strong>
                     <em>هذا الخبر نُشر في <?php echo (int)$__cnt; ?> مصادر مختلفة — اطّلع على كل التغطيات جنباً إلى جنب</em>
+                    <span class="cc-badge">🪞 جديد: مرايا الأخبار — كيف اختلفت صياغة المصادر بالذكاء الاصطناعي</span>
                 </span>
                 <span class="cc-arrow">›</span>
             </a>
