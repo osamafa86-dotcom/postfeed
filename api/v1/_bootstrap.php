@@ -165,10 +165,20 @@ function jwt_verify(string $token): ?array {
 function bearer_token(): ?string {
     $h = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
     if (stripos($h, 'Bearer ') === 0) return trim(substr($h, 7));
+
+    // Fallback: many CGI/FastCGI/LiteSpeed hosts strip the Authorization header
+    // before PHP sees it. The app also sends the raw token in X-Auth-Token,
+    // a custom header that is never stripped. Check it (and its REDIRECT_ form).
+    $x = $_SERVER['HTTP_X_AUTH_TOKEN'] ?? $_SERVER['REDIRECT_HTTP_X_AUTH_TOKEN'] ?? '';
+    if ($x !== '') return trim($x);
+
     if (function_exists('apache_request_headers')) {
         foreach (apache_request_headers() as $k => $v) {
             if (strcasecmp($k, 'authorization') === 0 && stripos($v, 'Bearer ') === 0) {
                 return trim(substr($v, 7));
+            }
+            if (strcasecmp($k, 'x-auth-token') === 0 && trim((string)$v) !== '') {
+                return trim((string)$v);
             }
         }
     }

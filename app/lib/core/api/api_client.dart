@@ -59,6 +59,10 @@ class ApiClient {
         final token = AuthStorage.token;
         if (token != null && token.isNotEmpty) {
           opts.headers['Authorization'] = 'Bearer $token';
+          // Fallback: some CGI/FastCGI/LiteSpeed hosts strip the Authorization
+          // header before PHP sees it. A custom X-* header is never stripped,
+          // so the server reads the token from here when Authorization is lost.
+          opts.headers['X-Auth-Token'] = token;
         }
         handler.next(opts);
       },

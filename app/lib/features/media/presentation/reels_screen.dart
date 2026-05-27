@@ -18,7 +18,13 @@ class ReelsScreen extends ConsumerWidget {
       body: asy.when(
         loading: () => const LoadingShimmerList(),
         error: (e, _) => ErrorRetryView(message: '$e', onRetry: () => ref.invalidate(reelsProvider)),
-        data: (items) => GridView.builder(
+        data: (items) => items.isEmpty
+            ? const EmptyView(
+                icon: Icons.movie_outlined,
+                message: 'لا توجد ريلز بعد',
+                hint: 'يُضاف محتوى الريلز تباعاً — تابعنا لاحقاً.',
+              )
+            : GridView.builder(
           padding: const EdgeInsets.all(8),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,

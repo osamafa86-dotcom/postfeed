@@ -165,10 +165,8 @@ class PrivacyPolicyPage extends StatelessWidget {
         _subheading('أ. معلومات تقدّمها أنت', context),
         _bullet('عنوان بريدك الإلكتروني — فقط إذا اشتركت في النشرة أو أنشأت حساباً.', context),
         _bullet('اسم المستخدم والاسم الكامل — إذا سجّلت حساباً.', context),
-        _bullet('صورة الملف الشخصي — اختيارية، تختارها من الكاميرا أو معرض الصور.', context),
         _bullet('التعليقات والتفاعلات — التعليقات التي تكتبها، الإعجابات، والمشاركات.', context),
         _bullet('التفضيلات — المصادر/الأقسام التي تتابعها، المقالات المحفوظة.', context),
-        _bullet('التسجيلات الصوتية — فقط في ميزة "اسأل الأخبار" بالصوت، تُعالَج فوراً ولا تُخزَّن.', context),
 
         _subheading('ب. معلومات تُجمع تلقائياً', context),
         _bullet('سجلّات الزيارات — عنوان IP، نوع المتصفّح، الصفحات التي تزورها. نحتفظ بها ٣٠ يوماً فقط.', context),
@@ -176,7 +174,6 @@ class PrivacyPolicyPage extends StatelessWidget {
 
         _subheading('ج. خاصّ بتطبيق الجوّال', context),
         _bullet('رمز الجهاز للإشعارات (Device Token) — يُرسَل إلى Firebase Cloud Messaging من Google لتمكين الإشعارات الفورية.', context),
-        _bullet('تسجيل الدخول عبر Apple أو Google — نستلم اسمك وبريدك فقط (Apple يتيح إخفاء البريد).', context),
         _bullet('لا نجمع: مُعرّف الإعلان (IDFA)، جهات الاتصال، الرسائل، أو أي بيانات حسّاسة من الجهاز.', context),
 
         _heading('٢. كيف نستخدم هذه المعلومات', context),
@@ -186,8 +183,6 @@ class PrivacyPolicyPage extends StatelessWidget {
 
         _heading('٣. الخدمات الخارجية', context),
         _bullet('Firebase Cloud Messaging (Google) — للإشعارات الفورية.', context),
-        _bullet('Sign in with Apple — لتسجيل دخول مستخدمي iOS.', context),
-        _bullet('Google Sign-In — لتسجيل الدخول عبر Google (اختياري).', context),
         _bullet('OpenStreetMap — لعرض خريطة الأخبار الجغرافية.', context),
 
         _heading('٤. ماذا لا نفعل', context),

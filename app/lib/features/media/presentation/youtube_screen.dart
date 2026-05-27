@@ -20,7 +20,12 @@ class YoutubeScreen extends ConsumerWidget {
         error: (e, _) => ErrorRetryView(message: '$e', onRetry: () => ref.invalidate(youtubeFeedProvider)),
         data: (vids) => RefreshIndicator(
           onRefresh: () async => ref.invalidate(youtubeFeedProvider),
-          child: ListView.separated(
+          child: vids.isEmpty
+              ? ListView(children: const [
+                  SizedBox(height: 100),
+                  EmptyView(icon: Icons.smart_display_outlined, message: 'لا توجد فيديوهات بعد'),
+                ])
+              : ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: vids.length,
             separatorBuilder: (_, __) => const SizedBox(height: 12),

@@ -378,8 +378,21 @@ class _FollowRow extends ConsumerWidget {
           // Follow / Unfollow button
           Expanded(
             child: ElevatedButton.icon(
-              onPressed: () =>
-                  ref.read(followedIdsProvider.notifier).toggle('source', source.id),
+              onPressed: () async {
+                try {
+                  await ref
+                      .read(followedIdsProvider.notifier)
+                      .toggle('source', source.id);
+                } catch (_) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text(
+                              'تعذّر تنفيذ العملية، تحقّق من اتصالك وحاول مجدداً')),
+                    );
+                  }
+                }
+              },
               icon: Icon(
                 isFollowing ? Icons.check : Icons.add,
                 size: 18,

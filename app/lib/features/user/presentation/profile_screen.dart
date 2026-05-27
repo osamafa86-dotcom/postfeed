@@ -806,30 +806,6 @@ class _ActivityTab extends StatelessWidget {
         _WeekStreakVisual(streak: user.readingStreak, isDark: isDark),
         const SizedBox(height: 16),
 
-        // Activity items
-        _ActivityTile(
-          emoji: '💬', label: 'تعليقاتي',
-          onTap: () {},
-          isDark: isDark,
-        ),
-        const SizedBox(height: 8),
-        _ActivityTile(
-          emoji: '❤️', label: 'تفاعلاتي',
-          onTap: () {},
-          isDark: isDark,
-        ),
-        const SizedBox(height: 8),
-        _ActivityTile(
-          emoji: '📤', label: 'مشاركاتي',
-          onTap: () {},
-          isDark: isDark,
-        ),
-        const SizedBox(height: 8),
-        _ActivityTile(
-          emoji: '📜', label: 'سجل القراءة',
-          onTap: () {},
-          isDark: isDark,
-        ),
       ],
     );
   }
@@ -923,40 +899,6 @@ class _WeekStreakVisual extends StatelessWidget {
             ],
           );
         }),
-      ),
-    );
-  }
-}
-
-class _ActivityTile extends StatelessWidget {
-  const _ActivityTile({
-    required this.emoji, required this.label,
-    required this.onTap, required this.isDark,
-  });
-  final String emoji;
-  final String label;
-  final VoidCallback onTap;
-  final bool isDark;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        decoration: NeoDecoration.soft(isDark: isDark, radius: 14),
-        child: Row(
-          children: [
-            Text(emoji, style: const TextStyle(fontSize: 20)),
-            const SizedBox(width: 12),
-            Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
-              color: isDark ? AppColors.textDark : AppColors.textLight)),
-            const Spacer(),
-            Icon(Icons.chevron_left, size: 18,
-              color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
-          ],
-        ),
       ),
     );
   }

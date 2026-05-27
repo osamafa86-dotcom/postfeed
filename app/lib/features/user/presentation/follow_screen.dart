@@ -140,7 +140,7 @@ class _FollowedCategoriesTab extends ConsumerWidget {
                       color: isDark ? Colors.white : AppColors.textLight)),
               trailing: _FollowButton(
                 isFollowed: isFollowed,
-                onTap: () => ref.read(followedIdsProvider.notifier).toggle('category', cat.id),
+                onTap: () => _toggleFollow(context, ref, 'category', cat.id),
               ),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               tileColor: Theme.of(context).cardColor,
@@ -191,7 +191,7 @@ class _FollowedSourcesTab extends ConsumerWidget {
                       color: isDark ? Colors.white : AppColors.textLight)),
               trailing: _FollowButton(
                 isFollowed: isFollowed,
-                onTap: () => ref.read(followedIdsProvider.notifier).toggle('source', src.id),
+                onTap: () => _toggleFollow(context, ref, 'source', src.id),
               ),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               tileColor: Theme.of(context).cardColor,
@@ -243,7 +243,7 @@ class _FollowedStoriesTab extends ConsumerWidget {
                   style: Theme.of(context).textTheme.bodySmall),
               trailing: _FollowButton(
                 isFollowed: isFollowed,
-                onTap: () => ref.read(followedIdsProvider.notifier).toggle('story', story.id),
+                onTap: () => _toggleFollow(context, ref, 'story', story.id),
               ),
               onTap: () => context.push('/stories/${story.slug}'),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -275,5 +275,20 @@ class _FollowButton extends StatelessWidget {
       child: Text(isFollowed ? 'متابَع' : 'متابعة',
           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
     );
+  }
+}
+
+// Toggles a follow and surfaces a message if the request fails, so the
+// button never silently does nothing.
+Future<void> _toggleFollow(
+    BuildContext context, WidgetRef ref, String type, int id) async {
+  try {
+    await ref.read(followedIdsProvider.notifier).toggle(type, id);
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذّر تنفيذ العملية، تحقّق من اتصالك وحاول مجدداً')),
+      );
+    }
   }
 }

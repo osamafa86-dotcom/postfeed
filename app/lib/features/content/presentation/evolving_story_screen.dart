@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/api/api_exception.dart';
 import '../../../core/models/article.dart';
 import '../../../core/models/evolving_story.dart';
 import '../../../core/utils/safe_launch.dart';
@@ -33,10 +34,15 @@ class EvolvingStoryScreen extends ConsumerWidget {
     return Scaffold(
       body: detail.when(
         loading: () => const LoadingShimmerList(),
-        error: (e, _) => ErrorRetryView(
-          message: '$e',
-          onRetry: () => ref.invalidate(_storyDetailProvider(slug)),
-        ),
+        error: (e, _) => (e is ApiException && e.status == 404)
+            ? const EmptyView(
+                icon: Icons.auto_stories_outlined,
+                message: 'هذه القصة غير متاحة',
+              )
+            : ErrorRetryView(
+                message: '$e',
+                onRetry: () => ref.invalidate(_storyDetailProvider(slug)),
+              ),
         data: (d) => RefreshIndicator(
           onRefresh: () async {
             ref.invalidate(_storyDetailProvider(slug));

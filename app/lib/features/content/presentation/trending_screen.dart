@@ -20,7 +20,12 @@ class TrendingScreen extends ConsumerWidget {
       body: asy.when(
         loading: () => const LoadingShimmerList(),
         error: (e, _) => ErrorRetryView(message: '$e', onRetry: () => ref.invalidate(_trendingProvider)),
-        data: (d) => ListView(
+        data: (d) => (d.tags.isEmpty && d.articles.isEmpty)
+            ? const EmptyView(
+                icon: Icons.trending_up,
+                message: 'لا يوجد محتوى رائج حالياً',
+              )
+            : ListView(
           padding: const EdgeInsets.all(16),
           children: [
             if (d.tags.isNotEmpty) ...[
