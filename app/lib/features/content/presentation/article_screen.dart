@@ -1,11 +1,8 @@
-import 'dart:async';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:just_audio/just_audio.dart';
 import 'package:share_plus/share_plus.dart' show Share;
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:url_launcher/url_launcher.dart';
@@ -239,9 +236,6 @@ class _ArticleBody extends StatelessWidget {
 
               const SizedBox(height: 14),
 
-              // TTS hidden until the production server has a TTS provider key
-              // configured. _TtsPlayer is kept below for the next release.
-
               // ── Quick actions row ──
               _QuickActions(article: article),
 
@@ -311,180 +305,6 @@ class _ArticleBody extends StatelessWidget {
     );
   }
 }
-
-// ═══════════════════════════════════════════════════════════════
-// TTS PLAYER
-// ═══════════════════════════════════════════════════════════════
-
-class _TtsPlayer extends ConsumerStatefulWidget {
-  const _TtsPlayer({required this.articleId});
-  final int articleId;
-
-  @override
-  ConsumerState<_TtsPlayer> createState() => _TtsPlayerState();
-}
-
-class _TtsPlayerState extends ConsumerState<_TtsPlayer> {
-  AudioPlayer? _player;
-  _TtsState _state = _TtsState.idle;
-  Duration _position = Duration.zero;
-  Duration _duration = Duration.zero;
-  final List<StreamSubscription> _subs = [];
-
-  @override
-  void dispose() {
-    for (final sub in _subs) {
-      sub.cancel();
-    }
-    _player?.dispose();
-    super.dispose();
-  }
-
-  Future<void> _play() async {
-    if (_state == _TtsState.loading) return;
-
-    // If already loaded, just toggle play/pause
-    if (_player != null) {
-      if (_player!.playing) {
-        _player!.pause();
-      } else {
-        _player!.play();
-      }
-      return;
-    }
-
-    setState(() => _state = _TtsState.loading);
-
-    try {
-      final result = await ref.read(contentRepositoryProvider).tts(widget.articleId);
-      final player = AudioPlayer();
-      await player.setUrl(result.audioUrl);
-
-      _subs.add(player.playerStateStream.listen((s) {
-        if (!mounted) return;
-        setState(() {
-          if (s.processingState == ProcessingState.completed) {
-            _state = _TtsState.idle;
-            _position = Duration.zero;
-            player.seek(Duration.zero);
-            player.pause();
-          } else if (s.playing) {
-            _state = _TtsState.playing;
-          } else {
-            _state = _TtsState.paused;
-          }
-        });
-      }));
-
-      _subs.add(player.positionStream.listen((p) {
-        if (mounted) setState(() => _position = p);
-      }));
-
-      _subs.add(player.durationStream.listen((d) {
-        if (mounted && d != null) setState(() => _duration = d);
-      }));
-
-      _player = player;
-      player.play();
-    } catch (e) {
-      if (mounted) {
-        setState(() => _state = _TtsState.idle);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تعذّر تشغيل القراءة الصوتية')),
-        );
-      }
-    }
-  }
-
-  String _fmt(Duration d) {
-    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '$m:$s';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: NeoDecoration.soft(isDark: isDark, radius: 14),
-      child: Row(
-        children: [
-          // Play/Pause button
-          GestureDetector(
-            onTap: _play,
-            child: Container(
-              width: 38, height: 38,
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              alignment: Alignment.center,
-              child: _state == _TtsState.loading
-                  ? const SizedBox(width: 18, height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : Icon(
-                      _state == _TtsState.playing ? Icons.pause : Icons.headphones,
-                      color: Colors.white, size: 20),
-            ),
-          ),
-          const SizedBox(width: 10),
-
-          // Label + progress
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _state == _TtsState.idle ? 'استمع للمقال' : 'جارٍ القراءة...',
-                  style: TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.w700,
-                    color: isDark ? Colors.white : AppColors.textLight,
-                  ),
-                ),
-                if (_state != _TtsState.idle && _duration.inSeconds > 0) ...[
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Text(_fmt(_position),
-                        style: TextStyle(fontSize: 10,
-                          color: isDark ? Colors.white38 : AppColors.textMutedLight)),
-                      Expanded(
-                        child: SliderTheme(
-                          data: SliderThemeData(
-                            trackHeight: 3,
-                            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
-                            activeTrackColor: AppColors.primary,
-                            inactiveTrackColor: isDark ? Colors.white12 : const Color(0xFFE0F2FE),
-                            thumbColor: AppColors.primary,
-                            overlayShape: SliderComponentShape.noOverlay,
-                          ),
-                          child: Slider(
-                            value: _position.inMilliseconds.toDouble().clamp(0, _duration.inMilliseconds.toDouble()),
-                            min: 0,
-                            max: _duration.inMilliseconds.toDouble().clamp(1, double.infinity),
-                            onChanged: (v) => _player?.seek(Duration(milliseconds: v.toInt())),
-                          ),
-                        ),
-                      ),
-                      Text(_fmt(_duration),
-                        style: TextStyle(fontSize: 10,
-                          color: isDark ? Colors.white38 : AppColors.textMutedLight)),
-                    ],
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-enum _TtsState { idle, loading, playing, paused }
 
 // ═══════════════════════════════════════════════════════════════
 // QUICK ACTIONS ROW (comments, reactions)

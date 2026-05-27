@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:just_audio_background/just_audio_background.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import 'core/router/app_router.dart';
@@ -23,13 +22,6 @@ Future<void> main() async {
   await Hive.initFlutter();
   await initHiveBoxes();
   await AuthStorage.init();
-
-  // Background audio for the podcast player.
-  await JustAudioBackground.init(
-    androidNotificationChannelId: 'net.feedsnews.app.audio',
-    androidNotificationChannelName: 'تشغيل البودكاست',
-    androidNotificationOngoing: true,
-  );
 
   runApp(const ProviderScope(child: FeedsNewsApp()));
 }

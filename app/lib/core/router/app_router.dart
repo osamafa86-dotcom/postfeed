@@ -28,7 +28,6 @@ import '../../features/media/presentation/twitter_screen.dart';
 import '../../features/media/presentation/youtube_screen.dart';
 import '../../features/media/presentation/platforms_screen.dart';
 import '../../features/onboarding/onboarding_screen.dart';
-import '../../features/podcast/presentation/podcast_screen.dart';
 import '../../features/shell/main_shell.dart';
 import '../../features/splash/splash_screen.dart';
 import '../../features/user/presentation/bookmarks_screen.dart';
@@ -115,9 +114,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // Daily / weekly briefs
       GoRoute(path: '/sabah', builder: (_, __) => const SabahScreen()),
       GoRoute(path: '/weekly', builder: (_, __) => const WeeklyRewindScreen()),
-
-      // Podcast (standalone)
-      GoRoute(path: '/podcast', builder: (_, __) => const PodcastScreen()),
 
       // AI Q&A
       GoRoute(path: '/ask', builder: (_, __) => const AskScreen()),
