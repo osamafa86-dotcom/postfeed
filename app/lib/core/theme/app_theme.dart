@@ -47,7 +47,7 @@ class AppColors {
   static const Color cardDark        = neoDarkMid;
   static const Color textLight       = Color(0xFF2C2416);
   static const Color textDark        = Color(0xFFE5E2D9);
-  static const Color textMutedLight  = Color(0xFF7A6E5D);
+  static const Color textMutedLight  = Color(0xFF655848);
   static const Color textMutedDark   = Color(0xFFA09882);
   static const Color borderLight     = Color(0xFFDDD5C7);
   static const Color borderDark      = Color(0xFF3A3828);

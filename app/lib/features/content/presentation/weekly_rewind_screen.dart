@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart' show Share;
 
 import '../../../core/api/api_client.dart';
+import '../../../core/api/api_exception.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/loading_state.dart';
 
@@ -85,10 +86,16 @@ class WeeklyRewindScreen extends ConsumerWidget {
     return Scaffold(
       body: asy.when(
         loading: () => const LoadingShimmerList(),
-        error: (e, _) => ErrorRetryView(
-          message: 'تعذّر تحميل مراجعة الأسبوع\n$e',
-          onRetry: () => ref.invalidate(_weeklyProvider),
-        ),
+        error: (e, _) => (e is ApiException && e.status == 404)
+            ? const EmptyView(
+                icon: Icons.calendar_month_outlined,
+                message: 'لا توجد مراجعة أسبوعية بعد',
+                hint: 'تصدر المراجعة نهاية كل أسبوع — تابعنا لاحقاً.',
+              )
+            : ErrorRetryView(
+                message: 'تعذّر تحميل مراجعة الأسبوع\n$e',
+                onRetry: () => ref.invalidate(_weeklyProvider),
+              ),
         data: (rewind) => RefreshIndicator(
           onRefresh: () async => ref.invalidate(_weeklyProvider),
           child: _WeeklyBody(rewind: rewind),

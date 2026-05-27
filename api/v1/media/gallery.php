@@ -26,7 +26,18 @@ try {
     error_log('gallery api: ' . $e->getMessage());
 }
 
-if (!$gallery) api_err('not_found', 'لا توجد ألبومات', 404);
+// No gallery yet is a normal empty state, not an error — the app renders
+// a friendly placeholder. Returning 404 here made the screen show an error.
+if (!$gallery) {
+    api_ok([
+        'id' => 0,
+        'date' => $date,
+        'headline' => null,
+        'intro' => null,
+        'photos' => [],
+        'created_at' => null,
+    ]);
+}
 
 $photos = json_decode((string)$gallery['photos'], true);
 if (!is_array($photos)) $photos = [];

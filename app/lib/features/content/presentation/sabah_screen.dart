@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/api/api_exception.dart';
 import '../../../core/widgets/loading_state.dart';
 
 final _sabahProvider = FutureProvider((ref) async {
@@ -21,7 +22,13 @@ class SabahScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('صباح فيد نيوز')),
       body: asy.when(
         loading: () => const LoadingShimmerList(),
-        error: (e, _) => ErrorRetryView(message: '$e', onRetry: () => ref.invalidate(_sabahProvider)),
+        error: (e, _) => (e is ApiException && e.status == 404)
+            ? const EmptyView(
+                icon: Icons.wb_sunny_outlined,
+                message: 'لا يوجد موجز صباحي اليوم',
+                hint: 'يصدر الموجز الصباحي يومياً — تابعنا غداً.',
+              )
+            : ErrorRetryView(message: '$e', onRetry: () => ref.invalidate(_sabahProvider)),
         data: (d) {
           final sections = (d['sections'] as List? ?? []);
           return ListView(

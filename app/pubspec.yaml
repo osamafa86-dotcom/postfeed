@@ -1,7 +1,7 @@
 name: feedsnews
 description: "فيد نيوز — Feed News mobile app (iOS & Android)"
 publish_to: "none"
-version: 2.2.1+12
+version: 2.2.1+13
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -44,11 +44,6 @@ dependencies:
   flutter_inappwebview: ^6.1.5
   intl: ^0.20.2
   timeago: ^3.7.0
-
-  # Audio (podcast + TTS playback)
-  just_audio: ^0.9.40
-  just_audio_background: ^0.0.1-beta.13
-  audio_session: ^0.1.21
 
   # Video (YouTube + reels)
   youtube_player_iframe: ^5.2.0

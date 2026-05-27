@@ -22,7 +22,13 @@ class GalleryScreen extends ConsumerWidget {
       body: asy.when(
         loading: () => const LoadingShimmerList(),
         error: (e, _) => ErrorRetryView(message: '$e', onRetry: () => ref.invalidate(galleryProvider)),
-        data: (g) => ListView(
+        data: (g) => g.photos.isEmpty
+            ? const EmptyView(
+                icon: Icons.photo_library_outlined,
+                message: 'لا توجد ألبومات صور بعد',
+                hint: 'يُحدَّث معرض الصور يومياً — تابعنا لاحقاً.',
+              )
+            : ListView(
           padding: EdgeInsets.zero,
           children: [
             if (g.headline != null) Padding(

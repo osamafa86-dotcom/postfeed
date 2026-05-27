@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart' show Share;
 
 import '../../../core/api/api_client.dart';
+import '../../../core/api/api_exception.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/loading_state.dart';
 
@@ -350,7 +351,11 @@ class _RichSummaryCardState extends State<_RichSummaryCard> {
                     style: TextStyle(fontSize: 13, color: widget.isDark ? Colors.white38 : AppColors.textMutedLight)),
                 ],
               ),
-              error: (e, __) => Column(
+              error: (e, __) => (e is ApiException && e.status == 404)
+                ? Text('لا يوجد ملخص متاح حالياً',
+                    style: TextStyle(fontSize: 13,
+                      color: widget.isDark ? Colors.white30 : AppColors.textMutedLight))
+                : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(

@@ -13,6 +13,13 @@
 RewriteEngine On
 RewriteBase /api/v1/
 
+# Pass the HTTP Authorization header through to PHP. Many CGI/FastCGI/
+# LiteSpeed hosts strip it, so the Bearer token never reaches PHP and every
+# authenticated request 401s (the app then drops the session). Exposed to
+# PHP as REDIRECT_HTTP_AUTHORIZATION, which _bootstrap's bearer_token() reads.
+RewriteCond %{HTTP:Authorization} .
+RewriteRule ^ - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
 # Already exists as a real file → serve it.
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
@@ -55,6 +62,12 @@ RewriteRule ^([^/]+)/([^/]+)/?$                $1/$2.php [QSA,L]
 
 # Single-segment endpoints (e.g. /api/v1/index)
 RewriteRule ^([^/]+)/?$                        $1.php [QSA,L]
+</IfModule>
+
+# Belt-and-suspenders: on hosts without mod_rewrite env passthrough, copy the
+# Authorization header into an env var PHP can see ($_SERVER['HTTP_AUTHORIZATION']).
+<IfModule mod_setenvif.c>
+SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
 </IfModule>
 
 # CORS is handled dynamically in _bootstrap.php (origin whitelist).
