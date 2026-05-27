@@ -386,17 +386,28 @@ class FollowIdsNotifier extends StateNotifier<Map<String, Set<int>>> {
   bool isFollowing(String type, int id) => state[type]?.contains(id) ?? false;
 
   Future<bool> toggle(String type, int targetId) async {
-    final result = await _repo.toggleFollow(type, targetId);
+    final wasFollowing = isFollowing(type, targetId);
+    _apply(type, targetId, !wasFollowing); // optimistic — button responds at once
+    try {
+      final result = await _repo.toggleFollow(type, targetId);
+      _apply(type, targetId, result); // reconcile with server truth
+      return result;
+    } catch (e) {
+      _apply(type, targetId, wasFollowing); // rollback on failure
+      rethrow;
+    }
+  }
+
+  void _apply(String type, int targetId, bool following) {
     final current = {...state};
     final set = {...(current[type] ?? {})};
-    if (result) {
+    if (following) {
       set.add(targetId);
     } else {
       set.remove(targetId);
     }
     current[type] = set;
     state = current;
-    return result;
   }
 
   void refresh() => _load();

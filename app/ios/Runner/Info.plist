@@ -55,14 +55,13 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 
-	<!-- Background fetch + push only. No persistent background audio. -->
+	<!-- Push notifications only. No persistent background audio. -->
 	<key>UIBackgroundModes</key>
 	<array>
-		<string>fetch</string>
 		<string>remote-notification</string>
 	</array>
 
-	<!-- Permissions usage strings (App Store mandatory) -->
+	<!-- App Transport Security -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
@@ -70,14 +69,6 @@
 		<key>NSAllowsArbitraryLoadsForMedia</key>
 		<true/>
 	</dict>
-	<key>NSCameraUsageDescription</key>
-	<string>يُستخدم الكاميرا لرفع صورة الملف الشخصي.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>يُستخدم لاختيار صورة من معرض الصور لاستخدامها كصورة ملف شخصي.</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>عرض الأخبار القريبة على الخريطة الجغرافية.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>يُستخدم الميكروفون لتسجيل الأسئلة الصوتية في ميزة اسأل الأخبار بالذكاء الاصطناعي.</string>
 
 	<!-- Universal links + custom scheme -->
 	<key>CFBundleURLTypes</key>

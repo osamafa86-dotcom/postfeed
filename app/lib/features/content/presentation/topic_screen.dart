@@ -21,7 +21,12 @@ class TopicScreen extends ConsumerWidget {
       body: asy.when(
         loading: () => const LoadingShimmerList(),
         error: (e, _) => ErrorRetryView(message: '$e', onRetry: () => ref.invalidate(_topicProvider(slug))),
-        data: (p) => ListView.separated(
+        data: (p) => p.items.isEmpty
+            ? const EmptyView(
+                icon: Icons.article_outlined,
+                message: 'لا توجد أخبار في هذا القسم بعد',
+              )
+            : ListView.separated(
           padding: const EdgeInsets.all(16),
           itemCount: p.items.length,
           separatorBuilder: (_, __) => const SizedBox(height: 10),
