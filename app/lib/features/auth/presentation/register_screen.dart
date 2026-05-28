@@ -60,6 +60,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       ref.read(authStateProvider.notifier).refresh();
       ref.invalidate(currentUserProvider);
       ref.invalidate(followedIdsProvider);
+      ref.invalidate(bookmarkedIdsProvider);
       if (mounted) context.go('/');
     } catch (e) {
       setState(() => _err = e is ApiException ? e.userMessage : '$e');
@@ -75,6 +76,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       ref.read(authStateProvider.notifier).refresh();
       ref.invalidate(currentUserProvider);
       ref.invalidate(followedIdsProvider);
+      ref.invalidate(bookmarkedIdsProvider);
       if (mounted) context.go('/');
     } catch (e) {
       if (mounted) setState(() => _err = e is ApiException ? e.userMessage : '$e');

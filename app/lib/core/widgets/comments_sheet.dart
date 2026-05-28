@@ -17,6 +17,10 @@ void showCommentsSheet(BuildContext context, int articleId) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
+    // useSafeArea matters on iPad — without it the sheet renders under
+    // the home indicator on landscape and clips the composer when the
+    // keyboard opens. On iPhone it's a harmless few-pixel inset.
+    useSafeArea: true,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),

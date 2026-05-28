@@ -8,7 +8,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/data/auth_state_provider.dart';
-import '../data/user_repository.dart' show followedIdsProvider;
+import '../data/user_repository.dart' show followedIdsProvider, bookmarkedIdsProvider;
 import 'blocked_users_screen.dart';
 import 'info_pages.dart';
 import 'notification_settings_screen.dart';
@@ -142,6 +142,7 @@ class SettingsScreen extends ConsumerWidget {
                   );
                   ref.invalidate(currentUserProvider);
                   ref.invalidate(followedIdsProvider);
+                  ref.invalidate(bookmarkedIdsProvider);
                   context.go('/');
                 }
               } catch (_) {

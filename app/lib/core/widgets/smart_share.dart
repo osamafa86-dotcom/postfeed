@@ -23,10 +23,12 @@ class SmartShare {
       categoryName: categoryName ?? '',
     );
 
-    // Show bottom sheet with preview + share button
+    // Show bottom sheet with preview + share button. useSafeArea is
+    // required on iPad — see comments_sheet.dart for the rationale.
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _ShareSheet(
         card: card,

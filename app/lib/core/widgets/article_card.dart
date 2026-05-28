@@ -301,9 +301,18 @@ class _ActionBarState extends ConsumerState<_ActionBar> {
     final RenderBox? box = context.findRenderObject() as RenderBox?;
     if (box == null) return;
     final Offset pos = box.localToGlobal(Offset.zero);
+    // Position the popup relative to the overlay so showMenu can
+    // automatically reposition if it would overflow — the previous
+    // `pos.dx + 250` hardcoded the right edge, which on iPad in
+    // Stage Manager / Split View (narrow width) put the menu off
+    // the visible area and made the reactions un-tappable.
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     showMenu<String>(
       context: context,
-      position: RelativeRect.fromLTRB(pos.dx, pos.dy - 50, pos.dx + 250, pos.dy),
+      position: RelativeRect.fromRect(
+        Rect.fromPoints(pos, pos.translate(box.size.width, box.size.height)),
+        Offset.zero & overlay.size,
+      ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       items: _reactions.map((r) => PopupMenuItem<String>(
         value: r.$1,

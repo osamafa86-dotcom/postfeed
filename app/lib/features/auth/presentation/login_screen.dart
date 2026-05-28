@@ -39,6 +39,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ref.read(authStateProvider.notifier).refresh();
       ref.invalidate(currentUserProvider);
       ref.invalidate(followedIdsProvider);
+      ref.invalidate(bookmarkedIdsProvider);
       if (mounted) context.go('/');
     } catch (e) {
       setState(() => _err = e is ApiException ? e.userMessage : '$e');
@@ -54,6 +55,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ref.read(authStateProvider.notifier).refresh();
       ref.invalidate(currentUserProvider);
       ref.invalidate(followedIdsProvider);
+      ref.invalidate(bookmarkedIdsProvider);
       if (mounted) context.go('/');
     } catch (e) {
       if (mounted) setState(() => _err = e is ApiException ? e.userMessage : '$e');
