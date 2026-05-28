@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../content/data/content_repository.dart';
 import '../content/presentation/discover_screen.dart';
 import '../content/presentation/home_screen.dart';
 import '../content/presentation/summaries_screen.dart';
 import '../user/presentation/follow_screen.dart';
 import '../user/presentation/profile_screen.dart';
 
-class MainShell extends StatefulWidget {
+class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key, required this.state, required this.child});
   final GoRouterState state;
   final Widget child;
@@ -22,10 +24,10 @@ class MainShell extends StatefulWidget {
   ];
 
   @override
-  State<MainShell> createState() => _MainShellState();
+  ConsumerState<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
+class _MainShellState extends ConsumerState<MainShell> {
   // Pages are created once and kept alive via IndexedStack.
   final _pages = const [
     HomeScreen(),
@@ -74,7 +76,21 @@ class _MainShellState extends State<MainShell> {
         ),
         child: BottomNavigationBar(
           currentIndex: index,
-          onTap: (i) => context.go(MainShell._tabs[i].path),
+          onTap: (i) {
+            // Tapping the home tab while already on home refreshes the
+            // feed — matches the standard pattern in Twitter/Instagram.
+            // Check the exact location (not index) because sub-routes
+            // like /article/123 also map to index 0 and should navigate
+            // back to /, not trigger a refresh.
+            if (i == 0 && loc == '/') {
+              ref.invalidate(homeProvider);
+              ref.invalidate(forYouProvider);
+              ref.invalidate(evolvingStoriesProvider);
+              ref.invalidate(youtubeFeedProvider);
+              return;
+            }
+            context.go(MainShell._tabs[i].path);
+          },
           items: [
             for (final t in MainShell._tabs)
               BottomNavigationBarItem(
