@@ -13,10 +13,15 @@ $sinceId = max(0, (int)($_GET['since_id'] ?? 0));
 
 $db = getDB();
 $videos = [];
+// Column list matches the actual youtube_videos schema: post_url (NOT
+// video_url), no duration_seconds column. The previous SELECT named
+// columns that don't exist, which made PDO throw and the catch below
+// swallow it — every request quietly returned []. That's exactly why
+// the app showed "no videos" while the cron was inserting rows fine.
 try {
     if ($sinceId > 0) {
-        $stmt = $db->prepare("SELECT v.id, v.source_id, v.video_url, v.video_id, v.title, v.description,
-                                     v.thumbnail_url, v.duration_seconds, v.posted_at,
+        $stmt = $db->prepare("SELECT v.id, v.source_id, v.post_url, v.video_id, v.title, v.description,
+                                     v.thumbnail_url, v.posted_at,
                                      s.display_name, s.channel_id, s.avatar_url
                                FROM youtube_videos v
                                JOIN youtube_sources s ON v.source_id = s.id
@@ -25,8 +30,8 @@ try {
         $stmt->bindValue(1, $sinceId, PDO::PARAM_INT);
         $stmt->bindValue(2, $limit, PDO::PARAM_INT);
     } else {
-        $stmt = $db->prepare("SELECT v.id, v.source_id, v.video_url, v.video_id, v.title, v.description,
-                                     v.thumbnail_url, v.duration_seconds, v.posted_at,
+        $stmt = $db->prepare("SELECT v.id, v.source_id, v.post_url, v.video_id, v.title, v.description,
+                                     v.thumbnail_url, v.posted_at,
                                      s.display_name, s.channel_id, s.avatar_url
                                FROM youtube_videos v
                                JOIN youtube_sources s ON v.source_id = s.id
@@ -39,11 +44,15 @@ try {
         $videos[] = [
             'id' => (int)$r['id'],
             'video_id' => $r['video_id'],
-            'video_url' => $r['video_url'],
+            // Keep JSON key as `video_url` for app compat — the column
+            // happens to be named `post_url` in the DB.
+            'video_url' => $r['post_url'],
             'title' => $r['title'],
             'description' => $r['description'],
             'thumbnail_url' => api_image_url($r['thumbnail_url']),
-            'duration_seconds' => (int)$r['duration_seconds'],
+            // The schema has no duration column; the app treats 0 as
+            // "don't show a duration overlay".
+            'duration_seconds' => 0,
             'posted_at' => $r['posted_at'],
             'source' => [
                 'id' => (int)$r['source_id'],
