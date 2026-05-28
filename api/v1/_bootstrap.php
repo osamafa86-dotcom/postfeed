@@ -35,7 +35,7 @@ if (in_array($origin, $allowedOrigins, true)) {
     // Browsers without matching Origin get no ACAO header → blocked.
 }
 header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Device-Id, X-App-Version, X-Platform');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Auth-Token, X-Device-Id, X-App-Version, X-Platform');
 header('Access-Control-Max-Age: 86400');
 header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
