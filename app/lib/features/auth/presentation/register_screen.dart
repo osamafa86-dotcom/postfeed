@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -61,6 +62,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
   }
 
+  Future<void> _runSocial(Future<void> Function() fn) async {
+    setState(() { _busy = true; _err = null; });
+    try {
+      await fn();
+      ref.invalidate(currentUserProvider);
+      ref.invalidate(followedIdsProvider);
+      if (mounted) context.go('/');
+    } catch (e) {
+      if (mounted) setState(() => _err = '$e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -84,6 +99,62 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Text('إنشاء الحساب'),
           ),
+
+          // ── Social sign-up — same providers as login ──
+          if (defaultTargetPlatform == TargetPlatform.iOS ||
+              kGoogleSignInEnabled) ...[
+            const SizedBox(height: 16),
+            Row(children: const [
+              Expanded(child: Divider()),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 10),
+                child: Text('أو', style: TextStyle(color: Colors.grey)),
+              ),
+              Expanded(child: Divider()),
+            ]),
+            const SizedBox(height: 12),
+          ],
+          if (defaultTargetPlatform == TargetPlatform.iOS)
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _busy
+                    ? null
+                    : () => _runSocial(() async => ref
+                        .read(authRepositoryProvider)
+                        .signInWithApple()),
+                icon: const Icon(Icons.apple, size: 22),
+                label: const Text('متابعة بـ Apple'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ),
+          if (kGoogleSignInEnabled) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _busy
+                    ? null
+                    : () => _runSocial(() async => ref
+                        .read(authRepositoryProvider)
+                        .signInWithGoogle()),
+                icon: const Icon(Icons.g_mobiledata,
+                    size: 28, color: Color(0xFF4285F4)),
+                label: const Text('متابعة بـ Google'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

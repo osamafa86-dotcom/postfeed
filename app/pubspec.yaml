@@ -54,10 +54,10 @@ dependencies:
   firebase_messaging: ^15.1.3
   flutter_local_notifications: ^17.2.3
 
-  # Auth — email/password only (no third-party OAuth, so Sign in with
-  # Apple is not required by App Store Guideline 4.8). If a Google or
-  # Facebook sign-in is added later, sign_in_with_apple MUST be added
-  # back and offered as an equal option on iOS.
+  # Social sign-in — Apple is required by App Store Guideline 4.8
+  # whenever Google (or any other third-party login) is offered.
+  sign_in_with_apple: ^6.1.0
+  google_sign_in: ^6.2.2
 
   # Maps (news map)
   flutter_map: ^7.0.2
