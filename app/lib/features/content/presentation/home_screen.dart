@@ -100,11 +100,11 @@ class _HomeBody extends ConsumerWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         // ── 1. Hero Card — full-bleed at the very top ──
-        // Uses API hero, falls back to latest article if none provided
-        if (payload.hero != null || payload.latest.isNotEmpty)
-          SliverToBoxAdapter(child: _HeroCard(
-            article: payload.hero ?? payload.latest.first,
-          )),
+        // Prefer the API-flagged hero, but only if it's not staler than the
+        // newest article in the feed. This guards against an editor leaving
+        // an old "hero" flag in the DB for weeks.
+        if (_pickHero(payload) != null)
+          SliverToBoxAdapter(child: _HeroCard(article: _pickHero(payload)!)),
 
         // ── 2. Personal Greeting ──
         SliverToBoxAdapter(child: _GreetingStrip()),
@@ -1474,4 +1474,18 @@ class _ForYouSection extends ConsumerWidget {
       },
     );
   }
+}
+
+/// Picks the article to show in the hero slot. Prefers the API-flagged
+/// hero, but falls back to the freshest article in `latest` when the hero
+/// is older — guards against an editor leaving a stale hero flag in the DB.
+Article? _pickHero(HomePayload p) {
+  final hero = p.hero;
+  final newest = p.latest.isNotEmpty ? p.latest.first : null;
+  if (hero == null) return newest;
+  if (newest == null) return hero;
+  final hd = hero.publishedAt ?? hero.createdAt;
+  final nd = newest.publishedAt ?? newest.createdAt;
+  if (hd == null || nd == null) return hero;
+  return hd.isBefore(nd) ? newest : hero;
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/api/api_exception.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/loading_state.dart';
 import '../../auth/data/auth_storage.dart';
@@ -284,11 +285,14 @@ Future<void> _toggleFollow(
     BuildContext context, WidgetRef ref, String type, int id) async {
   try {
     await ref.read(followedIdsProvider.notifier).toggle(type, id);
-  } catch (_) {
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تعذّر تنفيذ العملية، تحقّق من اتصالك وحاول مجدداً')),
-      );
-    }
+  } catch (e) {
+    if (!context.mounted) return;
+    // Surface the real reason so the failure isn't a mystery — server
+    // responses like "يلزم تسجيل الدخول" or "تم تجاوز الحد المسموح" carry
+    // their own Arabic text already.
+    final msg = e is ApiException
+        ? e.message
+        : 'تعذّر تنفيذ العملية، تحقّق من اتصالك وحاول مجدداً';
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 }

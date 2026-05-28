@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/api/api_exception.dart';
 import '../../../core/models/source.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/safe_launch.dart';
@@ -383,14 +384,14 @@ class _FollowRow extends ConsumerWidget {
                   await ref
                       .read(followedIdsProvider.notifier)
                       .toggle('source', source.id);
-                } catch (_) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text(
-                              'تعذّر تنفيذ العملية، تحقّق من اتصالك وحاول مجدداً')),
-                    );
-                  }
+                } catch (e) {
+                  if (!context.mounted) return;
+                  final msg = e is ApiException
+                      ? e.message
+                      : 'تعذّر تنفيذ العملية، تحقّق من اتصالك وحاول مجدداً';
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(msg)),
+                  );
                 }
               },
               icon: Icon(
