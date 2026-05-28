@@ -1,12 +1,12 @@
 <?php
 /**
  * GET /api/v1/content/clusters
- * Article clusters — articles grouped by similarity. The website's
- * cluster.php groups articles via the article_cluster includes.
  *
- * We expose a lightweight "clusters today" view: groups of articles
- * sharing the same canonical cluster_id (if present) or the same
- * normalized title key (fallback).
+ * Article clusters — articles grouped by similarity. The app reads
+ * `cluster_title` for the card headline; it was never sent. We also
+ * tried `articles.cluster_id` but the real column is `cluster_key`,
+ * so the primary path silently fell back to title-prefix grouping
+ * (worse algorithm, also flagged `fallback: true` in meta).
  */
 require_once __DIR__ . '/../_bootstrap.php';
 require_once __DIR__ . '/../_articles_query.php';
@@ -17,31 +17,37 @@ api_rate_limit('content:clusters', 240, 60);
 $db = getDB();
 [$page, $limit, $offset] = api_pagination(20, 50);
 
-// Detect whether a cluster_id column exists; if not, fall back.
-$hasClusterCol = false;
+// Probe which cluster column exists on this install. Prefer cluster_key
+// (the current schema) and fall back to cluster_id (older installs).
+$clusterCol = null;
 try {
-    $col = $db->query("SHOW COLUMNS FROM articles LIKE 'cluster_id'")->fetch();
-    $hasClusterCol = (bool)$col;
+    if ($db->query("SHOW COLUMNS FROM articles LIKE 'cluster_key'")->fetch()) {
+        $clusterCol = 'cluster_key';
+    } elseif ($db->query("SHOW COLUMNS FROM articles LIKE 'cluster_id'")->fetch()) {
+        $clusterCol = 'cluster_id';
+    }
 } catch (Throwable $e) {}
 
-if ($hasClusterCol) {
-    $sql = "SELECT a.cluster_id, COUNT(*) AS cnt, MAX(a.published_at) AS last_at
+if ($clusterCol) {
+    $sql = "SELECT a.{$clusterCol} AS ck, COUNT(*) AS cnt, MAX(a.published_at) AS last_at
             FROM articles a
-            WHERE a.status='published' AND a.cluster_id IS NOT NULL
-            GROUP BY a.cluster_id HAVING cnt >= 2
+            WHERE a.status='published' AND a.{$clusterCol} IS NOT NULL AND a.{$clusterCol} <> ''
+            GROUP BY a.{$clusterCol} HAVING cnt >= 2
             ORDER BY last_at DESC LIMIT $limit OFFSET $offset";
     $rows = $db->query($sql)->fetchAll();
     $clusters = [];
     foreach ($rows as $r) {
-        $cid = (int)$r['cluster_id'];
-        $st = $db->prepare(articles_select_sql() . " WHERE a.cluster_id=? AND a.status='published' ORDER BY a.published_at DESC LIMIT 8");
-        $st->execute([$cid]);
+        $ck = $r['ck'];
+        $st = $db->prepare(articles_select_sql() . " WHERE a.{$clusterCol}=? AND a.status='published' ORDER BY a.published_at DESC LIMIT 8");
+        $st->execute([$ck]);
         $items = array_map('api_format_article', $st->fetchAll());
         $clusters[] = [
-            'id' => $cid,
-            'count' => (int)$r['cnt'],
-            'last_at' => $r['last_at'],
-            'articles' => $items,
+            'id'            => is_numeric($ck) ? (int)$ck : 0,
+            'key'           => (string)$ck,
+            'cluster_title' => $items[0]['title'] ?? '',
+            'count'         => (int)$r['cnt'],
+            'last_at'       => $r['last_at'],
+            'articles'      => $items,
         ];
     }
     api_ok($clusters, ['page' => $page, 'limit' => $limit]);
@@ -63,11 +69,12 @@ foreach ($buckets as $key => $ids) {
     $items = fetch_articles(['ids' => $ids], 8, 0);
     if (!$items) continue;
     $clusters[] = [
-        'id' => $idx,
-        'key' => $key,
-        'count' => count($items),
-        'last_at' => $items[0]['published_at'] ?? null,
-        'articles' => $items,
+        'id'            => $idx,
+        'key'           => $key,
+        'cluster_title' => $items[0]['title'] ?? $key,
+        'count'         => count($items),
+        'last_at'       => $items[0]['published_at'] ?? null,
+        'articles'      => $items,
     ];
     if (count($clusters) >= $limit) break;
 }

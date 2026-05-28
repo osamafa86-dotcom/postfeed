@@ -20,23 +20,29 @@ if (!$story) api_err('not_found', 'القصة غير موجودة', 404);
 
 $entities = [];
 try {
-    $sql = "SELECT id, entity_name, entity_type, mentions, last_seen
+    // Real columns: mention_count, last_seen_at. The old query named
+    // `mentions` and `last_seen`, which don't exist → caught silently.
+    $sql = "SELECT id, entity_name, entity_type,
+                   mention_count AS mentions,
+                   last_seen_at  AS last_seen
             FROM evolving_story_entities
             WHERE story_id=?
-            ORDER BY mentions DESC, entity_name ASC LIMIT 200";
+            ORDER BY mention_count DESC, entity_name ASC LIMIT 200";
     $ps = $db->prepare($sql);
     $ps->execute([(int)$story['id']]);
     $rows = $ps->fetchAll();
     foreach ($rows as $r) {
         $entities[] = [
-            'id' => (int)$r['id'],
-            'name' => $r['entity_name'],
-            'type' => $r['entity_type'],
-            'mentions' => (int)$r['mentions'],
+            'id'        => (int)$r['id'],
+            'name'      => $r['entity_name'],
+            'type'      => $r['entity_type'],
+            'mentions'  => (int)$r['mentions'],
             'last_seen' => $r['last_seen'],
         ];
     }
-} catch (Throwable $e) {}
+} catch (Throwable $e) {
+    error_log('evolving-story-network: ' . $e->getMessage());
+}
 
 api_ok([
     'story' => [

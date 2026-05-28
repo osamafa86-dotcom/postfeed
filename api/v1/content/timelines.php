@@ -14,15 +14,18 @@ $rows = story_timeline_list($limit);
 
 $out = [];
 foreach ($rows as $r) {
+    // story_timeline hydrator returns `headline`/`intro`, not
+    // `title`/`summary` — the old code was reading absent keys, so
+    // every card in the timelines list showed null title/summary.
     $out[] = [
-        'cluster_key' => $r['cluster_key'] ?? null,
-        'title' => $r['title'] ?? null,
-        'summary' => $r['summary'] ?? null,
-        'topics' => $r['topics'] ?? [],
-        'entities' => $r['entities'] ?? [],
+        'cluster_key'   => $r['cluster_key'] ?? null,
+        'title'         => $r['headline'] ?? ($r['title'] ?? null),
+        'summary'       => $r['intro']    ?? ($r['summary'] ?? null),
+        'topics'        => $r['topics']   ?? [],
+        'entities'      => $r['entities'] ?? [],
         'article_count' => (int)($r['article_count'] ?? 0),
-        'source_count' => (int)($r['source_count'] ?? 0),
-        'updated_at' => $r['updated_at'] ?? null,
+        'source_count'  => (int)($r['source_count'] ?? 0),
+        'updated_at'    => $r['updated_at'] ?? null,
     ];
 }
 

@@ -36,9 +36,9 @@ if ($platform === 'twitter') {
     $summary = null;
     try {
         $db = getDB();
-        // Try to get from twitter_summaries table if it exists
-        $tables = $db->query("SHOW TABLES LIKE 'twitter_summaries'")->fetchAll();
-        if (!empty($tables)) {
+        // Optional precomputed table if ops adds one later.
+        $hasTbl = $db->query("SHOW TABLES LIKE 'twitter_summaries'")->fetch();
+        if ($hasTbl) {
             $row = $db->query("SELECT * FROM twitter_summaries ORDER BY created_at DESC LIMIT 1")
                       ->fetch(PDO::FETCH_ASSOC);
             if ($row) {
@@ -46,15 +46,15 @@ if ($platform === 'twitter') {
             }
         }
 
-        // Fallback: generate a simple summary from recent tweets
+        // Fallback: build a digest from the actual twitter_messages
+        // table (the old code queried a non-existent `tweets` table).
         if (!$summary) {
-            $tables = $db->query("SHOW TABLES LIKE 'tweets'")->fetchAll();
-            if (!empty($tables)) {
-                $tweets = $db->query("SELECT text FROM tweets WHERE is_active = 1 ORDER BY posted_at DESC LIMIT 20")
-                             ->fetchAll(PDO::FETCH_COLUMN);
-                if (!empty($tweets)) {
-                    $summary = 'أبرز ما نُشر على تويتر: ' . implode(' | ', array_slice($tweets, 0, 5));
-                }
+            $tweets = $db->query("SELECT text FROM twitter_messages
+                                  WHERE is_active = 1
+                                  ORDER BY posted_at DESC LIMIT 20")
+                         ->fetchAll(PDO::FETCH_COLUMN);
+            if (!empty($tweets)) {
+                $summary = 'أبرز ما نُشر على تويتر: ' . implode(' | ', array_slice($tweets, 0, 5));
             }
         }
     } catch (Throwable $e) {
