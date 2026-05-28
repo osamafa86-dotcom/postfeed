@@ -20,7 +20,7 @@ import '../../auth/data/auth_repository.dart';
 import '../../auth/data/auth_storage.dart';
 import '../../media/data/media_repository.dart';
 import '../data/content_repository.dart';
-import '../../user/presentation/reorder_categories_screen.dart' show CategoryOrderService;
+import '../../user/presentation/reorder_categories_screen.dart' show categoryOrderProvider;
 import 'widgets/breaking_strip.dart';
 import 'widgets/source_chips_rail.dart';
 import '../../../core/widgets/currency_widget.dart';
@@ -243,7 +243,7 @@ class _HeroCard extends StatelessWidget {
 // CATEGORIES BOX — Premium glassmorphic tabbed design
 // ═══════════════════════════════════════════════════════════════
 
-class _CategoriesBox extends StatefulWidget {
+class _CategoriesBox extends ConsumerStatefulWidget {
   const _CategoriesBox({required this.buckets});
   final List<CategoryBucket> buckets;
 
@@ -251,27 +251,14 @@ class _CategoriesBox extends StatefulWidget {
   State<_CategoriesBox> createState() => _CategoriesBoxState();
 }
 
-class _CategoriesBoxState extends State<_CategoriesBox> {
+class _CategoriesBoxState extends ConsumerState<_CategoriesBox> {
   int _selected = 0;
-  List<int>? _savedOrder;
 
-  @override
-  void initState() {
-    super.initState();
-    // The user can reorder categories in Settings → Tools. Apply
-    // that order here so the screen reflects the saved preference.
-    CategoryOrderService.loadOrder().then((order) {
-      if (mounted && order != null && order.isNotEmpty) {
-        setState(() => _savedOrder = order);
-      }
-    });
-  }
-
-  List<CategoryBucket> get _orderedBuckets {
-    if (_savedOrder == null || _savedOrder!.isEmpty) return widget.buckets;
+  List<CategoryBucket> _applyOrder(List<int> order) {
+    if (order.isEmpty) return widget.buckets;
     final map = {for (final b in widget.buckets) b.category.id: b};
     final ordered = <CategoryBucket>[];
-    for (final id in _savedOrder!) {
+    for (final id in order) {
       final b = map.remove(id);
       if (b != null) ordered.add(b);
     }
@@ -283,7 +270,12 @@ class _CategoriesBoxState extends State<_CategoriesBox> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final buckets = _orderedBuckets;
+    // The user can reorder categories in Settings → Tools. Watching the
+    // provider here (instead of a one-shot SharedPreferences load in
+    // initState) means a tap on حفظ in the reorder screen rebuilds this
+    // widget immediately — no app restart needed.
+    final order = ref.watch(categoryOrderProvider).asData?.value ?? const <int>[];
+    final buckets = _applyOrder(order);
     if (buckets.isEmpty) return const SizedBox.shrink();
     // After a refresh the API may return fewer buckets; clamp the
     // index so we don't IndexError on the line below.

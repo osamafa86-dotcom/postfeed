@@ -23,6 +23,13 @@ class CategoryOrderService {
   }
 }
 
+/// Live list of saved category-order IDs. Invalidated on save so any
+/// widget watching it (e.g. the home _CategoriesBox) rebuilds the
+/// moment the user taps حفظ — no need to relaunch the app.
+final categoryOrderProvider = FutureProvider<List<int>>((ref) async {
+  return (await CategoryOrderService.loadOrder()) ?? const [];
+});
+
 /// Provides categories sorted by the user's preferred order.
 final orderedCategoriesProvider = FutureProvider<List<Category>>((ref) async {
   final all = await ref.watch(categoriesProvider.future);
@@ -74,7 +81,11 @@ class _ReorderCategoriesScreenState extends ConsumerState<ReorderCategoriesScree
   Future<void> _save() async {
     if (_items == null) return;
     await CategoryOrderService.saveOrder(_items!.map((c) => c.id).toList());
+    // Invalidate BOTH providers so anything watching either rebuilds.
+    // The home _CategoriesBox watches categoryOrderProvider for live
+    // reapply without needing a relaunch.
     ref.invalidate(orderedCategoriesProvider);
+    ref.invalidate(categoryOrderProvider);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تم حفظ الترتيب')),
