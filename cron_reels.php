@@ -27,10 +27,41 @@ if (PHP_SAPI !== 'cli') {
 @set_time_limit(300);
 
 $db = getDB();
-$sources = $db->query("SELECT id, username, display_name
-                       FROM reels_sources
-                       WHERE is_active = 1
-                       ORDER BY sort_order, id")->fetchAll(PDO::FETCH_ASSOC);
+
+// One-time schema fix: the original reels_schema.sql declared
+// idx_shortcode as a non-UNIQUE INDEX, so INSERT IGNORE never dedupes
+// and every cron run inserts duplicate rows. Dedupe + add the right
+// UNIQUE key. Each ALTER is wrapped in its own try/catch so subsequent
+// runs (when the migration is already applied) just no-op.
+try {
+    $db->exec("DELETE r1 FROM reels r1
+               INNER JOIN reels r2
+               WHERE r1.id > r2.id AND r1.shortcode = r2.shortcode");
+} catch (Throwable $e) {
+    error_log('reels dedupe: ' . $e->getMessage());
+}
+try {
+    $db->exec("ALTER TABLE reels DROP INDEX idx_shortcode");
+} catch (Throwable $e) {
+    // Already dropped or never existed — fine.
+}
+try {
+    $db->exec("ALTER TABLE reels ADD UNIQUE KEY uniq_shortcode (shortcode)");
+} catch (Throwable $e) {
+    // Already added — fine.
+}
+
+try {
+    $sources = $db->query("SELECT id, username, display_name
+                           FROM reels_sources
+                           WHERE is_active = 1
+                           ORDER BY sort_order, id")->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $e) {
+    http_response_code(500);
+    echo "Failed to load reels_sources: " . $e->getMessage() . "\n";
+    echo "Make sure the reels feature schema (reels_schema.sql) has been applied.\n";
+    exit;
+}
 
 if (!$sources) {
     echo "No active reels_sources. Add Instagram usernames in panel/reels.php first.\n";

@@ -13,9 +13,10 @@ if ($email === '' || $password === '') {
     api_err('invalid_input', 'يرجى إدخال البريد وكلمة المرور', 422);
 }
 
-// Lock account after 5 failed attempts within 15 min (peek only, do not
-// bump until we actually see a bad password).
-$failKey = 'auth:login:fail:' . $email;
+// Lock after 5 failed attempts within 15 min. Key by email+IP so an
+// attacker can't DoS a victim's account by hammering wrong passwords
+// from a different IP — each (email, IP) pair has its own bucket.
+$failKey = 'auth:login:fail:' . $email . ':' . (string)client_ip();
 if (!rate_limit_peek($failKey, 5, 900)) {
     api_err('account_locked', 'تم تعليق محاولات الدخول مؤقتاً لحماية حسابك. حاول بعد 15 دقيقة.', 429);
 }

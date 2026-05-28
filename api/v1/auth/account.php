@@ -61,6 +61,9 @@ $tryDelete($db, "DELETE FROM push_tokens            WHERE user_id = ?", [$userId
 
 // ── Optional tables that older installs may not have ───────────
 $tryDelete($db, "DELETE FROM newsletter_subscribers WHERE user_id = ?", [$userId]);
+// password_resets is lazy-created on first /auth/forgot, no FK to
+// users — clean it up explicitly so 5.1.1(v) holds (no residue).
+$tryDelete($db, "DELETE FROM password_resets       WHERE user_id = ?", [$userId]);
 
 // ── The account itself — this MUST succeed ─────────────────────
 try {

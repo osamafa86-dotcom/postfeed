@@ -50,6 +50,9 @@ try {
     foreach (wr_list(12) as $r) {
         if (($r['year_week'] ?? '') === ($rewind['year_week'] ?? '')) continue;
         $archive[] = [
+            // The app reads `week_key` in _ArchiveEntry.fromJson; keep
+            // `year_week` for backwards-compat with anything else.
+            'week_key'   => $r['year_week'] ?? '',
             'year_week'  => $r['year_week'] ?? '',
             'week_start' => $r['start_date'] ?? '',
             'week_end'   => $r['end_date'] ?? '',

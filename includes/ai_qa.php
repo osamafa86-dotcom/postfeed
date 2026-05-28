@@ -344,12 +344,15 @@ function qa_ask(string $question, int $ttl = 600): array {
     }
 
     $cacheKey = qa_cache_key($question);
-    return cache_remember($cacheKey, $ttl, function() use ($question) {
+    $result = cache_remember($cacheKey, $ttl, function() use ($question) {
         $rows = qa_retrieve_articles($question, 10, 14);
         $ctx  = qa_build_context($rows);
         $ai   = qa_call_claude($question, $ctx['context'], $ctx['id_map']);
         if (empty($ai['ok'])) {
-            return ['ok' => false, 'error' => $ai['error'] ?? 'خطأ غير معروف'];
+            // Return null so cache_remember treats this as a miss and
+            // the next request retries instead of getting the same
+            // stale 429 / network-error response for 10 minutes.
+            return null;
         }
 
         // Shape the article payload for the frontend.
@@ -377,4 +380,10 @@ function qa_ask(string $question, int $ttl = 600): array {
             'confident'  => $ai['confident'],
         ];
     });
+
+    // cache_remember returned null → AI call failed and was not cached.
+    if ($result === null) {
+        return ['ok' => false, 'error' => 'تعذّر الحصول على الإجابة الآن، حاول بعد قليل.'];
+    }
+    return $result;
 }
