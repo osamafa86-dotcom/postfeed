@@ -26,11 +26,30 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     super.dispose();
   }
 
+  static final _emailRe = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+
+  String? _validate() {
+    final name = _name.text.trim();
+    final email = _email.text.trim();
+    final pass = _pass.text;
+    if (name.length < 2) return 'الاسم قصير جداً';
+    if (!_emailRe.hasMatch(email)) return 'بريد إلكتروني غير صالح';
+    if (pass.length < 6) return 'كلمة المرور يجب أن تكون 6 أحرف فأكثر';
+    return null;
+  }
+
   Future<void> _submit() async {
+    final err = _validate();
+    if (err != null) {
+      setState(() => _err = err);
+      return;
+    }
     setState(() { _busy = true; _err = null; });
     try {
       await ref.read(authRepositoryProvider).register(
-        name: _name.text, email: _email.text, password: _pass.text,
+        name: _name.text.trim(),
+        email: _email.text.trim(),
+        password: _pass.text,
       );
       ref.invalidate(currentUserProvider);
       ref.invalidate(followedIdsProvider);

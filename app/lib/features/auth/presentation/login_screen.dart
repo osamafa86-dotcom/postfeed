@@ -68,7 +68,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Text('دخول'),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 4),
+          TextButton(
+            onPressed: () => context.push('/forgot-password'),
+            child: const Text('نسيت كلمة المرور؟'),
+          ),
           TextButton(
             onPressed: () => context.go('/register'),
             child: const Text('ليس لديك حساب؟ سجّل الآن'),

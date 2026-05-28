@@ -329,7 +329,7 @@ class _ActionBarState extends ConsumerState<_ActionBar> {
             child: _ActionButton(
               icon: _reactionIcon,
               color: _reactionColor(muted),
-              label: widget.article.viewCount > 0 ? '${widget.article.viewCount}' : '',
+              label: '',
               iconSize: iconSize,
               fontSize: fontSize,
               onTap: () async {
