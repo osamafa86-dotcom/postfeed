@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -84,10 +85,36 @@ class _MainShellState extends ConsumerState<MainShell> {
             // like /article/123 also map to index 0 and should navigate
             // back to /, not trigger a refresh.
             if (i == 0 && loc == '/') {
+              HapticFeedback.mediumImpact();
               ref.invalidate(homeProvider);
               ref.invalidate(forYouProvider);
               ref.invalidate(evolvingStoriesProvider);
               ref.invalidate(youtubeFeedProvider);
+              // Brief visible confirmation so the tap doesn't feel like
+              // it did nothing while the network round-trip is in flight.
+              ScaffoldMessenger.of(context)
+                ..hideCurrentSnackBar()
+                ..showSnackBar(
+                  SnackBar(
+                    content: Row(
+                      children: const [
+                        SizedBox(
+                          width: 16, height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Text('جارٍ تحديث الأخبار…'),
+                      ],
+                    ),
+                    duration: const Duration(milliseconds: 1200),
+                    behavior: SnackBarBehavior.floating,
+                    backgroundColor: AppColors.primary,
+                    margin: const EdgeInsets.fromLTRB(16, 0, 16, 90),
+                  ),
+                );
               return;
             }
             context.go(MainShell._tabs[i].path);
