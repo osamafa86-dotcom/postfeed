@@ -60,7 +60,7 @@ function is_logged_in(): bool {
     return current_user_id() !== null;
 }
 
-function require_user_login(string $redirect = null): void {
+function require_user_login(?string $redirect = null): void {
     if (!is_logged_in()) {
         $target = 'account/login.php';
         if ($redirect) $target .= '?return=' . urlencode($redirect);

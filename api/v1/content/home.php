@@ -65,8 +65,13 @@ if (empty($trends)) {
 // Ticker items.
 $ticker = [];
 try {
-    $ticker = $db->query("SELECT id, text, link FROM ticker_items WHERE is_active=1 ORDER BY sort_order, id LIMIT 20")->fetchAll();
-} catch (Throwable $e) {}
+    // `link` column doesn't exist on ticker_items in production — leaving
+    // it in the SELECT made the whole query throw and the ticker came
+    // back empty on home.
+    $ticker = $db->query("SELECT id, text FROM ticker_items WHERE is_active=1 ORDER BY sort_order, id LIMIT 20")->fetchAll();
+} catch (Throwable $e) {
+    error_log('home ticker: ' . $e->getMessage());
+}
 
 // Top sources for the chip rail.
 $sources = $db->query("SELECT id, name, slug, logo_letter, logo_color, logo_bg, url FROM sources WHERE is_active=1 ORDER BY articles_today DESC, id ASC LIMIT 12")->fetchAll();

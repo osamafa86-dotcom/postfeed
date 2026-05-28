@@ -1,6 +1,12 @@
 <?php
 /**
  * POST /api/v1/user/newsletter      — { email, action: subscribe|unsubscribe }
+ *
+ * The production newsletter_subscribers schema (migrate.php) uses
+ * `confirmed` (not `is_confirmed`) and has NO `is_active` column.
+ * Unsubscribe is a DELETE (same pattern as newsletter_unsubscribe.php).
+ * The previous version queried both wrong columns, so subscribe/unsub
+ * silently 500'd on every call.
  */
 require_once __DIR__ . '/../_bootstrap.php';
 
@@ -11,41 +17,43 @@ $body = api_body();
 $email = strtolower(trim((string)($body['email'] ?? '')));
 $action = (string)($body['action'] ?? 'subscribe');
 
+// The mobile app used to hard-code 'user@feedsnews.net' as a placeholder
+// in the body. If we have an authenticated user, swap to their real
+// email so the subscribers list isn't filled with the placeholder.
+$me = api_optional_user();
+if ($me && ($email === '' || $email === 'user@feedsnews.net')) {
+    $email = strtolower(trim((string)($me['email'] ?? '')));
+}
+
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) api_err('invalid_input', 'البريد غير صالح', 422);
 if (!in_array($action, ['subscribe', 'unsubscribe'], true)) api_err('invalid_input', 'إجراء غير صالح', 422);
 
 $db = getDB();
-try {
-    $db->exec("CREATE TABLE IF NOT EXISTS newsletter_subscribers (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        email VARCHAR(190) NOT NULL UNIQUE,
-        is_confirmed TINYINT(1) NOT NULL DEFAULT 0,
-        confirm_token VARCHAR(64) DEFAULT NULL,
-        unsubscribe_token VARCHAR(64) DEFAULT NULL,
-        is_active TINYINT(1) NOT NULL DEFAULT 1,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        confirmed_at TIMESTAMP NULL DEFAULT NULL
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-} catch (Throwable $e) {}
 
 if ($action === 'unsubscribe') {
-    $db->prepare("UPDATE newsletter_subscribers SET is_active=0 WHERE email=?")->execute([$email]);
+    $db->prepare("DELETE FROM newsletter_subscribers WHERE email=?")->execute([$email]);
     api_ok(['unsubscribed' => true]);
 }
 
 $confirmToken = bin2hex(random_bytes(16));
 $unsubToken   = bin2hex(random_bytes(16));
 
-$db->prepare("INSERT INTO newsletter_subscribers (email, is_confirmed, confirm_token, unsubscribe_token, is_active, created_at)
-              VALUES (?,0,?,?,1,NOW())
-              ON DUPLICATE KEY UPDATE is_active=1")
-   ->execute([$email, $confirmToken, $unsubToken]);
+// Insert if new, or refresh tokens if re-subscribing.
+$db->prepare("INSERT INTO newsletter_subscribers
+                (email, confirmed, confirm_token, unsubscribe_token, subscribed_at, ip_address)
+              VALUES (?, 0, ?, ?, NOW(), ?)
+              ON DUPLICATE KEY UPDATE
+                confirm_token = VALUES(confirm_token),
+                unsubscribe_token = VALUES(unsubscribe_token)")
+   ->execute([$email, $confirmToken, $unsubToken, $_SERVER['REMOTE_ADDR'] ?? null]);
 
-// Trigger confirmation email if mailer is available.
+// Trigger confirmation email if mailer is wired.
 try {
     if (function_exists('newsletter_send_confirm')) {
         newsletter_send_confirm($email, $confirmToken);
     }
-} catch (Throwable $e) {}
+} catch (Throwable $e) {
+    error_log('newsletter confirm send: ' . $e->getMessage());
+}
 
 api_ok(['subscribed' => true, 'requires_confirmation' => true]);

@@ -21,28 +21,36 @@ if (!$story) api_err('not_found', 'القصة غير موجودة', 404);
 
 $rows = [];
 try {
-    $sql = "SELECT q.id, q.quote, q.speaker, q.context, q.article_id, q.created_at,
+    // Real columns on evolving_story_quotes: quote_text, speaker,
+    // speaker_role, context, article_id, extracted_at. The old query
+    // named `quote` and `created_at`, which don't exist and made the
+    // SELECT throw → caught silently → empty quotes forever.
+    $sql = "SELECT q.id, q.quote_text, q.speaker, q.speaker_role, q.context,
+                   q.article_id, q.extracted_at,
                    a.title AS article_title, a.slug AS article_slug, a.image_url
             FROM evolving_story_quotes q
             LEFT JOIN articles a ON a.id = q.article_id
             WHERE q.story_id=?
-            ORDER BY q.created_at DESC LIMIT $limit OFFSET $offset";
+            ORDER BY q.extracted_at DESC LIMIT $limit OFFSET $offset";
     $ps = $db->prepare($sql);
     $ps->execute([(int)$story['id']]);
     $rows = $ps->fetchAll();
-} catch (Throwable $e) {}
+} catch (Throwable $e) {
+    error_log('evolving-story-quotes: ' . $e->getMessage());
+}
 
 $quotes = array_map(function ($r) {
     return [
-        'id' => (int)$r['id'],
-        'quote' => $r['quote'],
-        'speaker' => $r['speaker'],
-        'context' => $r['context'] ?? null,
-        'created_at' => $r['created_at'],
-        'article' => $r['article_id'] ? [
-            'id' => (int)$r['article_id'],
-            'title' => $r['article_title'],
-            'slug' => $r['article_slug'],
+        'id'         => (int)$r['id'],
+        'quote'      => $r['quote_text'] ?? '',
+        'speaker'    => $r['speaker'] ?? '',
+        'speaker_role' => $r['speaker_role'] ?? null,
+        'context'    => $r['context'] ?? null,
+        'created_at' => $r['extracted_at'] ?? null,
+        'article'    => $r['article_id'] ? [
+            'id'        => (int)$r['article_id'],
+            'title'     => $r['article_title'],
+            'slug'      => $r['article_slug'],
             'image_url' => api_image_url($r['image_url']),
         ] : null,
     ];
