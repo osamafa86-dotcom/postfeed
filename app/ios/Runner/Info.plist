@@ -62,7 +62,16 @@
 		<string>remote-notification</string>
 	</array>
 
-	<!-- App Transport Security -->
+	<!-- App Transport Security
+	     - NSAllowsArbitraryLoads=false enforces HTTPS for all API calls
+	       (api.feedsnews.net) and standard image sources.
+	     - NSAllowsArbitraryLoadsForMedia=true permits cached image sources
+	       from third-party news outlets (some legacy Arabic news sites still
+	       serve over plain HTTP). flutter_html renders article bodies and
+	       cached_network_image fetches thumbnails for over 30 syndicated
+	       sources; without this key, articles with embedded HTTP media
+	       would render as broken images. We do NOT load any non-media
+	       content (HTML pages, JSON, scripts) over plain HTTP. -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

@@ -11,6 +11,12 @@ import 'auth_storage.dart';
 /// Cloud Console AND added GIDClientID + reversed-client-id URL scheme
 /// in app/ios/Runner/Info.plist. Until then the Google button is hidden
 /// so it can't be tapped and crash.
+///
+/// IMPORTANT (App Store Guideline 4.8): on iOS, "Sign in with Apple"
+/// MUST remain visible on the same screen whenever Google (or any
+/// third-party login) is offered. login_screen.dart and register_screen.dart
+/// show the Apple button unconditionally when `defaultTargetPlatform`
+/// is iOS — keep it that way.
 const bool kGoogleSignInEnabled = false;
 
 class AuthRepository {

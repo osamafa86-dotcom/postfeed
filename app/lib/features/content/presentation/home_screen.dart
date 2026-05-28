@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:intl/intl.dart';
 
+import '../../../core/api/api_exception.dart';
 import '../../../core/models/article.dart';
 import '../../../core/models/evolving_story.dart';
 import '../../../core/models/home_payload.dart';
@@ -74,7 +75,9 @@ class HomeScreen extends ConsumerWidget {
       body: home.when(
         loading: () => const LoadingShimmerList(itemCount: 6),
         error: (e, _) => ErrorRetryView(
-          message: 'تعذّر تحميل الرئيسية\n$e',
+          message: e is ApiException
+              ? 'تعذّر تحميل الرئيسية\n${e.userMessage}'
+              : 'تعذّر تحميل الرئيسية',
           onRetry: () => ref.invalidate(homeProvider),
         ),
         data: (data) => RefreshIndicator(
