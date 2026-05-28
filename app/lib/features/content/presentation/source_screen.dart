@@ -388,7 +388,7 @@ class _FollowRow extends ConsumerWidget {
                 } catch (e) {
                   if (!context.mounted) return;
                   final msg = e is ApiException
-                      ? e.message
+                      ? e.userMessage
                       : 'تعذّر تنفيذ العملية، تحقّق من اتصالك وحاول مجدداً';
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text(msg)),

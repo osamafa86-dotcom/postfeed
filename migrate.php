@@ -75,6 +75,9 @@ add_idx($db, 'articles', 'idx_cluster_key',    '`cluster_key`',                 
 add_idx($db, 'articles', 'idx_hero_status_pub',     '`is_hero`, `status`, `published_at` DESC',      $applied);
 add_idx($db, 'articles', 'idx_breaking_status_pub', '`is_breaking`, `status`, `published_at` DESC',  $applied);
 add_idx($db, 'articles', 'idx_cluster_status_pub',  '`cluster_key`, `status`, `published_at` DESC',  $applied);
+// Trending ORDER BY view_count DESC — the only query that doesn't sort
+// by published_at. Without this it falls back to a full scan + filesort.
+add_idx($db, 'articles', 'idx_status_views',        '`status`, `view_count` DESC',                   $applied);
 
 // ---------- telegram_messages performance ----------
 // The Telegram feed + summary cron scan by (is_active, posted_at) very

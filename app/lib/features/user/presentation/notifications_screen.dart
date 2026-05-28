@@ -34,13 +34,22 @@ class NotificationsScreen extends ConsumerWidget {
           : asy.when(
               loading: () => const LoadingShimmerList(),
               error: (e, _) => ErrorRetryView(message: '$e', onRetry: () => ref.invalidate(_notificationsProvider)),
-              data: (list) => list.isEmpty
-                  ? const EmptyView(
-                      icon: Icons.notifications_off_outlined,
-                      message: 'لا إشعارات بعد',
-                      hint: 'سنرسل لك تنبيهات حين تصلك أخبار عاجلة أو تحديثات من المصادر التي تتابعها.',
+              data: (list) => RefreshIndicator(
+                onRefresh: () async => ref.invalidate(_notificationsProvider),
+                child: list.isEmpty
+                  ? ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: const [
+                        SizedBox(height: 80),
+                        EmptyView(
+                          icon: Icons.notifications_off_outlined,
+                          message: 'لا إشعارات بعد',
+                          hint: 'سنرسل لك تنبيهات حين تصلك أخبار عاجلة أو تحديثات من المصادر التي تتابعها.',
+                        ),
+                      ],
                     )
                   : ListView.separated(
+                      physics: const AlwaysScrollableScrollPhysics(),
                       itemCount: list.length,
                       separatorBuilder: (_, __) => const Divider(height: 1),
                       itemBuilder: (_, i) {
@@ -70,6 +79,7 @@ class NotificationsScreen extends ConsumerWidget {
                         );
                       },
                     ),
+              ),
             ),
     );
   }

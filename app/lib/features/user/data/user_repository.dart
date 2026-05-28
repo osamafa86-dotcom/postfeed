@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
@@ -141,6 +142,7 @@ class UserRepository {
 
   /// Toggle bookmark — returns true if bookmarked, false if removed.
   Future<bool> toggleBookmark(int articleId) async {
+    HapticFeedback.selectionClick();
     final res = await _api.post<Map<String, dynamic>>(
       '/user/bookmarks',
       body: {'article_id': articleId},
@@ -265,6 +267,7 @@ class UserRepository {
   // ── Reactions ──
 
   Future<ReactionCounts> react(int articleId, String reaction) async {
+    HapticFeedback.lightImpact();
     final res = await _api.post<ReactionCounts>(
       '/user/reactions',
       body: {'article_id': articleId, 'reaction': reaction},
@@ -402,6 +405,9 @@ class FollowIdsNotifier extends StateNotifier<Map<String, Set<int>>> {
   Future<bool> toggle(String type, int targetId) async {
     final wasFollowing = isFollowing(type, targetId);
     _apply(type, targetId, !wasFollowing); // optimistic — button responds at once
+    // Light tap so the user feels the state flip even before the network
+    // round-trip resolves. Matches the standard iOS pattern.
+    HapticFeedback.selectionClick();
     try {
       final result = await _repo.toggleFollow(type, targetId);
       _apply(type, targetId, result); // reconcile with server truth

@@ -50,6 +50,9 @@ class ArticleCard extends StatelessWidget {
               child: CachedNetworkImage(
                 imageUrl: article.imageUrl!,
                 fit: BoxFit.cover,
+                // Card images render at most ~screen-width wide; downsample
+                // to 800px so we don't keep megabyte-class bitmaps in RAM.
+                memCacheWidth: 800,
                 placeholder: (_, __) => Container(color: theme.dividerColor.withOpacity(0.3)),
                 errorWidget: (_, __, ___) => Container(color: theme.dividerColor.withOpacity(0.3)),
               ),
@@ -147,6 +150,9 @@ class ArticleCard extends StatelessWidget {
                   child: CachedNetworkImage(
                     imageUrl: article.imageUrl!,
                     fit: BoxFit.cover,
+                    // Compact tile — 200px is plenty for an 84pt-wide image
+                    // even on 3x retina (84 * 3 = 252).
+                    memCacheWidth: 200,
                     placeholder: (_, __) => Container(color: theme.dividerColor.withOpacity(0.3)),
                     errorWidget: (_, __, ___) => Container(color: theme.dividerColor.withOpacity(0.3)),
                   ),
