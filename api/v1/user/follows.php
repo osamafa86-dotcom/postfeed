@@ -39,11 +39,9 @@ if (!in_array($type, ['category', 'source', 'story'], true)) api_err('invalid_in
 if ($target === null || $target === '') api_err('invalid_input', 'يلزم target', 422);
 
 if ($type === 'category') {
-    $cid = is_numeric($target)
-        ? (int)$target
-        : (int)$db->prepare("SELECT id FROM categories WHERE slug=?")
-                 ->execute([(string)$target]) ?: 0;
-    if (!is_numeric($target)) {
+    if (is_numeric($target)) {
+        $cid = (int)$target;
+    } else {
         $st = $db->prepare("SELECT id FROM categories WHERE slug=? LIMIT 1");
         $st->execute([(string)$target]);
         $cid = (int)$st->fetchColumn();
