@@ -307,7 +307,12 @@ class AppTheme {
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.neoSurface,
         selectedColor: AppColors.primarySurface,
-        labelStyle: const TextStyle(fontFamily: _fontFamily, fontWeight: FontWeight.w600, fontSize: 12),
+        labelStyle: const TextStyle(
+          fontFamily: _fontFamily,
+          fontWeight: FontWeight.w600,
+          fontSize: 12,
+          color: AppColors.textLight,
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         side: BorderSide.none,
         elevation: 0,
@@ -374,7 +379,12 @@ class AppTheme {
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.neoDarkMid,
         selectedColor: AppColors.primaryDark,
-        labelStyle: const TextStyle(fontFamily: _fontFamily, fontWeight: FontWeight.w600, fontSize: 12),
+        labelStyle: const TextStyle(
+          fontFamily: _fontFamily,
+          fontWeight: FontWeight.w600,
+          fontSize: 12,
+          color: AppColors.textDark,
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         side: BorderSide.none,
         elevation: 0,
