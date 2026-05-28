@@ -222,10 +222,16 @@ class MediaRepository {
     return res.data ?? const [];
   }
 
-  Future<List<TwitterMessage>> twitter({int? sinceId, int limit = 30}) async {
+  Future<List<TwitterMessage>> twitter({int? sinceId, int limit = 30, bool sync = false}) async {
     final res = await _api.get<List<TwitterMessage>>(
       '/media/twitter',
-      query: {'limit': limit, if (sinceId != null) 'since_id': sinceId},
+      query: {
+        'limit': limit,
+        if (sinceId != null) 'since_id': sinceId,
+        // Opt-in scrape trigger — server only actually scrapes if its
+        // newest tweet is >30s old AND the cross-process cooldown allows.
+        if (sync) 'sync': 1,
+      },
       decode: (d) => (d as List)
           .whereType<Map>()
           .map((m) => TwitterMessage.fromJson(m.cast()))
@@ -326,12 +332,16 @@ final telegramFeedProvider = FutureProvider<List<TelegramMessage>>((ref) {
   return ref.watch(mediaRepositoryProvider).telegram();
 });
 
+// Twitter polls more aggressively than the other social feeds because
+// X has no realtime push and its scraper hits stale caches more often.
+// Each poll passes sync:true so the API kicks a real scrape behind its
+// shared lock — the lock prevents stampedes across mobile + web users.
 final twitterFeedProvider = FutureProvider<List<TwitterMessage>>((ref) {
-  final timer = Timer.periodic(const Duration(seconds: 60), (_) {
+  final timer = Timer.periodic(const Duration(seconds: 30), (_) {
     ref.invalidateSelf();
   });
   ref.onDispose(timer.cancel);
-  return ref.watch(mediaRepositoryProvider).twitter();
+  return ref.watch(mediaRepositoryProvider).twitter(sync: true);
 });
 
 final youtubeFeedProvider = FutureProvider<List<YoutubeVideo>>((ref) {
