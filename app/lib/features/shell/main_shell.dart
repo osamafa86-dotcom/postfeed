@@ -7,6 +7,7 @@ import '../content/data/content_repository.dart';
 import '../content/presentation/discover_screen.dart';
 import '../content/presentation/home_screen.dart';
 import '../content/presentation/summaries_screen.dart';
+import '../media/data/media_repository.dart';
 import '../user/presentation/follow_screen.dart';
 import '../user/presentation/profile_screen.dart';
 
