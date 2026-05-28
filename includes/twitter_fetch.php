@@ -310,10 +310,17 @@ function tw_fetch_via_cdn_json(string $username, int $limit): array {
  * per call, but we also stash the parsed result in a tiny per-user file
  * cache so back-to-back debug runs and concurrent SSE streams reuse the
  * payload instead of hammering syndication.
+ *
+ * Cache TTL is intentionally shorter than the SSE scrape cadence
+ * (TW_SCRAPE_EVERY_SECS = 8s) so each scheduled scrape actually hits
+ * Twitter for fresh data — otherwise new tweets sit invisible in the
+ * cache for ~25s and the "live" feed lags noticeably. The cache still
+ * absorbs bursts (debug + cron + concurrent SSE clients within the
+ * same few seconds), which is the only thing it's meant to protect.
  */
 function tw_fetch_via_next_data(string $username, int $limit): array {
     $cacheFile = sys_get_temp_dir() . '/nf_tw_nd_' . md5($username) . '.json';
-    $cacheTtl  = 25; // seconds — shorter than the 30s sync staleness threshold
+    $cacheTtl  = 5; // seconds — short enough that SSE (8s cadence) always sees fresh data
 
     if (is_file($cacheFile) && (time() - @filemtime($cacheFile)) < $cacheTtl) {
         $cached = @file_get_contents($cacheFile);
@@ -568,10 +575,11 @@ function tw_sync_all_sources(): int {
 
     $total = 0;
     foreach ($sources as $i => $src) {
-        // Space out source fetches so we don't hammer
-        // syndication.twitter.com — back-to-back hits trigger HTTP 429
-        // and we lose the freshest tweet for the next source.
-        if ($i > 0) usleep(400000); // 400ms between sources
+        // Small spacing between source fetches so a multi-source sync
+        // doesn't burst-then-429 against syndication.twitter.com.
+        // 200ms is enough to dodge the per-IP burst detector without
+        // adding visible lag to the SSE scrape cycle.
+        if ($i > 0) usleep(200000); // 200ms between sources
         $tweets = tw_fetch_user_tweets($src['username'], 20);
         if (empty($tweets)) {
             error_log('tw_sync: no tweets returned for @' . $src['username']);
