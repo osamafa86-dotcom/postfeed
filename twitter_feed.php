@@ -87,7 +87,11 @@ try {
 
     $syncResult = null;
     if ($syncReq) {
-        $row = $db->query("SELECT UNIX_TIMESTAMP(MAX(COALESCE(posted_at, created_at))) AS ts FROM twitter_messages WHERE is_active=1")->fetch(PDO::FETCH_ASSOC);
+        // created_at (DB insertion) not posted_at — Twitter's reported
+        // timestamps can land in the future under some timezone setups,
+        // which made this check think the data was always fresh and
+        // suppressed the sync that mobile + web rely on.
+        $row = $db->query("SELECT UNIX_TIMESTAMP(MAX(created_at)) AS ts FROM twitter_messages WHERE is_active=1")->fetch(PDO::FETCH_ASSOC);
         $newestTs = (int)($row['ts'] ?? 0);
         if ($newestTs === 0 || (time() - $newestTs) >= TWF_SYNC_IF_STALE_SECS) {
             $syncResult = twf_try_sync();

@@ -29,7 +29,12 @@ $db = getDB();
 $syncResult = null;
 if ($syncReq) {
     try {
-        $row = $db->query("SELECT UNIX_TIMESTAMP(MAX(COALESCE(posted_at, created_at))) AS ts FROM twitter_messages WHERE is_active=1")->fetch(PDO::FETCH_ASSOC);
+        // Use created_at (DB insertion time) instead of posted_at —
+        // Twitter timestamps can land in the future relative to the
+        // server clock when timezone interpretation goes wrong, which
+        // would make (time() - newestTs) negative and trick this check
+        // into thinking the data is fresh forever.
+        $row = $db->query("SELECT UNIX_TIMESTAMP(MAX(created_at)) AS ts FROM twitter_messages WHERE is_active=1")->fetch(PDO::FETCH_ASSOC);
         $newestTs = (int)($row['ts'] ?? 0);
         if ($newestTs === 0 || (time() - $newestTs) >= TWAPI_SYNC_IF_STALE_SECS) {
             $lockFile = sys_get_temp_dir() . '/nf_tw_sync.lock';
