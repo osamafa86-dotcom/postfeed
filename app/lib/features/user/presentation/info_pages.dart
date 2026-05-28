@@ -203,7 +203,7 @@ class PrivacyPolicyPage extends StatelessWidget {
         _para('نُخزّن جميع البيانات على خوادم آمنة، ونستخدم تشفير HTTPS لكلّ الاتصالات. نحتفظ بكلمات المرور مُجزَّأة بخوارزميات حديثة. في حال وقوع اختراق يمسّ بياناتك، سنُبلغك خلال ٧٢ ساعة.', context),
 
         const SizedBox(height: 12),
-        _para('آخر تحديث: ٩ أيار/مايو ٢٠٢٦', context),
+        _para('آخر تحديث: ٢٨ أيار/مايو ٢٠٢٦', context),
       ],
     );
   }
@@ -262,7 +262,7 @@ class TermsOfServicePage extends StatelessWidget {
         _para('قد نُحدّث الشروط من وقت لآخر. التعديلات الجوهريّة سيُعلَن عنها داخل التطبيق.', context),
 
         const SizedBox(height: 12),
-        _para('آخر تحديث: ٩ أيار/مايو ٢٠٢٦', context),
+        _para('آخر تحديث: ٢٨ أيار/مايو ٢٠٢٦', context),
       ],
     );
   }

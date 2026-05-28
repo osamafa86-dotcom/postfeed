@@ -289,7 +289,11 @@ class _ActionBarState extends ConsumerState<_ActionBar> {
       _showLoginSnack(context);
       return;
     }
-    final RenderBox box = context.findRenderObject() as RenderBox;
+    // Guard against a rapid long-press fired right before this widget
+    // unmounts (the cast to RenderBox would otherwise crash with a
+    // null check error).
+    final RenderBox? box = context.findRenderObject() as RenderBox?;
+    if (box == null) return;
     final Offset pos = box.localToGlobal(Offset.zero);
     showMenu<String>(
       context: context,

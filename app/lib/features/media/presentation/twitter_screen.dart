@@ -21,7 +21,12 @@ class TwitterScreen extends ConsumerWidget {
         error: (e, _) => ErrorRetryView(message: '$e', onRetry: () => ref.invalidate(twitterFeedProvider)),
         data: (msgs) => RefreshIndicator(
           onRefresh: () async => ref.invalidate(twitterFeedProvider),
-          child: ListView.separated(
+          child: msgs.isEmpty
+              ? ListView(children: const [
+                  SizedBox(height: 100),
+                  EmptyView(icon: Icons.alternate_email, message: 'لا توجد تغريدات بعد'),
+                ])
+              : ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: msgs.length,
             separatorBuilder: (_, __) => const SizedBox(height: 10),

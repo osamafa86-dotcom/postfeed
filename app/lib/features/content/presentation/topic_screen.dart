@@ -16,8 +16,15 @@ class TopicScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asy = ref.watch(_topicProvider(slug));
+    // Show the localized category name if available; fall back to the
+    // raw slug only as a last resort.
+    final cats = ref.watch(categoriesProvider).asData?.value ?? const [];
+    String title = slug;
+    for (final c in cats) {
+      if (c.slug == slug) { title = c.name; break; }
+    }
     return Scaffold(
-      appBar: AppBar(title: Text(slug)),
+      appBar: AppBar(title: Text(title)),
       body: asy.when(
         loading: () => const LoadingShimmerList(),
         error: (e, _) => ErrorRetryView(message: '$e', onRetry: () => ref.invalidate(_topicProvider(slug))),

@@ -20,6 +20,7 @@ import '../../auth/data/auth_repository.dart';
 import '../../auth/data/auth_storage.dart';
 import '../../media/data/media_repository.dart';
 import '../data/content_repository.dart';
+import '../../user/presentation/reorder_categories_screen.dart' show CategoryOrderService;
 import 'widgets/breaking_strip.dart';
 import 'widgets/source_chips_rail.dart';
 import '../../../core/widgets/currency_widget.dart';
@@ -252,12 +253,42 @@ class _CategoriesBox extends StatefulWidget {
 
 class _CategoriesBoxState extends State<_CategoriesBox> {
   int _selected = 0;
+  List<int>? _savedOrder;
+
+  @override
+  void initState() {
+    super.initState();
+    // The user can reorder categories in Settings → Tools. Apply
+    // that order here so the screen reflects the saved preference.
+    CategoryOrderService.loadOrder().then((order) {
+      if (mounted && order != null && order.isNotEmpty) {
+        setState(() => _savedOrder = order);
+      }
+    });
+  }
+
+  List<CategoryBucket> get _orderedBuckets {
+    if (_savedOrder == null || _savedOrder!.isEmpty) return widget.buckets;
+    final map = {for (final b in widget.buckets) b.category.id: b};
+    final ordered = <CategoryBucket>[];
+    for (final id in _savedOrder!) {
+      final b = map.remove(id);
+      if (b != null) ordered.add(b);
+    }
+    ordered.addAll(map.values);
+    return ordered;
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final bucket = widget.buckets[_selected];
+    final buckets = _orderedBuckets;
+    if (buckets.isEmpty) return const SizedBox.shrink();
+    // After a refresh the API may return fewer buckets; clamp the
+    // index so we don't IndexError on the line below.
+    _selected = _selected.clamp(0, buckets.length - 1);
+    final bucket = buckets[_selected];
     final articles = bucket.articles.take(6).toList();
     final color = AppColors.categoryColors[bucket.category.color] ?? AppColors.primary;
 
@@ -311,9 +342,9 @@ class _CategoriesBoxState extends State<_CategoriesBox> {
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 14),
-              itemCount: widget.buckets.length,
+              itemCount: buckets.length,
               itemBuilder: (_, i) {
-                final c = widget.buckets[i].category;
+                final c = buckets[i].category;
                 final catColor = AppColors.categoryColors[c.color] ?? AppColors.primary;
                 final isActive = i == _selected;
                 return Padding(

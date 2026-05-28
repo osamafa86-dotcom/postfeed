@@ -206,7 +206,8 @@ class _SourceHeader extends StatelessWidget {
                   ),
                   alignment: Alignment.center,
                   child: Text(
-                    source.logoLetter ?? source.name.characters.first,
+                    source.logoLetter ??
+                        (source.name.isNotEmpty ? source.name.characters.first : '؟'),
                     style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.w900,

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:go_router/go_router.dart';
+
 import '../../../core/api/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
@@ -132,7 +134,7 @@ class SettingsScreen extends ConsumerWidget {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('تمّ تسجيل الخروج')),
                   );
-                  Navigator.of(context).popUntil((route) => route.isFirst);
+                  context.go('/');
                 }
               } catch (_) {
                 if (context.mounted) {
@@ -155,7 +157,13 @@ class SettingsScreen extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         title: const Text('حذف الحساب'),
         content: const Text(
-          'هل أنت متأكد من حذف حسابك؟ سيتم حذف جميع بياناتك بشكل نهائي ولا يمكن التراجع عن هذا الإجراء.',
+          'سيتم حذف ما يلي نهائياً ولا يمكن التراجع:\n\n'
+          '• ملفك الشخصي (الاسم، البريد، الصورة الرمزية)\n'
+          '• المقالات المحفوظة والإعجابات\n'
+          '• المتابعات (المصادر، الأقسام، القصص)\n'
+          '• التعليقات التي كتبتها\n'
+          '• سجل القراءة والإشعارات\n\n'
+          'هل أنت متأكد؟',
         ),
         actions: [
           TextButton(
@@ -172,7 +180,10 @@ class SettingsScreen extends ConsumerWidget {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('تم حذف حسابك بنجاح')),
                   );
-                  Navigator.of(context).popUntil((route) => route.isFirst);
+                  // Land on the root tab instead of popping until the
+                  // first route — popUntil sometimes pops too far in
+                  // a shell-route nav and lands on a blank screen.
+                  context.go('/');
                 }
               } catch (_) {
                 if (context.mounted) {
@@ -207,10 +218,16 @@ class _NewsletterTileState extends ConsumerState<_NewsletterTile> {
     setState(() => _loading = true);
     try {
       final api = ref.read(apiClientProvider);
-      // We use the user's email (stored in auth) but for simplicity
-      // we pass a placeholder — the backend can also look up the user.
+      // Send the user's real email — the previous placeholder
+      // 'user@feedsnews.net' polluted the subscribers list and made
+      // the toggle look like it did nothing functional.
+      final user = await ref.read(currentUserProvider.future);
+      final email = (user?.email ?? '').isNotEmpty ? user!.email : null;
+      if (email == null) {
+        throw const FormatException('بريد المستخدم غير متاح، أعد تسجيل الدخول');
+      }
       await api.post('/user/newsletter', body: {
-        'email': 'user@feedsnews.net', // placeholder — backend uses user_id
+        'email': email,
         'action': _subscribed ? 'unsubscribe' : 'subscribe',
       });
       setState(() => _subscribed = !_subscribed);

@@ -17,8 +17,16 @@ class CategoryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asy = ref.watch(_articlesByCategoryProvider(slug));
+    // Resolve the human-readable category name. Falls back to the
+    // slug if the categories list hasn't loaded yet, so the title
+    // never shows a raw English slug like "politics".
+    final cats = ref.watch(categoriesProvider).asData?.value ?? const [];
+    String title = slug;
+    for (final c in cats) {
+      if (c.slug == slug) { title = c.name; break; }
+    }
     return Scaffold(
-      appBar: AppBar(title: Text('قسم: $slug')),
+      appBar: AppBar(title: Text(title)),
       body: asy.when(
         loading: () => const LoadingShimmerList(),
         error: (e, _) => ErrorRetryView(

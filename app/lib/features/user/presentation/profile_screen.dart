@@ -347,24 +347,20 @@ class _ProfileHeader extends StatelessWidget {
                     color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight)),
               ],
 
-              // Plan badge
+              // Reader badge — there's no paid tier and no purchase path,
+              // so always show the neutral "reader" pill.
               const SizedBox(height: 10),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
                 decoration: BoxDecoration(
-                  gradient: user.plan == 'pro'
-                      ? LinearGradient(colors: [Colors.amber.shade600, Colors.orange.shade700])
-                      : null,
-                  color: user.plan == 'pro' ? null
-                      : (isDark ? AppColors.neoDarkMid : AppColors.neoSurfaceMid),
+                  color: isDark ? AppColors.neoDarkMid : AppColors.neoSurfaceMid,
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
-                  user.plan == 'pro' ? '⭐ عضوية مميزة' : '📖 قارئ',
+                  '📖 قارئ',
                   style: TextStyle(
                     fontSize: 12, fontWeight: FontWeight.w700,
-                    color: user.plan == 'pro' ? Colors.white
-                        : (isDark ? AppColors.textMutedDark : AppColors.textMutedLight)),
+                    color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
                 ),
               ),
               const SizedBox(height: 16),
@@ -459,14 +455,15 @@ class _AchievementsSection extends StatelessWidget {
   }
 
   List<_Badge> _computeBadges() => [
+    // Only badges that can be evaluated from real signals are shown.
+    // Earlier we had two placeholders (hardcoded true / false) — those
+    // looked like a half-finished feature to an App Store reviewer.
     _Badge('🔥', 'قارئ مثابر', 'اقرأ 3 أيام متواصلة', user.readingStreak >= 3),
     _Badge('⚡', 'سلسلة نارية', 'اقرأ 7 أيام متواصلة', user.readingStreak >= 7),
     _Badge('🔖', 'جامع المقالات', 'احفظ 10 مقالات', bookmarkCount >= 10),
     _Badge('👁', 'متابع وفي', 'تابع 5 مصادر أو أقسام', followingCount >= 5),
-    _Badge('💬', 'صوت فعّال', 'اكتب أول تعليق', true), // placeholder
     _Badge('🌟', 'نجم الأسبوع', 'اقرأ 30 يوم متواصل', user.readingStreak >= 30),
     _Badge('🏅', 'خبير الأخبار', 'تابع 15 مصدر', followingCount >= 15),
-    _Badge('🎯', 'قنّاص الترند', 'شارك 5 أخبار', false), // placeholder
   ];
 }
 

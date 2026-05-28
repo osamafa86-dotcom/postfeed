@@ -296,8 +296,8 @@ class _WeeklyBody extends StatelessWidget {
                         ],
                       ),
                     ),
-                    Icon(Icons.chevron_left, size: 20,
-                      color: isDark ? Colors.white38 : AppColors.textMutedLight),
+                    // Chevron removed — archive entries are informational
+                    // only (we don't yet have a per-week detail route).
                   ]),
                 );
               },
