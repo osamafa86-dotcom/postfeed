@@ -129,10 +129,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           _field('نبذة', _bioCtrl, Icons.edit_note, isDark, maxLines: 3),
           const SizedBox(height: 14),
 
-          // Email (read-only)
-          TextField(
+          // Email (read-only). Uses `initialValue` instead of a per-build
+          // TextEditingController that was never disposed.
+          TextFormField(
             readOnly: true,
-            controller: TextEditingController(text: widget.user.email ?? '—'),
+            initialValue: widget.user.email ?? '—',
             decoration: InputDecoration(
               labelText: 'البريد الإلكتروني',
               prefixIcon: const Icon(Icons.email_outlined),

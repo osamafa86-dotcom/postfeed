@@ -48,6 +48,8 @@ class NotificationsScreen extends ConsumerWidget {
                         final dt = n['created_at'] != null
                             ? DateTime.tryParse(n['created_at'].toString().replaceFirst(' ', 'T'))
                             : null;
+                        final articleId = (n['article_id'] as num?)?.toInt();
+                        final url = n['url']?.toString();
                         return ListTile(
                           leading: Text(n['icon']?.toString() ?? '🔔', style: const TextStyle(fontSize: 28)),
                           title: Text(n['title']?.toString() ?? '—',
@@ -57,6 +59,11 @@ class NotificationsScreen extends ConsumerWidget {
                               ? Text(timeago.format(dt, locale: 'ar'),
                                   style: Theme.of(context).textTheme.bodySmall)
                               : null,
+                          onTap: (articleId != null && articleId > 0)
+                              ? () => context.push('/article/$articleId')
+                              : (url != null && url.isNotEmpty
+                                  ? () => context.push(url.startsWith('/') ? url : '/article/0')
+                                  : null),
                         );
                       },
                     ),

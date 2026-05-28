@@ -45,12 +45,15 @@ class GalleryScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: CachedNetworkImage(
-                        imageUrl: _photoUrl(p)!,
-                        fit: BoxFit.cover,
-                        width: double.infinity,
+                    GestureDetector(
+                      onTap: () => _openFullscreen(context, _photoUrl(p)!),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: CachedNetworkImage(
+                          imageUrl: _photoUrl(p)!,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                        ),
                       ),
                     ),
                   if ((p['caption'] ?? '').toString().isNotEmpty) Padding(
@@ -67,4 +70,27 @@ class GalleryScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Opens a single gallery image full-screen with pinch-to-zoom.
+void _openFullscreen(BuildContext context, String url) {
+  Navigator.of(context).push(MaterialPageRoute<void>(
+    fullscreenDialog: true,
+    builder: (_) => Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
+      body: Center(
+        child: InteractiveViewer(
+          panEnabled: true,
+          minScale: 0.8,
+          maxScale: 4,
+          child: CachedNetworkImage(imageUrl: url, fit: BoxFit.contain),
+        ),
+      ),
+    ),
+  ));
 }

@@ -49,6 +49,7 @@ class ReorderCategoriesScreen extends ConsumerStatefulWidget {
 
 class _ReorderCategoriesScreenState extends ConsumerState<ReorderCategoriesScreen> {
   List<Category>? _items;
+  String? _loadError;
 
   @override
   void initState() {
@@ -57,8 +58,17 @@ class _ReorderCategoriesScreenState extends ConsumerState<ReorderCategoriesScree
   }
 
   Future<void> _loadCategories() async {
-    final cats = await ref.read(orderedCategoriesProvider.future);
-    setState(() => _items = List.of(cats));
+    try {
+      final cats = await ref.read(orderedCategoriesProvider.future);
+      if (mounted) setState(() => _items = List.of(cats));
+    } catch (e) {
+      // Without this catch, a network error left _items null and the
+      // spinner spun forever — the screen was a dead-end.
+      if (mounted) setState(() {
+        _items = const [];
+        _loadError = 'تعذّر تحميل الأقسام، تحقّق من اتصالك ثم حاول مجدداً.';
+      });
+    }
   }
 
   Future<void> _save() async {
@@ -89,7 +99,18 @@ class _ReorderCategoriesScreenState extends ConsumerState<ReorderCategoriesScree
       ),
       body: _items == null
           ? const Center(child: CircularProgressIndicator())
-          : ReorderableListView.builder(
+          : (_loadError != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(_loadError!,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: isDark ? Colors.white70 : Colors.black54)),
+                  ),
+                )
+              : _items!.isEmpty
+                  ? const Center(child: Text('لا توجد أقسام بعد'))
+                  : ReorderableListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: _items!.length,
               onReorder: (old, nw) {
@@ -126,7 +147,7 @@ class _ReorderCategoriesScreenState extends ConsumerState<ReorderCategoriesScree
                   ),
                 );
               },
-            ),
+            )),
     );
   }
 }

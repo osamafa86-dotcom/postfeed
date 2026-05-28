@@ -68,7 +68,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/article/:id',
-        builder: (_, s) => ArticleScreen(id: int.parse(s.pathParameters['id']!)),
+        builder: (_, s) {
+          final raw = s.pathParameters['id'];
+          final id = int.tryParse(raw ?? '') ?? 0;
+          return ArticleScreen(id: id);
+        },
       ),
       GoRoute(
         path: '/topic/:slug',

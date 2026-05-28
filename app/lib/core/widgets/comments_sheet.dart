@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import '../../features/auth/data/auth_storage.dart';
@@ -389,6 +390,9 @@ class _CommentTile extends StatelessWidget {
                         case 'block':
                           onBlock();
                           break;
+                        case 'login':
+                          context.push('/login');
+                          break;
                       }
                     },
                     itemBuilder: (_) => [
@@ -421,8 +425,12 @@ class _CommentTile extends StatelessWidget {
                       ],
                       if (currentUserId == null)
                         const PopupMenuItem(
-                          enabled: false,
-                          child: Text('سجّل دخولك للإبلاغ'),
+                          value: 'login',
+                          child: Row(children: [
+                            Icon(Icons.login, size: 18),
+                            SizedBox(width: 8),
+                            Text('سجّل دخولك للإبلاغ'),
+                          ]),
                         ),
                     ],
                   ),

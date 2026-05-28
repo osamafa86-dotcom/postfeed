@@ -34,6 +34,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   int _page = 0;
   final Set<int> _selectedCategories = {};
 
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
   // Number of intro pages before the interactive interest picker.
   static const _introCount = 4;
   int get _totalPages => _introCount + 1;
@@ -65,7 +71,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       icon: Icons.wb_sunny_outlined,
       color: Color(0xFFD97706),
       title: 'بريفينغ الصباح',
-      subtitle: 'كل صباح ملخص مخصص لاهتماماتك\nمع خيار الاستماع صوتياً وأنت في طريقك',
+      subtitle: 'كل صباح ملخص مخصص لاهتماماتك\nلتبدأ يومك بأهم الأخبار في دقائق',
       illustration: '☀️',
     ),
   ];

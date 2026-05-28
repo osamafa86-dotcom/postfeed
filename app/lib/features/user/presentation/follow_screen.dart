@@ -183,7 +183,9 @@ class _FollowedSourcesTab extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 alignment: Alignment.center,
-                child: Text(src.logoLetter ?? src.name.substring(0, 1),
+                child: Text(
+                    src.logoLetter ??
+                        (src.name.isNotEmpty ? src.name.substring(0, 1) : '؟'),
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700,
                         color: AppColors.primary)),
               ),

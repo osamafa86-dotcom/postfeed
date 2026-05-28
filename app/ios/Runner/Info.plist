@@ -35,11 +35,12 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<!-- iPhone: portrait only. The app's RTL layouts aren't tuned for
+	     landscape and a reviewer rotating the device would see broken
+	     compositions. iPad keeps both. -->
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
@@ -70,18 +71,10 @@
 		<true/>
 	</dict>
 
-	<!-- Universal links + custom scheme -->
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleURLName</key>
-			<string>net.feedsnews.app</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>feedsnews</string>
-			</array>
-		</dict>
-	</array>
+	<!-- Universal links are configured via Runner.entitlements
+	     (applinks:feedsnews.net). No custom URL scheme is needed — the
+	     unused `feedsnews://` scheme was removed to keep the binary
+	     from advertising capabilities it doesn't use. -->
 
 	<!-- Localized app name -->
 	<key>CFBundleLocalizations</key>
