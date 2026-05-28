@@ -18,15 +18,39 @@ import '../../auth/data/auth_storage.dart';
 import '../../user/data/user_repository.dart';
 import '../data/content_repository.dart';
 
-class ArticleScreen extends ConsumerWidget {
+class ArticleScreen extends ConsumerStatefulWidget {
   const ArticleScreen({super.key, required this.id});
   final int id;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final asy = ref.watch(articleProvider(id));
+  ConsumerState<ArticleScreen> createState() => _ArticleScreenState();
+}
+
+class _ArticleScreenState extends ConsumerState<ArticleScreen> {
+  late final DateTime _openedAt;
+
+  @override
+  void initState() {
+    super.initState();
+    _openedAt = DateTime.now();
+  }
+
+  @override
+  void dispose() {
+    // Beacon the reading time on close. Drives the reading streak on
+    // the profile screen (was always 0 because the client never called
+    // /user/history). Capped at 30 min so a forgotten tab doesn't
+    // inflate the streak unfairly.
+    final elapsed = DateTime.now().difference(_openedAt).inSeconds.clamp(0, 1800);
+    ref.read(userRepositoryProvider).trackRead(widget.id, seconds: elapsed);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final asy = ref.watch(articleProvider(widget.id));
     final bookmarks = ref.watch(bookmarkedIdsProvider);
-    final isBookmarked = bookmarks.contains(id);
+    final isBookmarked = bookmarks.contains(widget.id);
 
     return Scaffold(
       appBar: AppBar(
@@ -63,7 +87,7 @@ class ArticleScreen extends ConsumerWidget {
                 return;
               }
               try {
-                await ref.read(bookmarkedIdsProvider.notifier).toggle(id);
+                await ref.read(bookmarkedIdsProvider.notifier).toggle(widget.id);
               } catch (_) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -86,7 +110,7 @@ class ArticleScreen extends ConsumerWidget {
         loading: () => const LoadingShimmerList(itemCount: 4),
         error: (e, _) => ErrorRetryView(
           message: 'تعذّر تحميل المقال\n$e',
-          onRetry: () => ref.invalidate(articleProvider(id)),
+          onRetry: () => ref.invalidate(articleProvider(widget.id)),
         ),
         data: (data) => _ArticleBody(article: data.article, related: data.related),
       ),

@@ -11,6 +11,14 @@ Future<bool> safeLaunch(
 }) async {
   try {
     final uri = Uri.parse(url);
+    // Only allow web + mail/tel schemes. Blocks server-supplied URLs
+    // like `javascript:` or `file:` that could otherwise reach
+    // launchUrl through a compromised admin row.
+    const allowed = {'https', 'http', 'mailto', 'tel'};
+    if (!allowed.contains(uri.scheme.toLowerCase())) {
+      if (context.mounted) _showError(context);
+      return false;
+    }
     if (!await canLaunchUrl(uri)) {
       if (context.mounted) _showError(context);
       return false;

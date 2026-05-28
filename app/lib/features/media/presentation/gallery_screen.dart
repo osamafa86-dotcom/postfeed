@@ -88,7 +88,13 @@ void _openFullscreen(BuildContext context, String url) {
           panEnabled: true,
           minScale: 0.8,
           maxScale: 4,
-          child: CachedNetworkImage(imageUrl: url, fit: BoxFit.contain),
+          // Cap the decoded width so a 12-MP camera image doesn't
+          // chew through RAM on low-end review hardware.
+          child: CachedNetworkImage(
+            imageUrl: url,
+            fit: BoxFit.contain,
+            memCacheWidth: 2000,
+          ),
         ),
       ),
     ),

@@ -178,16 +178,25 @@ class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  IconButton.filled(
-                    onPressed: _sending ? null : _submit,
-                    icon: _sending
-                        ? const SizedBox(width: 18, height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Icon(Icons.send, size: 20),
-                    style: IconButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                    ),
+                  // Send button is disabled when the input is empty/whitespace
+                  // so the user gets visual feedback instead of tapping into a
+                  // silent no-op (server also rejects body < 2 chars).
+                  ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: _textCtrl,
+                    builder: (_, value, __) {
+                      final hasText = value.text.trim().length >= 2;
+                      return IconButton.filled(
+                        onPressed: (_sending || !hasText) ? null : _submit,
+                        icon: _sending
+                            ? const SizedBox(width: 18, height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : const Icon(Icons.send, size: 20),
+                        style: IconButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),

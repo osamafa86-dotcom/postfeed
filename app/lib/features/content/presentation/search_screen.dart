@@ -45,8 +45,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           onSubmitted: (v) => setState(() => _query = v.trim()),
         ),
       ),
-      body: _query.isEmpty
-          ? const EmptyView(message: 'اكتب كلمة للبحث', icon: Icons.search)
+      body: _query.length < 2
+          ? const EmptyView(
+              icon: Icons.search,
+              message: 'اكتب حرفين فأكثر للبحث',
+            )
           : Consumer(builder: (_, ref, __) {
               final asy = ref.watch(_searchProvider(_query));
               return asy.when(

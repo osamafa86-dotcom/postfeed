@@ -136,6 +136,12 @@ class AuthRepository {
     try {
       await _api.post('/auth/logout');
     } catch (_) {}
+    // Unregister this device's FCM token so pushes destined for the
+    // logged-out user don't continue to arrive on this device after
+    // a different user signs in (or no one does).
+    try {
+      await _api.delete('/user/devices');
+    } catch (_) {}
     await AuthStorage.clear();
   }
 
