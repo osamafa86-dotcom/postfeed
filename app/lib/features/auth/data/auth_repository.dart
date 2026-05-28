@@ -78,6 +78,27 @@ class AuthRepository {
     await AuthStorage.clear();
   }
 
+  /// Step 1 of password recovery: emails a 6-digit code to the user.
+  /// Always succeeds — the server returns 200 even for unknown emails
+  /// (to prevent account enumeration).
+  Future<void> requestPasswordReset(String email) async {
+    await _api.post('/auth/forgot', body: {'email': email});
+  }
+
+  /// Step 2 of password recovery: consumes the emailed code and sets
+  /// a new password. Throws ApiException on bad/expired code.
+  Future<void> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    await _api.post('/auth/reset', body: {
+      'email': email,
+      'code': code,
+      'password': newPassword,
+    });
+  }
+
   Future<AppUser> updateProfile(Map<String, dynamic> patch) async {
     final res = await _api.patch<Map<String, dynamic>>(
       '/user/profile',

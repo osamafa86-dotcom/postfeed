@@ -24,8 +24,7 @@ api_ok([
             'POST /api/v1/auth/refresh',
             'POST /api/v1/auth/forgot',
             'POST /api/v1/auth/reset',
-            'POST /api/v1/auth/oauth/google',
-            'POST /api/v1/auth/oauth/apple',
+            'DELETE /api/v1/auth/account',
         ],
         'content' => [
             'GET /api/v1/content/home',
