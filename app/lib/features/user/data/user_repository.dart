@@ -306,6 +306,20 @@ class UserRepository {
     );
     return res.data ?? const [];
   }
+
+  /// Beacon POST to /user/history when the user reads an article.
+  /// Silent no-op for guests; errors swallowed (non-critical tracking).
+  /// Drives the reading streak shown on the profile.
+  Future<void> trackRead(int articleId, {int seconds = 0}) async {
+    if (!AuthStorage.isAuthenticated) return;
+    try {
+      await _api.post(
+        '/user/history',
+        body: {'article_id': articleId, 'dwell_seconds': seconds},
+        decode: (_) {},
+      );
+    } catch (_) {}
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════

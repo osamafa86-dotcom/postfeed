@@ -1,9 +1,12 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
 import '../../features/auth/data/auth_storage.dart';
+import '../router/app_router.dart' show rootNavigatorKey;
 import 'api_envelope.dart';
 import 'api_exception.dart';
 
@@ -44,7 +47,7 @@ class ApiClient {
   static ApiClient create() {
     final dio = Dio(BaseOptions(
       baseUrl: ApiBase.url,
-      connectTimeout: const Duration(seconds: 15),
+      connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 25),
       sendTimeout: const Duration(seconds: 20),
       headers: {
@@ -67,10 +70,22 @@ class ApiClient {
         handler.next(opts);
       },
       onError: (err, handler) async {
-        // Auto-refresh once on 401 (token expired but valid signature) — for
-        // now we just clear; the user lands on the login flow on next request.
-        if (err.response?.statusCode == 401) {
+        // Token expired / revoked. Clear the local session and send the
+        // user to the login screen with a visible snackbar — silently
+        // wiping the token left them staring at a "broken" UI.
+        if (err.response?.statusCode == 401 && AuthStorage.isAuthenticated) {
           await AuthStorage.clear();
+          final ctx = rootNavigatorKey.currentContext;
+          if (ctx != null && ctx.mounted) {
+            ScaffoldMessenger.of(ctx).showSnackBar(
+              const SnackBar(content: Text('انتهت الجلسة، يرجى تسجيل الدخول مجدداً')),
+            );
+            // Defer to next frame so we don't navigate inside a tree
+            // currently rebuilding from the failed request.
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              rootNavigatorKey.currentContext?.go('/login');
+            });
+          }
         }
         handler.next(err);
       },

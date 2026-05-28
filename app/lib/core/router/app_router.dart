@@ -44,6 +44,33 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
+    // Without this, a malformed path (deep link / push payload) drops
+    // the user on go_router's bare-bones default error widget.
+    errorBuilder: (context, state) => Scaffold(
+      appBar: AppBar(title: const Text('الصفحة غير موجودة')),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.link_off, size: 48, color: Colors.grey),
+              const SizedBox(height: 16),
+              const Text('تعذّر فتح هذه الصفحة.',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              Text(state.uri.toString(),
+                  style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              const SizedBox(height: 20),
+              FilledButton(
+                onPressed: () => context.go('/'),
+                child: const Text('الرجوع للرئيسية'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
     routes: [
       GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
       GoRoute(path: '/onboarding', builder: (_, __) => const OnboardingScreen()),

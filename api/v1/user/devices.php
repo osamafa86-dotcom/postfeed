@@ -7,11 +7,31 @@
  */
 require_once __DIR__ . '/../_bootstrap.php';
 
-api_method('POST');
+api_method('POST', 'DELETE');
 api_rate_limit('user:devices', 30, 600);
 
 $user = api_require_user();
 $db = getDB();
+
+// DELETE — called on logout to stop pushes to this device. Body can
+// include a specific token; otherwise we drop all device rows owned
+// by this user (covers the "delete account" case too).
+if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
+    $body = api_body();
+    $token = trim((string)($body['token'] ?? ''));
+    try {
+        if ($token !== '') {
+            $db->prepare("DELETE FROM user_devices WHERE user_id=? AND token=?")
+               ->execute([(int)$user['id'], $token]);
+        } else {
+            $db->prepare("DELETE FROM user_devices WHERE user_id=?")
+               ->execute([(int)$user['id']]);
+        }
+    } catch (Throwable $e) {
+        // Table may not exist on older installs — treat as already-gone.
+    }
+    api_ok(['unregistered' => true]);
+}
 
 $body = api_body();
 $token = trim((string)($body['token'] ?? ''));

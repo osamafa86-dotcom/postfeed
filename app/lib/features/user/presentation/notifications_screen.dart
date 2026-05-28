@@ -49,7 +49,10 @@ class NotificationsScreen extends ConsumerWidget {
                             ? DateTime.tryParse(n['created_at'].toString().replaceFirst(' ', 'T'))
                             : null;
                         final articleId = (n['article_id'] as num?)?.toInt();
-                        final url = n['url']?.toString();
+                        // Server sends `link` (the in-app path);
+                        // accept `url` too in case an older
+                        // notification was queued with the legacy key.
+                        final url = (n['link'] ?? n['url'])?.toString();
                         return ListTile(
                           leading: Text(n['icon']?.toString() ?? '🔔', style: const TextStyle(fontSize: 28)),
                           title: Text(n['title']?.toString() ?? '—',

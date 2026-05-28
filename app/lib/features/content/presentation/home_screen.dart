@@ -79,7 +79,15 @@ class HomeScreen extends ConsumerWidget {
         ),
         data: (data) => RefreshIndicator(
           color: AppColors.primary,
-          onRefresh: () async => ref.invalidate(homeProvider),
+          // Pull-to-refresh should refresh *everything* the home tab
+          // shows — not just the payload. Otherwise the "For You" and
+          // story carousels stay stale.
+          onRefresh: () async {
+            ref.invalidate(homeProvider);
+            ref.invalidate(forYouProvider);
+            ref.invalidate(evolvingStoriesProvider);
+            ref.invalidate(youtubeFeedProvider);
+          },
           child: _HomeBody(payload: data),
         ),
       ),

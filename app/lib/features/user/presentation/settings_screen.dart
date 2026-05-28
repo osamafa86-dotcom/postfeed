@@ -8,6 +8,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/data/auth_storage.dart';
+import '../data/user_repository.dart' show followedIdsProvider;
 import 'blocked_users_screen.dart';
 import 'info_pages.dart';
 import 'notification_settings_screen.dart';
@@ -134,6 +135,8 @@ class SettingsScreen extends ConsumerWidget {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('تمّ تسجيل الخروج')),
                   );
+                  ref.invalidate(currentUserProvider);
+                  ref.invalidate(followedIdsProvider);
                   context.go('/');
                 }
               } catch (_) {
@@ -180,6 +183,10 @@ class SettingsScreen extends ConsumerWidget {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('تم حذف حسابك بنجاح')),
                   );
+                  // Drop cached user/follows so the next screen
+                  // doesn't briefly show the deleted account's data.
+                  ref.invalidate(currentUserProvider);
+                  ref.invalidate(followedIdsProvider);
                   // Land on the root tab instead of popping until the
                   // first route — popUntil sometimes pops too far in
                   // a shell-route nav and lands on a blank screen.

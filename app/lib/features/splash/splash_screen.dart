@@ -39,17 +39,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   Future<void> _bootstrap() async {
-    await Future.delayed(const Duration(milliseconds: 1200));
+    // Wait for the logo animation (800ms) AND the SharedPreferences
+    // lookup in parallel, instead of stacking them sequentially with
+    // a hard 1.2s sleep — saves ~1s on cold start.
+    final results = await Future.wait([
+      Future<void>.delayed(const Duration(milliseconds: 800)),
+      OnboardingScreen.hasBeenSeen(),
+    ]);
     if (!mounted) return;
-
-    final seen = await OnboardingScreen.hasBeenSeen();
-    if (!mounted) return;
-
-    if (!seen) {
-      context.go('/onboarding');
-    } else {
-      context.go('/');
-    }
+    final seen = results[1] as bool;
+    context.go(seen ? '/' : '/onboarding');
   }
 
   @override
