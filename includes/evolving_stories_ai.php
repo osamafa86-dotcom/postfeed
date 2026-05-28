@@ -312,7 +312,7 @@ function evolving_stories_ai_pending(int $storyId, int $limit = 10): array {
  */
 function evolving_stories_ai_extract_story(int $storyId, int $perRunBudget = 8): array {
     evolving_stories_ai_ensure_tables();
-    $summary = ['ok' => true, 'processed' => 0, 'failed' => 0, 'entities' => 0, 'quotes' => 0];
+    $summary = ['ok' => true, 'processed' => 0, 'failed' => 0, 'entities' => 0, 'quotes' => 0, 'last_error' => ''];
     $pending = evolving_stories_ai_pending($storyId, $perRunBudget);
     if (empty($pending)) return $summary;
 
@@ -324,8 +324,13 @@ function evolving_stories_ai_extract_story(int $storyId, int $perRunBudget = 8):
             $summary['entities'] += count($res['entities'] ?? []);
             $summary['quotes']   += count($res['quotes']   ?? []);
         } else {
-            evolving_stories_ai_mark_failed($storyId, (int)$art['id'], (string)($res['error'] ?? ''));
+            $err = (string)($res['error'] ?? '');
+            evolving_stories_ai_mark_failed($storyId, (int)$art['id'], $err);
             $summary['failed']++;
+            // Bubble the most recent error up so the cron can print
+            // *why* the AI call failed (rate limit, bad key, etc.)
+            // — counting failures alone isn't enough to debug.
+            if ($err !== '') $summary['last_error'] = $err;
         }
     }
 

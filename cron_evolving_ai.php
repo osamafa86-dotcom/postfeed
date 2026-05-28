@@ -73,6 +73,9 @@ foreach ($stories as $story) {
 
     echo "   processed={$res['processed']} failed={$res['failed']} "
        . "entities={$res['entities']} quotes={$res['quotes']}\n";
+    if (!empty($res['last_error'])) {
+        echo "   ⚠ last_error: {$res['last_error']}\n";
+    }
 
     // Small pause between stories so we don't burst the Anthropic rate
     // limit when several stories all have fresh articles.
