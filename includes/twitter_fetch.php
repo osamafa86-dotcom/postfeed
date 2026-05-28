@@ -55,11 +55,14 @@ const TW_USER_AGENTS = [
 /**
  * Fetch the latest tweets for a single username.
  *
- * Transports in order (most real-time first):
- *   1) Nitter — scrapes the live profile page; freshest data.
- *   2) NEXT_DATA (syndication.twitter.com) — reliable but cache-lagged.
- *   3) RSSHub — RSS bridge; Twitter route is often broken.
- *   4) CDN JSON — mostly dead; kept as last resort.
+ * Transports in order (most reliable in 2026 first):
+ *   1) NEXT_DATA (syndication.twitter.com) — the only consistently
+ *      working path. Returns full timelines (~99 tweets) when not
+ *      rate-limited.
+ *   2) Nitter — almost every public instance is dead or blocked; kept
+ *      as a fallback for the day syndication itself goes 429.
+ *   3) RSSHub — mostly broken for Twitter, kept for completeness.
+ *   4) CDN JSON — dead; last resort.
  *
  * @return array<int, array{tweet_id:string, text:string, image_url:string, posted_at:string, url:string}>
  */
@@ -67,10 +70,10 @@ function tw_fetch_user_tweets(string $username, int $limit = 20): array {
     $username = ltrim(trim($username), '@');
     if ($username === '') return [];
 
-    $out = tw_fetch_via_nitter($username, $limit);
+    $out = tw_fetch_via_next_data($username, $limit);
     if (!empty($out)) return tw_finalize_tweets($out, $username, $limit);
 
-    $out = tw_fetch_via_next_data($username, $limit);
+    $out = tw_fetch_via_nitter($username, $limit);
     if (!empty($out)) return tw_finalize_tweets($out, $username, $limit);
 
     $out = tw_fetch_via_rsshub($username, $limit);
@@ -301,8 +304,23 @@ function tw_fetch_via_cdn_json(string $username, int $limit): array {
 
 /**
  * Transport 2: syndication.twitter.com HTML page with __NEXT_DATA__.
+ *
+ * This is the primary working transport in 2026. Twitter's edge will
+ * 429 if hit too aggressively for the same UA — tw_http_get rotates UA
+ * per call, but we also stash the parsed result in a tiny per-user file
+ * cache so back-to-back debug runs and concurrent SSE streams reuse the
+ * payload instead of hammering syndication.
  */
 function tw_fetch_via_next_data(string $username, int $limit): array {
+    $cacheFile = sys_get_temp_dir() . '/nf_tw_nd_' . md5($username) . '.json';
+    $cacheTtl  = 25; // seconds — shorter than the 30s sync staleness threshold
+
+    if (is_file($cacheFile) && (time() - @filemtime($cacheFile)) < $cacheTtl) {
+        $cached = @file_get_contents($cacheFile);
+        $rows   = $cached ? json_decode($cached, true) : null;
+        if (is_array($rows) && !empty($rows)) return $rows;
+    }
+
     $url = 'https://syndication.twitter.com/srv/timeline-profile/screen-name/' . rawurlencode($username);
     $html = tw_http_get($url);
     if (!$html) return [];
@@ -335,6 +353,9 @@ function tw_fetch_via_next_data(string $username, int $limit): array {
               ?? null;
         $t = tw_normalize_tweet($tweet);
         if ($t) $out[] = $t;
+    }
+    if (!empty($out)) {
+        @file_put_contents($cacheFile, json_encode($out, JSON_UNESCAPED_UNICODE), LOCK_EX);
     }
     return $out;
 }
@@ -546,7 +567,11 @@ function tw_sync_all_sources(): int {
     }
 
     $total = 0;
-    foreach ($sources as $src) {
+    foreach ($sources as $i => $src) {
+        // Space out source fetches so we don't hammer
+        // syndication.twitter.com — back-to-back hits trigger HTTP 429
+        // and we lose the freshest tweet for the next source.
+        if ($i > 0) usleep(400000); // 400ms between sources
         $tweets = tw_fetch_user_tweets($src['username'], 20);
         if (empty($tweets)) {
             error_log('tw_sync: no tweets returned for @' . $src['username']);
