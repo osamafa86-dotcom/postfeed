@@ -11,6 +11,9 @@ require_once __DIR__ . '/../_bootstrap.php';
 require_once __DIR__ . '/../../includes/mailer.php';
 
 api_method('POST');
+// Rate limit: 5 forgot-password requests per 10 minutes per IP. Stops
+// someone from email-bombing a victim or scraping which emails exist.
+api_rate_limit('auth:forgot', 5, 600);
 
 $body  = api_body();
 $email = trim((string)($body['email'] ?? ''));

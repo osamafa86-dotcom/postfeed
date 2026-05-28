@@ -221,3 +221,41 @@ if (!function_exists('newsletter_email_html')) {
              . '</div></body></html>';
     }
 }
+
+// ─────────────────────────────────────────────────────────────────
+// Newsletter confirmation email helper
+//
+// api/v1/user/newsletter.php calls function_exists('newsletter_send_confirm')
+// — defining it here means /auth/forgot-style confirmations now actually
+// go out (previously the file was missing and subscriptions sat forever
+// at confirmed=0).
+// ─────────────────────────────────────────────────────────────────
+
+if (!function_exists('newsletter_send_confirm')) {
+    function newsletter_send_confirm(string $email, string $token): bool {
+        $base = rtrim(SITE_URL, '/');
+        $link = $base . '/newsletter_confirm.php?token=' . urlencode($token);
+        $unsub = $base . '/newsletter_unsubscribe.php?token=' . urlencode($token);
+
+        $subject = 'تأكيد الاشتراك في نشرة فيد نيوز';
+        $body = '<p>مرحباً،</p>'
+              . '<p>طلبت الاشتراك في النشرة اليومية من <strong>فيد نيوز</strong>. اضغط الزر أدناه لتأكيد بريدك:</p>'
+              . '<p style="text-align:center;margin:24px 0">'
+              . '<a href="' . htmlspecialchars($link, ENT_QUOTES, 'UTF-8') . '" '
+              . 'style="background:#0d7c66;color:#fff;text-decoration:none;'
+              . 'padding:12px 24px;border-radius:8px;font-weight:700;display:inline-block">'
+              . 'تأكيد الاشتراك</a></p>'
+              . '<p style="color:#666;font-size:13px">إذا لم تطلب هذا الاشتراك، تجاهل هذه الرسالة.</p>';
+
+        $html = function_exists('mailer_wrap_html')
+            ? mailer_wrap_html('تأكيد الاشتراك', $body, $unsub)
+            : $body;
+        $text = "مرحباً،\n\nأكّد اشتراكك في نشرة فيد نيوز عبر الرابط:\n$link\n\nإذا لم تطلب هذا الاشتراك، تجاهل هذه الرسالة.";
+
+        $ok = mailer_send($email, $subject, $html, $text);
+        if (!$ok) {
+            error_log('[newsletter_send_confirm] ' . $email . ': ' . mailer_last_error());
+        }
+        return $ok;
+    }
+}

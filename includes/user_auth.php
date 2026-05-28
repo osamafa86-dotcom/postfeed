@@ -98,7 +98,7 @@ function user_register(string $name, string $email, string $password, ?string $u
 
     if (mb_strlen($name) < 2)  return [false, 'الاسم قصير جداً'];
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) return [false, 'البريد الإلكتروني غير صالح'];
-    if (strlen($password) < 8) return [false, 'كلمة المرور يجب أن تكون 8 أحرف على الأقل'];
+    if (strlen($password) < 6) return [false, 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'];
     if ($username !== null && $username !== '' && !preg_match('/^[a-zA-Z0-9_]{3,30}$/', $username)) {
         return [false, 'اسم المستخدم يجب أن يتكون من 3 إلى 30 حرف (إنجليزي/أرقام/_)'];
     }

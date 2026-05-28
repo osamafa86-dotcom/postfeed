@@ -9,6 +9,11 @@
 require_once __DIR__ . '/../_bootstrap.php';
 
 api_method('POST');
+// Rate limit: 20 reset attempts per 10 minutes per IP. Combined with
+// the 30-minute code expiry + single-use enforcement, this keeps a
+// brute force of the 6-digit code at hours-of-work per IP — and the
+// attacker has to land it before the code rotates.
+api_rate_limit('auth:reset', 20, 600);
 
 $body     = api_body();
 $email    = trim((string)($body['email'] ?? ''));

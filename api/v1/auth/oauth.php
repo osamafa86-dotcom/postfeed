@@ -14,6 +14,7 @@
  * id_token; the server still re-verifies the signature and `aud` claim.
  */
 require_once __DIR__ . '/../_bootstrap.php';
+require_once __DIR__ . '/../../includes/oauth_verify.php';
 
 api_method('POST');
 api_rate_limit('auth:oauth', 30, 600);
@@ -29,19 +30,23 @@ $name    = trim((string)($body['name'] ?? ''));
 $emailIn = trim((string)($body['email'] ?? ''));
 if ($idToken === '') api_err('invalid_input', 'يلزم id_token', 422);
 
-// Decode without verification (just to surface basic claims). We *trust*
-// that the client did the platform OAuth flow already; later we re-verify.
-$parts = explode('.', $idToken);
-if (count($parts) !== 3) api_err('invalid_token', 'token غير صالح', 422);
-$claims = json_decode(jwt_b64url_decode($parts[1]), true);
-if (!is_array($claims)) api_err('invalid_token', 'token غير قابل للقراءة', 422);
-
+// Resolve the expected audience BEFORE verifying — and fail-closed if
+// it's empty. Previously the code skipped the aud check on an empty
+// $audExpected, which combined with the missing signature check meant
+// any forged token would pass.
 $audExpected = $provider === 'google'
-    ? env('GOOGLE_CLIENT_ID', '')
-    : env('APPLE_CLIENT_ID', 'net.feedsnews.newsfeed');
+    ? (string)env('GOOGLE_CLIENT_ID', '')
+    : (string)env('APPLE_CLIENT_ID', 'net.feedsnews.newsfeed');
 
-if ($audExpected !== '' && ($claims['aud'] ?? '') !== $audExpected) {
-    api_err('invalid_audience', 'aud claim mismatch', 401);
+if ($audExpected === '') {
+    api_err('not_configured', $provider . ' client id is not configured on the server', 500);
+}
+
+// Full verification: RS256 signature against the provider's JWKS,
+// plus iss / aud / exp checks. Returns null on any mismatch.
+$claims = oauth_verify_id_token($idToken, $provider, $audExpected);
+if (!is_array($claims)) {
+    api_err('invalid_token', 'id_token غير صالح', 401);
 }
 
 $email = strtolower(trim((string)($claims['email'] ?? $emailIn)));

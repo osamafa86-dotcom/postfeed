@@ -40,12 +40,18 @@ try {
 }
 
 $quotes = array_map(function ($r) {
+    // Use `null` (not '') for empty speaker/context so the app's
+    // `if (quote.context != null)` guards short-circuit and we don't
+    // render blank attribution rows under quotes that have no speaker.
+    $speaker = trim((string)($r['speaker'] ?? ''));
+    $speakerRole = trim((string)($r['speaker_role'] ?? ''));
+    $context = trim((string)($r['context'] ?? ''));
     return [
         'id'         => (int)$r['id'],
         'quote'      => $r['quote_text'] ?? '',
-        'speaker'    => $r['speaker'] ?? '',
-        'speaker_role' => $r['speaker_role'] ?? null,
-        'context'    => $r['context'] ?? null,
+        'speaker'    => $speaker !== '' ? $speaker : null,
+        'speaker_role' => $speakerRole !== '' ? $speakerRole : null,
+        'context'    => $context !== '' ? $context : null,
         'created_at' => $r['extracted_at'] ?? null,
         'article'    => $r['article_id'] ? [
             'id'        => (int)$r['article_id'],
