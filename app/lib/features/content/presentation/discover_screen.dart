@@ -57,9 +57,9 @@ class DiscoverScreen extends ConsumerWidget {
               runSpacing: 8,
               children: [
                 for (final c in list)
-                  ActionChip(
-                    label: Text('${c.icon ?? ''} ${c.name}'.trim()),
-                    onPressed: () => context.push('/category/${c.slug}'),
+                  _StyledChip(
+                    label: '${c.icon ?? ''} ${c.name}'.trim(),
+                    onTap: () => context.push('/category/${c.slug}'),
                   ),
               ],
             ),
@@ -78,9 +78,9 @@ class DiscoverScreen extends ConsumerWidget {
               runSpacing: 8,
               children: [
                 for (final s in list)
-                  ActionChip(
-                    label: Text(s.name),
-                    onPressed: () => context.push('/source/${s.slug}'),
+                  _StyledChip(
+                    label: s.name,
+                    onTap: () => context.push('/source/${s.slug}'),
                   ),
               ],
             ),
@@ -134,5 +134,43 @@ class DiscoverScreen extends ConsumerWidget {
         ),
       );
     });
+  }
+}
+
+/// A high-contrast chip used in the category and source rails on the
+/// Discover screen. Material 3's `ActionChip` was applying a near-
+/// transparent surface tint on iPad, which made the chip text on light
+/// backgrounds nearly invisible — see the screenshot in the
+/// 2.2.1(20) review prep. This widget bypasses the M3 token system
+/// and uses explicit theme-aware colors.
+class _StyledChip extends StatelessWidget {
+  const _StyledChip({required this.label, required this.onTap});
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Material(
+      color: isDark
+          ? Colors.white.withOpacity(0.08)
+          : AppColors.primary.withOpacity(0.08),
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              color: isDark ? AppColors.textDark : AppColors.textLight,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
