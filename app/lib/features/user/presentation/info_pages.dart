@@ -174,6 +174,7 @@ class PrivacyPolicyPage extends StatelessWidget {
 
         _subheading('ج. خاصّ بتطبيق الجوّال', context),
         _bullet('رمز الجهاز للإشعارات (Device Token) — يُرسَل إلى Firebase Cloud Messaging من Google لتمكين الإشعارات الفورية.', context),
+        _bullet('تسجيل الدخول بـ Apple (اختياري) — نستلم اسمك وبريدك فقط (Apple يتيح إخفاء البريد).', context),
         _bullet('لا نجمع: مُعرّف الإعلان (IDFA)، جهات الاتصال، الرسائل، أو أي بيانات حسّاسة من الجهاز.', context),
 
         _heading('٢. كيف نستخدم هذه المعلومات', context),
@@ -183,6 +184,7 @@ class PrivacyPolicyPage extends StatelessWidget {
 
         _heading('٣. الخدمات الخارجية', context),
         _bullet('Firebase Cloud Messaging (Google) — للإشعارات الفورية.', context),
+        _bullet('Sign in with Apple — خيار اختياري لتسجيل دخول مستخدمي iOS.', context),
         _bullet('OpenStreetMap — لعرض خريطة الأخبار الجغرافية.', context),
 
         _heading('٤. ماذا لا نفعل', context),

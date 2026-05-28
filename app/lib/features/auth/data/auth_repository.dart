@@ -1,9 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../core/models/user.dart';
 import 'auth_storage.dart';
+
+/// Flip to true once you've created the iOS OAuth client in Google
+/// Cloud Console AND added GIDClientID + reversed-client-id URL scheme
+/// in app/ios/Runner/Info.plist. Until then the Google button is hidden
+/// so it can't be tapped and crash.
+const bool kGoogleSignInEnabled = false;
 
 class AuthRepository {
   AuthRepository(this._api);
@@ -32,6 +40,64 @@ class AuthRepository {
     final res = await _api.post<Map<String, dynamic>>(
       '/auth/login',
       body: {'email': email, 'password': password},
+      decode: (d) => (d as Map).cast<String, dynamic>(),
+    );
+    return _persistAuthFromResponse(res.data);
+  }
+
+  /// Native Sign in with Apple. iOS only — Android falls through the
+  /// package's web flow which we don't wire up here.
+  Future<AppUser> signInWithApple() async {
+    final cred = await SignInWithApple.getAppleIDCredential(scopes: [
+      AppleIDAuthorizationScopes.email,
+      AppleIDAuthorizationScopes.fullName,
+    ]);
+    final idToken = cred.identityToken;
+    if (idToken == null || idToken.isEmpty) {
+      throw const ApiException(
+          'apple_signin_failed', 'تعذّر الحصول على توكن من Apple');
+    }
+    // Apple sends name + email ONLY on the first authorization; we
+    // forward them so the server can populate the new account.
+    final name = [cred.givenName, cred.familyName]
+        .where((s) => s != null && s.isNotEmpty)
+        .join(' ');
+    final res = await _api.post<Map<String, dynamic>>(
+      '/auth/oauth/apple',
+      body: {
+        'id_token': idToken,
+        if (name.isNotEmpty) 'name': name,
+        if (cred.email != null && cred.email!.isNotEmpty) 'email': cred.email,
+      },
+      decode: (d) => (d as Map).cast<String, dynamic>(),
+    );
+    return _persistAuthFromResponse(res.data);
+  }
+
+  /// Google Sign-In. Requires the iOS client to be set up in Google
+  /// Cloud Console and its config wired into Info.plist (GIDClientID +
+  /// reversed-client-id URL scheme). Guarded by kGoogleSignInEnabled so
+  /// the button is hidden until that setup is done.
+  Future<AppUser> signInWithGoogle() async {
+    final google = GoogleSignIn(scopes: const ['email']);
+    final account = await google.signIn();
+    if (account == null) {
+      throw const ApiException(
+          'google_signin_cancelled', 'تم إلغاء تسجيل الدخول');
+    }
+    final auth = await account.authentication;
+    final idToken = auth.idToken;
+    if (idToken == null || idToken.isEmpty) {
+      throw const ApiException(
+          'google_signin_failed', 'تعذّر الحصول على توكن من Google');
+    }
+    final res = await _api.post<Map<String, dynamic>>(
+      '/auth/oauth/google',
+      body: {
+        'id_token': idToken,
+        if (account.displayName != null) 'name': account.displayName,
+        'email': account.email,
+      },
       decode: (d) => (d as Map).cast<String, dynamic>(),
     );
     return _persistAuthFromResponse(res.data);

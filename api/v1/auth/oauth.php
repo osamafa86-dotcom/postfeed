@@ -38,7 +38,7 @@ if (!is_array($claims)) api_err('invalid_token', 'token غير قابل للقر
 
 $audExpected = $provider === 'google'
     ? env('GOOGLE_CLIENT_ID', '')
-    : env('APPLE_CLIENT_ID', 'net.feedsnews.app');
+    : env('APPLE_CLIENT_ID', 'net.feedsnews.newsfeed');
 
 if ($audExpected !== '' && ($claims['aud'] ?? '') !== $audExpected) {
     api_err('invalid_audience', 'aud claim mismatch', 401);
