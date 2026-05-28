@@ -15,8 +15,14 @@
 
 require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/cache.php';
 require_once __DIR__ . '/includes/evolving_stories.php';
 require_once __DIR__ . '/includes/evolving_stories_ai.php';
+
+// Settings are file-cached for the website's hot path, but cron runs
+// often need the *latest* value (e.g. a freshly rotated AI key). Flush
+// once at the top so getSetting() reads the live DB row.
+if (function_exists('cache_flush')) cache_flush();
 
 if (PHP_SAPI !== 'cli') {
     $expected = getSetting('cron_key', '');
