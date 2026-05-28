@@ -11,6 +11,7 @@ void _showPointSheet(BuildContext context, MapPoint p) {
   showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
+    useSafeArea: true,
     builder: (_) => Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       child: Column(

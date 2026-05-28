@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
+import '../../features/auth/data/auth_state_provider.dart';
 import '../../features/auth/data/auth_storage.dart';
 import '../../features/user/data/user_repository.dart';
 import '../theme/app_theme.dart';
@@ -78,6 +79,10 @@ class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Watch the reactive auth state — if the user signs in while the
+    // sheet is open (e.g. via a deep link tap), the composer should
+    // appear without requiring them to close and re-open.
+    final isAuthed = ref.watch(authStateProvider);
     final comments = ref.watch(_commentsProvider(widget.articleId));
     final currentUserId = AuthStorage.userId;
 
@@ -155,7 +160,7 @@ class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
         ),
 
         // Input field
-        if (AuthStorage.isAuthenticated) ...[
+        if (isAuthed) ...[
           const Divider(height: 1),
           SafeArea(
             child: Padding(
