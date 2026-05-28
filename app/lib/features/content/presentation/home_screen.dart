@@ -18,6 +18,7 @@ import '../../../core/widgets/article_card.dart';
 import '../../../core/widgets/loading_state.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../auth/data/auth_repository.dart';
+import '../../auth/data/auth_state_provider.dart';
 import '../../auth/data/auth_storage.dart';
 import '../../media/data/media_repository.dart';
 import '../data/content_repository.dart';
@@ -108,6 +109,10 @@ class _HomeBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Watch the reactive auth state — without this, the "خاص بك"
+    // section never appears after sign-in (HomeScreen sits inside
+    // MainShell's IndexedStack and won't rebuild on auth alone).
+    final isAuthed = ref.watch(authStateProvider);
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
@@ -143,7 +148,7 @@ class _HomeBody extends ConsumerWidget {
           )),
 
         // ── 7. For You — personalized feed ──
-        if (AuthStorage.isAuthenticated)
+        if (isAuthed)
           SliverToBoxAdapter(child: _ForYouSection()),
 
         // ── 8. Evolving Stories — horizontal carousel ──

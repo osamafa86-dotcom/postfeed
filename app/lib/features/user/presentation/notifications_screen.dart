@@ -5,9 +5,13 @@ import 'package:timeago/timeago.dart' as timeago;
 
 import '../../../core/api/api_client.dart';
 import '../../../core/widgets/loading_state.dart';
+import '../../auth/data/auth_state_provider.dart';
 import '../../auth/data/auth_storage.dart';
 
 final _notificationsProvider = FutureProvider((ref) async {
+  // Re-fetch on auth changes so a logout+login cycle on the same
+  // device shows the new user's notifications, not the old user's.
+  ref.watch(authStateProvider);
   if (!AuthStorage.isAuthenticated) return <Map<String, dynamic>>[];
   final api = ref.watch(apiClientProvider);
   final res = await api.get<List<dynamic>>('/user/notifications',
@@ -20,10 +24,14 @@ class NotificationsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // See FollowScreen for the rationale — watching the reactive auth
+    // provider is what makes this widget rebuild after sign-in when it
+    // was first built (cached signed-out) inside MainShell's IndexedStack.
+    final isAuthed = ref.watch(authStateProvider);
     final asy = ref.watch(_notificationsProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('الإشعارات')),
-      body: !AuthStorage.isAuthenticated
+      body: !isAuthed
           ? EmptyView(
               icon: Icons.notifications_outlined,
               message: 'سجّل دخولك لرؤية الإشعارات',

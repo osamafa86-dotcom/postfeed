@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/api/api_exception.dart';
 import '../../user/data/user_repository.dart';
 import '../data/auth_repository.dart';
+import '../data/auth_state_provider.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -53,6 +54,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         email: _email.text.trim(),
         password: _pass.text,
       );
+      // See LoginScreen — broadcast so MainShell's offstage tabs swap to
+      // the authenticated branch instead of staying on the signed-out
+      // cached build.
+      ref.read(authStateProvider.notifier).refresh();
       ref.invalidate(currentUserProvider);
       ref.invalidate(followedIdsProvider);
       if (mounted) context.go('/');
@@ -67,6 +72,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     setState(() { _busy = true; _err = null; });
     try {
       await fn();
+      ref.read(authStateProvider.notifier).refresh();
       ref.invalidate(currentUserProvider);
       ref.invalidate(followedIdsProvider);
       if (mounted) context.go('/');

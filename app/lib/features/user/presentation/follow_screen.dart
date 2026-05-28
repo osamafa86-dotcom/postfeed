@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/loading_state.dart';
+import '../../auth/data/auth_state_provider.dart';
 import '../../auth/data/auth_storage.dart';
 import '../../content/data/content_repository.dart';
 import '../data/user_repository.dart';
@@ -14,7 +15,12 @@ class FollowScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (!AuthStorage.isAuthenticated) {
+    // Watch the reactive auth state so this screen rebuilds when the
+    // user logs in/out — `AuthStorage.isAuthenticated` alone is a
+    // static getter that won't trigger a rebuild from inside MainShell's
+    // IndexedStack (the cause of Apple's 2.2.1(19) 2.1(a) rejection).
+    final isAuthed = ref.watch(authStateProvider);
+    if (!isAuthed) {
       return Scaffold(
         appBar: AppBar(title: const Text('متابعتي')),
         body: EmptyView(

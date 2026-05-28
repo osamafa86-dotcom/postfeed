@@ -7,7 +7,7 @@ import '../../../core/api/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../../auth/data/auth_repository.dart';
-import '../../auth/data/auth_storage.dart';
+import '../../auth/data/auth_state_provider.dart';
 import '../data/user_repository.dart' show followedIdsProvider;
 import 'blocked_users_screen.dart';
 import 'info_pages.dart';
@@ -19,6 +19,7 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(themeModeControllerProvider);
+    final isAuthed = ref.watch(authStateProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('الإعدادات')),
       body: ListView(
@@ -38,7 +39,7 @@ class SettingsScreen extends ConsumerWidget {
           const Divider(),
 
           // ── Newsletter ──
-          if (AuthStorage.isAuthenticated)
+          if (isAuthed)
             const _NewsletterTile(),
 
           const Divider(),
@@ -61,7 +62,7 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const TermsOfServicePage())),
           ),
-          if (AuthStorage.isAuthenticated)
+          if (isAuthed)
             ListTile(
               leading: const Icon(Icons.block),
               title: const Text('المستخدمون المحظورون'),
@@ -95,7 +96,7 @@ class SettingsScreen extends ConsumerWidget {
           ),
 
           // ── حذف الحساب ──
-          if (AuthStorage.isAuthenticated) ...[
+          if (isAuthed) ...[
             const Divider(),
             ListTile(
               leading: const Icon(Icons.logout),
@@ -131,6 +132,10 @@ class SettingsScreen extends ConsumerWidget {
               Navigator.of(ctx).pop();
               try {
                 await ref.read(authRepositoryProvider).logout();
+                // Broadcast to every ConsumerWidget watching authStateProvider
+                // (Follow/Notifications/Bookmarks/Home For-You) so they
+                // swap back to their signed-out branch immediately.
+                ref.read(authStateProvider.notifier).refresh();
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('تمّ تسجيل الخروج')),
@@ -179,6 +184,7 @@ class SettingsScreen extends ConsumerWidget {
               Navigator.of(ctx).pop();
               try {
                 await ref.read(authRepositoryProvider).deleteAccount();
+                ref.read(authStateProvider.notifier).refresh();
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('تم حذف حسابك بنجاح')),
