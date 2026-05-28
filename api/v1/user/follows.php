@@ -18,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                            WHERE ucf.user_id=? AND c.is_active=1
                            ORDER BY ucf.created_at DESC");
     $cats->execute([(int)$user['id']]);
+    $catRows = $cats->fetchAll();
 
     $sources = $db->prepare("SELECT s.id, s.name, s.slug, s.logo_letter, s.logo_color, s.logo_bg, s.url
                               FROM user_source_follows usf
@@ -25,10 +26,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                               WHERE usf.user_id=? AND s.is_active=1
                               ORDER BY usf.created_at DESC");
     $sources->execute([(int)$user['id']]);
+    $srcRows = $sources->fetchAll();
 
+    // Stories — table is lazy-created on first follow, so the SELECT can
+    // legitimately throw on installs where it doesn't exist yet.
+    $storyIds = [];
+    try {
+        $st = $db->prepare("SELECT story_id FROM user_story_follows WHERE user_id=?");
+        $st->execute([(int)$user['id']]);
+        $storyIds = array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN));
+    } catch (Throwable $e) {}
+
+    // The mobile app reads `category|source|story` as plain ID arrays
+    // (it has its own providers for the full source/category records).
+    // The plural keys with full rows stay for any legacy consumer.
     api_ok([
-        'categories' => $cats->fetchAll(),
-        'sources'    => $sources->fetchAll(),
+        'category'   => array_map(fn($r) => (int)$r['id'], $catRows),
+        'source'     => array_map(fn($r) => (int)$r['id'], $srcRows),
+        'story'      => $storyIds,
+        'categories' => $catRows,
+        'sources'    => $srcRows,
     ]);
 }
 

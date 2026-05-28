@@ -51,6 +51,16 @@ foreach (['notify_breaking', 'notify_followed', 'notify_digest'] as $k) {
         $updates[] = "$k = ?"; $params[] = (int)(bool)$body[$k];
     }
 }
+// Also accept the nested form used by the mobile app — matches the
+// shape this endpoint *returns* via api_user_public()'s `notify` object.
+// Without this, the app's `{notify: {breaking, followed, digest}}` PATCH
+// silently no-ops on the server and reverts on the next /auth/me.
+$nested = is_array($body['notify'] ?? null) ? $body['notify'] : [];
+foreach (['notify_breaking' => 'breaking', 'notify_followed' => 'followed', 'notify_digest' => 'digest'] as $dbCol => $nestedKey) {
+    if (!array_key_exists($dbCol, $body) && array_key_exists($nestedKey, $nested)) {
+        $updates[] = "$dbCol = ?"; $params[] = (int)(bool)$nested[$nestedKey];
+    }
+}
 
 if (!$updates) api_err('invalid_input', 'لا يوجد ما يُحدّث', 422);
 
