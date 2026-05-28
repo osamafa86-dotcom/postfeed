@@ -30,7 +30,7 @@ require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/functions.php';
 
 const TW_STREAM_MAX_SECS      = 55;
-const TW_DB_POLL_SECS         = 1;
+const TW_DB_POLL_SECS         = 0.5;  // tighter DB poll — new tweets surface within ~500ms
 const TW_SCRAPE_EVERY_SECS    = 8;    // more aggressive than tg — X is what users complain about
 const TW_SCRAPE_COOLDOWN_SECS = 6;
 const TW_KEEPALIVE_SECS       = 15;

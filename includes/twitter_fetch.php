@@ -23,18 +23,33 @@
  *     can grep the log if the section goes stale.
  */
 
-// Public Nitter instances tried in rotation. First one that returns
-// parseable RSS wins. Instances come and go — if all start failing,
-// refresh this list from https://github.com/zedeus/nitter/wiki/Instances
+// Public Nitter-style instances tried in rotation. First one that returns
+// parseable RSS wins. Order matters — most reliable / freshest first.
+// Includes xcancel.com and lightbrd.com which are non-Nitter forks but
+// expose the same /username/rss interface. Instances come and go — if
+// all start failing, refresh this list from
+// https://github.com/zedeus/nitter/wiki/Instances and check xcancel/space
+// status pages.
 const TW_NITTER_INSTANCES = [
-    'nitter.privacydev.net',
+    'xcancel.com',
+    'nitter.space',
+    'nitter.tiekoetter.com',
+    'nitter.privacyredirect.com',
+    'nitter.adminforge.de',
+    'lightbrd.com',
     'nitter.poast.org',
-    'nitter.net',
-    'nitter.unixfox.eu',
-    'nitter.d420.de',
-    'nitter.no-logs.com',
-    'nitter.cz',
-    'nitter.1d4.us',
+    'nitter.privacydev.net',
+];
+
+// User-Agent pool — rotated per request so Twitter/Nitter edges can't
+// fingerprint and cache a single client identity. Keep these recent
+// (within last ~12 months) to look like real traffic.
+const TW_USER_AGENTS = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
 ];
 
 /**
@@ -133,13 +148,14 @@ function tw_parse_rss_feed(string $xml): array {
         $image = '';
         if (preg_match('#<img[^>]+src=["\']([^"\']+)["\']#i', $desc, $im)) {
             $image = html_entity_decode($im[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
-            // Nitter proxies images through /pic/<url-encoded-path>.
-            // Decode the proxy path and rewrite back to pbs.twimg.com so
-            // the image keeps loading if the instance that served the
-            // RSS later disappears. Two shapes we see in the wild:
+            // Nitter-style instances (including xcancel.com, lightbrd.com)
+            // proxy images through /pic/<url-encoded-path>. Decode and
+            // rewrite back to pbs.twimg.com so the image keeps loading
+            // if the instance that served the RSS later disappears.
+            // Two shapes we see in the wild:
             //   .../pic/media%2FXYZ.jpg?name=orig   (relative path)
             //   .../pic/https%3A%2F%2Fpbs.twimg...  (full URL wrapped)
-            if (preg_match('#^https?://[^/]*nitter[^/]*/pic/(.+)$#', $image, $pm)) {
+            if (preg_match('#^https?://[^/]+/pic/(.+)$#', $image, $pm)) {
                 $inner = rawurldecode($pm[1]);
                 if (preg_match('#^https?://#', $inner)) {
                     $image = $inner;
@@ -219,7 +235,7 @@ function tw_finalize_tweets(array $tweets, string $username, int $limit): array 
  */
 function tw_http_get(string $url, int $timeout = 15): ?string {
     $sep = (strpos($url, '?') === false) ? '?' : '&';
-    $url .= $sep . '_cb=' . time();
+    $url .= $sep . '_cb=' . time() . mt_rand(100, 999);
 
     $ch = curl_init($url);
     curl_setopt_array($ch, [
@@ -227,12 +243,12 @@ function tw_http_get(string $url, int $timeout = 15): ?string {
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_TIMEOUT        => $timeout,
         CURLOPT_CONNECTTIMEOUT => 8,
-        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        CURLOPT_USERAGENT      => TW_USER_AGENTS[array_rand(TW_USER_AGENTS)],
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_HTTPHEADER     => [
             'Accept: text/html,application/json,application/xhtml+xml',
             'Accept-Language: en-US,en;q=0.9,ar;q=0.8',
-            'Cache-Control: no-cache',
+            'Cache-Control: no-cache, no-store, must-revalidate',
             'Pragma: no-cache',
         ],
     ]);
@@ -492,7 +508,7 @@ function tw_debug_http(string $url, int $timeout = 15): array {
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_TIMEOUT        => $timeout,
         CURLOPT_CONNECTTIMEOUT => 8,
-        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        CURLOPT_USERAGENT      => TW_USER_AGENTS[array_rand(TW_USER_AGENTS)],
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_HTTPHEADER     => [
             'Accept: text/html,application/json,application/xhtml+xml',
