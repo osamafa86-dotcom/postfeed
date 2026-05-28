@@ -5,8 +5,14 @@
  */
 require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . '/includes/cache.php';
 require_once __DIR__ . '/includes/ai_helper.php';
 require_once __DIR__ . '/includes/tts.php';
+
+// Settings are file-cached for the website's hot path, but cron needs
+// the live DB value (e.g. a freshly rotated AI key or cron_ai_enabled
+// flip). Flush once at the top so getSetting() reads the latest row.
+if (function_exists('cache_flush')) cache_flush();
 
 // HTTP access requires key; CLI always allowed
 if (PHP_SAPI !== 'cli') {
