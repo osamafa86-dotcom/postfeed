@@ -31,35 +31,57 @@ class SabahScreen extends ConsumerWidget {
             : ErrorRetryView(message: '$e', onRetry: () => ref.invalidate(_sabahProvider)),
         data: (d) {
           final sections = (d['sections'] as List? ?? []);
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              Text(d['title']?.toString() ?? '—',
-                  style: Theme.of(context).textTheme.headlineMedium),
-              const SizedBox(height: 8),
-              Text(d['date']?.toString() ?? '',
-                  style: Theme.of(context).textTheme.bodySmall),
-              const SizedBox(height: 16),
-              if ((d['summary'] ?? '').toString().isNotEmpty)
-                Text(d['summary'].toString(),
-                    style: Theme.of(context).textTheme.bodyLarge),
-              const SizedBox(height: 24),
-              for (final s in sections)
-                if (s is Map)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(s['title']?.toString() ?? '',
-                            style: Theme.of(context).textTheme.titleMedium),
-                        const SizedBox(height: 6),
-                        Text(s['body']?.toString() ?? '',
-                            style: Theme.of(context).textTheme.bodyMedium),
-                      ],
+          return RefreshIndicator(
+            onRefresh: () async => ref.invalidate(_sabahProvider),
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              children: [
+                Text(d['title']?.toString() ?? '—',
+                    style: Theme.of(context).textTheme.headlineMedium),
+                const SizedBox(height: 8),
+                Text(d['date']?.toString() ?? '',
+                    style: Theme.of(context).textTheme.bodySmall),
+                const SizedBox(height: 16),
+                if ((d['summary'] ?? '').toString().isNotEmpty)
+                  Text(d['summary'].toString(),
+                      style: Theme.of(context).textTheme.bodyLarge),
+                const SizedBox(height: 24),
+                for (final s in sections)
+                  if (s is Map)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(children: [
+                            if ((s['icon']?.toString() ?? '').isNotEmpty) ...[
+                              Text(s['icon'].toString(),
+                                  style: const TextStyle(fontSize: 22)),
+                              const SizedBox(width: 8),
+                            ],
+                            Expanded(
+                              child: Text(s['title']?.toString() ?? '',
+                                  style: Theme.of(context).textTheme.titleMedium),
+                            ),
+                          ]),
+                          const SizedBox(height: 6),
+                          Text(s['body']?.toString() ?? '',
+                              style: Theme.of(context).textTheme.bodyMedium),
+                        ],
+                      ),
                     ),
-                  ),
-            ],
+                if ((d['closing_question'] ?? '').toString().isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  const SizedBox(height: 12),
+                  Text(d['closing_question'].toString(),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontStyle: FontStyle.italic,
+                          )),
+                ],
+              ],
+            ),
           );
         },
       ),
