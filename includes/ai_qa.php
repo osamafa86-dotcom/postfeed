@@ -334,7 +334,13 @@ function qa_cache_key(string $question): string {
  *
  * @return array{ok:bool, answer?:string, articles?:array, follow_ups?:array, error?:string}
  */
-function qa_ask(string $question, int $ttl = 600): array {
+// Default cache TTL raised 10min → 1h. News Q&A answers don't change
+// meaningfully within an hour (the underlying 14-day article window
+// barely shifts), and a longer cache absorbs the "viral link on
+// Telegram → 50 identical questions" spike that used to hammer the AI
+// quota. Only successful answers are cached (failures return null →
+// treated as a miss), so a rate-limited answer never sticks.
+function qa_ask(string $question, int $ttl = 3600): array {
     $question = trim($question);
     if ($question === '' || mb_strlen($question) < 4) {
         return ['ok' => false, 'error' => 'السؤال قصير جداً. اكتب سؤالاً واضحاً (٤ أحرف على الأقل).'];
