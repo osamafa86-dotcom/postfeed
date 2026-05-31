@@ -45,7 +45,7 @@ The app talks to `https://feedsnews.net/api/v1/`. See `lib/core/api/` for endpoi
 definitions and `../api/v1/` for the PHP server.
 
 ## Bundle IDs
-- iOS:     `net.feedsnews.app`
+- iOS:     `net.feedsnews.newsfeed`
 - Android: `net.feedsnews.app`
 
 ## Build & ship
