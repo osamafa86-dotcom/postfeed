@@ -50,9 +50,29 @@ function ai_provider_active(): string {
 function ai_provider_tool_call(string $prompt, array $tool, int $max_tokens = 2000): array {
     $provider = ai_provider_active();
     if ($provider === 'anthropic') {
-        return _ai_anthropic_tool_call($prompt, $tool, $max_tokens);
+        $res = _ai_anthropic_tool_call($prompt, $tool, $max_tokens);
+        // Cross-provider failover: if Anthropic is the primary but errors
+        // (lapsed sub, 429, 5xx), try Gemini before giving up — as long
+        // as a Gemini key is configured.
+        if (empty($res['ok']) && _ai_gemini_key() !== '') {
+            error_log('[ai_provider] anthropic tool_call failed (' . ($res['error'] ?? '') . ') — failing over to gemini');
+            $alt = _ai_gemini_tool_call($prompt, $tool, $max_tokens);
+            if (!empty($alt['ok'])) return $alt;
+        }
+        return $res;
     }
-    return _ai_gemini_tool_call($prompt, $tool, $max_tokens);
+
+    $res = _ai_gemini_tool_call($prompt, $tool, $max_tokens);
+    // Gemini free tier 429s easily. If the primary Gemini call failed and
+    // an Anthropic key exists, fail over to it so daily features
+    // (morning briefing, evolving-story narration) still publish instead
+    // of silently producing nothing.
+    if (empty($res['ok']) && _ai_anthropic_key() !== '') {
+        error_log('[ai_provider] gemini tool_call failed (' . ($res['error'] ?? '') . ') — failing over to anthropic');
+        $alt = _ai_anthropic_tool_call($prompt, $tool, $max_tokens);
+        if (!empty($alt['ok'])) return $alt;
+    }
+    return $res;
 }
 
 /**
