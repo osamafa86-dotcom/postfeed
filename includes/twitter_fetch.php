@@ -667,7 +667,22 @@ function tw_fetch_via_custom_rss(string $rssUrl, int $limit): array {
     return $out;
 }
 
-function tw_sync_all_sources(): int {
+// Per-source minimum interval between scrape attempts. Twitter's
+// syndication endpoint throttles by server IP, and the SSE scraper
+// fires tw_sync_all_sources() every ~8 seconds whenever anyone has the
+// homepage open. Without this floor, every handle gets re-hit ~10
+// times per minute (×4 transports each on failure) — that's exactly
+// the kind of burst that earns a 429 for the whole pool, after which
+// syndication.twitter.com returns an empty timeline for ALL handles
+// (the visible symptom: "no tweets returned" across every source).
+//
+// With the floor, each handle is re-checked at most once per
+// TW_SOURCE_REFETCH_FLOOR_SECS, no matter how many SSE clients are
+// kicking the scraper concurrently. Real-time freshness is bounded
+// below by this constant, not by TW_SCRAPE_EVERY_SECS.
+const TW_SOURCE_REFETCH_FLOOR_SECS = 75;
+
+function tw_sync_all_sources(bool $force = false): int {
     $db = getDB();
 
     // Lazy-add the error-tracking + RSS-fallback columns so the admin
@@ -687,10 +702,33 @@ function tw_sync_all_sources(): int {
     } catch (Throwable $e) {}
 
     try {
-        $sources = $db->query("SELECT * FROM twitter_sources WHERE is_active = 1")->fetchAll(PDO::FETCH_ASSOC);
+        // Stalest first so when the rate budget runs out mid-batch the
+        // freshest data still comes from the handles that needed it most.
+        $sources = $db->query("SELECT * FROM twitter_sources
+                                WHERE is_active = 1
+                                ORDER BY last_fetched_at IS NULL DESC,
+                                         last_fetched_at ASC")
+                      ->fetchAll(PDO::FETCH_ASSOC);
     } catch (Throwable $e) {
         error_log('tw_sync: sources query failed: ' . $e->getMessage());
         return 0;
+    }
+
+    // Per-source freshness gate — skip handles re-fetched recently so
+    // back-to-back SSE-driven scrapes don't keep hammering the same
+    // handles. Admin "🔄 جلب الآن" passes $force=true to bypass.
+    // The floor is overridable via settings.twitter_refetch_floor_secs
+    // so ops can raise it during persistent throttling without a deploy.
+    if (!$force) {
+        $floor = (int)getSetting('twitter_refetch_floor_secs', (string)TW_SOURCE_REFETCH_FLOOR_SECS);
+        if ($floor < 10) $floor = TW_SOURCE_REFETCH_FLOOR_SECS;
+        $now = time();
+        $sources = array_values(array_filter($sources, function ($src) use ($now, $floor) {
+            if (empty($src['last_fetched_at'])) return true;
+            $age = $now - strtotime((string)$src['last_fetched_at']);
+            return $age >= $floor;
+        }));
+        if (empty($sources)) return 0;
     }
 
     $total = 0;
