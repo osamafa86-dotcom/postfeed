@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' as intl;
@@ -667,7 +669,7 @@ Future<void> _exportPdf(BuildContext context, Map<String, dynamic> data) async {
   }
 }
 
-Future<List<int>> _buildPdf(Map<String, dynamic> data) async {
+Future<Uint8List> _buildPdf(Map<String, dynamic> data) async {
   // Cairo font has solid Arabic shaping and is freely embeddable. Pull
   // from Google Fonts via the `printing` helper so we don't ship a 1MB
   // asset for a feature most users hit a few times.

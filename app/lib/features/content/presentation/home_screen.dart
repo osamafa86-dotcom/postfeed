@@ -198,12 +198,13 @@ class _LatestArticlesSlivers extends ConsumerWidget {
     // last "item" so it scrolls with the list and the user reaches it
     // naturally at the end.
     final initialIds = initial.map((a) => a.id).toSet();
-    final totalArticles = initial.length + extra.items.length;
+    final int totalArticles = initial.length + extra.items.length;
+    final int totalCells = totalArticles + 1; // +1 = the load-more cell
 
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       sliver: SliverList.separated(
-        itemCount: totalArticles + 1, // +1 = the load-more cell
+        itemCount: totalCells,
         separatorBuilder: (_, i) =>
             i == totalArticles - 1 ? const SizedBox(height: 16) : const SizedBox(height: 10),
         itemBuilder: (_, i) {

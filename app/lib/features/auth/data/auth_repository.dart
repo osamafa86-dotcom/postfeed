@@ -95,6 +95,11 @@ class AuthRepository {
         AppleIDAuthorizationScopes.fullName,
       ]);
     } on SignInWithAppleAuthorizationException catch (e) {
+      // Default branch matters here — newer sign_in_with_apple platform
+      // versions added codes like `notInteractive` / `credentialImport`
+      // that Dart's exhaustive-switch checker now flags. Falling back to
+      // a generic apology preserves forward-compat without breaking the
+      // build every time the plugin gains a code.
       switch (e.code) {
         case AuthorizationErrorCode.canceled:
           throw const ApiException(
@@ -111,6 +116,9 @@ class AuthRepository {
         case AuthorizationErrorCode.unknown:
           throw ApiException('apple_signin_unknown',
               'حدث خطأ من Apple: ${e.message}');
+        default:
+          throw ApiException('apple_signin_other',
+              'لم يكتمل تسجيل الدخول بـ Apple (${e.code.name}): ${e.message}');
       }
     } on SignInWithAppleNotSupportedException catch (_) {
       throw const ApiException('apple_signin_unsupported',
