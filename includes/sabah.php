@@ -270,6 +270,11 @@ function sabah_generate(): ?array {
     if (empty($call['ok']) || !is_array($call['input'])) {
         $GLOBALS['_sabah_last_error'] = 'AI: ' . ($call['error'] ?? 'unknown');
         error_log('[sabah] AI failed: ' . ($call['error'] ?? ''));
+        // Don't return null — the AI free tier (Gemini 20 req/day after
+        // the Dec-2025 cuts) is regularly exhausted, and a missing
+        // morning briefing makes the home-screen card look broken.
+        // Build a no-AI briefing straight from the clustered articles
+        // instead. It's less narrative, but it ships every day.
         return sabah_build_without_ai();
     }
 
