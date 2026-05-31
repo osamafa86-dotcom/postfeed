@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
@@ -322,11 +323,21 @@ class MediaRepository {
 final mediaRepositoryProvider =
     Provider<MediaRepository>((ref) => MediaRepository(ref.watch(apiClientProvider)));
 
-/// Auto-refreshing social feed providers — poll every 60 seconds.
-/// Polling only starts when the provider has active listeners (i.e. the UI is visible).
-final telegramFeedProvider = FutureProvider<List<TelegramMessage>>((ref) {
+/// True while the app is in the foreground (or before the first lifecycle
+/// event is reported). Used to skip polling ticks while backgrounded.
+bool _appResumed() {
+  final s = WidgetsBinding.instance.lifecycleState;
+  return s == null || s == AppLifecycleState.resumed;
+}
+
+/// Auto-refreshing social feeds. These are `autoDispose` so the periodic timer
+/// is torn down as soon as no screen is watching the feed (the user navigated
+/// away), and each tick is skipped while the app is backgrounded — so we don't
+/// drain battery/data polling when nothing is on screen.
+final telegramFeedProvider =
+    FutureProvider.autoDispose<List<TelegramMessage>>((ref) {
   final timer = Timer.periodic(const Duration(seconds: 60), (_) {
-    ref.invalidateSelf();
+    if (_appResumed()) ref.invalidateSelf();
   });
   ref.onDispose(timer.cancel);
   return ref.watch(mediaRepositoryProvider).telegram();
@@ -336,17 +347,19 @@ final telegramFeedProvider = FutureProvider<List<TelegramMessage>>((ref) {
 // X has no realtime push and its scraper hits stale caches more often.
 // Each poll passes sync:true so the API kicks a real scrape behind its
 // shared lock — the lock prevents stampedes across mobile + web users.
-final twitterFeedProvider = FutureProvider<List<TwitterMessage>>((ref) {
+final twitterFeedProvider =
+    FutureProvider.autoDispose<List<TwitterMessage>>((ref) {
   final timer = Timer.periodic(const Duration(seconds: 30), (_) {
-    ref.invalidateSelf();
+    if (_appResumed()) ref.invalidateSelf();
   });
   ref.onDispose(timer.cancel);
   return ref.watch(mediaRepositoryProvider).twitter(sync: true);
 });
 
-final youtubeFeedProvider = FutureProvider<List<YoutubeVideo>>((ref) {
+final youtubeFeedProvider =
+    FutureProvider.autoDispose<List<YoutubeVideo>>((ref) {
   final timer = Timer.periodic(const Duration(seconds: 60), (_) {
-    ref.invalidateSelf();
+    if (_appResumed()) ref.invalidateSelf();
   });
   ref.onDispose(timer.cancel);
   return ref.watch(mediaRepositoryProvider).youtube();
