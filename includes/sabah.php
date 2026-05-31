@@ -34,6 +34,20 @@ function sabah_ensure_table(): void {
             generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_date (briefing_date)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        // Lazy ALTER for the v2 fields — keeps existing installs working
+        // without a separate migration step.
+        $cols = [
+            'subheadline'  => "ADD COLUMN subheadline VARCHAR(400) NOT NULL DEFAULT ''",
+            'key_numbers'  => "ADD COLUMN key_numbers TEXT NULL",
+            'regions'      => "ADD COLUMN regions TEXT NULL",
+            'quote_of_day' => "ADD COLUMN quote_of_day TEXT NULL",
+        ];
+        foreach ($cols as $col => $ddl) {
+            try {
+                $exists = $db->query("SHOW COLUMNS FROM sabah_briefings LIKE '" . $col . "'")->fetch();
+                if (!$exists) $db->exec("ALTER TABLE sabah_briefings " . $ddl);
+            } catch (Throwable $e) {}
+        }
         $done = true;
     } catch (Throwable $e) {
         error_log('[sabah] ensure_table: ' . $e->getMessage());
@@ -147,68 +161,115 @@ function sabah_generate(): ?array {
         return null;
     }
 
-    $prompt = "أنت رئيس تحرير نشرة \"صباح الخير من نيوز فيد\" — نشرة صباحية يومية بأسلوب NYT The Morning. "
-            . "لديك {$data['count']} ملفات إخبارية بارزة من آخر 24 ساعة. مهمتك: كتابة موجز صباحي "
-            . "احترافي ممتع بالعربية الفصحى. هذه ليست قائمة عناوين، بل مقال صباحي قصير يروي القصص بسياق.\n\n"
-            . "التعليمات:\n"
-            . "- العنوان (headline): جملة جذابة أقل من 80 حرفاً تمثل أبرز ما يحدث اليوم.\n"
-            . "- الافتتاحية (hook): فقرة من 3-5 جمل بصوت تحريري دافئ. تبدأ بأبرز خبر ثم تربط بالمحاور الأخرى.\n"
-            . "- الأقسام (sections): 3-6 أقسام، كل قسم يمثّل محوراً إخبارياً.\n"
-            . "  · لكل قسم: عنوان + icon + فقرة من 2-4 جمل تروي القصة بالسياق وليس مجرد ملخّص.\n"
-            . "- السؤال الختامي (closing_question): سؤال مفتوح يحفّز القارئ على التفكير.\n"
-            . "- لا تخترع معلومات غير موجودة في الملفات.\n"
-            . "- استخدم أسلوباً صحفياً دافئاً كأنك تكتب لصديق مثقّف.\n\n"
+    $prompt = "أنت رئيس تحرير نشرة \"صباح فيد نيوز\" — تقرير صباحي يومي بأسلوب NYT The Morning + Reuters Daily Briefing.\n\n"
+            . "لديك {$data['count']} ملفات إخبارية بارزة من آخر 24 ساعة. مهمتك: كتابة تقرير صباحي احترافي ومعمّق "
+            . "يجعل القارئ يفهم اليوم الإخباري كاملاً في 3-5 دقائق قراءة.\n\n"
+            . "اكتب بالعربية الفصحى الراقية، أسلوب صحفي تحريري كأنك تكتب لصديق مثقّف يحب التحليل.\n\n"
+            . "البنية المطلوبة:\n\n"
+            . "1. **headline**: عنوان رئيسي (60-80 حرفاً) يجمع 2-3 محاور بطريقة جذابة.\n\n"
+            . "2. **subheadline**: عنوان فرعي (80-120 حرفاً) يوضّح الخيط الرابط بين الأحداث.\n\n"
+            . "3. **hook**: فقرة افتتاحية (4-6 جمل، 80-150 كلمة) بصوت تحريري دافئ. تبدأ بأقوى ما حدث، "
+            . "تربط بين المحاور، تعطي السياق العام لليوم.\n\n"
+            . "4. **sections** (4-6 أقسام): كل قسم محور إخباري كامل، ليس مجرد ملخص.\n"
+            . "   لكل قسم:\n"
+            . "   - title: عنوان جذاب (40-70 حرفاً)\n"
+            . "   - icon: emoji واحد يعبّر عن الموضوع\n"
+            . "   - body: فقرة سردية (4-7 جمل، 80-180 كلمة) تروي القصة بالسياق، التطورات، الأرقام\n"
+            . "   - why_matters: جملة واحدة قوية تجيب \"لماذا هذا الخبر مهم؟\" (15-30 كلمة)\n"
+            . "   - tags: مصفوفة 2-4 كلمات مفتاحية (قسم/منطقة/موضوع)\n\n"
+            . "5. **key_numbers**: مصفوفة من 3-5 أرقام/إحصائيات بارزة من الأخبار. كل واحد:\n"
+            . "   - value: الرقم نفسه (مثل \"5 شهداء\", \"3 مليار دولار\")\n"
+            . "   - context: جملة قصيرة توضح ما هو (مثل \"حصيلة العدوان منذ الفجر\")\n\n"
+            . "6. **regions**: مصفوفة 2-4 مناطق جغرافية محورية اليوم (مثل: غزة، جنوب لبنان، الضفة).\n\n"
+            . "7. **quote_of_day**: اقتباس أو تصريح بارز من الأخبار (إن وُجد). يحتوي:\n"
+            . "   - text: نص الاقتباس\n"
+            . "   - speaker: من قاله\n"
+            . "   - context: متى وأين بإيجاز\n"
+            . "   (لو لم يوجد اقتباس قوي، اتركه null)\n\n"
+            . "8. **closing_question**: سؤال ختامي عميق يحفّز القارئ على التفكير (لا سؤال سطحي).\n\n"
+            . "قواعد صارمة:\n"
+            . "- لا تخترع أي معلومة غير موجودة في الملفات.\n"
+            . "- استخدم تواريخ وأرقاماً دقيقة من المصادر.\n"
+            . "- أعطِ ثقلاً أكبر للأخبار اللي تغطيها عدة مصادر (مؤشر أهمية).\n"
+            . "- تجنّب الكليشيهات الصحفية المستهلكة.\n\n"
             . "الملفات الإخبارية:\n" . $data['corpus'];
 
     $tool = [
         'name'        => 'submit_sabah_briefing',
-        'description' => 'Submit the morning editorial briefing.',
+        'description' => 'Submit the comprehensive morning editorial briefing.',
         'input_schema' => [
             'type'     => 'object',
             'properties' => [
                 'headline' => [
                     'type'        => 'string',
-                    'description' => 'عنوان رئيسي جذاب أقل من 80 حرفاً.',
+                    'description' => 'عنوان رئيسي 60-80 حرفاً يجمع 2-3 محاور.',
+                ],
+                'subheadline' => [
+                    'type'        => 'string',
+                    'description' => 'عنوان فرعي 80-120 حرفاً يوضح الخيط الرابط.',
                 ],
                 'hook' => [
                     'type'        => 'string',
-                    'description' => 'فقرة افتتاحية من 3-5 جمل بصوت تحريري دافئ.',
+                    'description' => 'فقرة افتتاحية 4-6 جمل (80-150 كلمة).',
                 ],
                 'sections' => [
                     'type'        => 'array',
-                    'description' => '3-6 أقسام إخبارية.',
+                    'description' => '4-6 أقسام إخبارية معمّقة.',
                     'items' => [
                         'type' => 'object',
                         'properties' => [
-                            'title' => ['type' => 'string', 'description' => 'عنوان القسم.'],
-                            'icon'  => ['type' => 'string', 'description' => 'رمز emoji واحد.'],
-                            'body'  => ['type' => 'string', 'description' => 'فقرة من 2-4 جمل تحكي القصة بسياق.'],
+                            'title' => ['type' => 'string'],
+                            'icon'  => ['type' => 'string', 'description' => 'emoji واحد'],
+                            'body'  => ['type' => 'string', 'description' => 'فقرة سردية 4-7 جمل (80-180 كلمة)'],
+                            'why_matters' => ['type' => 'string', 'description' => 'لماذا هذا الخبر مهم - جملة قوية'],
+                            'tags' => [
+                                'type' => 'array',
+                                'description' => '2-4 كلمات مفتاحية',
+                                'items' => ['type' => 'string'],
+                            ],
                         ],
-                        'required' => ['title', 'body'],
+                        'required' => ['title', 'body', 'why_matters'],
+                    ],
+                ],
+                'key_numbers' => [
+                    'type'        => 'array',
+                    'description' => '3-5 أرقام/إحصائيات بارزة.',
+                    'items' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'value'   => ['type' => 'string', 'description' => 'الرقم/الإحصائية'],
+                            'context' => ['type' => 'string', 'description' => 'شرح موجز'],
+                        ],
+                        'required' => ['value', 'context'],
+                    ],
+                ],
+                'regions' => [
+                    'type'        => 'array',
+                    'description' => '2-4 مناطق جغرافية محورية.',
+                    'items' => ['type' => 'string'],
+                ],
+                'quote_of_day' => [
+                    'type'        => 'object',
+                    'description' => 'اقتباس بارز - أو null لو لا يوجد.',
+                    'properties' => [
+                        'text'    => ['type' => 'string'],
+                        'speaker' => ['type' => 'string'],
+                        'context' => ['type' => 'string'],
                     ],
                 ],
                 'closing_question' => [
                     'type'        => 'string',
-                    'description' => 'سؤال ختامي مفتوح يحفّز التفكير.',
+                    'description' => 'سؤال ختامي عميق.',
                 ],
             ],
             'required' => ['headline', 'hook', 'sections', 'closing_question'],
         ],
     ];
 
-    $call = ai_provider_tool_call($prompt, $tool, 3000);
+    $call = ai_provider_tool_call($prompt, $tool, 5000);
     if (empty($call['ok']) || !is_array($call['input'])) {
-        // Distinguish AI failure from "not enough news" — the old code
-        // returned null for both, so a Gemini 429 looked identical to a
-        // quiet news day in the cron output ("not enough clusters?").
-        // Stash the real reason where the cron can read it.
         $GLOBALS['_sabah_last_error'] = 'AI: ' . ($call['error'] ?? 'unknown');
         error_log('[sabah] AI failed: ' . ($call['error'] ?? ''));
-        // Don't return null — the AI free tier (Gemini 20 req/day after
-        // the Dec-2025 cuts) is regularly exhausted, and a missing
-        // morning briefing makes the home-screen card look broken.
-        // Build a no-AI briefing straight from the clustered articles
-        // instead. It's less narrative, but it ships every day.
         return sabah_build_without_ai();
     }
 
@@ -219,17 +280,62 @@ function sabah_generate(): ?array {
         $title = trim((string)($sec['title'] ?? ''));
         $body  = trim((string)($sec['body']  ?? ''));
         if ($title === '' || $body === '') continue;
+        $tags = [];
+        foreach ((array)($sec['tags'] ?? []) as $t) {
+            $t = trim((string)$t);
+            if ($t !== '') $tags[] = $t;
+        }
         $sections[] = [
-            'title' => $title,
-            'icon'  => trim((string)($sec['icon'] ?? '')),
-            'body'  => $body,
+            'title'       => $title,
+            'icon'        => trim((string)($sec['icon'] ?? '')),
+            'body'        => $body,
+            'why_matters' => trim((string)($sec['why_matters'] ?? '')),
+            'tags'        => $tags,
         ];
+    }
+
+    // Key numbers — clean + cap at 5 entries.
+    $keyNumbers = [];
+    foreach ((array)($p['key_numbers'] ?? []) as $n) {
+        if (!is_array($n)) continue;
+        $value   = trim((string)($n['value']   ?? ''));
+        $context = trim((string)($n['context'] ?? ''));
+        if ($value === '' || $context === '') continue;
+        $keyNumbers[] = ['value' => $value, 'context' => $context];
+        if (count($keyNumbers) >= 5) break;
+    }
+
+    // Regions — dedupe + cap at 4.
+    $regions = [];
+    foreach ((array)($p['regions'] ?? []) as $r) {
+        $r = trim((string)$r);
+        if ($r !== '' && !in_array($r, $regions, true)) $regions[] = $r;
+        if (count($regions) >= 4) break;
+    }
+
+    // Quote — only keep if both speaker and text exist.
+    $quote = null;
+    $q = $p['quote_of_day'] ?? null;
+    if (is_array($q)) {
+        $qText    = trim((string)($q['text']    ?? ''));
+        $qSpeaker = trim((string)($q['speaker'] ?? ''));
+        if ($qText !== '' && $qSpeaker !== '') {
+            $quote = [
+                'text'    => $qText,
+                'speaker' => $qSpeaker,
+                'context' => trim((string)($q['context'] ?? '')),
+            ];
+        }
     }
 
     return [
         'headline'         => trim((string)($p['headline'] ?? '')),
+        'subheadline'      => trim((string)($p['subheadline'] ?? '')),
         'hook'             => trim((string)($p['hook'] ?? '')),
         'sections'         => $sections,
+        'key_numbers'      => $keyNumbers,
+        'regions'          => $regions,
+        'quote_of_day'     => $quote,
         'closing_question' => trim((string)($p['closing_question'] ?? '')),
         'article_count'    => $data['article_count'],
     ];
@@ -335,19 +441,34 @@ function sabah_save(array $briefing, string $date): ?int {
         $db = getDB();
         $db->prepare(
             "INSERT INTO sabah_briefings
-                (briefing_date, headline, hook, sections, closing_question, article_count)
-             VALUES (?, ?, ?, ?, ?, ?)
+                (briefing_date, headline, subheadline, hook, sections,
+                 key_numbers, regions, quote_of_day,
+                 closing_question, article_count)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE
-                headline = VALUES(headline), hook = VALUES(hook),
-                sections = VALUES(sections), closing_question = VALUES(closing_question),
-                article_count = VALUES(article_count), generated_at = NOW()"
+                headline = VALUES(headline),
+                subheadline = VALUES(subheadline),
+                hook = VALUES(hook),
+                sections = VALUES(sections),
+                key_numbers = VALUES(key_numbers),
+                regions = VALUES(regions),
+                quote_of_day = VALUES(quote_of_day),
+                closing_question = VALUES(closing_question),
+                article_count = VALUES(article_count),
+                generated_at = NOW()"
         )->execute([
             $date,
-            $briefing['headline'],
-            $briefing['hook'],
-            json_encode($briefing['sections'], JSON_UNESCAPED_UNICODE),
-            $briefing['closing_question'],
-            (int)$briefing['article_count'],
+            $briefing['headline'] ?? '',
+            $briefing['subheadline'] ?? '',
+            $briefing['hook'] ?? '',
+            json_encode($briefing['sections'] ?? [], JSON_UNESCAPED_UNICODE),
+            json_encode($briefing['key_numbers'] ?? [], JSON_UNESCAPED_UNICODE),
+            json_encode($briefing['regions'] ?? [], JSON_UNESCAPED_UNICODE),
+            !empty($briefing['quote_of_day'])
+                ? json_encode($briefing['quote_of_day'], JSON_UNESCAPED_UNICODE)
+                : null,
+            $briefing['closing_question'] ?? '',
+            (int)($briefing['article_count'] ?? 0),
         ]);
         return (int)$db->lastInsertId() ?: null;
     } catch (Throwable $e) {
@@ -367,8 +488,7 @@ function sabah_get(string $date): ?array {
         $stmt->execute([$date]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$row) return null;
-        $row['sections'] = json_decode((string)$row['sections'], true) ?: [];
-        return $row;
+        return _sabah_decode_row($row);
     } catch (Throwable $e) {
         return null;
     }
@@ -383,11 +503,24 @@ function sabah_get_latest(): ?array {
         $db = getDB();
         $row = $db->query("SELECT * FROM sabah_briefings ORDER BY briefing_date DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
         if (!$row) return null;
-        $row['sections'] = json_decode((string)$row['sections'], true) ?: [];
-        return $row;
+        return _sabah_decode_row($row);
     } catch (Throwable $e) {
         return null;
     }
+}
+
+/**
+ * Decode the JSON columns of a sabah_briefings row into native arrays.
+ * Centralized so sabah_get / sabah_get_latest stay in sync and a future
+ * column addition only needs one edit.
+ */
+function _sabah_decode_row(array $row): array {
+    $row['sections']     = json_decode((string)($row['sections']    ?? ''), true) ?: [];
+    $row['key_numbers']  = json_decode((string)($row['key_numbers'] ?? ''), true) ?: [];
+    $row['regions']      = json_decode((string)($row['regions']     ?? ''), true) ?: [];
+    $q = $row['quote_of_day'] ?? null;
+    $row['quote_of_day'] = is_string($q) && $q !== '' ? json_decode($q, true) : null;
+    return $row;
 }
 
 /**
