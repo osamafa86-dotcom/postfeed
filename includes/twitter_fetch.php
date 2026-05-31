@@ -130,15 +130,48 @@ function tw_fetch_via_nitter(string $username, int $limit): array {
 }
 
 /**
- * Parse an RSS feed (Nitter or RSSHub shape) into our tweet rows.
- * Items without a /status/NNN link are ignored because they're not
- * tweets (e.g. retweets that Nitter renders differently).
+ * Parse an RSS or Atom feed (Nitter, RSSHub, or modern Nitter fork shape)
+ * into our tweet rows. Items without a /status/NNN link are ignored because
+ * they're not tweets (e.g. retweets that Nitter renders differently).
+ *
+ * Handles three feed shapes seen in the wild from Nitter forks:
+ *   - Classic RSS 2.0:  <rss><channel><item><link>...</link></item>
+ *   - Atom 1.0:         <feed><entry><link href="..."/></entry>
+ *     (adminforge.de and a few revival forks ship Atom now)
+ *   - HTML challenge page (Cloudflare/Anubis interstitial) — detected and
+ *     logged so we know which instances are gated and not silently treated
+ *     as "empty feed".
  */
 function tw_parse_rss_feed(string $xml): array {
+    // Fast-fail on HTML challenge / error pages before SimpleXML chokes.
+    // Anubis (used by tiekoetter/adminforge), Cloudflare interstitials,
+    // and Nitter's own "User not found" HTML all start with <!DOCTYPE or
+    // <html. Logging the snippet lets us see which instance went HTML.
+    $head = ltrim(substr($xml, 0, 200));
+    if (stripos($head, '<!doctype html') === 0 || stripos($head, '<html') === 0) {
+        error_log('tw_parse_rss_feed: got HTML page (gated/blocked), head=' . substr($head, 0, 120));
+        return [];
+    }
+
     libxml_use_internal_errors(true);
     $rss = simplexml_load_string($xml);
     libxml_clear_errors();
-    if (!$rss || !isset($rss->channel->item)) return [];
+    if (!$rss) {
+        error_log('tw_parse_rss_feed: simplexml load failed, head=' . substr($xml, 0, 200));
+        return [];
+    }
+
+    // Atom feed shape: <feed><entry>...</entry></feed>. Some Nitter forks
+    // (notably adminforge.de) emit Atom instead of RSS 2.0.
+    $rootName = $rss->getName();
+    if ($rootName === 'feed' || isset($rss->entry)) {
+        return tw_parse_atom_entries($rss);
+    }
+
+    if (!isset($rss->channel->item)) {
+        error_log("tw_parse_rss_feed: unknown shape, root=$rootName, head=" . substr($xml, 0, 200));
+        return [];
+    }
 
     $out = [];
     foreach ($rss->channel->item as $item) {
@@ -179,6 +212,72 @@ function tw_parse_rss_feed(string $xml): array {
 
         // Canonicalize the tweet URL to twitter.com so clicks work
         // regardless of which instance gave us the row.
+        $canonLink = preg_replace(
+            '#^https?://[^/]+/#',
+            'https://twitter.com/',
+            $link
+        );
+
+        $out[] = [
+            'tweet_id'  => $tweetId,
+            'text'      => $text,
+            'image_url' => $image,
+            'posted_at' => $postedAt,
+            'url'       => $canonLink,
+        ];
+    }
+    return $out;
+}
+
+/**
+ * Parse an Atom 1.0 feed (the shape adminforge.de and a few revival Nitter
+ * forks ship). Atom uses <entry> instead of <item> and <link href="..."/>
+ * as a self-closing element with the URL in an attribute. Content lives
+ * under <content>, <summary>, or rarely <description>.
+ */
+function tw_parse_atom_entries(SimpleXMLElement $feed): array {
+    $out = [];
+    $entries = $feed->entry ?? [];
+    foreach ($entries as $entry) {
+        // Atom link is <link href="..."/>; sometimes there are multiple
+        // (rel="alternate", rel="self", etc.) — pick the alternate or
+        // the first one without rel.
+        $link = '';
+        foreach ($entry->link as $l) {
+            $rel = (string)($l['rel'] ?? '');
+            $href = (string)($l['href'] ?? '');
+            if ($href === '') continue;
+            if ($rel === '' || $rel === 'alternate') { $link = $href; break; }
+            if ($link === '') $link = $href;
+        }
+        if ($link === '') $link = (string)$entry->id;
+        if (!preg_match('#/status/(\d+)#', $link, $m)) continue;
+        $tweetId = $m[1];
+
+        $content = (string)($entry->content ?? $entry->summary ?? $entry->description ?? $entry->title ?? '');
+
+        $image = '';
+        if (preg_match('#<img[^>]+src=["\']([^"\']+)["\']#i', $content, $im)) {
+            $image = html_entity_decode($im[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            if (preg_match('#^https?://[^/]+/pic/(.+)$#', $image, $pm)) {
+                $inner = rawurldecode($pm[1]);
+                $image = preg_match('#^https?://#', $inner)
+                    ? $inner
+                    : 'https://pbs.twimg.com/' . ltrim($inner, '/');
+            }
+        }
+
+        $text = trim(strip_tags(str_replace(['<br/>', '<br>', '<br />'], "\n", $content)));
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = trim((string)preg_replace('#https?://t\.co/\S+$#', '', $text));
+
+        // Atom uses <published> or <updated>; RSS uses <pubDate>.
+        $pubRaw = (string)($entry->published ?? $entry->updated ?? '');
+        $ts = $pubRaw !== '' ? strtotime($pubRaw) : 0;
+        $postedAt = $ts ? date('Y-m-d H:i:s', $ts) : date('Y-m-d H:i:s');
+
+        if ($text === '' && $image === '') continue;
+
         $canonLink = preg_replace(
             '#^https?://[^/]+/#',
             'https://twitter.com/',
