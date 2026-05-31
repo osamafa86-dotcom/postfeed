@@ -65,17 +65,34 @@ function sabah_ensure_table(): void {
  * `src_count >= 2` cutoff silently skipped generation whenever the
  * news flow slowed and the morning page just 404'd.
  */
-function sabah_collect_top_clusters(int $maxClusters = 8): array {
+function sabah_collect_top_clusters(int $maxClusters = 18): array {
     try {
         $db = getDB();
-        $limitSql = max(1, min(20, $maxClusters));
+        $limitSql = max(1, min(30, $maxClusters));
 
-        // First pass: clusters with multi-source consensus (highest quality).
+        // Palestinian-focus keyword set. Clusters whose title/excerpt
+        // mention any of these get scored higher and surface first in the
+        // briefing — the editorial priority is wall-to-wall coverage of
+        // Palestine and the occupation. The regex matches anywhere in
+        // the text, no word-boundary check needed for Arabic.
+        $paleRegex = 'فلسطين|غزة|الضفة|الضفة الغربية|القدس|الأقصى|المسجد الأقصى|قبة الصخرة|'
+                   . 'الأسرى|الأسير|الأسيرات|أسير|أسيرات|معتقل|اعتقال|اعتقالات|نادي الأسير|'
+                   . 'مستوطن|مستوطنين|الاستيطان|استيطان|مستوطنة|مستوطنات|بؤرة استيطانية|اعتداءات المستوطنين|'
+                   . 'الاحتلال|الجيش الإسرائيلي|إسرائيل|إسرائيلي|إسرائيلية|نتنياهو|الكنيست|'
+                   . 'رفح|خان يونس|بيت حانون|بيت لاهيا|جباليا|الشجاعية|دير البلح|النصيرات|المغازي|البريج|مخيم الشاطئ|شمال غزة|جنوب غزة|معبر رفح|كرم أبو سالم|'
+                   . 'نابلس|جنين|مخيم جنين|رام الله|الخليل|طولكرم|قلقيلية|بيت لحم|أريحا|سلفيت|طوباس|بيتا|حوارة|مخيم بلاطة|مخيم نور شمس|'
+                   . 'حزب الله|جنوب لبنان|الحوثي|الحوثيين|اليمن|صنعاء|'
+                   . 'حماس|الجهاد الإسلامي|الفصائل|كتائب القسام|سرايا القدس|'
+                   . 'شهيد|شهداء|استشهاد|عدوان|قصف|اقتحام|مجزرة|إبادة';
+
+        // First pass: multi-source clusters, ranked by Palestine score first.
         $sql = "SELECT a.cluster_key,
                        COUNT(DISTINCT a.source_id) AS src_count,
                        COUNT(*) AS art_count,
                        MAX(a.published_at) AS latest_at,
-                       GROUP_CONCAT(DISTINCT s.name SEPARATOR '، ') AS source_names
+                       GROUP_CONCAT(DISTINCT s.name SEPARATOR '، ') AS source_names,
+                       SUM(CASE WHEN (a.title REGEXP ? OR a.excerpt REGEXP ?)
+                                THEN 1 ELSE 0 END) AS pale_score
                   FROM articles a
                   LEFT JOIN sources s ON a.source_id = s.id
                  WHERE a.status = 'published'
@@ -83,54 +100,63 @@ function sabah_collect_top_clusters(int $maxClusters = 8): array {
                    AND a.published_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
                  GROUP BY a.cluster_key
                 HAVING src_count >= 2
-                 ORDER BY src_count DESC, latest_at DESC
+                 ORDER BY pale_score DESC, src_count DESC, latest_at DESC
                  LIMIT {$limitSql}";
-        $clusters = $db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $db->prepare($sql);
+        $stmt->execute([$paleRegex, $paleRegex]);
+        $clusters = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Second pass: if we got nothing or too few, fall back to top
-        // single-source clusters so the briefing still ships on slow days.
-        if (count($clusters) < 2) {
+        // Fallback: include single-source clusters too if we're short.
+        if (count($clusters) < 6) {
             $sqlFallback = "SELECT a.cluster_key,
-                                   1 AS src_count,
+                                   COUNT(DISTINCT a.source_id) AS src_count,
                                    COUNT(*) AS art_count,
                                    MAX(a.published_at) AS latest_at,
-                                   MAX(s.name) AS source_names
+                                   MAX(s.name) AS source_names,
+                                   SUM(CASE WHEN (a.title REGEXP ? OR a.excerpt REGEXP ?)
+                                            THEN 1 ELSE 0 END) AS pale_score
                               FROM articles a
                               LEFT JOIN sources s ON a.source_id = s.id
                              WHERE a.status = 'published'
                                AND a.cluster_key IS NOT NULL AND a.cluster_key <> '-'
                                AND a.published_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
                              GROUP BY a.cluster_key
-                             ORDER BY art_count DESC, latest_at DESC
+                             ORDER BY pale_score DESC, art_count DESC, latest_at DESC
                              LIMIT {$limitSql}";
-            $clusters = $db->query($sqlFallback)->fetchAll(PDO::FETCH_ASSOC);
-            error_log('[sabah] using single-source fallback — only ' . count($clusters) . ' clusters available');
+            $stmt = $db->prepare($sqlFallback);
+            $stmt->execute([$paleRegex, $paleRegex]);
+            $clusters = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            error_log('[sabah] using fallback ranking — got ' . count($clusters) . ' clusters');
         }
 
         if (empty($clusters)) return ['corpus' => '', 'count' => 0, 'article_count' => 0];
 
         $lines = [];
         $totalArticles = 0;
-        $budget = 25000;
+        // Bigger budget — we now pack up to ~75 articles per briefing.
+        $budget = 60000;
         $used = 0;
         foreach ($clusters as $idx => $cl) {
             $ck = $cl['cluster_key'];
             $label = 'C' . ($idx + 1);
-            // Get representative articles for this cluster.
+            $paleScore = (int)($cl['pale_score'] ?? 0);
+            // Pull 5 representative articles per cluster (was 3).
             $stmt = $db->prepare(
                 "SELECT a.title, a.ai_summary, a.excerpt, s.name AS source_name
                    FROM articles a
                    LEFT JOIN sources s ON a.source_id = s.id
                   WHERE a.cluster_key = ? AND a.status = 'published'
-                  ORDER BY LENGTH(a.title) DESC
-                  LIMIT 3"
+                  ORDER BY (a.ai_summary IS NOT NULL) DESC, LENGTH(a.title) DESC
+                  LIMIT 5"
             );
             $stmt->execute([$ck]);
             $arts = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $block = "[{$label}] ({$cl['src_count']} مصادر: {$cl['source_names']})\n";
+            // Mark Palestinian-focus clusters so the AI prioritizes them.
+            $tag = $paleScore > 0 ? ' 🇵🇸' : '';
+            $block = "[{$label}{$tag}] ({$cl['src_count']} مصادر، {$cl['art_count']} مقال: {$cl['source_names']})\n";
             foreach ($arts as $art) {
                 $summary = trim(strip_tags((string)($art['ai_summary'] ?? $art['excerpt'] ?? '')));
-                if (mb_strlen($summary) > 300) $summary = mb_substr($summary, 0, 300) . '…';
+                if (mb_strlen($summary) > 350) $summary = mb_substr($summary, 0, 350) . '…';
                 $block .= "  - [{$art['source_name']}] {$art['title']}\n    {$summary}\n";
             }
             $len = mb_strlen($block);
@@ -155,43 +181,53 @@ function sabah_collect_top_clusters(int $maxClusters = 8): array {
  * Generate a morning briefing via Gemini.
  */
 function sabah_generate(): ?array {
-    $data = sabah_collect_top_clusters(8);
+    $data = sabah_collect_top_clusters(18);
     if ($data['count'] < 1) {
         error_log('[sabah] no clusters available in the last 24h — skipping generation');
         return null;
     }
 
-    $prompt = "أنت رئيس تحرير نشرة \"صباح فيد نيوز\" — تقرير صباحي يومي بأسلوب NYT The Morning + Reuters Daily Briefing.\n\n"
-            . "لديك {$data['count']} ملفات إخبارية بارزة من آخر 24 ساعة. مهمتك: كتابة تقرير صباحي احترافي ومعمّق "
-            . "يجعل القارئ يفهم اليوم الإخباري كاملاً في 3-5 دقائق قراءة.\n\n"
-            . "اكتب بالعربية الفصحى الراقية، أسلوب صحفي تحريري كأنك تكتب لصديق مثقّف يحب التحليل.\n\n"
+    $prompt = "أنت رئيس تحرير نشرة \"صباح فيد نيوز\" — تقرير صباحي يومي بأسلوب NYT The Morning + Reuters Daily Briefing، "
+            . "ولكن مع تخصص واضح في القضية الفلسطينية.\n\n"
+            . "لديك {$data['count']} ملفات إخبارية بارزة من آخر 24 ساعة (إجمالي {$data['article_count']} خبر مجمّعة). "
+            . "الملفات المعلّمة بـ 🇵🇸 لها أولوية تحريرية قصوى.\n\n"
+            . "**التركيز التحريري** (مهم جداً):\n"
+            . "- القضية الفلسطينية هي القلب: غزة، الضفة، القدس، الأقصى، الأسرى، الاستيطان، الاعتداءات، شهداء، اعتقالات.\n"
+            . "- خصّص **70% على الأقل من الأقسام** للمحاور الفلسطينية (4-5 من 6-8 أقسام).\n"
+            . "- الباقي للأخبار العالمية/الإقليمية المرتبطة (إيران، حزب الله، اليمن، الموقف الدولي).\n"
+            . "- لو في يوم بدون أخبار فلسطينية كافية (نادر)، وسّع للأخبار العربية ثم العالمية.\n\n"
+            . "اكتب بالعربية الفصحى الراقية، أسلوب صحفي تحريري كأنك تكتب لقارئ مثقف يتابع التفاصيل اليومية.\n\n"
             . "البنية المطلوبة:\n\n"
-            . "1. **headline**: عنوان رئيسي (60-80 حرفاً) يجمع 2-3 محاور بطريقة جذابة.\n\n"
-            . "2. **subheadline**: عنوان فرعي (80-120 حرفاً) يوضّح الخيط الرابط بين الأحداث.\n\n"
-            . "3. **hook**: فقرة افتتاحية (4-6 جمل، 80-150 كلمة) بصوت تحريري دافئ. تبدأ بأقوى ما حدث، "
-            . "تربط بين المحاور، تعطي السياق العام لليوم.\n\n"
-            . "4. **sections** (4-6 أقسام): كل قسم محور إخباري كامل، ليس مجرد ملخص.\n"
+            . "1. **headline**: عنوان رئيسي (60-90 حرفاً) يجمع 2-3 محاور — تبدأ غالباً بأهم محور فلسطيني.\n\n"
+            . "2. **subheadline**: عنوان فرعي (80-130 حرفاً) يوضّح الخيط الرابط.\n\n"
+            . "3. **hook**: فقرة افتتاحية (5-7 جمل، 100-180 كلمة). تبدأ بأقوى محور فلسطيني، تربط بالمحاور الأخرى، "
+            . "تعطي القارئ خلاصة \"شو صار اليوم\".\n\n"
+            . "4. **sections** (6-8 أقسام): كل قسم محور إخباري معمّق.\n"
+            . "   - **4-5 أقسام على الأقل فلسطينية محضة** (مثلاً: غزة، الضفة، الأسرى، الاستيطان، الأقصى، اعتقالات).\n"
+            . "   - **1-2 قسم إقليمي/دولي مرتبط** (لبنان، اليمن، إيران، الموقف الأوروبي/الأمريكي).\n"
+            . "   - **0-1 قسم عالمي خارجي** (لو في خبر مهم بحق، مثل زلزال أو حدث استثنائي).\n\n"
             . "   لكل قسم:\n"
-            . "   - title: عنوان جذاب (40-70 حرفاً)\n"
-            . "   - icon: emoji واحد يعبّر عن الموضوع\n"
-            . "   - body: فقرة سردية (4-7 جمل، 80-180 كلمة) تروي القصة بالسياق، التطورات، الأرقام\n"
-            . "   - why_matters: جملة واحدة قوية تجيب \"لماذا هذا الخبر مهم؟\" (15-30 كلمة)\n"
-            . "   - tags: مصفوفة 2-4 كلمات مفتاحية (قسم/منطقة/موضوع)\n\n"
-            . "5. **key_numbers**: مصفوفة من 3-5 أرقام/إحصائيات بارزة من الأخبار. كل واحد:\n"
-            . "   - value: الرقم نفسه (مثل \"5 شهداء\", \"3 مليار دولار\")\n"
-            . "   - context: جملة قصيرة توضح ما هو (مثل \"حصيلة العدوان منذ الفجر\")\n\n"
-            . "6. **regions**: مصفوفة 2-4 مناطق جغرافية محورية اليوم (مثل: غزة، جنوب لبنان، الضفة).\n\n"
-            . "7. **quote_of_day**: اقتباس أو تصريح بارز من الأخبار (إن وُجد). يحتوي:\n"
+            . "   - title: عنوان جذاب (40-80 حرفاً)\n"
+            . "   - icon: emoji واحد يعبّر عن الموضوع (🇵🇸 للفلسطيني، 🏛️ سياسة، إلخ)\n"
+            . "   - body: فقرة سردية معمّقة (5-8 جمل، 100-220 كلمة). اذكر الأرقام، الأسماء، الأماكن، التطورات.\n"
+            . "   - why_matters: جملة قوية تجيب \"لماذا هذا الخبر مهم؟\" (20-40 كلمة)\n"
+            . "   - tags: مصفوفة 3-5 كلمات مفتاحية\n\n"
+            . "5. **key_numbers**: مصفوفة من 4-7 أرقام/إحصائيات بارزة، **يجب أن تشمل أرقام فلسطينية** (شهداء، جرحى، اعتقالات، مقتحمي الأقصى، وحدات استيطانية، إلخ).\n"
+            . "   - value: الرقم نفسه (\"23 شهيداً\", \"450 معتقلاً\", \"3 آلاف وحدة استيطانية\")\n"
+            . "   - context: شرح موجز (\"حصيلة عدوان غزة منذ الفجر\", \"اعتقالات الضفة هذا الأسبوع\")\n\n"
+            . "6. **regions**: مصفوفة 3-5 مناطق جغرافية محورية. يجب أن تتضمن مناطق فلسطينية محددة (غزة، نابلس، رام الله، القدس، الخليل، الأقصى) قدر الإمكان.\n\n"
+            . "7. **quote_of_day**: اقتباس قوي (يُفضّل من شخصية فلسطينية، مسؤول، شاهد عيان، أو محلل).\n"
             . "   - text: نص الاقتباس\n"
-            . "   - speaker: من قاله\n"
+            . "   - speaker: من قاله + صفته\n"
             . "   - context: متى وأين بإيجاز\n"
-            . "   (لو لم يوجد اقتباس قوي، اتركه null)\n\n"
-            . "8. **closing_question**: سؤال ختامي عميق يحفّز القارئ على التفكير (لا سؤال سطحي).\n\n"
+            . "   (null لو لا يوجد اقتباس قوي)\n\n"
+            . "8. **closing_question**: سؤال ختامي عميق يحفّز التفكير في القضية أو في المشهد الإقليمي.\n\n"
             . "قواعد صارمة:\n"
             . "- لا تخترع أي معلومة غير موجودة في الملفات.\n"
-            . "- استخدم تواريخ وأرقاماً دقيقة من المصادر.\n"
-            . "- أعطِ ثقلاً أكبر للأخبار اللي تغطيها عدة مصادر (مؤشر أهمية).\n"
-            . "- تجنّب الكليشيهات الصحفية المستهلكة.\n\n"
+            . "- استخدم أسماء الأماكن والأشخاص بدقة كما وردت.\n"
+            . "- أعطِ الأولوية للملفات المعلّمة بـ 🇵🇸 + الملفات اللي تغطيها عدة مصادر.\n"
+            . "- تجنّب الكليشيهات والتعبيرات المستهلكة.\n"
+            . "- استخدم تسميات دقيقة: \"الشهداء\" مش \"القتلى\", \"الاحتلال\" مش \"إسرائيل\" (إلا في السياق الرسمي).\n\n"
             . "الملفات الإخبارية:\n" . $data['corpus'];
 
     $tool = [
@@ -214,17 +250,17 @@ function sabah_generate(): ?array {
                 ],
                 'sections' => [
                     'type'        => 'array',
-                    'description' => '4-6 أقسام إخبارية معمّقة.',
+                    'description' => '6-8 أقسام إخبارية معمّقة، 4-5 على الأقل فلسطينية.',
                     'items' => [
                         'type' => 'object',
                         'properties' => [
                             'title' => ['type' => 'string'],
                             'icon'  => ['type' => 'string', 'description' => 'emoji واحد'],
-                            'body'  => ['type' => 'string', 'description' => 'فقرة سردية 4-7 جمل (80-180 كلمة)'],
+                            'body'  => ['type' => 'string', 'description' => 'فقرة سردية 5-8 جمل (100-220 كلمة)'],
                             'why_matters' => ['type' => 'string', 'description' => 'لماذا هذا الخبر مهم - جملة قوية'],
                             'tags' => [
                                 'type' => 'array',
-                                'description' => '2-4 كلمات مفتاحية',
+                                'description' => '3-5 كلمات مفتاحية',
                                 'items' => ['type' => 'string'],
                             ],
                         ],
@@ -233,7 +269,7 @@ function sabah_generate(): ?array {
                 ],
                 'key_numbers' => [
                     'type'        => 'array',
-                    'description' => '3-5 أرقام/إحصائيات بارزة.',
+                    'description' => '4-7 أرقام/إحصائيات بارزة (يجب تشمل أرقام فلسطينية).',
                     'items' => [
                         'type' => 'object',
                         'properties' => [
@@ -245,7 +281,7 @@ function sabah_generate(): ?array {
                 ],
                 'regions' => [
                     'type'        => 'array',
-                    'description' => '2-4 مناطق جغرافية محورية.',
+                    'description' => '3-5 مناطق جغرافية محورية (تشمل فلسطينية محددة).',
                     'items' => ['type' => 'string'],
                 ],
                 'quote_of_day' => [
@@ -266,7 +302,9 @@ function sabah_generate(): ?array {
         ],
     ];
 
-    $call = ai_provider_tool_call($prompt, $tool, 5000);
+    // 8000 output tokens — accommodates 6-8 longer sections + the v2
+    // metadata (key_numbers, regions, quote_of_day, why_matters per section).
+    $call = ai_provider_tool_call($prompt, $tool, 8000);
     if (empty($call['ok']) || !is_array($call['input'])) {
         $GLOBALS['_sabah_last_error'] = 'AI: ' . ($call['error'] ?? 'unknown');
         error_log('[sabah] AI failed: ' . ($call['error'] ?? ''));
@@ -307,15 +345,15 @@ function sabah_generate(): ?array {
         $context = trim((string)($n['context'] ?? ''));
         if ($value === '' || $context === '') continue;
         $keyNumbers[] = ['value' => $value, 'context' => $context];
-        if (count($keyNumbers) >= 5) break;
+        if (count($keyNumbers) >= 7) break;
     }
 
-    // Regions — dedupe + cap at 4.
+    // Regions — dedupe + cap at 5.
     $regions = [];
     foreach ((array)($p['regions'] ?? []) as $r) {
         $r = trim((string)$r);
         if ($r !== '' && !in_array($r, $regions, true)) $regions[] = $r;
-        if (count($regions) >= 4) break;
+        if (count($regions) >= 5) break;
     }
 
     // Quote — only keep if both speaker and text exist.
