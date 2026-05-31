@@ -26,6 +26,16 @@ if (PHP_SAPI !== 'cli') {
     header('Content-Type: text/plain; charset=utf-8');
 }
 
+// Kill-switch — DEFAULT OFF. The podcast feature was removed from the
+// iOS app for Apple Guideline 2.5.4 (background audio), so generating a
+// daily AI script + TTS audio just burns API quota for content nothing
+// consumes. Flip `cron_podcast_enabled` to "1" in the panel only if you
+// re-introduce a podcast surface somewhere (web, etc.).
+if ((string)getSetting('cron_podcast_enabled', '0') !== '1') {
+    echo "skip: cron_podcast_enabled = 0 (podcast removed from app — not generating)\n";
+    exit;
+}
+
 require_once __DIR__ . '/includes/podcast_run.php';
 @set_time_limit(600);
 
