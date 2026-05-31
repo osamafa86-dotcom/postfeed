@@ -24,25 +24,22 @@ try {
 
 if (!$brief) api_err('not_found', 'لا يوجد ملخص صباحي لهذا التاريخ', 404);
 
-// sabah_get / sabah_get_latest already json_decode the sections column
-// into an array before returning. The old code here decoded it a SECOND
-// time — casting an array to (string) yields the literal "Array" and
-// json_decode("Array") returns null, which became [] in the response.
-// That's exactly the empty-sections payload the app was receiving even
-// after the cron successfully saved a 6-section briefing.
-$sections = $brief['sections'] ?? [];
-if (is_string($sections)) {
-    // Defensive: if a caller in the future returns the raw column,
-    // decode once. Multiple decodes are still a no-op (returns null).
-    $decoded = json_decode($sections, true);
-    $sections = is_array($decoded) ? $decoded : [];
-}
+// sabah_get / sabah_get_latest already decode the JSON columns into
+// native arrays before returning. Don't double-decode here.
+$sections    = is_array($brief['sections']    ?? null) ? $brief['sections']    : [];
+$keyNumbers  = is_array($brief['key_numbers'] ?? null) ? $brief['key_numbers'] : [];
+$regions     = is_array($brief['regions']     ?? null) ? $brief['regions']     : [];
+$quoteOfDay  = is_array($brief['quote_of_day'] ?? null) ? $brief['quote_of_day'] : null;
 
 api_ok([
     'date'             => $brief['briefing_date'] ?? $date,
     'title'            => $brief['headline'] ?? 'صباح فيد نيوز',
+    'subtitle'         => $brief['subheadline'] ?? '',
     'summary'          => $brief['hook'] ?? '',
-    'sections'         => is_array($sections) ? $sections : [],
+    'sections'         => $sections,
+    'key_numbers'      => $keyNumbers,
+    'regions'          => $regions,
+    'quote_of_day'     => $quoteOfDay,
     'closing_question' => $brief['closing_question'] ?? null,
     'article_count'    => (int)($brief['article_count'] ?? 0),
     'created_at'       => $brief['generated_at'] ?? null,

@@ -1,7 +1,7 @@
 name: feedsnews
 description: "فيد نيوز — Feed News mobile app (iOS & Android)"
 publish_to: "none"
-version: 2.2.2+22
+version: 2.3.0+23
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -62,6 +62,13 @@ dependencies:
   # Maps (news map)
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
+
+  # PDF export for the morning briefing — `printing` shows the iOS
+  # system print/share sheet; `pdf` builds the document. Both support
+  # Arabic RTL when paired with a TTF that has Arabic glyphs (we ship
+  # Cairo via the system font fallback, no extra asset needed).
+  printing: ^5.13.4
+  pdf: ^3.11.1
 
   # Analytics
 
