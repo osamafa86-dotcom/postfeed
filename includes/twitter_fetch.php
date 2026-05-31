@@ -113,17 +113,43 @@ function tw_fetch_via_nitter(string $username, int $limit): array {
     $merged   = [];
     $seenIds  = [];
     $startTs  = microtime(true);
-    $budget   = 10; // seconds across all instances, keep scrape fast
+    $budget   = 15; // seconds across all instances — slightly higher than
+                    // before so the HTML-profile fallback has room to run.
     $anyOk    = false;
 
     foreach (TW_NITTER_INSTANCES as $host) {
         if ((microtime(true) - $startTs) > $budget) break;
 
-        $url  = 'https://' . $host . '/' . rawurlencode($username) . '/rss';
-        $xml  = tw_http_get($url, 4);
-        if (!$xml) continue;
+        // First try /username/rss — the cheapest, cleanest path.
+        $rssUrl = 'https://' . $host . '/' . rawurlencode($username) . '/rss';
+        $body   = tw_http_get($rssUrl, 4);
+        $items  = [];
 
-        $items = tw_parse_rss_feed($xml);
+        if ($body) {
+            // Looks like real RSS/Atom? Parse it.
+            if (stripos(ltrim($body), '<?xml') === 0 || stripos($body, '<rss') !== false) {
+                $items = tw_parse_rss_feed($body);
+            }
+            // Several forks (notably nitter.adminforge.de) now serve the
+            // HTML profile page from /rss instead of XML — empty parse
+            // result + an HTML body is the tell. Try the HTML extractor
+            // before giving up on this instance.
+            if (empty($items) && stripos($body, '<html') !== false) {
+                $items = tw_parse_nitter_html($body, $username);
+            }
+        }
+
+        // If neither path produced tweets, fall back to /username (no
+        // /rss suffix) — some instances disabled RSS but still serve
+        // the profile HTML.
+        if (empty($items) && (microtime(true) - $startTs) <= $budget) {
+            $htmlUrl = 'https://' . $host . '/' . rawurlencode($username);
+            $html    = tw_http_get($htmlUrl, 4);
+            if ($html && stripos($html, '<html') !== false) {
+                $items = tw_parse_nitter_html($html, $username);
+            }
+        }
+
         if (empty($items)) continue;
         $anyOk = true;
 
@@ -141,6 +167,112 @@ function tw_fetch_via_nitter(string $username, int $limit): array {
         error_log('tw_fetch: all nitter instances failed for ' . $username);
     }
     return $merged;
+}
+
+/**
+ * Extract tweets from a Nitter-style HTML profile page. Most public
+ * Nitter forks (xcancel, lightbrd, adminforge, tiekoetter) ship roughly
+ * the same template — a list of `.timeline-item` divs, each with a
+ * status-link, a `tweet-date` title, a `tweet-content` body, and
+ * optionally an `.attachments` block with images.
+ *
+ * Regex over DOMDocument because Nitter HTML routinely has unclosed
+ * tags, mixed quoting, and broken UTF-8 sequences that make the DOM
+ * parser bail. Regex is forgiving and only needs the three signals we
+ * care about (status link, date, body).
+ *
+ * Used as a fallback when /username/rss returns an HTML page instead
+ * of XML, which several public instances started doing in 2026.
+ */
+function tw_parse_nitter_html(string $html, string $username): array {
+    $username = ltrim(trim($username), '@');
+    if ($username === '' || $html === '') return [];
+
+    // Split into per-tweet chunks at each `timeline-item` opening div.
+    // The first chunk is the page header — discard it.
+    $chunks = preg_split('#<div\b[^>]*class="[^"]*\btimeline-item\b[^"]*"#i', $html);
+    if (count($chunks) < 2) return [];
+    array_shift($chunks);
+
+    $out      = [];
+    $userQ    = preg_quote($username, '#');
+
+    foreach ($chunks as $chunk) {
+        // Anything past the first `</div></div>` belongs to the next
+        // tweet — trim so attribute extraction can't cross-contaminate.
+        // (Not strictly necessary because we split on the next opening
+        // div, but keeps the inner regexes bounded.)
+        if (preg_match('#/' . $userQ . '/status/(\d+)#i', $chunk, $idM)) {
+            $tweetId = $idM[1];
+        } else {
+            continue;
+        }
+
+        // Drop retweets — they carry a `retweet-header` row and we
+        // only want original-author posts.
+        if (stripos($chunk, 'retweet-header') !== false) continue;
+
+        // Posted-at from <span class="tweet-date">…title="Mon DD, YYYY · HH:MM …"
+        // Nitter renders the date with a middle-dot (·) between the date
+        // and the time, which strtotime treats as garbage and bails on
+        // ("Jan 15, 2026 · 12:30 PM UTC" → false). Strip the separator
+        // before parsing so the time component actually gets honoured.
+        $postedAt = date('Y-m-d H:i:s');
+        if (preg_match('#class="[^"]*\btweet-date\b[^"]*"[^>]*>\s*<a[^>]+title="([^"]+)"#i', $chunk, $dateM)) {
+            $raw = html_entity_decode($dateM[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $raw = preg_replace('/\s*[·\xC2\xB7]\s*/u', ' ', $raw);
+            $ts  = strtotime((string)$raw);
+            if ($ts) $postedAt = date('Y-m-d H:i:s', $ts);
+        }
+
+        // Tweet body — first <div class="tweet-content …">…</div>.
+        // Greedy `.+?` and the `s` flag because tweet bodies routinely
+        // span lines.
+        $text = '';
+        if (preg_match('#<div\b[^>]*class="[^"]*\btweet-content\b[^"]*"[^>]*>(.+?)</div>#si', $chunk, $bodyM)) {
+            $bodyHtml = preg_replace('#<br\s*/?\s*>#i', "\n", $bodyM[1]);
+            $text     = trim(strip_tags($bodyHtml));
+            $text     = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            // Strip trailing t.co link Twitter auto-appends to long tweets
+            $text     = trim((string)preg_replace('#https?://t\.co/\S+\s*$#', '', $text));
+        }
+
+        // First image / video poster — covers .attachments .image,
+        // .video.gif posters, and any direct <img src> inside the chunk.
+        $image = '';
+        if (preg_match('#<(?:img|source|video)\b[^>]+(?:src|poster|data-src)="([^"]+)"#i', $chunk, $imgM)) {
+            $cand = html_entity_decode($imgM[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            // Nitter proxies media via /pic/<encoded>. Rewrite back to
+            // pbs.twimg.com so the URL keeps loading if the instance
+            // disappears between scrape and render.
+            if (preg_match('#^(?:https?://[^/]+)?/pic/(.+)$#', $cand, $pm)) {
+                $inner = rawurldecode($pm[1]);
+                $cand  = preg_match('#^https?://#', $inner)
+                       ? $inner
+                       : 'https://pbs.twimg.com/' . ltrim($inner, '/');
+            }
+            // Skip the profile avatar fallback Nitter shows when a tweet
+            // has no media of its own — its URL contains "profile_images".
+            if (stripos($cand, 'profile_images') === false
+             && stripos($cand, 'emoji') === false) {
+                $image = $cand;
+            }
+        }
+
+        if ($text === '' && $image === '') continue;
+
+        $out[] = [
+            'tweet_id'  => $tweetId,
+            'text'      => $text,
+            'image_url' => $image,
+            'posted_at' => $postedAt,
+            'url'       => 'https://twitter.com/' . $username . '/status/' . $tweetId,
+        ];
+
+        if (count($out) >= 50) break; // sanity cap
+    }
+
+    return $out;
 }
 
 /**
@@ -553,20 +685,45 @@ function tw_debug_fetch_source(string $username): array {
         return $report;
     }
 
-    // Transport 0: Nitter — try each public instance
+    // Transport 0: Nitter — try each public instance. Mirrors
+    // tw_fetch_via_nitter() so the diagnostic reflects what the live
+    // scraper actually does (RSS first, HTML fallback on the same body,
+    // then /username HTML if /rss came back blank).
     foreach (TW_NITTER_INSTANCES as $host) {
         $urlN = 'https://' . $host . '/' . rawurlencode($username) . '/rss';
         $rN   = tw_debug_http($urlN, 8);
         $rN['parsed_count'] = 0;
         $rN['label'] = 'Nitter @ ' . $host;
+        $items  = [];
         if ($rN['body']) {
-            $items = tw_parse_rss_feed($rN['body']);
-            $rN['parsed_count'] = count($items);
-            if (!empty($items)) {
-                // Show the newest-parsed timestamp so operators can see
-                // how fresh this instance actually is.
-                $rN['newest_posted_at'] = $items[0]['posted_at'] ?? null;
+            if (stripos(ltrim($rN['body']), '<?xml') === 0 || stripos($rN['body'], '<rss') !== false) {
+                $items = tw_parse_rss_feed($rN['body']);
+                if (!empty($items)) $rN['parse_mode'] = 'rss';
             }
+            if (empty($items) && stripos($rN['body'], '<html') !== false) {
+                $items = tw_parse_nitter_html($rN['body'], $username);
+                if (!empty($items)) $rN['parse_mode'] = 'html-from-rss-url';
+            }
+        }
+        // If /rss gave us nothing parseable, try the bare /username page
+        // — that's the path tw_fetch_via_nitter falls back to.
+        if (empty($items)) {
+            $urlH = 'https://' . $host . '/' . rawurlencode($username);
+            $rH   = tw_debug_http($urlH, 8);
+            if ($rH['body'] && stripos($rH['body'], '<html') !== false) {
+                $items = tw_parse_nitter_html($rH['body'], $username);
+                if (!empty($items)) {
+                    $rN['parse_mode']  = 'html-from-profile';
+                    $rN['profile_url'] = $urlH;
+                    $rN['profile_size'] = $rH['size'];
+                }
+            }
+        }
+        $rN['parsed_count'] = count($items);
+        if (!empty($items)) {
+            // Show the newest-parsed timestamp so operators can see
+            // how fresh this instance actually is.
+            $rN['newest_posted_at'] = $items[0]['posted_at'] ?? null;
         }
         $report['transports'][] = $rN;
         // Stop rotating as soon as one instance works — the rest are
