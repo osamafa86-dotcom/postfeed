@@ -270,7 +270,10 @@ class LatestExtraNotifier extends StateNotifier<LatestExtraState> {
   }
 }
 
-final latestExtraProvider =
+// Explicit type annotation — without it Dart's inference loops on the
+// self-reference inside the listener (`latestExtraProvider.notifier`).
+final StateNotifierProvider<LatestExtraNotifier, LatestExtraState>
+    latestExtraProvider =
     StateNotifierProvider<LatestExtraNotifier, LatestExtraState>((ref) {
   // When home is invalidated (pull-to-refresh), reset the extra pages
   // so we don't keep appending to a stale feed.
