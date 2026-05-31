@@ -74,68 +74,225 @@ class _PlatformsScreenState extends ConsumerState<PlatformsScreen>
   }
 }
 
-class _TelegramFeed extends ConsumerWidget {
+/// Reusable "load older" pagination wrapper for the three social feeds.
+/// The auto-refreshing provider gives us the freshest N items; this
+/// state lets the user pull older items in batches by passing the
+/// smallest currently-shown id as `before_id` to the repo method.
+mixin _SocialPaging<T extends ConsumerStatefulWidget> on ConsumerState<T> {
+  final List<dynamic> _extra = []; // older items beyond the provider's initial batch
+  bool _loadingMore = false;
+  bool _hasMore = true;
+
+  void resetExtras() {
+    _extra.clear();
+    _hasMore = true;
+    _loadingMore = false;
+  }
+
+  Future<void> doLoadMore({
+    required int? beforeId,
+    required Future<List<dynamic>> Function(int beforeId) fetch,
+  }) async {
+    if (_loadingMore || !_hasMore || beforeId == null || beforeId <= 0) return;
+    setState(() => _loadingMore = true);
+    try {
+      final more = await fetch(beforeId);
+      if (!mounted) return;
+      setState(() {
+        if (more.isEmpty) {
+          _hasMore = false;
+        } else {
+          _extra.addAll(more);
+          // No "hasMore" flag on the social endpoints — assume there's
+          // more until we get back a short batch.
+          if (more.length < 30) _hasMore = false;
+        }
+        _loadingMore = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingMore = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذّر تحميل المزيد')),
+      );
+    }
+  }
+}
+
+Widget _loadMoreButton({
+  required bool loading,
+  required bool hasMore,
+  required bool hasContent,
+  required VoidCallback onTap,
+}) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 16),
+    child: !hasMore && hasContent
+        ? Center(
+            child: Text(
+              'وصلت لنهاية القائمة',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade500,
+              ),
+            ),
+          )
+        : SizedBox(
+            height: 46,
+            child: ElevatedButton.icon(
+              onPressed: loading ? null : onTap,
+              icon: loading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.expand_more, size: 22),
+              label: Text(loading ? 'جارٍ التحميل…' : 'عرض المزيد'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+  );
+}
+
+class _TelegramFeed extends ConsumerStatefulWidget {
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_TelegramFeed> createState() => _TelegramFeedState();
+}
+
+class _TelegramFeedState extends ConsumerState<_TelegramFeed>
+    with _SocialPaging<_TelegramFeed> {
+  @override
+  Widget build(BuildContext context) {
     final asy = ref.watch(telegramFeedProvider);
+    // Refresh resets the "load more" cursor.
+    ref.listen(telegramFeedProvider, (_, __) => setState(resetExtras));
     return asy.when(
       loading: () => const LoadingShimmerList(),
       error: (e, _) => ErrorRetryView(message: '$e', onRetry: () => ref.invalidate(telegramFeedProvider)),
-      data: (msgs) => RefreshIndicator(
-        onRefresh: () async => ref.invalidate(telegramFeedProvider),
-        child: msgs.isEmpty
-            ? const EmptyView(message: 'لا توجد منشورات')
-            : ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: msgs.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
-                itemBuilder: (_, i) => _MessageCard(msg: msgs[i], platformColor: const Color(0xFF0EA5E9), platformName: 'تلغرام'),
-              ),
-      ),
+      data: (initial) {
+        final all = [...initial, ..._extra.cast<TelegramMessage>()];
+        return RefreshIndicator(
+          onRefresh: () async => ref.invalidate(telegramFeedProvider),
+          child: all.isEmpty
+              ? const EmptyView(message: 'لا توجد منشورات')
+              : ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: all.length + 1,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (_, i) {
+                    if (i < all.length) {
+                      return _MessageCard(msg: all[i], platformColor: const Color(0xFF0EA5E9), platformName: 'تلغرام');
+                    }
+                    return _loadMoreButton(
+                      loading: _loadingMore,
+                      hasMore: _hasMore,
+                      hasContent: all.isNotEmpty,
+                      onTap: () => doLoadMore(
+                        beforeId: all.isNotEmpty ? all.last.id : null,
+                        fetch: (b) async =>
+                            ref.read(mediaRepositoryProvider).telegram(beforeId: b, limit: 30),
+                      ),
+                    );
+                  },
+                ),
+        );
+      },
     );
   }
 }
 
-class _TwitterFeed extends ConsumerWidget {
+class _TwitterFeed extends ConsumerStatefulWidget {
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_TwitterFeed> createState() => _TwitterFeedState();
+}
+
+class _TwitterFeedState extends ConsumerState<_TwitterFeed>
+    with _SocialPaging<_TwitterFeed> {
+  @override
+  Widget build(BuildContext context) {
     final asy = ref.watch(twitterFeedProvider);
+    ref.listen(twitterFeedProvider, (_, __) => setState(resetExtras));
     return asy.when(
       loading: () => const LoadingShimmerList(),
       error: (e, _) => ErrorRetryView(message: '$e', onRetry: () => ref.invalidate(twitterFeedProvider)),
-      data: (msgs) => RefreshIndicator(
-        onRefresh: () async => ref.invalidate(twitterFeedProvider),
-        child: msgs.isEmpty
-            ? const EmptyView(message: 'لا توجد منشورات')
-            : ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: msgs.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
-                itemBuilder: (_, i) => _MessageCard(msg: msgs[i], platformColor: const Color(0xFF1F2937), platformName: 'X'),
-              ),
-      ),
+      data: (initial) {
+        final all = [...initial, ..._extra.cast<TwitterMessage>()];
+        return RefreshIndicator(
+          onRefresh: () async => ref.invalidate(twitterFeedProvider),
+          child: all.isEmpty
+              ? const EmptyView(message: 'لا توجد منشورات')
+              : ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: all.length + 1,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (_, i) {
+                    if (i < all.length) {
+                      return _MessageCard(msg: all[i], platformColor: const Color(0xFF1F2937), platformName: 'X');
+                    }
+                    return _loadMoreButton(
+                      loading: _loadingMore,
+                      hasMore: _hasMore,
+                      hasContent: all.isNotEmpty,
+                      onTap: () => doLoadMore(
+                        beforeId: all.isNotEmpty ? all.last.id : null,
+                        fetch: (b) async =>
+                            ref.read(mediaRepositoryProvider).twitter(beforeId: b, limit: 30),
+                      ),
+                    );
+                  },
+                ),
+        );
+      },
     );
   }
 }
 
-class _YoutubeFeed extends ConsumerWidget {
+class _YoutubeFeed extends ConsumerStatefulWidget {
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_YoutubeFeed> createState() => _YoutubeFeedState();
+}
+
+class _YoutubeFeedState extends ConsumerState<_YoutubeFeed>
+    with _SocialPaging<_YoutubeFeed> {
+  @override
+  Widget build(BuildContext context) {
     final asy = ref.watch(youtubeFeedProvider);
+    ref.listen(youtubeFeedProvider, (_, __) => setState(resetExtras));
     return asy.when(
       loading: () => const LoadingShimmerList(),
       error: (e, _) => ErrorRetryView(message: '$e', onRetry: () => ref.invalidate(youtubeFeedProvider)),
-      data: (videos) => RefreshIndicator(
-        onRefresh: () async => ref.invalidate(youtubeFeedProvider),
-        child: videos.isEmpty
-            ? const EmptyView(message: 'لا توجد فيديوهات')
-            : ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: videos.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
-                itemBuilder: (_, i) => _YoutubeCard(video: videos[i]),
-              ),
-      ),
+      data: (initial) {
+        final all = [...initial, ..._extra.cast<YoutubeVideo>()];
+        return RefreshIndicator(
+          onRefresh: () async => ref.invalidate(youtubeFeedProvider),
+          child: all.isEmpty
+              ? const EmptyView(message: 'لا توجد فيديوهات')
+              : ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: all.length + 1,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (_, i) {
+                    if (i < all.length) {
+                      return _YoutubeCard(video: all[i]);
+                    }
+                    return _loadMoreButton(
+                      loading: _loadingMore,
+                      hasMore: _hasMore,
+                      hasContent: all.isNotEmpty,
+                      onTap: () => doLoadMore(
+                        beforeId: all.isNotEmpty ? all.last.id : null,
+                        fetch: (b) async =>
+                            ref.read(mediaRepositoryProvider).youtube(beforeId: b, limit: 30),
+                      ),
+                    );
+                  },
+                ),
+        );
+      },
     );
   }
 }

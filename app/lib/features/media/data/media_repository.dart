@@ -210,10 +210,14 @@ class MediaRepository {
   MediaRepository(this._api);
   final ApiClient _api;
 
-  Future<List<TelegramMessage>> telegram({int? sinceId, int limit = 30}) async {
+  Future<List<TelegramMessage>> telegram({int? sinceId, int? beforeId, int limit = 30}) async {
     final res = await _api.get<List<TelegramMessage>>(
       '/media/telegram',
-      query: {'limit': limit, if (sinceId != null) 'since_id': sinceId},
+      query: {
+        'limit': limit,
+        if (sinceId != null) 'since_id': sinceId,
+        if (beforeId != null) 'before_id': beforeId,
+      },
       decode: (d) => (d as List)
           .whereType<Map>()
           .map((m) => TelegramMessage.fromJson(m.cast()))
@@ -222,12 +226,13 @@ class MediaRepository {
     return res.data ?? const [];
   }
 
-  Future<List<TwitterMessage>> twitter({int? sinceId, int limit = 30, bool sync = false}) async {
+  Future<List<TwitterMessage>> twitter({int? sinceId, int? beforeId, int limit = 30, bool sync = false}) async {
     final res = await _api.get<List<TwitterMessage>>(
       '/media/twitter',
       query: {
         'limit': limit,
         if (sinceId != null) 'since_id': sinceId,
+        if (beforeId != null) 'before_id': beforeId,
         // Opt-in scrape trigger — server only actually scrapes if its
         // newest tweet is >30s old AND the cross-process cooldown allows.
         if (sync) 'sync': 1,
@@ -240,10 +245,14 @@ class MediaRepository {
     return res.data ?? const [];
   }
 
-  Future<List<YoutubeVideo>> youtube({int? sinceId, int limit = 30}) async {
+  Future<List<YoutubeVideo>> youtube({int? sinceId, int? beforeId, int limit = 30}) async {
     final res = await _api.get<List<YoutubeVideo>>(
       '/media/youtube',
-      query: {'limit': limit, if (sinceId != null) 'since_id': sinceId},
+      query: {
+        'limit': limit,
+        if (sinceId != null) 'since_id': sinceId,
+        if (beforeId != null) 'before_id': beforeId,
+      },
       decode: (d) => (d as List)
           .whereType<Map>()
           .map((m) => YoutubeVideo.fromJson(m.cast()))

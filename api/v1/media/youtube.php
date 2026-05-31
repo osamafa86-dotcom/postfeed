@@ -8,8 +8,9 @@ require_once __DIR__ . '/../_bootstrap.php';
 api_method('GET');
 api_rate_limit('media:youtube', 240, 60);
 
-$limit = max(1, min((int)($_GET['limit'] ?? 30), 100));
-$sinceId = max(0, (int)($_GET['since_id'] ?? 0));
+$limit    = max(1, min((int)($_GET['limit'] ?? 30), 100));
+$sinceId  = max(0, (int)($_GET['since_id'] ?? 0));
+$beforeId = max(0, (int)($_GET['before_id'] ?? 0));  // "load older" cursor
 
 $db = getDB();
 $videos = [];
@@ -28,6 +29,16 @@ try {
                                WHERE v.is_active=1 AND s.is_active=1 AND v.id > ?
                                ORDER BY v.id DESC LIMIT ?");
         $stmt->bindValue(1, $sinceId, PDO::PARAM_INT);
+        $stmt->bindValue(2, $limit, PDO::PARAM_INT);
+    } elseif ($beforeId > 0) {
+        $stmt = $db->prepare("SELECT v.id, v.source_id, v.post_url, v.video_id, v.title, v.description,
+                                     v.thumbnail_url, v.posted_at,
+                                     s.display_name, s.channel_id, s.avatar_url
+                               FROM youtube_videos v
+                               JOIN youtube_sources s ON v.source_id = s.id
+                               WHERE v.is_active=1 AND s.is_active=1 AND v.id < ?
+                               ORDER BY v.posted_at DESC, v.id DESC LIMIT ?");
+        $stmt->bindValue(1, $beforeId, PDO::PARAM_INT);
         $stmt->bindValue(2, $limit, PDO::PARAM_INT);
     } else {
         $stmt = $db->prepare("SELECT v.id, v.source_id, v.post_url, v.video_id, v.title, v.description,

@@ -16,9 +16,10 @@ api_rate_limit('media:twitter', 240, 60);
 const TWAPI_SYNC_COOLDOWN_SECS = 15;
 const TWAPI_SYNC_IF_STALE_SECS = 30;
 
-$limit = max(1, min((int)($_GET['limit'] ?? 30), 100));
-$sinceId = max(0, (int)($_GET['since_id'] ?? 0));
-$syncReq = !empty($_GET['sync']);
+$limit    = max(1, min((int)($_GET['limit'] ?? 30), 100));
+$sinceId  = max(0, (int)($_GET['since_id'] ?? 0));
+$beforeId = max(0, (int)($_GET['before_id'] ?? 0));  // "load older" cursor
+$syncReq  = !empty($_GET['sync']);
 
 $db = getDB();
 
@@ -86,6 +87,15 @@ try {
                                WHERE m.is_active=1 AND s.is_active=1 AND m.id > ?
                                ORDER BY m.id DESC LIMIT ?");
         $stmt->bindValue(1, $sinceId, PDO::PARAM_INT);
+        $stmt->bindValue(2, $limit, PDO::PARAM_INT);
+    } elseif ($beforeId > 0) {
+        $stmt = $db->prepare("SELECT m.id, m.source_id, m.post_url, m.text, m.image_url, m.posted_at,
+                                     s.display_name, s.username, s.avatar_url
+                               FROM twitter_messages m
+                               JOIN twitter_sources s ON m.source_id = s.id
+                               WHERE m.is_active=1 AND s.is_active=1 AND m.id < ?
+                               ORDER BY m.posted_at DESC, m.id DESC LIMIT ?");
+        $stmt->bindValue(1, $beforeId, PDO::PARAM_INT);
         $stmt->bindValue(2, $limit, PDO::PARAM_INT);
     } else {
         $stmt = $db->prepare("SELECT m.id, m.source_id, m.post_url, m.text, m.image_url, m.posted_at,
