@@ -42,11 +42,22 @@ const TW_NITTER_INSTANCES = [
 /**
  * Fetch the latest tweets for a single username.
  *
- * Transports in order (most real-time first):
- *   1) Nitter — scrapes the live profile page; freshest data.
+ * Transports in order (most reliable first):
+ *   1) CDN JSON — Twitter's own syndication endpoint. Was "mostly dead"
+ *      historically but is the most accurate when it does respond, so
+ *      try it first; failure is cheap (one HTTP roundtrip with 8s cap).
  *   2) NEXT_DATA (syndication.twitter.com) — reliable but cache-lagged.
- *   3) RSSHub — RSS bridge; Twitter route is often broken.
- *   4) CDN JSON — mostly dead; kept as last resort.
+ *   3) Nitter — scrapes the live profile page. Most Nitter instances
+ *      are down since Twitter's 2024 anti-scrape changes but a handful
+ *      still work for the top-N accounts.
+ *   4) RSSHub — RSS bridge; Twitter route is often broken. Last-ditch.
+ *
+ * Why this reordering matters: the previous Nitter-first order looked
+ * good on the largest accounts (Al Jazeera, BBC) because their Nitter
+ * cache is always warm. For smaller accounts every Nitter instance
+ * returned empty, and by the time we fell through to CDN JSON we had
+ * already burned the per-source 10-second budget on Nitter retries.
+ * CDN JSON first means smaller accounts get a chance.
  *
  * @return array<int, array{tweet_id:string, text:string, image_url:string, posted_at:string, url:string}>
  */
@@ -54,16 +65,16 @@ function tw_fetch_user_tweets(string $username, int $limit = 20): array {
     $username = ltrim(trim($username), '@');
     if ($username === '') return [];
 
-    $out = tw_fetch_via_nitter($username, $limit);
+    $out = tw_fetch_via_cdn_json($username, $limit);
     if (!empty($out)) return tw_finalize_tweets($out, $username, $limit);
 
     $out = tw_fetch_via_next_data($username, $limit);
     if (!empty($out)) return tw_finalize_tweets($out, $username, $limit);
 
-    $out = tw_fetch_via_rsshub($username, $limit);
+    $out = tw_fetch_via_nitter($username, $limit);
     if (!empty($out)) return tw_finalize_tweets($out, $username, $limit);
 
-    $out = tw_fetch_via_cdn_json($username, $limit);
+    $out = tw_fetch_via_rsshub($username, $limit);
     if (!empty($out)) return tw_finalize_tweets($out, $username, $limit);
 
     return [];
@@ -522,18 +533,103 @@ function tw_debug_http(string $url, int $timeout = 15): array {
  * persist new ones into twitter_messages. Returns the count of newly
  * inserted rows across all sources.
  */
+/**
+ * Convert an RSS/Atom feed item into our tweet-row shape. Lets admins
+ * point a Twitter source at an alternate RSS feed (Nitter mirror, the
+ * source's own website, RSSHub instance, etc.) when the Twitter
+ * transports stop working for that specific handle.
+ */
+function tw_fetch_via_custom_rss(string $rssUrl, int $limit): array {
+    $rssUrl = trim($rssUrl);
+    if ($rssUrl === '' || !preg_match('#^https?://#i', $rssUrl)) return [];
+
+    $xml = tw_http_get($rssUrl, 12);
+    if (!$xml) return [];
+
+    libxml_use_internal_errors(true);
+    $rss = simplexml_load_string($xml);
+    libxml_clear_errors();
+    if (!$rss) return [];
+
+    // Support both RSS 2.0 (channel->item) and Atom (entry) feeds.
+    $items = [];
+    if (isset($rss->channel->item)) {
+        $items = $rss->channel->item;
+    } elseif (isset($rss->entry)) {
+        $items = $rss->entry;
+    }
+    if (empty($items)) return [];
+
+    $out = [];
+    foreach ($items as $item) {
+        $title = trim((string)($item->title ?? ''));
+        // Atom uses <link href="..."/>, RSS uses <link>...</link>.
+        $link = '';
+        if (isset($item->link['href'])) {
+            $link = (string)$item->link['href'];
+        } elseif (isset($item->link)) {
+            $link = (string)$item->link;
+        }
+        if ($link === '') continue;
+
+        $desc = (string)($item->description ?? $item->summary ?? $item->content ?? '');
+        $image = '';
+        if (preg_match('#<img[^>]+src=["\']([^"\']+)["\']#i', $desc, $im)) {
+            $image = html_entity_decode($im[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        }
+        // <media:content> / <enclosure> as image fallbacks.
+        if ($image === '' && isset($item->enclosure['url'])) {
+            $image = (string)$item->enclosure['url'];
+        }
+
+        $text = trim(strip_tags(str_replace(['<br/>', '<br>', '<br />'], "\n", $desc)));
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        if ($title !== '' && $text !== '' && stripos($text, $title) !== 0) {
+            $text = $title . "\n\n" . $text;
+        } elseif ($title !== '' && $text === '') {
+            $text = $title;
+        }
+        // Trim long article bodies down to a tweet-like length.
+        if (mb_strlen($text) > 600) $text = mb_substr($text, 0, 600) . '…';
+
+        $pubRaw = (string)($item->pubDate ?? $item->published ?? $item->updated ?? '');
+        $ts = $pubRaw !== '' ? strtotime($pubRaw) : 0;
+        $postedAt = $ts ? date('Y-m-d H:i:s', $ts) : date('Y-m-d H:i:s');
+
+        // Synthesize a stable tweet_id from the link so dedup via the
+        // UNIQUE KEY (source_id, tweet_id) keeps working unchanged.
+        $tweetId = substr(sha1($link), 0, 19);
+
+        $out[] = [
+            'tweet_id'  => $tweetId,
+            'text'      => $text,
+            'image_url' => $image,
+            'posted_at' => $postedAt,
+            'url'       => $link,
+        ];
+        if (count($out) >= $limit) break;
+    }
+    return $out;
+}
+
 function tw_sync_all_sources(): int {
     $db = getDB();
 
-    // Lazy-add the error-tracking columns so the admin panel can show
-    // which sources failed and why instead of just "last_fetched_at" —
-    // critical for diagnosing "only one source is updating" reports.
+    // Lazy-add the error-tracking + RSS-fallback columns so the admin
+    // panel can show which sources failed (and admins can rescue them
+    // by pointing at a working RSS feed) without a separate migration.
     try {
         $db->exec("ALTER TABLE twitter_sources
                     ADD COLUMN last_error VARCHAR(500) DEFAULT NULL,
                     ADD COLUMN last_new_count INT DEFAULT 0,
-                    ADD COLUMN consecutive_failures INT DEFAULT 0");
-    } catch (Throwable $e) { /* columns already exist */ }
+                    ADD COLUMN consecutive_failures INT DEFAULT 0,
+                    ADD COLUMN fallback_rss_url VARCHAR(500) DEFAULT NULL");
+    } catch (Throwable $e) { /* one or more columns already exist */ }
+    // Add the column individually too, for older installs that already
+    // ran the previous migration with only the three error columns.
+    try {
+        $db->exec("ALTER TABLE twitter_sources ADD COLUMN fallback_rss_url VARCHAR(500) DEFAULT NULL");
+    } catch (Throwable $e) {}
 
     try {
         $sources = $db->query("SELECT * FROM twitter_sources WHERE is_active = 1")->fetchAll(PDO::FETCH_ASSOC);
@@ -546,14 +642,33 @@ function tw_sync_all_sources(): int {
     foreach ($sources as $src) {
         $srcNew = 0;
         $err = null;
+        $usedFallback = false;
         try {
             $tweets = tw_fetch_user_tweets($src['username'], 20);
         } catch (Throwable $e) {
             $tweets = [];
             $err = 'fetch exception: ' . $e->getMessage();
         }
+
+        // Twitter transports came back empty — try the admin-configured
+        // RSS fallback if one is set. This is how we keep the section
+        // alive for handles where Nitter is consistently blocked.
+        if (empty($tweets) && !empty($src['fallback_rss_url'])) {
+            try {
+                $tweets = tw_fetch_via_custom_rss((string)$src['fallback_rss_url'], 20);
+                if (!empty($tweets)) {
+                    $usedFallback = true;
+                    $err = null;
+                } else {
+                    $err = 'twitter empty + RSS fallback also returned 0 items';
+                }
+            } catch (Throwable $e) {
+                $err = 'RSS fallback exception: ' . $e->getMessage();
+            }
+        }
+
         if (empty($tweets) && $err === null) {
-            $err = 'no tweets returned (all transports failed — Nitter likely blocked)';
+            $err = 'no tweets returned (all transports failed — set a fallback_rss_url for this source)';
         }
         foreach ($tweets as $t) {
             try {
@@ -583,13 +698,14 @@ function tw_sync_all_sources(): int {
                                WHERE id = ?")
                    ->execute([mb_substr($err, 0, 500), (int)$src['id']]);
             } else {
+                $okLabel = $usedFallback ? 'ok (RSS fallback)' : 'ok';
                 $db->prepare("UPDATE twitter_sources
                                  SET last_fetched_at = NOW(),
-                                     last_error = NULL,
+                                     last_error = ?,
                                      last_new_count = ?,
                                      consecutive_failures = 0
                                WHERE id = ?")
-                   ->execute([$srcNew, (int)$src['id']]);
+                   ->execute([$okLabel, $srcNew, (int)$src['id']]);
             }
         } catch (Throwable $e) {}
     }
