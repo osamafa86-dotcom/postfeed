@@ -1,6 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/api/api_exception.dart';
+import '../../../core/storage/hive_init.dart';
 import '../../../core/models/article.dart';
 import '../../../core/models/category.dart';
 import '../../../core/models/evolving_story.dart';
@@ -48,18 +51,56 @@ class ContentRepository {
     return PaginatedArticles(items: res.data ?? const [], hasMore: res.hasMore, total: res.total);
   }
 
-  Future<({Article article, List<Article> related})> article({int? id, String? slug}) async {
-    final res = await _api.get<Map<String, dynamic>>(
-      '/content/article',
-      query: {if (id != null) 'id': id, if (slug != null) 'slug': slug},
-      decode: (d) => (d as Map).cast<String, dynamic>(),
-    );
-    final article = Article.fromJson((res.data!['article'] as Map).cast());
-    final related = (res.data!['related'] as List? ?? [])
-        .whereType<Map>()
-        .map((m) => Article.fromJson(m.cast()))
+  /// Number of recently-opened articles kept on-device for offline reading.
+  static const int _offlineCacheCap = 60;
+
+  Box<dynamic>? get _offlineBox =>
+      Hive.isBoxOpen(articlesCacheBox) ? Hive.box(articlesCacheBox) : null;
+
+  ({Article article, List<Article> related}) _parseArticlePayload(
+      Map<dynamic, dynamic> data) {
+    final article = Article.fromJson(
+        (data['article'] as Map<dynamic, dynamic>).cast<String, dynamic>());
+    final related = (data['related'] as List? ?? [])
+        .whereType<Map<dynamic, dynamic>>()
+        .map((m) => Article.fromJson(m.cast<String, dynamic>()))
         .toList();
     return (article: article, related: related);
+  }
+
+  /// Best-effort cache of a fetched article payload for offline reading.
+  void _cacheArticlePayload(int id, Map<String, dynamic> data) {
+    final box = _offlineBox;
+    if (box == null) return;
+    try {
+      while (box.length >= _offlineCacheCap) {
+        box.deleteAt(0); // FIFO eviction so the cache stays bounded
+      }
+      box.put('article_$id', data);
+    } catch (_) {
+      // Caching must never break article loading.
+    }
+  }
+
+  Future<({Article article, List<Article> related})> article({int? id, String? slug}) async {
+    try {
+      final res = await _api.get<Map<String, dynamic>>(
+        '/content/article',
+        query: {if (id != null) 'id': id, if (slug != null) 'slug': slug},
+        decode: (d) => (d as Map).cast<String, dynamic>(),
+      );
+      final data = res.data!;
+      if (id != null) _cacheArticlePayload(id, data);
+      return _parseArticlePayload(data);
+    } on ApiException catch (e) {
+      // Offline / timeout → serve a previously-opened copy when we have one,
+      // so recently-read articles stay readable without a connection.
+      if (id != null && (e.code == 'offline' || e.code == 'timeout')) {
+        final cached = _offlineBox?.get('article_$id');
+        if (cached is Map) return _parseArticlePayload(cached);
+      }
+      rethrow;
+    }
   }
 
   Future<List<Category>> categories() async {
