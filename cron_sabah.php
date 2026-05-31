@@ -40,13 +40,13 @@ if ($existing && empty($_GET['force'])) {
 echo "generating sabah briefing for {$today}...\n";
 $t0 = microtime(true);
 
-// Retry loop: Gemini's free tier caps at 20 requests/minute and
-// cron_ai often eats that allowance seconds earlier. Rather than fail
-// for the whole day, wait out the quota window and retry. Up to 4
-// attempts with a 65s gap = covers ~4 minutes of contention, which is
-// plenty for a once-daily job.
+// One AI attempt with a single 65s retry on a rate-limit. If the AI is
+// exhausted (Gemini's post-Dec-2025 free tier is only ~20 req/day),
+// sabah_generate() falls back to a no-AI digest built straight from the
+// clustered articles, so the briefing always ships — the retry here is
+// just to prefer the nicer AI-written version when the quota is close.
 $briefing = null;
-$maxAttempts = 4;
+$maxAttempts = 2;
 for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
     $briefing = sabah_generate();
     if ($briefing && !empty($briefing['hook'])) break;

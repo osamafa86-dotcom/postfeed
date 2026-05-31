@@ -204,7 +204,12 @@ function sabah_generate(): ?array {
         // Stash the real reason where the cron can read it.
         $GLOBALS['_sabah_last_error'] = 'AI: ' . ($call['error'] ?? 'unknown');
         error_log('[sabah] AI failed: ' . ($call['error'] ?? ''));
-        return null;
+        // Don't return null — the AI free tier (Gemini 20 req/day after
+        // the Dec-2025 cuts) is regularly exhausted, and a missing
+        // morning briefing makes the home-screen card look broken.
+        // Build a no-AI briefing straight from the clustered articles
+        // instead. It's less narrative, but it ships every day.
+        return sabah_build_without_ai();
     }
 
     $p = $call['input'];
@@ -228,6 +233,97 @@ function sabah_generate(): ?array {
         'closing_question' => trim((string)($p['closing_question'] ?? '')),
         'article_count'    => $data['article_count'],
     ];
+}
+
+/**
+ * No-AI morning briefing. Built directly from today's top clusters when
+ * the AI provider is unavailable (Gemini quota exhausted, Anthropic out
+ * of credit). The result is a plain digest — each top story becomes a
+ * section using the longest headline as the title and the article's own
+ * ai_summary/excerpt as the body — but it guarantees the daily briefing
+ * always exists so the home-screen card never looks broken.
+ */
+function sabah_build_without_ai(): ?array {
+    try {
+        $db = getDB();
+        // Top multi-source clusters first, then any clusters — same
+        // ranking sabah_collect_top_clusters uses.
+        $clusters = $db->query("
+            SELECT a.cluster_key,
+                   COUNT(DISTINCT a.source_id) AS src_count,
+                   COUNT(*) AS art_count,
+                   MAX(a.published_at) AS latest_at
+              FROM articles a
+             WHERE a.status = 'published'
+               AND a.cluster_key IS NOT NULL AND a.cluster_key <> '-'
+               AND a.published_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+             GROUP BY a.cluster_key
+             ORDER BY src_count DESC, art_count DESC, latest_at DESC
+             LIMIT 6
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        if (empty($clusters)) {
+            $GLOBALS['_sabah_last_error'] = 'no clusters for no-AI fallback';
+            return null;
+        }
+
+        $icons = ['📰', '🌍', '⚡', '📌', '🔔', '🗞️'];
+        $sections = [];
+        $totalArticles = 0;
+        $leadTitle = '';
+
+        foreach ($clusters as $idx => $cl) {
+            $stmt = $db->prepare(
+                "SELECT a.title, a.ai_summary, a.excerpt, s.name AS source_name
+                   FROM articles a
+                   LEFT JOIN sources s ON a.source_id = s.id
+                  WHERE a.cluster_key = ? AND a.status = 'published'
+                  ORDER BY LENGTH(COALESCE(a.ai_summary, a.excerpt, '')) DESC
+                  LIMIT 1"
+            );
+            $stmt->execute([$cl['cluster_key']]);
+            $art = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$art) continue;
+
+            $title = trim((string)$art['title']);
+            $body  = trim(strip_tags((string)($art['ai_summary'] ?? $art['excerpt'] ?? '')));
+            if ($body === '') $body = $title;
+            if (mb_strlen($body) > 360) $body = mb_substr($body, 0, 360) . '…';
+
+            // Note how many outlets are covering it — adds a little signal
+            // even without AI narration.
+            if ((int)$cl['src_count'] >= 2) {
+                $body .= "\n\n📡 يغطّيه " . (int)$cl['src_count'] . " مصادر.";
+            }
+
+            if ($idx === 0) $leadTitle = $title;
+            $sections[] = [
+                'title' => $title,
+                'icon'  => $icons[$idx % count($icons)],
+                'body'  => $body,
+            ];
+            $totalArticles += (int)$cl['art_count'];
+        }
+
+        if (empty($sections)) {
+            $GLOBALS['_sabah_last_error'] = 'no articles for no-AI fallback';
+            return null;
+        }
+
+        $dateAr = date('Y-m-d');
+        return [
+            'headline'         => $leadTitle !== '' ? $leadTitle : 'أبرز أخبار اليوم',
+            'hook'             => 'إليك أبرز ما تناقلته المصادر خلال الـ 24 ساعة الماضية، '
+                                . 'مرتّبة حسب اهتمام المصادر بها. اضغط أي قسم لقراءة التفاصيل.',
+            'sections'         => $sections,
+            'closing_question' => 'أي هذه الأخبار يهمّك أكثر اليوم؟',
+            'article_count'    => $totalArticles,
+        ];
+    } catch (Throwable $e) {
+        $GLOBALS['_sabah_last_error'] = 'no-AI fallback exception: ' . $e->getMessage();
+        error_log('[sabah] no-AI fallback failed: ' . $e->getMessage());
+        return null;
+    }
 }
 
 /**
