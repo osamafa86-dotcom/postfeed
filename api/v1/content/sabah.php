@@ -24,9 +24,19 @@ try {
 
 if (!$brief) api_err('not_found', 'لا يوجد ملخص صباحي لهذا التاريخ', 404);
 
-// sabah_briefings cols: briefing_date, headline, hook, sections (JSON),
-// closing_question, article_count, generated_at
-$sections = isset($brief['sections']) ? json_decode((string)$brief['sections'], true) : [];
+// sabah_get / sabah_get_latest already json_decode the sections column
+// into an array before returning. The old code here decoded it a SECOND
+// time — casting an array to (string) yields the literal "Array" and
+// json_decode("Array") returns null, which became [] in the response.
+// That's exactly the empty-sections payload the app was receiving even
+// after the cron successfully saved a 6-section briefing.
+$sections = $brief['sections'] ?? [];
+if (is_string($sections)) {
+    // Defensive: if a caller in the future returns the raw column,
+    // decode once. Multiple decodes are still a no-op (returns null).
+    $decoded = json_decode($sections, true);
+    $sections = is_array($decoded) ? $decoded : [];
+}
 
 api_ok([
     'date'             => $brief['briefing_date'] ?? $date,
