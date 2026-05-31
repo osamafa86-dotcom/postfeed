@@ -23,7 +23,10 @@ if (PHP_SAPI !== 'cli') {
     header('Content-Type: text/plain; charset=utf-8');
 }
 
-@set_time_limit(120);
+// The briefing is generated once a day, so it's worth being patient.
+// Allow up to ~5 minutes so we can sit through a couple of Gemini
+// free-tier 429 windows (each ~60s) instead of giving up on the first.
+@set_time_limit(360);
 
 $today = date('Y-m-d');
 
@@ -37,14 +40,31 @@ if ($existing && empty($_GET['force'])) {
 echo "generating sabah briefing for {$today}...\n";
 $t0 = microtime(true);
 
-$briefing = sabah_generate();
-if (!$briefing || empty($briefing['hook'])) {
+// Retry loop: Gemini's free tier caps at 20 requests/minute and
+// cron_ai often eats that allowance seconds earlier. Rather than fail
+// for the whole day, wait out the quota window and retry. Up to 4
+// attempts with a 65s gap = covers ~4 minutes of contention, which is
+// plenty for a once-daily job.
+$briefing = null;
+$maxAttempts = 4;
+for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+    $briefing = sabah_generate();
+    if ($briefing && !empty($briefing['hook'])) break;
+
     // sabah_generate stashes the real reason (AI error vs. genuinely no
-    // clusters) so we don't print a misleading "not enough clusters" when
-    // the corpus was fine but the AI call 429'd.
+    // clusters) so we don't print a misleading "not enough clusters"
+    // when the corpus was fine but the AI call 429'd.
     $reason = $GLOBALS['_sabah_last_error'] ?? 'not enough clusters';
-    echo "failed: no briefing generated — {$reason}\n";
-    exit(1);
+    // Only worth retrying on a rate-limit (429). A genuine "no clusters"
+    // or a hard error won't fix itself in 60s, so bail immediately.
+    $isRateLimit = strpos((string)$reason, '429') !== false
+                || stripos((string)$reason, 'quota') !== false;
+    if (!$isRateLimit || $attempt === $maxAttempts) {
+        echo "failed after {$attempt} attempt(s): {$reason}\n";
+        exit(1);
+    }
+    echo "  attempt {$attempt}: rate-limited, waiting 65s before retry…\n";
+    sleep(65);
 }
 
 $id = sabah_save($briefing, $today);

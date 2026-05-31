@@ -38,8 +38,14 @@ if ((string)getSetting('cron_ai_enabled', '1') !== '1') {
     exit;
 }
 
-$limit = (int)($_GET['limit'] ?? ($argv[1] ?? 20));
-if ($limit < 1 || $limit > 100) $limit = 20;
+// Default to 12 articles/run, not 20. Gemini's free tier is 20
+// requests/MINUTE shared across ALL features (article summaries +
+// morning briefing + evolving-story narration + Q&A). If cron_ai
+// burns all 20 on summaries, cron_sabah/cron_evolving_ai 429 for the
+// next minute. 12 leaves headroom; raise it again if you upgrade to
+// a paid Gemini tier. Override per-run with ?limit=N.
+$limit = (int)($_GET['limit'] ?? ($argv[1] ?? 12));
+if ($limit < 1 || $limit > 100) $limit = 12;
 
 // Ensure columns exist
 try {
