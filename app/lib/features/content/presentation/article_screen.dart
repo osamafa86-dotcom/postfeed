@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart' show Share;
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/api/api_exception.dart';
 import '../../../core/utils/safe_launch.dart';
 import '../../../core/models/article.dart';
 import '../../../core/theme/app_theme.dart';
@@ -109,7 +110,9 @@ class _ArticleScreenState extends ConsumerState<ArticleScreen> {
       body: asy.when(
         loading: () => const LoadingShimmerList(itemCount: 4),
         error: (e, _) => ErrorRetryView(
-          message: 'تعذّر تحميل المقال\n$e',
+          message: e is ApiException
+              ? 'تعذّر تحميل المقال\n${e.userMessage}'
+              : 'تعذّر تحميل المقال',
           onRetry: () => ref.invalidate(articleProvider(widget.id)),
         ),
         data: (data) => _ArticleBody(article: data.article, related: data.related),

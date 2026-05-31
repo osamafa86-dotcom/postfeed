@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/api/api_exception.dart';
 import '../data/auth_repository.dart';
 
 /// Two-step recovery: email → emailed 6-digit code + new password.
@@ -53,7 +54,7 @@ class _ForgotPasswordScreenState
             '(وملف الـ Spam إن لزم).';
       });
     } catch (e) {
-      if (mounted) setState(() => _err = '$e');
+      if (mounted) setState(() => _err = e is ApiException ? e.userMessage : '$e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -88,7 +89,7 @@ class _ForgotPasswordScreenState
       );
       context.go('/login');
     } catch (e) {
-      if (mounted) setState(() => _err = '$e');
+      if (mounted) setState(() => _err = e is ApiException ? e.userMessage : '$e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }

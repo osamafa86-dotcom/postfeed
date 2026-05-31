@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/api/api_exception.dart';
 import '../../user/data/user_repository.dart';
 import '../data/auth_repository.dart';
+import '../data/auth_state_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -29,11 +31,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() { _busy = true; _err = null; });
     try {
       await ref.read(authRepositoryProvider).login(email: _email.text, password: _pass.text);
+      // Broadcast the new auth state so screens that were built while
+      // signed-out (Follow/Notifications/Bookmarks inside MainShell's
+      // IndexedStack) rebuild their authenticated branch. Without this
+      // the user lands back on Home and "متابعتي" still shows the
+      // "please sign in" prompt — the cause of Apple's 2.1(a) rejection.
+      ref.read(authStateProvider.notifier).refresh();
       ref.invalidate(currentUserProvider);
       ref.invalidate(followedIdsProvider);
+      ref.invalidate(bookmarkedIdsProvider);
       if (mounted) context.go('/');
     } catch (e) {
-      setState(() => _err = '$e');
+      setState(() => _err = e is ApiException ? e.userMessage : '$e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -43,11 +52,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() { _busy = true; _err = null; });
     try {
       await fn();
+      ref.read(authStateProvider.notifier).refresh();
       ref.invalidate(currentUserProvider);
       ref.invalidate(followedIdsProvider);
+      ref.invalidate(bookmarkedIdsProvider);
       if (mounted) context.go('/');
     } catch (e) {
-      if (mounted) setState(() => _err = '$e');
+      if (mounted) setState(() => _err = e is ApiException ? e.userMessage : '$e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }

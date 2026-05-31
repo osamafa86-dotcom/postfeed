@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/loading_state.dart';
+import '../../auth/data/auth_state_provider.dart';
 import '../../auth/data/auth_storage.dart';
 import '../../content/data/content_repository.dart';
 import '../data/user_repository.dart';
@@ -14,7 +15,12 @@ class FollowScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (!AuthStorage.isAuthenticated) {
+    // Watch the reactive auth state so this screen rebuilds when the
+    // user logs in/out — `AuthStorage.isAuthenticated` alone is a
+    // static getter that won't trigger a rebuild from inside MainShell's
+    // IndexedStack (the cause of Apple's 2.2.1(19) 2.1(a) rejection).
+    final isAuthed = ref.watch(authStateProvider);
+    if (!isAuthed) {
       return Scaffold(
         appBar: AppBar(title: const Text('متابعتي')),
         body: EmptyView(
@@ -118,35 +124,42 @@ class _FollowedCategoriesTab extends ConsumerWidget {
       loading: () => const LoadingShimmerList(),
       error: (e, _) => ErrorRetryView(message: '$e', onRetry: () => ref.invalidate(categoriesProvider)),
       data: (allCats) {
-        return ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: allCats.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 8),
-          itemBuilder: (_, i) {
-            final cat = allCats[i];
-            final isFollowed = categoryIds.contains(cat.id);
-            final color = AppColors.categoryColors[cat.color] ?? AppColors.primary;
-            return ListTile(
-              leading: Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                alignment: Alignment.center,
-                child: Text(cat.icon ?? '', style: const TextStyle(fontSize: 20)),
-              ),
-              title: Text(cat.name,
-                  style: TextStyle(fontWeight: FontWeight.w700,
-                      color: isDark ? Colors.white : AppColors.textLight)),
-              trailing: _FollowButton(
-                isFollowed: isFollowed,
-                onTap: () => _toggleFollow(context, ref, 'category', cat.id),
-              ),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              tileColor: Theme.of(context).cardColor,
-            );
+        return RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(categoriesProvider);
+            ref.read(followedIdsProvider.notifier).refresh();
           },
+          child: ListView.separated(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            itemCount: allCats.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (_, i) {
+              final cat = allCats[i];
+              final isFollowed = categoryIds.contains(cat.id);
+              final color = AppColors.categoryColors[cat.color] ?? AppColors.primary;
+              return ListTile(
+                leading: Container(
+                  width: 40, height: 40,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(cat.icon ?? '', style: const TextStyle(fontSize: 20)),
+                ),
+                title: Text(cat.name,
+                    style: TextStyle(fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white : AppColors.textLight)),
+                trailing: _FollowButton(
+                  isFollowed: isFollowed,
+                  onTap: () => _toggleFollow(context, ref, 'category', cat.id),
+                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                tileColor: Theme.of(context).cardColor,
+              );
+            },
+          ),
         );
       },
     );
@@ -168,38 +181,45 @@ class _FollowedSourcesTab extends ConsumerWidget {
       loading: () => const LoadingShimmerList(),
       error: (e, _) => ErrorRetryView(message: '$e', onRetry: () => ref.invalidate(sourcesProvider)),
       data: (allSources) {
-        return ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: allSources.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 8),
-          itemBuilder: (_, i) {
-            final src = allSources[i];
-            final isFollowed = sourceIds.contains(src.id);
-            return ListTile(
-              leading: Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                    src.logoLetter ??
-                        (src.name.isNotEmpty ? src.name.substring(0, 1) : '؟'),
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700,
-                        color: AppColors.primary)),
-              ),
-              title: Text(src.name,
-                  style: TextStyle(fontWeight: FontWeight.w700,
-                      color: isDark ? Colors.white : AppColors.textLight)),
-              trailing: _FollowButton(
-                isFollowed: isFollowed,
-                onTap: () => _toggleFollow(context, ref, 'source', src.id),
-              ),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              tileColor: Theme.of(context).cardColor,
-            );
+        return RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(sourcesProvider);
+            ref.read(followedIdsProvider.notifier).refresh();
           },
+          child: ListView.separated(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            itemCount: allSources.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (_, i) {
+              final src = allSources[i];
+              final isFollowed = sourceIds.contains(src.id);
+              return ListTile(
+                leading: Container(
+                  width: 40, height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                      src.logoLetter ??
+                          (src.name.isNotEmpty ? src.name.substring(0, 1) : '؟'),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700,
+                          color: AppColors.primary)),
+                ),
+                title: Text(src.name,
+                    style: TextStyle(fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white : AppColors.textLight)),
+                trailing: _FollowButton(
+                  isFollowed: isFollowed,
+                  onTap: () => _toggleFollow(context, ref, 'source', src.id),
+                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                tileColor: Theme.of(context).cardColor,
+              );
+            },
+          ),
         );
       },
     );
@@ -221,38 +241,45 @@ class _FollowedStoriesTab extends ConsumerWidget {
       loading: () => const LoadingShimmerList(),
       error: (e, _) => ErrorRetryView(message: '$e', onRetry: () => ref.invalidate(evolvingStoriesProvider)),
       data: (allStories) {
-        return ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: allStories.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 8),
-          itemBuilder: (_, i) {
-            final story = allStories[i];
-            final isFollowed = storyIds.contains(story.id);
-            return ListTile(
-              leading: Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(
-                  color: Colors.teal.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                alignment: Alignment.center,
-                child: Text(story.icon.isNotEmpty ? story.icon : '📅',
-                    style: const TextStyle(fontSize: 20)),
-              ),
-              title: Text(story.name,
-                  style: TextStyle(fontWeight: FontWeight.w700,
-                      color: isDark ? Colors.white : AppColors.textLight)),
-              subtitle: Text('${story.articleCount} خبر',
-                  style: Theme.of(context).textTheme.bodySmall),
-              trailing: _FollowButton(
-                isFollowed: isFollowed,
-                onTap: () => _toggleFollow(context, ref, 'story', story.id),
-              ),
-              onTap: () => context.push('/stories/${story.slug}'),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              tileColor: Theme.of(context).cardColor,
-            );
+        return RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(evolvingStoriesProvider);
+            ref.read(followedIdsProvider.notifier).refresh();
           },
+          child: ListView.separated(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            itemCount: allStories.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (_, i) {
+              final story = allStories[i];
+              final isFollowed = storyIds.contains(story.id);
+              return ListTile(
+                leading: Container(
+                  width: 40, height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.teal.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(story.icon.isNotEmpty ? story.icon : '📅',
+                      style: const TextStyle(fontSize: 20)),
+                ),
+                title: Text(story.name,
+                    style: TextStyle(fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white : AppColors.textLight)),
+                subtitle: Text('${story.articleCount} خبر',
+                    style: Theme.of(context).textTheme.bodySmall),
+                trailing: _FollowButton(
+                  isFollowed: isFollowed,
+                  onTap: () => _toggleFollow(context, ref, 'story', story.id),
+                ),
+                onTap: () => context.push('/stories/${story.slug}'),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                tileColor: Theme.of(context).cardColor,
+              );
+            },
+          ),
         );
       },
     );
@@ -293,7 +320,7 @@ Future<void> _toggleFollow(
     // responses like "يلزم تسجيل الدخول" or "تم تجاوز الحد المسموح" carry
     // their own Arabic text already.
     final msg = e is ApiException
-        ? e.message
+        ? e.userMessage
         : 'تعذّر تنفيذ العملية، تحقّق من اتصالك وحاول مجدداً';
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }

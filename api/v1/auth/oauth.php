@@ -46,6 +46,22 @@ if ($audExpected === '') {
 // plus iss / aud / exp checks. Returns null on any mismatch.
 $claims = oauth_verify_id_token($idToken, $provider, $audExpected);
 if (!is_array($claims)) {
+    // Log the specific reason for the failure so we can debug recurring
+    // App Store reviewer rejections. Only log the header + claims (not
+    // the signature) so we don't leak credentials into the log file.
+    $parts = explode('.', $idToken);
+    $headerPeek = (count($parts) === 3) ? json_decode(jwt_b64url_decode($parts[0]) ?: '', true) : null;
+    $claimsPeek = (count($parts) === 3) ? json_decode(jwt_b64url_decode($parts[1]) ?: '', true) : null;
+    error_log(sprintf(
+        '[oauth %s] verification failed | aud_expected=%s | iss=%s | aud=%s | kid=%s | alg=%s | exp_in=%s',
+        $provider,
+        $audExpected,
+        is_array($claimsPeek) ? ($claimsPeek['iss'] ?? '?') : '?',
+        is_array($claimsPeek) ? ($claimsPeek['aud'] ?? '?') : '?',
+        is_array($headerPeek) ? ($headerPeek['kid'] ?? '?') : '?',
+        is_array($headerPeek) ? ($headerPeek['alg'] ?? '?') : '?',
+        is_array($claimsPeek) ? (((int)($claimsPeek['exp'] ?? 0)) - time()) . 's' : '?'
+    ));
     api_err('invalid_token', 'id_token غير صالح', 401);
 }
 

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 
+import '../../features/auth/data/auth_state_provider.dart';
 import '../../features/auth/data/auth_storage.dart';
 import '../router/app_router.dart' show rootNavigatorKey;
 import 'api_envelope.dart';
@@ -77,6 +78,17 @@ class ApiClient {
           await AuthStorage.clear();
           final ctx = rootNavigatorKey.currentContext;
           if (ctx != null && ctx.mounted) {
+            // Tell every authStateProvider listener (Follow/Notifications/
+            // Bookmarks/Home For-You) that the user is now signed out so
+            // they swap to the signed-out branch on next frame.
+            try {
+              ProviderScope.containerOf(ctx, listen: false)
+                  .read(authStateProvider.notifier)
+                  .refresh();
+            } catch (_) {
+              // Container not reachable from this context — the
+              // /login redirect below will get them to a known state.
+            }
             ScaffoldMessenger.of(ctx).showSnackBar(
               const SnackBar(content: Text('انتهت الجلسة، يرجى تسجيل الدخول مجدداً')),
             );

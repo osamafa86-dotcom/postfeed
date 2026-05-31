@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
+import '../../features/auth/data/auth_state_provider.dart';
 import '../../features/auth/data/auth_storage.dart';
 import '../../features/user/data/user_repository.dart';
 import '../theme/app_theme.dart';
@@ -17,6 +18,10 @@ void showCommentsSheet(BuildContext context, int articleId) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
+    // useSafeArea matters on iPad — without it the sheet renders under
+    // the home indicator on landscape and clips the composer when the
+    // keyboard opens. On iPhone it's a harmless few-pixel inset.
+    useSafeArea: true,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
@@ -74,6 +79,10 @@ class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Watch the reactive auth state — if the user signs in while the
+    // sheet is open (e.g. via a deep link tap), the composer should
+    // appear without requiring them to close and re-open.
+    final isAuthed = ref.watch(authStateProvider);
     final comments = ref.watch(_commentsProvider(widget.articleId));
     final currentUserId = AuthStorage.userId;
 
@@ -151,7 +160,7 @@ class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
         ),
 
         // Input field
-        if (AuthStorage.isAuthenticated) ...[
+        if (isAuthed) ...[
           const Divider(height: 1),
           SafeArea(
             child: Padding(

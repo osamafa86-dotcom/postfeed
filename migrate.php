@@ -75,11 +75,25 @@ add_idx($db, 'articles', 'idx_cluster_key',    '`cluster_key`',                 
 add_idx($db, 'articles', 'idx_hero_status_pub',     '`is_hero`, `status`, `published_at` DESC',      $applied);
 add_idx($db, 'articles', 'idx_breaking_status_pub', '`is_breaking`, `status`, `published_at` DESC',  $applied);
 add_idx($db, 'articles', 'idx_cluster_status_pub',  '`cluster_key`, `status`, `published_at` DESC',  $applied);
+// Trending ORDER BY view_count DESC — the only query that doesn't sort
+// by published_at. Without this it falls back to a full scan + filesort.
+add_idx($db, 'articles', 'idx_status_views',        '`status`, `view_count` DESC',                   $applied);
 
 // ---------- telegram_messages performance ----------
 // The Telegram feed + summary cron scan by (is_active, posted_at) very
 // frequently. A composite index avoids the full-range sort on big archives.
 add_idx($db, 'telegram_messages', 'idx_active_posted', '`is_active`, `posted_at` DESC', $applied);
+
+// ---------- twitter_messages performance ----------
+add_idx($db, 'twitter_messages', 'idx_active_posted', '`is_active`, `posted_at` DESC', $applied);
+
+// ---------- duplicate-article guard ----------
+// cron_rss does SELECT COUNT(*) WHERE title=? AND source_id=? before
+// every insert. With ~1000 items/hour that's a full-scan blizzard
+// because title isn't indexed. Adding the composite index lets the
+// duplicate check hit the index, and lets us flip to INSERT IGNORE
+// in cron_rss to skip the SELECT entirely.
+add_idx($db, 'articles', 'idx_title_source_dup', '`title`(100), `source_id`', $applied);
 
 // ---------- telegram tables ----------
 $db->exec("CREATE TABLE IF NOT EXISTS telegram_sources (

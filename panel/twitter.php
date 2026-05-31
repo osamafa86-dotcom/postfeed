@@ -73,25 +73,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $avatar       = trim($_POST['avatar_url'] ?? '');
     $sort_order   = (int)($_POST['sort_order'] ?? 0);
     $is_active    = isset($_POST['is_active']) ? 1 : 0;
+    $fallback_rss = trim($_POST['fallback_rss_url'] ?? '');
 
     // Accept a pasted x.com / twitter.com URL and extract the handle.
     if (preg_match('#(?:twitter\.com|x\.com)/([A-Za-z0-9_]{1,15})#', $username, $mm)) {
         $username = $mm[1];
     }
 
-    if ($username === '' || $display_name === '') {
+    if ($fallback_rss !== '' && !preg_match('#^https?://#i', $fallback_rss)) {
+        $error = 'رابط RSS الاحتياطي يجب أن يبدأ بـ http:// أو https://';
+    } elseif ($username === '' || $display_name === '') {
         $error = 'اسم المستخدم والاسم المعروض مطلوبان';
     } elseif (!preg_match('/^[A-Za-z0-9_]{1,15}$/', $username)) {
         $error = 'اسم المستخدم يجب أن يكون حروف/أرقام إنجليزية (حتى 15 حرف)';
     } else {
+        // Make sure the new columns exist before we try to write to them.
+        try {
+            $db->exec("ALTER TABLE twitter_sources
+                        ADD COLUMN last_error VARCHAR(500) DEFAULT NULL,
+                        ADD COLUMN last_new_count INT DEFAULT 0,
+                        ADD COLUMN consecutive_failures INT DEFAULT 0,
+                        ADD COLUMN fallback_rss_url VARCHAR(500) DEFAULT NULL");
+        } catch (Throwable $e) {}
+        try {
+            $db->exec("ALTER TABLE twitter_sources ADD COLUMN fallback_rss_url VARCHAR(500) DEFAULT NULL");
+        } catch (Throwable $e) {}
+
         try {
             if ($id) {
-                $stmt = $db->prepare("UPDATE twitter_sources SET username=?, display_name=?, avatar_url=?, sort_order=?, is_active=? WHERE id=?");
-                $stmt->execute([$username, $display_name, $avatar, $sort_order, $is_active, $id]);
+                $stmt = $db->prepare("UPDATE twitter_sources SET username=?, display_name=?, avatar_url=?, sort_order=?, is_active=?, fallback_rss_url=? WHERE id=?");
+                $stmt->execute([$username, $display_name, $avatar, $sort_order, $is_active, $fallback_rss ?: null, $id]);
                 $success = 'تم تحديث الحساب';
             } else {
-                $stmt = $db->prepare("INSERT INTO twitter_sources (username, display_name, avatar_url, sort_order, is_active) VALUES (?, ?, ?, ?, ?)");
-                $stmt->execute([$username, $display_name, $avatar, $sort_order, $is_active]);
+                $stmt = $db->prepare("INSERT INTO twitter_sources (username, display_name, avatar_url, sort_order, is_active, fallback_rss_url) VALUES (?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$username, $display_name, $avatar, $sort_order, $is_active, $fallback_rss ?: null]);
                 $success = 'تم إضافة الحساب';
             }
             $action = 'list';
@@ -176,6 +191,16 @@ include __DIR__ . '/includes/panel_layout_head.php';
           </div>
         </div>
         <div class="form-group">
+          <label>🔄 رابط RSS احتياطي <small style="color:var(--text-muted);font-weight:normal;">(اختياري)</small></label>
+          <input type="url" name="fallback_rss_url" class="form-control" dir="ltr"
+                 value="<?php echo e($editSource['fallback_rss_url'] ?? ''); ?>"
+                 placeholder="https://example.com/feed.xml">
+          <small style="color:var(--text-muted);font-size:11.5px;line-height:1.6;display:block;margin-top:6px;">
+            إذا فشل سحب التغريدات من تويتر (Nitter محجوب لهذا الحساب)، سنسحب الأخبار من هذا الرابط بدلاً عنه.
+            <br>أمثلة: <code dir="ltr">https://aljazeera.net/feeds/news.xml</code> أو <code dir="ltr">https://rsshub.app/twitter/user/USERNAME</code>
+          </small>
+        </div>
+        <div class="form-group">
           <div class="checkbox-item">
             <input type="checkbox" name="is_active" id="tw_active"
                    <?php echo (!$editSource || $editSource['is_active']) ? 'checked' : ''; ?>>
@@ -234,18 +259,41 @@ include __DIR__ . '/includes/panel_layout_head.php';
             <th>المستخدم</th>
             <th>عدد التغريدات</th>
             <th>آخر جلب</th>
-            <th>الحالة</th>
+            <th>الحالة + آخر خطأ</th>
             <th>إجراءات</th>
           </tr>
         </thead>
         <tbody>
-          <?php foreach ($sourcesList as $s): ?>
+          <?php foreach ($sourcesList as $s):
+            // Status badge: success / RSS-fallback / consecutive failures.
+            $errTxt = trim((string)($s['last_error'] ?? ''));
+            $failN  = (int)($s['consecutive_failures'] ?? 0);
+            $lastN  = (int)($s['last_new_count'] ?? 0);
+            $isFallback = stripos($errTxt, 'RSS fallback') !== false;
+            if ($errTxt === '' || $errTxt === 'ok') {
+                $statusHtml = '<span class="badge badge-success">شغّال</span>';
+                if ($lastN > 0) $statusHtml .= ' <small style="color:var(--text-muted);">(+' . $lastN . ' جديد)</small>';
+            } elseif ($isFallback) {
+                $statusHtml = '<span class="badge badge-warning" style="background:#fff7e6;color:#a16207;">RSS احتياطي ✓</span>';
+                if ($lastN > 0) $statusHtml .= ' <small style="color:var(--text-muted);">(+' . $lastN . ')</small>';
+            } else {
+                $statusHtml = '<span class="badge" style="background:#fee2e2;color:#b91c1c;">فشل';
+                if ($failN > 1) $statusHtml .= ' ×' . $failN;
+                $statusHtml .= '</span><br><small style="color:#b91c1c;font-size:11px;line-height:1.5;">' . e(mb_substr($errTxt, 0, 130)) . '</small>';
+            }
+            $hasFallback = !empty($s['fallback_rss_url']);
+          ?>
             <tr>
-              <td><strong><?php echo e($s['display_name']); ?></strong></td>
+              <td>
+                <strong><?php echo e($s['display_name']); ?></strong>
+                <?php if ($hasFallback): ?>
+                  <span title="RSS احتياطي مُعدّ" style="color:#0891b2;font-size:11px;">🔄</span>
+                <?php endif; ?>
+              </td>
               <td><a href="https://x.com/<?php echo e($s['username']); ?>" target="_blank" style="color:var(--primary);">@<?php echo e($s['username']); ?></a></td>
               <td><span class="badge badge-primary"><?php echo (int)$s['msg_count']; ?></span></td>
               <td style="color:var(--text-muted);font-size:12px;"><?php echo $s['last_fetched_at'] ? date('Y/m/d H:i', strtotime($s['last_fetched_at'])) : '—'; ?></td>
-              <td><?php echo $s['is_active'] ? '<span class="badge badge-success">نشط</span>' : '<span class="badge badge-muted">معطل</span>'; ?></td>
+              <td style="max-width:280px;"><?php echo $statusHtml; ?></td>
               <td>
                 <a href="twitter.php?action=edit&id=<?php echo (int)$s['id']; ?>" class="action-btn" title="تعديل">✏️</a>
                 <a href="twitter.php?action=debug&id=<?php echo (int)$s['id']; ?>" class="action-btn" title="تشخيص الجلب">🩺</a>

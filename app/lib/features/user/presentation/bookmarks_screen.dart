@@ -5,10 +5,12 @@ import 'package:go_router/go_router.dart';
 import '../../../core/models/article.dart';
 import '../../../core/widgets/article_card.dart';
 import '../../../core/widgets/loading_state.dart';
+import '../../auth/data/auth_state_provider.dart';
 import '../../auth/data/auth_storage.dart';
 import '../data/user_repository.dart';
 
 final _bookmarksProvider = FutureProvider<List<Article>>((ref) async {
+  ref.watch(authStateProvider);
   if (!AuthStorage.isAuthenticated) return [];
   return ref.watch(userRepositoryProvider).bookmarks();
 });
@@ -18,10 +20,11 @@ class BookmarksScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isAuthed = ref.watch(authStateProvider);
     final asy = ref.watch(_bookmarksProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('المحفوظات')),
-      body: !AuthStorage.isAuthenticated
+      body: !isAuthed
           ? EmptyView(
               icon: Icons.bookmark_border,
               message: 'سجّل دخولك أولاً',

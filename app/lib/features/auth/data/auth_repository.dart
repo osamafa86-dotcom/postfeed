@@ -11,6 +11,12 @@ import 'auth_storage.dart';
 /// Cloud Console AND added GIDClientID + reversed-client-id URL scheme
 /// in app/ios/Runner/Info.plist. Until then the Google button is hidden
 /// so it can't be tapped and crash.
+///
+/// IMPORTANT (App Store Guideline 4.8): on iOS, "Sign in with Apple"
+/// MUST remain visible on the same screen whenever Google (or any
+/// third-party login) is offered. login_screen.dart and register_screen.dart
+/// show the Apple button unconditionally when `defaultTargetPlatform`
+/// is iOS — keep it that way.
 const bool kGoogleSignInEnabled = false;
 
 class AuthRepository {
@@ -48,17 +54,18 @@ class AuthRepository {
   /// Native Sign in with Apple. iOS only — Android falls through the
   /// package's web flow which we don't wire up here.
   Future<AppUser> signInWithApple() async {
-    final cred = await SignInWithApple.getAppleIDCredential(scopes: [
-      AppleIDAuthorizationScopes.email,
-      AppleIDAuthorizationScopes.fullName,
-    ]);
+    final cred = await _getAppleCredential();
     final idToken = cred.identityToken;
     if (idToken == null || idToken.isEmpty) {
-      throw const ApiException(
-          'apple_signin_failed', 'تعذّر الحصول على توكن من Apple');
+      throw const ApiException('apple_signin_no_token',
+          'لم تُرسل Apple رمز التحقّق — تأكّد من تسجيل الدخول إلى حساب Apple ID على الجهاز');
     }
     // Apple sends name + email ONLY on the first authorization; we
-    // forward them so the server can populate the new account.
+    // forward them so the server can populate the new account. On
+    // subsequent sign-ins Apple omits both, but the id_token still
+    // carries the email claim (incl. the privaterelay address when
+    // Hide My Email is enabled), so the server can still resolve the
+    // account by it.
     final name = [cred.givenName, cred.familyName]
         .where((s) => s != null && s.isNotEmpty)
         .join(' ');
@@ -72,6 +79,43 @@ class AuthRepository {
       decode: (d) => (d as Map).cast<String, dynamic>(),
     );
     return _persistAuthFromResponse(res.data);
+  }
+
+  /// Wraps `SignInWithApple.getAppleIDCredential` so each failure mode
+  /// becomes a distinct Arabic `ApiException`. The default plugin
+  /// errors are opaque (e.g. `SignInWithAppleAuthorizationException
+  /// (code: canceled, ...)`), which the user/reviewer can't act on —
+  /// the most likely cause of the 2.2.1(20) iPad rejection was the
+  /// reviewer hitting "cancel" or the sheet failing, then seeing a
+  /// generic error and reporting "we were unable to login".
+  Future<AuthorizationCredentialAppleID> _getAppleCredential() async {
+    try {
+      return await SignInWithApple.getAppleIDCredential(scopes: [
+        AppleIDAuthorizationScopes.email,
+        AppleIDAuthorizationScopes.fullName,
+      ]);
+    } on SignInWithAppleAuthorizationException catch (e) {
+      switch (e.code) {
+        case AuthorizationErrorCode.canceled:
+          throw const ApiException(
+              'apple_signin_cancelled', 'تم إلغاء تسجيل الدخول');
+        case AuthorizationErrorCode.notHandled:
+          throw const ApiException('apple_signin_unavailable',
+              'تسجيل الدخول بـ Apple غير متاح على هذا الجهاز — جرّب البريد الإلكتروني');
+        case AuthorizationErrorCode.failed:
+          throw ApiException('apple_signin_failed',
+              'فشل تسجيل الدخول بـ Apple: ${e.message}');
+        case AuthorizationErrorCode.invalidResponse:
+          throw const ApiException('apple_signin_invalid',
+              'استجابة غير صالحة من Apple — أعد المحاولة');
+        case AuthorizationErrorCode.unknown:
+          throw ApiException('apple_signin_unknown',
+              'حدث خطأ من Apple: ${e.message}');
+      }
+    } on SignInWithAppleNotSupportedException catch (_) {
+      throw const ApiException('apple_signin_unsupported',
+          'تسجيل الدخول بـ Apple يحتاج iOS 13 أو أحدث');
+    }
   }
 
   /// Google Sign-In. Requires the iOS client to be set up in Google

@@ -59,11 +59,20 @@ function oauth_verify_id_token(string $idToken, string $provider, string $expect
     $jwks = oauth_fetch_jwks($provider);
     if (!$jwks) return null;
 
-    $jwk = null;
-    foreach ($jwks as $k) {
-        if (($k['kid'] ?? '') === $kid) { $jwk = $k; break; }
+    $jwk = oauth_find_jwk_by_kid($jwks, $kid);
+    if (!$jwk) {
+        // The cache might be holding stale keys after a provider rotation
+        // (Apple rotates roughly every 6 months, Google more often). Bust
+        // it and try one more fresh fetch — without this, every sign-in
+        // failed for up to 24h after each rotation.
+        if (function_exists('cache_forget')) {
+            cache_forget('oauth_jwks_' . $provider);
+        }
+        $jwks = oauth_fetch_jwks($provider);
+        if (!$jwks) return null;
+        $jwk = oauth_find_jwk_by_kid($jwks, $kid);
+        if (!$jwk) return null;
     }
-    if (!$jwk) return null;
 
     $pem = oauth_jwk_to_pem($jwk);
     if ($pem === null) return null;
@@ -72,6 +81,13 @@ function oauth_verify_id_token(string $idToken, string $provider, string $expect
     if ($ok !== 1) return null;
 
     return $claims;
+}
+
+function oauth_find_jwk_by_kid(array $jwks, string $kid): ?array {
+    foreach ($jwks as $k) {
+        if (($k['kid'] ?? '') === $kid) return $k;
+    }
+    return null;
 }
 
 function oauth_fetch_jwks(string $provider): ?array {

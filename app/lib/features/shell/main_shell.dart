@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../content/data/content_repository.dart';
 import '../content/presentation/discover_screen.dart';
 import '../content/presentation/home_screen.dart';
 import '../content/presentation/summaries_screen.dart';
+import '../media/data/media_repository.dart';
 import '../user/presentation/follow_screen.dart';
 import '../user/presentation/profile_screen.dart';
 
-class MainShell extends StatefulWidget {
+class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key, required this.state, required this.child});
   final GoRouterState state;
   final Widget child;
@@ -22,10 +26,10 @@ class MainShell extends StatefulWidget {
   ];
 
   @override
-  State<MainShell> createState() => _MainShellState();
+  ConsumerState<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
+class _MainShellState extends ConsumerState<MainShell> {
   // Pages are created once and kept alive via IndexedStack.
   final _pages = const [
     HomeScreen(),
@@ -74,7 +78,47 @@ class _MainShellState extends State<MainShell> {
         ),
         child: BottomNavigationBar(
           currentIndex: index,
-          onTap: (i) => context.go(MainShell._tabs[i].path),
+          onTap: (i) {
+            // Tapping the home tab while already on home refreshes the
+            // feed — matches the standard pattern in Twitter/Instagram.
+            // Check the exact location (not index) because sub-routes
+            // like /article/123 also map to index 0 and should navigate
+            // back to /, not trigger a refresh.
+            if (i == 0 && loc == '/') {
+              HapticFeedback.mediumImpact();
+              ref.invalidate(homeProvider);
+              ref.invalidate(forYouProvider);
+              ref.invalidate(evolvingStoriesProvider);
+              ref.invalidate(youtubeFeedProvider);
+              // Brief visible confirmation so the tap doesn't feel like
+              // it did nothing while the network round-trip is in flight.
+              ScaffoldMessenger.of(context)
+                ..hideCurrentSnackBar()
+                ..showSnackBar(
+                  SnackBar(
+                    content: Row(
+                      children: const [
+                        SizedBox(
+                          width: 16, height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Text('جارٍ تحديث الأخبار…'),
+                      ],
+                    ),
+                    duration: const Duration(milliseconds: 1200),
+                    behavior: SnackBarBehavior.floating,
+                    backgroundColor: AppColors.primary,
+                    margin: const EdgeInsets.fromLTRB(16, 0, 16, 90),
+                  ),
+                );
+              return;
+            }
+            context.go(MainShell._tabs[i].path);
+          },
           items: [
             for (final t in MainShell._tabs)
               BottomNavigationBarItem(

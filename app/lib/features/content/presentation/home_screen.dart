@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:intl/intl.dart';
 
+import '../../../core/api/api_exception.dart';
 import '../../../core/models/article.dart';
 import '../../../core/models/evolving_story.dart';
 import '../../../core/models/home_payload.dart';
@@ -17,6 +18,7 @@ import '../../../core/widgets/article_card.dart';
 import '../../../core/widgets/loading_state.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../auth/data/auth_repository.dart';
+import '../../auth/data/auth_state_provider.dart';
 import '../../auth/data/auth_storage.dart';
 import '../../media/data/media_repository.dart';
 import '../data/content_repository.dart';
@@ -74,7 +76,9 @@ class HomeScreen extends ConsumerWidget {
       body: home.when(
         loading: () => const LoadingShimmerList(itemCount: 6),
         error: (e, _) => ErrorRetryView(
-          message: 'تعذّر تحميل الرئيسية\n$e',
+          message: e is ApiException
+              ? 'تعذّر تحميل الرئيسية\n${e.userMessage}'
+              : 'تعذّر تحميل الرئيسية',
           onRetry: () => ref.invalidate(homeProvider),
         ),
         data: (data) => RefreshIndicator(
@@ -105,6 +109,10 @@ class _HomeBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Watch the reactive auth state — without this, the "خاص بك"
+    // section never appears after sign-in (HomeScreen sits inside
+    // MainShell's IndexedStack and won't rebuild on auth alone).
+    final isAuthed = ref.watch(authStateProvider);
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
@@ -140,7 +148,7 @@ class _HomeBody extends ConsumerWidget {
           )),
 
         // ── 7. For You — personalized feed ──
-        if (AuthStorage.isAuthenticated)
+        if (isAuthed)
           SliverToBoxAdapter(child: _ForYouSection()),
 
         // ── 8. Evolving Stories — horizontal carousel ──
