@@ -109,7 +109,65 @@ a{text-decoration:none;color:inherit}
 .sabah-archive-pills a.active{background:var(--accent2);color:#fff;border-color:var(--accent2)}
 .empty-state{text-align:center;padding:80px 20px;color:var(--muted)}
 .empty-state h3{font-size:20px;margin-bottom:8px;color:var(--text);font-weight:800}
+
+/* v2 fields */
+.sabah-subhead{font-size:17px;font-weight:500;line-height:1.7;margin-top:8px;color:#5C5240}
+.sabah-actions{display:flex;gap:10px;margin:18px 0;flex-wrap:wrap}
+.sabah-actions button,.sabah-actions a{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:10px 18px;border-radius:10px;font-size:13px;font-weight:800;
+  background:var(--gold);color:#fff;border:none;cursor:pointer;transition:all .2s;
+}
+.sabah-actions button:hover,.sabah-actions a:hover{background:#A37516;transform:translateY(-1px)}
+.sabah-numbers{margin:24px 0}
+.sabah-numbers-title{font-size:13px;font-weight:800;color:var(--gold-text);margin-bottom:10px;letter-spacing:.5px}
+.sabah-numbers-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.sabah-numbers-grid .stat{
+  background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;
+}
+.sabah-numbers-grid .stat .v{font-size:22px;font-weight:900;color:var(--gold);margin-bottom:4px}
+.sabah-numbers-grid .stat .c{font-size:12.5px;color:#5C5240;line-height:1.5}
+.sabah-regions{margin:6px 0 0;font-size:13px;color:var(--muted)}
+.sabah-regions strong{color:var(--accent2)}
+.sabah-why{
+  background:#FEF3C7;border-right:3px solid var(--gold);border-radius:8px;
+  padding:10px 14px;margin-top:12px;font-size:13.5px;line-height:1.6;color:#6B4F0B;
+}
+.sabah-why b{color:var(--gold-text)}
+.sabah-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
+.sabah-tags span{
+  font-size:11px;font-weight:700;padding:3px 9px;border-radius:5px;
+  background:rgba(201,150,36,.08);color:var(--gold-text);
+}
+.sabah-quote{
+  background:linear-gradient(135deg,#F1F5F9,#E2E8F0);border-radius:14px;
+  padding:24px;margin:24px 0;border-right:4px solid var(--gold);
+}
+.sabah-quote .q-label{font-size:12px;font-weight:800;color:var(--gold-text);margin-bottom:10px;letter-spacing:.5px}
+.sabah-quote .q-text{font-size:16px;font-style:italic;line-height:1.85;margin-bottom:12px;color:#2C2416}
+.sabah-quote .q-speaker{font-size:13px;font-weight:800;color:#374151}
+.sabah-quote .q-context{font-size:11.5px;color:#6B7280;margin-top:3px}
+
 @media(max-width:640px){.sabah-headline{font-size:22px}.sabah-hero{padding:24px 18px}.container{padding:0 16px}}
+
+/* Print / PDF — give users a clean printable version that browsers can
+   save directly as PDF via the standard print dialog. */
+@media print{
+  body{background:#fff;color:#000;font-size:12pt}
+  .site-header,.site-footer,.sabah-archive,.sabah-actions,nav,header,footer,
+  .pwa-prompt,.cookie-bar,script,.no-print{display:none !important}
+  .container{max-width:100% !important;padding:0 !important}
+  .sabah-hero{
+    background:#FEF3C7 !important;border:1px solid #D97706 !important;
+    border-radius:8px !important;page-break-inside:avoid;
+  }
+  .sabah-section,.sabah-quote,.sabah-numbers .stat{
+    page-break-inside:avoid;box-shadow:none !important;
+  }
+  .sabah-headline{font-size:22pt !important}
+  .sabah-subhead{font-size:13pt !important}
+  a{color:#000 !important;text-decoration:none !important}
+}
 </style>
 <link rel="stylesheet" href="assets/css/site-header.min.css?v=m1">
 <link rel="stylesheet" href="assets/css/user.min.css?v=m1">
@@ -135,22 +193,85 @@ include __DIR__ . '/includes/components/site_header.php';
   </div>
 <?php else: ?>
 
+  <?php
+    // v2 fields — gracefully fall back when an older row is missing them.
+    $subheadline = (string)($briefing['subheadline'] ?? '');
+    $keyNumbers  = is_array($briefing['key_numbers'] ?? null) ? $briefing['key_numbers'] : [];
+    $regionsArr  = is_array($briefing['regions']     ?? null) ? $briefing['regions']     : [];
+    $quote       = is_array($briefing['quote_of_day'] ?? null) ? $briefing['quote_of_day'] : null;
+  ?>
   <div class="sabah-hero">
     <span class="sabah-eyebrow">☀️ موجز الصباح</span>
     <h1 class="sabah-headline"><?php echo e($briefing['headline']); ?></h1>
-    <div class="sabah-date"><?php echo e($dateAr); ?></div>
+    <?php if ($subheadline !== ''): ?>
+      <div class="sabah-subhead"><?php echo e($subheadline); ?></div>
+    <?php endif; ?>
+    <div class="sabah-date" style="margin-top:14px"><?php echo e($dateAr); ?>
+      <?php if (!empty($briefing['article_count'])): ?>
+        • من <?php echo (int)$briefing['article_count']; ?> خبراً
+      <?php endif; ?>
+      <?php if (!empty($regionsArr)): ?>
+        • <?php echo e(implode(' • ', $regionsArr)); ?>
+      <?php endif; ?>
+    </div>
+  </div>
+
+  <div class="sabah-actions no-print">
+    <button onclick="window.print()" title="حفظ كـ PDF">
+      📄 حفظ كـ PDF
+    </button>
+    <button onclick="if(navigator.share){navigator.share({title:document.title,url:location.href})}else{navigator.clipboard.writeText(location.href);this.textContent='✓ تم نسخ الرابط'}" style="background:#3D5A28">
+      🔗 مشاركة
+    </button>
   </div>
 
   <div class="sabah-hook">
     <?php echo nl2br(e($briefing['hook'])); ?>
   </div>
 
+  <?php if (!empty($keyNumbers)): ?>
+  <div class="sabah-numbers">
+    <div class="sabah-numbers-title">📊 أرقام اليوم</div>
+    <div class="sabah-numbers-grid">
+      <?php foreach ($keyNumbers as $n): if (!is_array($n)) continue; ?>
+        <div class="stat">
+          <div class="v"><?php echo e((string)($n['value'] ?? '')); ?></div>
+          <div class="c"><?php echo e((string)($n['context'] ?? '')); ?></div>
+        </div>
+      <?php endforeach; ?>
+    </div>
+  </div>
+  <?php endif; ?>
+
   <?php foreach ($briefing['sections'] as $sec): ?>
   <div class="sabah-section">
     <h3><?php echo e($sec['icon'] ?? ''); ?> <?php echo e($sec['title']); ?></h3>
     <p><?php echo nl2br(e($sec['body'])); ?></p>
+    <?php if (!empty($sec['why_matters'])): ?>
+      <div class="sabah-why">
+        💡 <b>لماذا يهمّك؟</b> <?php echo e((string)$sec['why_matters']); ?>
+      </div>
+    <?php endif; ?>
+    <?php if (!empty($sec['tags']) && is_array($sec['tags'])): ?>
+      <div class="sabah-tags">
+        <?php foreach ($sec['tags'] as $t): if (!is_string($t) || $t === '') continue; ?>
+          <span>#<?php echo e($t); ?></span>
+        <?php endforeach; ?>
+      </div>
+    <?php endif; ?>
   </div>
   <?php endforeach; ?>
+
+  <?php if ($quote): ?>
+  <div class="sabah-quote">
+    <div class="q-label">💬 اقتباس اليوم</div>
+    <div class="q-text">"<?php echo e((string)($quote['text'] ?? '')); ?>"</div>
+    <div class="q-speaker">— <?php echo e((string)($quote['speaker'] ?? '')); ?></div>
+    <?php if (!empty($quote['context'])): ?>
+      <div class="q-context"><?php echo e((string)$quote['context']); ?></div>
+    <?php endif; ?>
+  </div>
+  <?php endif; ?>
 
   <?php if (!empty($briefing['closing_question'])): ?>
   <div class="sabah-closing">
