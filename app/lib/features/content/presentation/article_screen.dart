@@ -5,12 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart' show Share;
 import 'package:timeago/timeago.dart' as timeago;
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/api_exception.dart';
 import '../../../core/utils/safe_launch.dart';
 import '../../../core/models/article.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/reader_prefs.dart';
 import '../../../core/widgets/article_card.dart';
 import '../../../core/widgets/comments_sheet.dart';
 import '../../../core/widgets/loading_state.dart';
@@ -47,15 +47,88 @@ class _ArticleScreenState extends ConsumerState<ArticleScreen> {
     super.dispose();
   }
 
+  void _showTextSizeSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => Consumer(
+        builder: (ctx, ref, __) {
+          final scale = ref.watch(readerTextScaleProvider);
+          final ctrl = ref.read(readerTextScaleProvider.notifier);
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.format_size, size: 20),
+                      const SizedBox(width: 8),
+                      Text('حجم خط القراءة',
+                          style: Theme.of(ctx).textTheme.titleMedium),
+                      const Spacer(),
+                      Text('${(scale * 100).round()}%',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      IconButton.filledTonal(
+                        onPressed: ctrl.decrease,
+                        icon: const Icon(Icons.text_decrease),
+                      ),
+                      Expanded(
+                        child: Slider(
+                          value: scale,
+                          min: ReaderTextScaleController.min,
+                          max: ReaderTextScaleController.max,
+                          divisions: 5,
+                          label: '${(scale * 100).round()}%',
+                          onChanged: ctrl.set,
+                        ),
+                      ),
+                      IconButton.filledTonal(
+                        onPressed: ctrl.increase,
+                        icon: const Icon(Icons.text_increase),
+                      ),
+                    ],
+                  ),
+                  Align(
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: TextButton(
+                      onPressed: ctrl.reset,
+                      child: const Text('إعادة الضبط'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final asy = ref.watch(articleProvider(widget.id));
     final bookmarks = ref.watch(bookmarkedIdsProvider);
     final isBookmarked = bookmarks.contains(widget.id);
+    final textScale = ref.watch(readerTextScaleProvider);
 
     return Scaffold(
       appBar: AppBar(
         actions: [
+          IconButton(
+            icon: const Icon(Icons.format_size),
+            tooltip: 'حجم الخط',
+            onPressed: _showTextSizeSheet,
+          ),
           asy.maybeWhen(
             data: (d) => Builder(
               builder: (btnCtx) => IconButton(
@@ -115,7 +188,8 @@ class _ArticleScreenState extends ConsumerState<ArticleScreen> {
               : 'تعذّر تحميل المقال',
           onRetry: () => ref.invalidate(articleProvider(widget.id)),
         ),
-        data: (data) => _ArticleBody(article: data.article, related: data.related),
+        data: (data) => _ArticleBody(
+            article: data.article, related: data.related, textScale: textScale),
       ),
     );
   }
@@ -181,9 +255,11 @@ class _ReadProgressBarState extends State<_ReadProgressBar> {
 // ═══════════════════════════════════════════════════════════════
 
 class _ArticleBody extends StatelessWidget {
-  const _ArticleBody({required this.article, required this.related});
+  const _ArticleBody(
+      {required this.article, required this.related, required this.textScale});
   final Article article;
   final List<Article> related;
+  final double textScale;
 
   @override
   Widget build(BuildContext context) {
@@ -235,7 +311,11 @@ class _ArticleBody extends StatelessWidget {
               ),
               const SizedBox(height: 14),
               Text(article.title,
-                  style: theme.textTheme.headlineMedium?.copyWith(height: 1.35)),
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    height: 1.35,
+                    fontSize:
+                        (theme.textTheme.headlineMedium?.fontSize ?? 22) * textScale,
+                  )),
               const SizedBox(height: 10),
               Row(
                 children: [
@@ -273,6 +353,7 @@ class _ArticleBody extends StatelessWidget {
                 _ArticleAiBrief(
                   summary: article.aiSummary,
                   keyPoints: article.aiKeyPoints,
+                  textScale: textScale,
                 ),
                 const SizedBox(height: 20),
               ] else if (article.excerpt != null && article.excerpt!.isNotEmpty) ...[
@@ -281,6 +362,7 @@ class _ArticleBody extends StatelessWidget {
                   style: theme.textTheme.bodyLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                     height: 1.7,
+                    fontSize: (theme.textTheme.bodyLarge?.fontSize ?? 16) * textScale,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -289,10 +371,10 @@ class _ArticleBody extends StatelessWidget {
                 Html(
                   data: article.content!,
                   style: {
-                    'body': Style(margin: Margins.zero, padding: HtmlPaddings.zero, fontSize: FontSize(16), lineHeight: LineHeight.number(1.8)),
+                    'body': Style(margin: Margins.zero, padding: HtmlPaddings.zero, fontSize: FontSize(16 * textScale), lineHeight: LineHeight.number(1.8)),
                     'p': Style(margin: Margins.only(bottom: 14)),
-                    'h2': Style(fontSize: FontSize(20), fontWeight: FontWeight.w800, margin: Margins.only(top: 18, bottom: 8)),
-                    'h3': Style(fontSize: FontSize(18), fontWeight: FontWeight.w700, margin: Margins.only(top: 16, bottom: 6)),
+                    'h2': Style(fontSize: FontSize(20 * textScale), fontWeight: FontWeight.w800, margin: Margins.only(top: 18, bottom: 8)),
+                    'h3': Style(fontSize: FontSize(18 * textScale), fontWeight: FontWeight.w700, margin: Margins.only(top: 16, bottom: 6)),
                     'a': Style(color: AppColors.primary, textDecoration: TextDecoration.underline),
                     'blockquote': Style(
                       padding: HtmlPaddings.symmetric(horizontal: 12, vertical: 8),
@@ -385,9 +467,11 @@ class _QuickActions extends StatelessWidget {
 /// when key points were extracted. The article's full content still
 /// follows below, so this is a read-aid not a replacement.
 class _ArticleAiBrief extends StatelessWidget {
-  const _ArticleAiBrief({this.summary, this.keyPoints = const []});
+  const _ArticleAiBrief(
+      {this.summary, this.keyPoints = const [], this.textScale = 1.0});
   final String? summary;
   final List<String> keyPoints;
+  final double textScale;
 
   @override
   Widget build(BuildContext context) {
@@ -425,7 +509,7 @@ class _ArticleAiBrief extends StatelessWidget {
             Text(
               summary!,
               style: TextStyle(
-                fontSize: 15,
+                fontSize: 15 * textScale,
                 height: 1.75,
                 fontWeight: FontWeight.w500,
                 color: isDark ? Colors.white : AppColors.textLight,
@@ -466,7 +550,7 @@ class _ArticleAiBrief extends StatelessWidget {
                       child: Text(
                         point,
                         style: TextStyle(
-                          fontSize: 13.5,
+                          fontSize: 13.5 * textScale,
                           height: 1.7,
                           color: isDark ? Colors.white70 : AppColors.textLight,
                         ),
