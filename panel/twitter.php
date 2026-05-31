@@ -45,7 +45,10 @@ $error   = '';
 $success = '';
 
 if ($action === 'fetch') {
-    $count = tw_sync_all_sources();
+    // $force=true bypasses the per-source freshness floor so the admin
+    // button always re-hits Twitter — otherwise clicking "🔄 جلب الآن"
+    // 30 seconds after the SSE scraper just ran would no-op silently.
+    $count = tw_sync_all_sources(true);
     $success = "تم جلب $count تغريدة جديدة";
     $action = 'list';
 }
