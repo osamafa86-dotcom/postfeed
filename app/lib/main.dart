@@ -7,6 +7,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import 'core/api/api_client.dart';
@@ -16,6 +17,11 @@ import 'core/storage/hive_init.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_controller.dart';
 import 'features/auth/data/auth_storage.dart';
+
+/// Crash/error reporting DSN, injected at build time with
+/// --dart-define=SENTRY_DSN=https://...  When empty, Sentry is never
+/// initialised and the app behaves exactly as before.
+const String _sentryDsn = String.fromEnvironment('SENTRY_DSN');
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,7 +35,20 @@ Future<void> main() async {
   await initHiveBoxes();
   await AuthStorage.init();
 
-  runApp(const ProviderScope(child: FeedsNewsApp()));
+  // Opt-in crash reporting: only wraps the app when a DSN was provided at
+  // build time, so default builds carry zero Sentry overhead.
+  if (_sentryDsn.isEmpty) {
+    runApp(const ProviderScope(child: FeedsNewsApp()));
+  } else {
+    await SentryFlutter.init(
+      (options) {
+        options.dsn = _sentryDsn;
+        options.tracesSampleRate = 0.2;
+        options.enableAutoSessionTracking = true;
+      },
+      appRunner: () => runApp(const ProviderScope(child: FeedsNewsApp())),
+    );
+  }
 }
 
 class FeedsNewsApp extends ConsumerStatefulWidget {

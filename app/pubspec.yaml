@@ -63,7 +63,9 @@ dependencies:
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
 
-  # Analytics
+  # Analytics / crash reporting — only active when built with
+  # --dart-define=SENTRY_DSN=... ; otherwise it's a no-op (zero overhead).
+  sentry_flutter: ^8.0.0
 
   # Utility
   json_annotation: ^4.9.0
