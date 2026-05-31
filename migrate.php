@@ -84,6 +84,17 @@ add_idx($db, 'articles', 'idx_status_views',        '`status`, `view_count` DESC
 // frequently. A composite index avoids the full-range sort on big archives.
 add_idx($db, 'telegram_messages', 'idx_active_posted', '`is_active`, `posted_at` DESC', $applied);
 
+// ---------- twitter_messages performance ----------
+add_idx($db, 'twitter_messages', 'idx_active_posted', '`is_active`, `posted_at` DESC', $applied);
+
+// ---------- duplicate-article guard ----------
+// cron_rss does SELECT COUNT(*) WHERE title=? AND source_id=? before
+// every insert. With ~1000 items/hour that's a full-scan blizzard
+// because title isn't indexed. Adding the composite index lets the
+// duplicate check hit the index, and lets us flip to INSERT IGNORE
+// in cron_rss to skip the SELECT entirely.
+add_idx($db, 'articles', 'idx_title_source_dup', '`title`(100), `source_id`', $applied);
+
 // ---------- telegram tables ----------
 $db->exec("CREATE TABLE IF NOT EXISTS telegram_sources (
     id INT AUTO_INCREMENT PRIMARY KEY,

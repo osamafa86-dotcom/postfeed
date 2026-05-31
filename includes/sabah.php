@@ -44,10 +44,19 @@ function sabah_ensure_table(): void {
  * Pick the top clusters from the last 24 hours, ranked by distinct
  * source count, then by most recent article. Returns a corpus string
  * suitable for the prompt.
+ *
+ * Two-pass fallback: prefer 2+ source clusters (real news consensus),
+ * but on quiet days (Fridays, public holidays) accept single-source
+ * clusters too so the briefing still publishes. Previously the strict
+ * `src_count >= 2` cutoff silently skipped generation whenever the
+ * news flow slowed and the morning page just 404'd.
  */
 function sabah_collect_top_clusters(int $maxClusters = 8): array {
     try {
         $db = getDB();
+        $limitSql = max(1, min(20, $maxClusters));
+
+        // First pass: clusters with multi-source consensus (highest quality).
         $sql = "SELECT a.cluster_key,
                        COUNT(DISTINCT a.source_id) AS src_count,
                        COUNT(*) AS art_count,
@@ -61,8 +70,29 @@ function sabah_collect_top_clusters(int $maxClusters = 8): array {
                  GROUP BY a.cluster_key
                 HAVING src_count >= 2
                  ORDER BY src_count DESC, latest_at DESC
-                 LIMIT " . max(1, min(20, $maxClusters));
+                 LIMIT {$limitSql}";
         $clusters = $db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+
+        // Second pass: if we got nothing or too few, fall back to top
+        // single-source clusters so the briefing still ships on slow days.
+        if (count($clusters) < 2) {
+            $sqlFallback = "SELECT a.cluster_key,
+                                   1 AS src_count,
+                                   COUNT(*) AS art_count,
+                                   MAX(a.published_at) AS latest_at,
+                                   MAX(s.name) AS source_names
+                              FROM articles a
+                              LEFT JOIN sources s ON a.source_id = s.id
+                             WHERE a.status = 'published'
+                               AND a.cluster_key IS NOT NULL AND a.cluster_key <> '-'
+                               AND a.published_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                             GROUP BY a.cluster_key
+                             ORDER BY art_count DESC, latest_at DESC
+                             LIMIT {$limitSql}";
+            $clusters = $db->query($sqlFallback)->fetchAll(PDO::FETCH_ASSOC);
+            error_log('[sabah] using single-source fallback — only ' . count($clusters) . ' clusters available');
+        }
+
         if (empty($clusters)) return ['corpus' => '', 'count' => 0, 'article_count' => 0];
 
         $lines = [];
@@ -112,7 +142,10 @@ function sabah_collect_top_clusters(int $maxClusters = 8): array {
  */
 function sabah_generate(): ?array {
     $data = sabah_collect_top_clusters(8);
-    if ($data['count'] < 2) return null;
+    if ($data['count'] < 1) {
+        error_log('[sabah] no clusters available in the last 24h — skipping generation');
+        return null;
+    }
 
     $prompt = "أنت رئيس تحرير نشرة \"صباح الخير من نيوز فيد\" — نشرة صباحية يومية بأسلوب NYT The Morning. "
             . "لديك {$data['count']} ملفات إخبارية بارزة من آخر 24 ساعة. مهمتك: كتابة موجز صباحي "

@@ -24,17 +24,19 @@
  */
 
 // Public Nitter instances tried in rotation. First one that returns
-// parseable RSS wins. Instances come and go — if all start failing,
-// refresh this list from https://github.com/zedeus/nitter/wiki/Instances
+// parseable RSS wins. Instances come and go — most went down in 2024
+// after Twitter's anti-scraping changes. Refresh this list from
+// https://github.com/zedeus/nitter/wiki/Instances when the section
+// goes stale across the board.
 const TW_NITTER_INSTANCES = [
-    'nitter.privacydev.net',
+    'nitter.tiekoetter.com',
+    'nitter.privacyredirect.com',
+    'nitter.space',
+    'nitter.lucabased.xyz',
+    'nitter.kavin.rocks',
     'nitter.poast.org',
+    'nitter.privacydev.net',
     'nitter.net',
-    'nitter.unixfox.eu',
-    'nitter.d420.de',
-    'nitter.no-logs.com',
-    'nitter.cz',
-    'nitter.1d4.us',
 ];
 
 /**
@@ -522,6 +524,17 @@ function tw_debug_http(string $url, int $timeout = 15): array {
  */
 function tw_sync_all_sources(): int {
     $db = getDB();
+
+    // Lazy-add the error-tracking columns so the admin panel can show
+    // which sources failed and why instead of just "last_fetched_at" —
+    // critical for diagnosing "only one source is updating" reports.
+    try {
+        $db->exec("ALTER TABLE twitter_sources
+                    ADD COLUMN last_error VARCHAR(500) DEFAULT NULL,
+                    ADD COLUMN last_new_count INT DEFAULT 0,
+                    ADD COLUMN consecutive_failures INT DEFAULT 0");
+    } catch (Throwable $e) { /* columns already exist */ }
+
     try {
         $sources = $db->query("SELECT * FROM twitter_sources WHERE is_active = 1")->fetchAll(PDO::FETCH_ASSOC);
     } catch (Throwable $e) {
@@ -531,9 +544,16 @@ function tw_sync_all_sources(): int {
 
     $total = 0;
     foreach ($sources as $src) {
-        $tweets = tw_fetch_user_tweets($src['username'], 20);
-        if (empty($tweets)) {
-            error_log('tw_sync: no tweets returned for @' . $src['username']);
+        $srcNew = 0;
+        $err = null;
+        try {
+            $tweets = tw_fetch_user_tweets($src['username'], 20);
+        } catch (Throwable $e) {
+            $tweets = [];
+            $err = 'fetch exception: ' . $e->getMessage();
+        }
+        if (empty($tweets) && $err === null) {
+            $err = 'no tweets returned (all transports failed — Nitter likely blocked)';
         }
         foreach ($tweets as $t) {
             try {
@@ -548,14 +568,29 @@ function tw_sync_all_sources(): int {
                     $t['image_url'],
                     $t['posted_at'],
                 ]);
-                if ($stmt->rowCount() > 0) $total++;
+                if ($stmt->rowCount() > 0) { $total++; $srcNew++; }
             } catch (Throwable $e) {
                 // Duplicate-key + transient issues: skip this row, keep going.
             }
         }
         try {
-            $db->prepare("UPDATE twitter_sources SET last_fetched_at = NOW() WHERE id = ?")
-               ->execute([(int)$src['id']]);
+            if ($err !== null) {
+                $db->prepare("UPDATE twitter_sources
+                                 SET last_fetched_at = NOW(),
+                                     last_error = ?,
+                                     last_new_count = 0,
+                                     consecutive_failures = consecutive_failures + 1
+                               WHERE id = ?")
+                   ->execute([mb_substr($err, 0, 500), (int)$src['id']]);
+            } else {
+                $db->prepare("UPDATE twitter_sources
+                                 SET last_fetched_at = NOW(),
+                                     last_error = NULL,
+                                     last_new_count = ?,
+                                     consecutive_failures = 0
+                               WHERE id = ?")
+                   ->execute([$srcNew, (int)$src['id']]);
+            }
         } catch (Throwable $e) {}
     }
     return $total;
