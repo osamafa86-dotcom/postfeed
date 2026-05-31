@@ -197,3 +197,85 @@ final articleProvider =
     FutureProvider.family<({Article article, List<Article> related}), int>((ref, id) {
   return ref.watch(contentRepositoryProvider).article(id: id);
 });
+
+/// State for the "Load more" button on the home screen's latest-news
+/// section. Holds the extra pages fetched on top of whatever
+/// `homeProvider` already returned (page 1 / 20 articles). Resets on
+/// pull-to-refresh because `homeProvider` invalidation re-fires
+/// `seedFromHome` on the next build.
+class LatestExtraState {
+  const LatestExtraState({
+    this.items = const [],
+    this.nextPage = 2,
+    this.hasMore = true,
+    this.loading = false,
+    this.error,
+  });
+  final List<Article> items;
+  final int nextPage;
+  final bool hasMore;
+  final bool loading;
+  final String? error;
+
+  LatestExtraState copyWith({
+    List<Article>? items,
+    int? nextPage,
+    bool? hasMore,
+    bool? loading,
+    Object? error = _sentinel,
+  }) {
+    return LatestExtraState(
+      items: items ?? this.items,
+      nextPage: nextPage ?? this.nextPage,
+      hasMore: hasMore ?? this.hasMore,
+      loading: loading ?? this.loading,
+      error: identical(error, _sentinel) ? this.error : error as String?,
+    );
+  }
+
+  static const _sentinel = Object();
+}
+
+class LatestExtraNotifier extends StateNotifier<LatestExtraState> {
+  LatestExtraNotifier(this._ref) : super(const LatestExtraState());
+  final Ref _ref;
+
+  /// Pull the next page from /content/articles, append to state,
+  /// dedupe against article IDs already shown.
+  Future<void> loadMore({Set<int> excludeIds = const {}}) async {
+    if (state.loading || !state.hasMore) return;
+    state = state.copyWith(loading: true, error: null);
+    try {
+      final page = await _ref
+          .read(contentRepositoryProvider)
+          .articles(page: state.nextPage, limit: 20);
+      final seen = {...excludeIds, ...state.items.map((a) => a.id)};
+      final fresh = page.items.where((a) => !seen.contains(a.id)).toList();
+      state = state.copyWith(
+        items: [...state.items, ...fresh],
+        nextPage: state.nextPage + 1,
+        hasMore: page.hasMore,
+        loading: false,
+      );
+    } catch (e) {
+      state = state.copyWith(loading: false, error: e.toString());
+    }
+  }
+
+  /// Reset to a fresh state — used implicitly when homeProvider is
+  /// invalidated (pull-to-refresh) so the next "load more" starts
+  /// from page 2 of the fresh feed.
+  void reset() {
+    state = const LatestExtraState();
+  }
+}
+
+final latestExtraProvider =
+    StateNotifierProvider<LatestExtraNotifier, LatestExtraState>((ref) {
+  // When home is invalidated (pull-to-refresh), reset the extra pages
+  // so we don't keep appending to a stale feed.
+  ref.listen(homeProvider, (_, __) {
+    ref.read(latestExtraProvider.notifier).reset();
+  });
+  return LatestExtraNotifier(ref);
+});

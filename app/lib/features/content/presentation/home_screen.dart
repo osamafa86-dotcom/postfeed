@@ -157,18 +157,11 @@ class _HomeBody extends ConsumerWidget {
         // ── 9. Platforms Box — Telegram / X / YouTube ──
         SliverToBoxAdapter(child: _PlatformsBox()),
 
-        // ── 10. Latest News ──
+        // ── 10. Latest News + load-more pagination ──
         SliverToBoxAdapter(
           child: SectionHeader(title: 'آخر الأخبار', icon: Icons.fiber_new),
         ),
-        SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          sliver: SliverList.separated(
-            itemCount: payload.latest.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
-            itemBuilder: (_, i) => ArticleCard(article: payload.latest[i]),
-          ),
-        ),
+        _LatestArticlesSlivers(initial: payload.latest),
 
         // ── 11. Currency Rates ──
         const SliverToBoxAdapter(child: CurrencyWidget()),
@@ -184,6 +177,102 @@ class _HomeBody extends ConsumerWidget {
 
         const SliverToBoxAdapter(child: SizedBox(height: 24)),
       ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LATEST ARTICLES — initial 20 from home payload + "load more"
+// pagination that pulls additional pages from /content/articles
+// ═══════════════════════════════════════════════════════════════
+
+class _LatestArticlesSlivers extends ConsumerWidget {
+  const _LatestArticlesSlivers({required this.initial});
+  final List<Article> initial;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final extra = ref.watch(latestExtraProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // initial + extra articles, with the load-more button as the very
+    // last "item" so it scrolls with the list and the user reaches it
+    // naturally at the end.
+    final initialIds = initial.map((a) => a.id).toSet();
+    final totalArticles = initial.length + extra.items.length;
+
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      sliver: SliverList.separated(
+        itemCount: totalArticles + 1, // +1 = the load-more cell
+        separatorBuilder: (_, i) =>
+            i == totalArticles - 1 ? const SizedBox(height: 16) : const SizedBox(height: 10),
+        itemBuilder: (_, i) {
+          if (i < initial.length) {
+            return ArticleCard(article: initial[i]);
+          }
+          if (i < totalArticles) {
+            return ArticleCard(article: extra.items[i - initial.length]);
+          }
+          // Last cell = load-more button or end-of-feed marker.
+          return _LoadMoreCell(
+            state: extra,
+            onTap: () =>
+                ref.read(latestExtraProvider.notifier).loadMore(excludeIds: initialIds),
+            isDark: isDark,
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _LoadMoreCell extends StatelessWidget {
+  const _LoadMoreCell({
+    required this.state,
+    required this.onTap,
+    required this.isDark,
+  });
+  final LatestExtraState state;
+  final VoidCallback onTap;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!state.hasMore && state.items.isNotEmpty) {
+      // Reached the bottom — quiet end-of-feed marker.
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        child: Center(
+          child: Text(
+            'وصلت لنهاية الأخبار',
+            style: TextStyle(
+              fontSize: 13,
+              color: isDark ? Colors.white38 : AppColors.textMutedLight,
+            ),
+          ),
+        ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: SizedBox(
+        height: 48,
+        child: ElevatedButton.icon(
+          onPressed: state.loading ? null : onTap,
+          icon: state.loading
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : const Icon(Icons.expand_more, size: 22),
+          label: Text(state.loading ? 'جارٍ التحميل…' : 'عرض المزيد من الأخبار'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+      ),
     );
   }
 }
