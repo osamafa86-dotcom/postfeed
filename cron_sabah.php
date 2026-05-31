@@ -51,7 +51,12 @@ for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
     $briefing = sabah_generate();
     if ($briefing && !empty($briefing['hook'])) break;
 
+    // sabah_generate stashes the real reason (AI error vs. genuinely no
+    // clusters) so we don't print a misleading "not enough clusters"
+    // when the corpus was fine but the AI call 429'd.
     $reason = $GLOBALS['_sabah_last_error'] ?? 'not enough clusters';
+    // Only worth retrying on a rate-limit (429). A genuine "no clusters"
+    // or a hard error won't fix itself in 60s, so bail immediately.
     $isRateLimit = strpos((string)$reason, '429') !== false
                 || stripos((string)$reason, 'quota') !== false;
     if (!$isRateLimit || $attempt === $maxAttempts) {
