@@ -209,9 +209,24 @@ function ai_summarize_telegram_daily(array $messages, int $maxTokens = 5000): ar
         return ['ok' => false, 'error' => 'لا توجد رسائل للتلخيص'];
     }
 
-    $lines  = [];
-    $budget = 60000;
-    $used   = 0;
+    // Palestinian focus regex — mirrors sabah.php. Used to bubble
+    // Palestinian messages to the front of the corpus so they fit
+    // even when the AI hits its budget. Also drives the 🇵🇸 tag the
+    // AI uses to prioritize sections.
+    $paleRegex = '/فلسطين|غزة|الضفة|القدس|الأقصى|قبة الصخرة|'
+               . 'الأسرى|الأسير|الأسيرات|أسير|معتقل|اعتقال|نادي الأسير|'
+               . 'مستوطن|مستوطنين|الاستيطان|استيطان|بؤرة استيطانية|'
+               . 'الاحتلال|الجيش الإسرائيلي|إسرائيل|نتنياهو|'
+               . 'رفح|خان يونس|جباليا|الشجاعية|دير البلح|النصيرات|المغازي|البريج|شمال غزة|جنوب غزة|معبر رفح|'
+               . 'نابلس|جنين|رام الله|الخليل|طولكرم|قلقيلية|بيت لحم|أريحا|سلفيت|طوباس|بيتا|حوارة|'
+               . 'حزب الله|جنوب لبنان|الحوثي|اليمن|'
+               . 'حماس|الجهاد الإسلامي|الفصائل|كتائب القسام|سرايا القدس|'
+               . 'شهيد|شهداء|استشهاد|عدوان|قصف|اقتحام|مجزرة|إبادة/u';
+
+    // Two-pass corpus build: Palestinian-relevant messages first so they
+    // never get truncated by the 60K char budget, then everything else.
+    $paleLines = [];
+    $otherLines = [];
     foreach ($messages as $m) {
         $text = trim((string)($m['text'] ?? ''));
         if ($text === '') continue;
@@ -219,71 +234,133 @@ function ai_summarize_telegram_daily(array $messages, int $maxTokens = 5000): ar
         if (mb_strlen($text) > 400) $text = mb_substr($text, 0, 400) . '…';
         $handle = '@' . ($m['username'] ?? 'tg');
         $when   = !empty($m['posted_at']) ? date('H:i', strtotime($m['posted_at'])) : '';
-        $line   = '- [' . $handle . ' ' . $when . '] ' . $text;
-        $len    = mb_strlen($line);
-        if ($used + $len > $budget) break;
-        $lines[] = $line;
-        $used += $len + 1;
+        $isPale = (bool)preg_match($paleRegex, $text);
+        $marker = $isPale ? '🇵🇸 ' : '';
+        $line   = '- ' . $marker . '[' . $handle . ' ' . $when . '] ' . $text;
+        if ($isPale) $paleLines[] = $line;
+        else         $otherLines[] = $line;
     }
-    if (!$lines) {
+
+    // Pack: 80% of budget reserved for Palestinian content.
+    $totalBudget = 60000;
+    $paleBudget  = (int)($totalBudget * 0.80);
+    $otherBudget = $totalBudget - $paleBudget;
+
+    $packed = [];
+    $used = 0;
+    foreach ($paleLines as $l) {
+        $len = mb_strlen($l) + 1;
+        if ($used + $len > $paleBudget) break;
+        $packed[] = $l; $used += $len;
+    }
+    $afterPaleUsed = $used;
+    foreach ($otherLines as $l) {
+        $len = mb_strlen($l) + 1;
+        if ($used - $afterPaleUsed + $len > $otherBudget) break;
+        if ($used + $len > $totalBudget) break;
+        $packed[] = $l; $used += $len;
+    }
+
+    if (!$packed) {
         return ['ok' => false, 'error' => 'لا توجد رسائل نصية كافية للتلخيص'];
     }
 
-    $corpus = implode("\n", $lines);
-    $count  = count($lines);
+    $corpus = implode("\n", $packed);
+    $count  = count($packed);
+    $paleCount = count(array_filter($packed, fn($l) => strpos($l, '🇵🇸') !== false));
 
-    $prompt = "أنت رئيس تحرير كبير في غرفة أخبار عربية مرموقة. لديك قائمة بآخر {$count} رسالة وصلت "
-            . "من قنوات تيليغرام إخبارية خلال الـ 24 ساعة الماضية. مهمتك: إعداد ملخص شامل لأخبار اليوم "
-            . "بأسلوب نشرة الأخبار الرئيسية، كأنه التقرير اليومي الختامي الذي يُبث في الساعة 12 ظهراً.\n\n"
+    $prompt = "أنت رئيس تحرير كبير في غرفة أخبار عربية متخصصة بالشأن الفلسطيني والعربي.\n\n"
+            . "لديك {$count} رسالة من قنوات تيليغرام إخبارية خلال آخر 24 ساعة، منها **{$paleCount} رسالة فلسطينية** "
+            . "(معلّمة بـ 🇵🇸). مهمتك: إعداد التقرير اليومي الختامي يُبث الساعة 10 مساءً بتوقيت القدس.\n\n"
+            . "**التركيز التحريري** (مهم جداً):\n"
+            . "- **80% على الأقل من المحتوى فلسطيني**: غزة، الضفة، القدس، الأقصى، الأسرى، الاستيطان، الاعتداءات، شهداء، اعتقالات.\n"
+            . "- 4-5 محاور فلسطينية من أصل 5-7 محاور.\n"
+            . "- الباقي (1-2 محور): إقليمي مرتبط (لبنان، اليمن، إيران، الموقف الدولي).\n\n"
+            . "**قاعدة عدم التكرار (الأهم)**:\n"
+            . "- نفس الخبر يصل من 5-10 قنوات مختلفة بصياغات متشابهة. **اجمعها كلها في عنصر واحد**.\n"
+            . "- استخدم الرواية الأشمل وأضف أي تفصيلة فريدة من القنوات الأخرى.\n"
+            . "- لو في خبر متطوّر خلال اليوم (مثلاً: استشهاد → جنازة → تشييع)، اعرضه ك**خط زمني** في عنصر واحد.\n\n"
             . "قواعد التحرير:\n"
-            . "- هذا ملخص شامل لليوم كاملاً، وليس تحديثاً سريعاً. اعطه عمقاً وسياقاً أكبر.\n"
-            . "- اجمع الرسائل المتعلقة بنفس الحدث في عنصر واحد مع إبراز تطوّره عبر اليوم.\n"
-            . "- تجاهل الإعلانات والرسائل غير الإخبارية وروابط الاشتراك.\n"
-            . "- نظّم المحتوى في محاور رئيسية (بين 4 و 8 محاور)، مرتبة من الأهم إلى الأقل أهمية.\n"
-            . "- استخدم لغة عربية فصحى، محايدة، بنبرة صحفية رسمية.\n"
-            . "- كل تفصيلة إخبارية يجب أن تكون جملة كاملة وواضحة.\n"
-            . "- أضف سياقاً حيث أمكن: لماذا هذا الخبر مهم؟ ما تداعياته المحتملة؟\n"
-            . "- لا تخترع أي معلومة غير موجودة في الرسائل.\n"
-            . "- كل محور يحتوي على 3 إلى 6 تفاصيل إخبارية.\n"
-            . "- استخدم رمز emoji واحد فقط لكل محور.\n"
-            . "- العنوان الرئيسي يعكس أبرز حدث في اليوم بأسلوب صحفي جذاب.\n"
-            . "- الفقرة الافتتاحية (summary) يجب أن تكون 5-8 جمل تعطي صورة شاملة عن مجريات اليوم.\n\n"
-            . "الرسائل:\n" . $corpus;
+            . "- لغة عربية فصحى راقية، نبرة صحفية رسمية.\n"
+            . "- تجاهل الإعلانات وروابط الاشتراك والرسائل غير الإخبارية.\n"
+            . "- استخدم تسميات دقيقة: \"الشهداء\" مش \"القتلى\"، \"الاحتلال\" مش \"إسرائيل\" إلا في السياق الرسمي.\n"
+            . "- لا تخترع معلومات غير موجودة.\n"
+            . "- كل تفصيلة جملة كاملة بسياق + أرقام + أماكن.\n\n"
+            . "البنية المطلوبة:\n\n"
+            . "1. **headline**: عنوان رئيسي (60-90 حرفاً) يجمع 2-3 محاور — يبدأ غالباً بأهم محور فلسطيني.\n\n"
+            . "2. **subheadline**: عنوان فرعي (80-130 حرفاً) يوضّح الخيط الرابط.\n\n"
+            . "3. **summary**: فقرة افتتاحية شاملة (6-8 جمل، 120-200 كلمة) تعطي المشهد العام لأخبار اليوم، تبدأ بأبرز محور فلسطيني وتنتقل عبر المحاور.\n\n"
+            . "4. **sections** (5-7 محاور): كل محور حدث/ملف معمّق.\n"
+            . "   - title: عنوان واضح\n"
+            . "   - icon: emoji واحد (🇵🇸 للفلسطيني المحض، ⚡ سياسة، 🛡️ مقاومة، ⚖️ أسرى، 🏛️ موقف دولي، إلخ)\n"
+            . "   - items: 4-7 تفاصيل إخبارية، **مجموعة من رسائل متعددة بدون تكرار**\n"
+            . "   - why_matters: جملة قوية (15-30 كلمة) تجيب لماذا هذا الملف مهم اليوم\n\n"
+            . "5. **key_numbers** (4-7): أرقام يوم بارزة. **يجب تشمل أرقام فلسطينية** (شهداء، جرحى، اعتقالات، مقتحمي الأقصى).\n"
+            . "   - value: الرقم (\"23 شهيداً\", \"450 معتقلاً\")\n"
+            . "   - context: شرح موجز\n\n"
+            . "6. **regions** (3-5): مناطق محورية اليوم (تشمل مدن فلسطينية محددة).\n\n"
+            . "7. **topics** (5-8 وسوم قصيرة بدون #).\n\n"
+            . "الرسائل (المعلّمة بـ 🇵🇸 لها أولوية تحريرية قصوى):\n" . $corpus;
 
     $tool = [
         'name'        => 'submit_news_briefing',
-        'description' => 'Submit a comprehensive daily Arabic news summary.',
+        'description' => 'Submit the comprehensive Palestinian-focused daily news summary.',
         'input_schema' => [
             'type'     => 'object',
             'properties' => [
                 'headline' => [
                     'type'        => 'string',
-                    'description' => 'عنوان رئيسي قوي يلخّص أبرز حدث في اليوم (أقل من 90 حرفاً).',
+                    'description' => 'عنوان 60-90 حرفاً يجمع 2-3 محاور.',
+                ],
+                'subheadline' => [
+                    'type'        => 'string',
+                    'description' => 'عنوان فرعي 80-130 حرفاً.',
                 ],
                 'summary' => [
                     'type'        => 'string',
-                    'description' => 'فقرة افتتاحية شاملة من 5-8 جمل تعطي المشهد العام لأخبار اليوم.',
+                    'description' => 'فقرة افتتاحية 6-8 جمل (120-200 كلمة).',
                 ],
                 'sections' => [
                     'type'        => 'array',
-                    'description' => 'المحاور الإخبارية، بين 4 و 8 محاور.',
+                    'description' => '5-7 محاور، 4-5 منها فلسطينية على الأقل.',
                     'items' => [
                         'type' => 'object',
                         'properties' => [
-                            'title' => ['type' => 'string', 'description' => 'عنوان المحور.'],
-                            'icon'  => ['type' => 'string', 'description' => 'رمز emoji واحد فقط.'],
+                            'title' => ['type' => 'string'],
+                            'icon'  => ['type' => 'string', 'description' => 'emoji واحد'],
                             'items' => [
-                                'type'  => 'array',
-                                'description' => 'بين 3 و 6 تفاصيل إخبارية كاملة.',
+                                'type' => 'array',
+                                'description' => '4-7 تفاصيل إخبارية مجموعة من رسائل متعددة بدون تكرار',
                                 'items' => ['type' => 'string'],
+                            ],
+                            'why_matters' => [
+                                'type' => 'string',
+                                'description' => 'لماذا هذا الملف مهم اليوم - جملة قوية',
                             ],
                         ],
                         'required' => ['title', 'items'],
                     ],
                 ],
+                'key_numbers' => [
+                    'type'        => 'array',
+                    'description' => '4-7 أرقام بارزة، تشمل فلسطينية.',
+                    'items' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'value'   => ['type' => 'string'],
+                            'context' => ['type' => 'string'],
+                        ],
+                        'required' => ['value', 'context'],
+                    ],
+                ],
+                'regions' => [
+                    'type'        => 'array',
+                    'description' => '3-5 مناطق جغرافية.',
+                    'items' => ['type' => 'string'],
+                ],
                 'topics' => [
                     'type'  => 'array',
-                    'description' => 'وسوم قصيرة للمواضيع البارزة، 4-8 وسوم.',
+                    'description' => '5-8 وسوم قصيرة بدون #.',
                     'items' => ['type' => 'string'],
                 ],
             ],
@@ -310,16 +387,41 @@ function ai_summarize_telegram_daily(array $messages, int $maxTokens = 5000): ar
             (array)($sec['items'] ?? [])
         )));
         if (!$items) continue;
-        $sections[] = ['title' => $title, 'icon' => $icon, 'items' => $items];
+        $sections[] = [
+            'title'       => $title,
+            'icon'        => $icon,
+            'items'       => $items,
+            'why_matters' => trim((string)($sec['why_matters'] ?? '')),
+        ];
+    }
+
+    // Clean + cap key_numbers / regions.
+    $keyNumbers = [];
+    foreach ((array)($parsed['key_numbers'] ?? []) as $n) {
+        if (!is_array($n)) continue;
+        $v = trim((string)($n['value']   ?? ''));
+        $c = trim((string)($n['context'] ?? ''));
+        if ($v === '' || $c === '') continue;
+        $keyNumbers[] = ['value' => $v, 'context' => $c];
+        if (count($keyNumbers) >= 7) break;
+    }
+    $regions = [];
+    foreach ((array)($parsed['regions'] ?? []) as $r) {
+        $r = trim((string)$r);
+        if ($r !== '' && !in_array($r, $regions, true)) $regions[] = $r;
+        if (count($regions) >= 5) break;
     }
 
     return [
-        'ok'       => true,
-        'headline' => (string)($parsed['headline'] ?? ''),
-        'summary'  => (string)$parsed['summary'],
-        'sections' => $sections,
-        'bullets'  => [],
-        'topics'   => array_values(array_filter(array_map('strval', (array)($parsed['topics'] ?? [])))),
+        'ok'          => true,
+        'headline'    => (string)($parsed['headline'] ?? ''),
+        'subheadline' => (string)($parsed['subheadline'] ?? ''),
+        'summary'     => (string)$parsed['summary'],
+        'sections'    => $sections,
+        'bullets'     => [],
+        'key_numbers' => $keyNumbers,
+        'regions'     => $regions,
+        'topics'      => array_values(array_filter(array_map('strval', (array)($parsed['topics'] ?? [])))),
     ];
 }
 
@@ -347,6 +449,19 @@ function tg_summary_ensure_table(): void {
             generated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_generated_at (generated_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        // Lazy ALTER for v2 fields (subheadline, key_numbers, regions) —
+        // matches the sabah_briefings pattern.
+        $cols = [
+            'subheadline' => "ADD COLUMN subheadline VARCHAR(400) NOT NULL DEFAULT ''",
+            'key_numbers' => "ADD COLUMN key_numbers TEXT NULL",
+            'regions'     => "ADD COLUMN regions TEXT NULL",
+        ];
+        foreach ($cols as $col => $ddl) {
+            try {
+                $exists = $db->query("SHOW COLUMNS FROM telegram_summaries LIKE '" . $col . "'")->fetch();
+                if (!$exists) $db->exec("ALTER TABLE telegram_summaries " . $ddl);
+            } catch (Throwable $e) {}
+        }
         $ensured = true;
     } catch (Throwable $e) {
         // Let callers fail loudly on their own query; we don't want
@@ -360,13 +475,16 @@ function tg_summary_save(array $ai, int $messageCount, int $windowMins = 60): ?i
     tg_summary_ensure_table();
     $db = getDB();
     $stmt = $db->prepare("INSERT INTO telegram_summaries
-        (headline, summary, sections, topics, window_mins, message_count)
-        VALUES (?, ?, ?, ?, ?, ?)");
+        (headline, subheadline, summary, sections, topics, key_numbers, regions, window_mins, message_count)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $ok = $stmt->execute([
-        (string)($ai['headline'] ?? ''),
-        (string)($ai['summary']  ?? ''),
-        json_encode($ai['sections'] ?? [], JSON_UNESCAPED_UNICODE),
-        json_encode($ai['topics']   ?? [], JSON_UNESCAPED_UNICODE),
+        (string)($ai['headline']    ?? ''),
+        (string)($ai['subheadline'] ?? ''),
+        (string)($ai['summary']     ?? ''),
+        json_encode($ai['sections']    ?? [], JSON_UNESCAPED_UNICODE),
+        json_encode($ai['topics']      ?? [], JSON_UNESCAPED_UNICODE),
+        json_encode($ai['key_numbers'] ?? [], JSON_UNESCAPED_UNICODE),
+        json_encode($ai['regions']     ?? [], JSON_UNESCAPED_UNICODE),
         $windowMins,
         $messageCount,
     ]);
@@ -405,8 +523,10 @@ function tg_summary_format_ts($epoch): string {
 
 /** Decode a stored row into the shape the frontend expects. */
 function tg_summary_hydrate(array $row): array {
-    $sections = json_decode((string)($row['sections'] ?? '[]'), true);
-    $topics   = json_decode((string)($row['topics']   ?? '[]'), true);
+    $sections   = json_decode((string)($row['sections']    ?? '[]'), true);
+    $topics     = json_decode((string)($row['topics']      ?? '[]'), true);
+    $keyNumbers = json_decode((string)($row['key_numbers'] ?? '[]'), true);
+    $regions    = json_decode((string)($row['regions']     ?? '[]'), true);
     // Prefer the unambiguous UNIX_TIMESTAMP value when present (set by
     // the SELECTs below); fall back to parsing the raw TIMESTAMP string
     // through PHP's local timezone, which is set to TIMEZONE in config.
@@ -414,9 +534,12 @@ function tg_summary_hydrate(array $row): array {
     return [
         'id'            => (int)$row['id'],
         'headline'      => (string)$row['headline'],
+        'subheadline'   => (string)($row['subheadline'] ?? ''),
         'summary'       => (string)$row['summary'],
-        'sections'      => is_array($sections) ? $sections : [],
-        'topics'        => is_array($topics)   ? $topics   : [],
+        'sections'      => is_array($sections)   ? $sections   : [],
+        'topics'        => is_array($topics)     ? $topics     : [],
+        'key_numbers'   => is_array($keyNumbers) ? $keyNumbers : [],
+        'regions'       => is_array($regions)    ? $regions    : [],
         'window_mins'   => (int)$row['window_mins'],
         'message_count' => (int)$row['message_count'],
         'generated_at'  => tg_summary_format_ts($tsSource),
