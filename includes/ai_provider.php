@@ -295,6 +295,31 @@ function _ai_gemini_tool_call(string $prompt, array $tool, int $max_tokens): arr
     $err  = curl_error($ch);
     curl_close($ch);
 
+    // Free-tier Gemini throttles at 20 req/min. On the first 429 we
+    // parse the `retryDelay` field the API tells us to wait for, sleep
+    // that long (capped at 65s so a stuck cron doesn't hang forever),
+    // then retry once. Saves cron_sabah / cron_evolving_ai from dying
+    // mid-run just because cron_ai ate the quota a few seconds earlier.
+    if ($http === 429) {
+        $waitSec = _ai_gemini_retry_delay_secs($resp);
+        if ($waitSec > 0 && $waitSec <= 65) {
+            error_log("[ai_provider] gemini 429 — sleeping {$waitSec}s and retrying once");
+            sleep($waitSec);
+            $ch = curl_init(_ai_gemini_endpoint(_ai_gemini_model(), $apiKey));
+            curl_setopt_array($ch, [
+                CURLOPT_POST           => true,
+                CURLOPT_POSTFIELDS     => $payload,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 90,
+                CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+            ]);
+            $resp = curl_exec($ch);
+            $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $err  = curl_error($ch);
+            curl_close($ch);
+        }
+    }
+
     $friendly = _ai_http_to_friendly($http, $err, $resp, 'Gemini');
     if ($friendly !== null) return ['ok' => false, 'input' => null, 'error' => $friendly];
 
@@ -372,6 +397,28 @@ function _ai_gemini_text_call(string $prompt, int $max_tokens): array {
     $err  = curl_error($ch);
     curl_close($ch);
 
+    // Same retry-once-on-429 dance as the tool-call path — see comment
+    // there for the rationale.
+    if ($http === 429) {
+        $waitSec = _ai_gemini_retry_delay_secs($resp);
+        if ($waitSec > 0 && $waitSec <= 65) {
+            error_log("[ai_provider] gemini text 429 — sleeping {$waitSec}s and retrying once");
+            sleep($waitSec);
+            $ch = curl_init(_ai_gemini_endpoint(_ai_gemini_model(), $apiKey));
+            curl_setopt_array($ch, [
+                CURLOPT_POST           => true,
+                CURLOPT_POSTFIELDS     => $payload,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 60,
+                CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+            ]);
+            $resp = curl_exec($ch);
+            $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $err  = curl_error($ch);
+            curl_close($ch);
+        }
+    }
+
     $friendly = _ai_http_to_friendly($http, $err, $resp, 'Gemini');
     if ($friendly !== null) return ['ok' => false, 'text' => '', 'error' => $friendly];
 
@@ -392,6 +439,35 @@ function _ai_gemini_text_call(string $prompt, int $max_tokens): array {
 // ---------------------------------------------------------------------
 // Shared helpers
 // ---------------------------------------------------------------------
+
+/**
+ * Parse the per-request retryDelay Google returns in a 429 body so we
+ * can sleep the exact recommended interval before retrying once.
+ * Body shape (free-tier quota):
+ *   error.details[].@type = "type.googleapis.com/google.rpc.RetryInfo"
+ *   error.details[].retryDelay = "32.8s"
+ * Also matches the human "Please retry in 32.827150101s" sentence as
+ * a fallback for cases where Google ships the detail outside the
+ * structured RetryInfo block.
+ */
+function _ai_gemini_retry_delay_secs($resp): int {
+    if (!is_string($resp) || $resp === '') return 0;
+    $j = json_decode($resp, true);
+    if (is_array($j)) {
+        foreach ((array)($j['error']['details'] ?? []) as $det) {
+            if (is_array($det) && isset($det['retryDelay'])) {
+                $d = (string)$det['retryDelay'];
+                if (preg_match('/(\d+(?:\.\d+)?)/', $d, $m)) {
+                    return (int)ceil((float)$m[1]) + 1; // +1s safety
+                }
+            }
+        }
+    }
+    if (preg_match('/retry in\s+(\d+(?:\.\d+)?)/i', $resp, $m)) {
+        return (int)ceil((float)$m[1]) + 1;
+    }
+    return 0;
+}
 
 /**
  * Map curl/HTTP outcome to an Arabic error string the UI can show
