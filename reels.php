@@ -45,7 +45,7 @@ $siteName = getSetting('site_name', SITE_NAME);
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap"></noscript>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:'Tajawal',sans-serif; background:#faf6ec; color:#1a1a2e; line-height:1.6; }
+  body { font-family:'Tajawal',sans-serif; background:#F2EEE8; color:#2C2416; line-height:1.6; }
   a { text-decoration:none; color:inherit; }
 
   /* Header */
@@ -143,9 +143,9 @@ $siteName = getSetting('site_name', SITE_NAME);
   }
   .reel-source-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
   .reel-source-info { flex: 1; min-width: 0; }
-  .reel-source-name { font-size: 14px; font-weight: 700; color: #1a1a2e; }
-  .reel-source-username { font-size: 11px; color: #6b7280; }
-  .reel-time { font-size: 11px; color: #9ca3af; }
+  .reel-source-name { font-size: 14px; font-weight: 700; color: #2C2416; }
+  .reel-source-username { font-size: 11px; color: #7A6E5D; }
+  .reel-time { font-size: 11px; color: #968B78; }
 
   .reel-embed { position: relative; width: 100%; background: #000; aspect-ratio: 9 / 16; max-height: 540px; overflow: hidden; }
   .reel-embed iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; }
@@ -154,7 +154,7 @@ $siteName = getSetting('site_name', SITE_NAME);
     padding: 14px 16px;
   }
   .reel-caption {
-    font-size: 13px; color: #374151;
+    font-size: 13px; color: #4A4030;
     line-height: 1.6;
     max-height: 60px;
     overflow: hidden;
@@ -176,10 +176,10 @@ $siteName = getSetting('site_name', SITE_NAME);
     padding: 60px 20px;
     background: #fff;
     border-radius: 16px;
-    color: #6b7280;
+    color: #7A6E5D;
   }
   .empty-state .icon { font-size: 64px; margin-bottom: 16px; opacity: .3; }
-  .empty-state h3 { font-size: 20px; font-weight: 800; color: #1a1a2e; margin-bottom: 8px; }
+  .empty-state h3 { font-size: 20px; font-weight: 800; color: #2C2416; margin-bottom: 8px; }
 
   @media (max-width: 600px) {
     .reels-header { padding: 30px 16px 50px; }

@@ -264,7 +264,7 @@ class _CategoriesBox extends ConsumerStatefulWidget {
   final List<CategoryBucket> buckets;
 
   @override
-  State<_CategoriesBox> createState() => _CategoriesBoxState();
+  ConsumerState<_CategoriesBox> createState() => _CategoriesBoxState();
 }
 
 class _CategoriesBoxState extends ConsumerState<_CategoriesBox> {

@@ -65,7 +65,7 @@ $suggestions = [
     padding: 0 18px;
   }
   .ask-hero {
-    background: linear-gradient(135deg, #0f766e 0%, #1a5c5c 100%);
+    background: linear-gradient(135deg, #2D4520 0%, #282A20 100%);
     color: #fff;
     border-radius: 22px;
     padding: 32px 28px;
@@ -116,13 +116,13 @@ $suggestions = [
     font-family: inherit;
     font-size: 16px;
     font-weight: 500;
-    color: #0f172a;
+    color: #1E1F18;
     padding: 12px 16px;
     text-align: right;
     direction: rtl;
   }
   .ask-form button {
-    background: linear-gradient(135deg,#f97316,#dc2626);
+    background: linear-gradient(135deg,#C99624,#CE1126);
     color: #fff;
     border: none;
     border-radius: 12px;
@@ -133,7 +133,7 @@ $suggestions = [
     cursor: pointer;
     transition: transform .15s, box-shadow .2s;
   }
-  .ask-form button:hover { transform: translateY(-1px); box-shadow: 0 10px 24px -10px rgba(220,38,38,.6); }
+  .ask-form button:hover { transform: translateY(-1px); box-shadow: 0 10px 24px -10px rgba(206,17,38,.6); }
   .ask-form button:disabled { opacity: .6; cursor: not-allowed; transform: none; }
 
   .ask-suggest {
@@ -159,7 +159,7 @@ $suggestions = [
   .ask-result {
     margin-top: 28px;
     background: var(--card, #fff);
-    border: 1px solid var(--border, #e2e8f0);
+    border: 1px solid var(--border, #E8E3DB);
     border-radius: 20px;
     padding: 26px 28px;
     box-shadow: 0 8px 24px -18px rgba(0,0,0,.25);
@@ -170,7 +170,7 @@ $suggestions = [
     display: flex;
     align-items: center;
     gap: 10px;
-    color: #0f766e;
+    color: #2D4520;
     font-weight: 800;
     font-size: 13px;
     margin-bottom: 14px;
@@ -181,28 +181,28 @@ $suggestions = [
     display: inline-block;
     width: 26px;
     height: 26px;
-    background: linear-gradient(135deg,#0d9488,#0f766e);
+    background: linear-gradient(135deg,#3D5A28,#2D4520);
     border-radius: 50%;
     flex-shrink: 0;
   }
   .ask-question {
     font-size: 18px;
     font-weight: 800;
-    color: var(--dark, #0f172a);
+    color: var(--dark, #1E1F18);
     margin: 0 0 18px;
     line-height: 1.5;
   }
   .ask-answer {
     font-size: 16px;
     line-height: 1.95;
-    color: var(--dark, #1e293b);
+    color: var(--dark, #282A20);
     white-space: pre-wrap;
     word-wrap: break-word;
   }
   .ask-answer .cite {
     display: inline-block;
-    background: rgba(13,148,136,.12);
-    color: #0f766e;
+    background: rgba(61,90,40,.12);
+    color: #2D4520;
     border-radius: 6px;
     padding: 0 6px;
     margin: 0 2px;
@@ -212,16 +212,16 @@ $suggestions = [
     vertical-align: middle;
     transition: background .15s;
   }
-  .ask-answer .cite:hover { background: #0f766e; color: #fff; }
+  .ask-answer .cite:hover { background: #2D4520; color: #fff; }
 
   .ask-sources {
     margin-top: 26px;
     padding-top: 20px;
-    border-top: 1px dashed var(--border, #e2e8f0);
+    border-top: 1px dashed var(--border, #E8E3DB);
   }
   .ask-sources h3 {
     font-size: 14px;
-    color: var(--text-muted, #64748b);
+    color: var(--text-muted, #7A6E5D);
     margin: 0 0 14px;
     font-weight: 800;
     letter-spacing: .02em;
@@ -234,7 +234,7 @@ $suggestions = [
   .ask-source-card {
     display: block;
     background: var(--bg, #f8fafc);
-    border: 1px solid var(--border, #e2e8f0);
+    border: 1px solid var(--border, #E8E3DB);
     border-radius: 12px;
     padding: 12px;
     text-decoration: none;
@@ -243,21 +243,21 @@ $suggestions = [
   }
   .ask-source-card:hover {
     transform: translateY(-2px);
-    border-color: #0f766e;
+    border-color: #2D4520;
     box-shadow: 0 10px 22px -14px rgba(15,118,110,.4);
   }
   .ask-source-thumb {
     aspect-ratio: 16/9;
     background-size: cover;
     background-position: center;
-    background-color: #e2e8f0;
+    background-color: #E8E3DB;
     border-radius: 8px;
     margin-bottom: 10px;
   }
   .ask-source-id {
     display: inline-block;
-    background: rgba(13,148,136,.12);
-    color: #0f766e;
+    background: rgba(61,90,40,.12);
+    color: #2D4520;
     border-radius: 6px;
     padding: 1px 7px;
     font-size: 11px;
@@ -268,7 +268,7 @@ $suggestions = [
     font-size: 13.5px;
     font-weight: 800;
     line-height: 1.5;
-    color: var(--dark, #0f172a);
+    color: var(--dark, #1E1F18);
     display: -webkit-box;
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
@@ -277,7 +277,7 @@ $suggestions = [
   .ask-source-meta {
     margin-top: 8px;
     font-size: 11px;
-    color: var(--text-muted, #64748b);
+    color: var(--text-muted, #7A6E5D);
     display: flex;
     gap: 6px;
     align-items: center;
@@ -286,11 +286,11 @@ $suggestions = [
   .ask-followups {
     margin-top: 22px;
     padding-top: 18px;
-    border-top: 1px dashed var(--border, #e2e8f0);
+    border-top: 1px dashed var(--border, #E8E3DB);
   }
   .ask-followups h3 {
     font-size: 13px;
-    color: var(--text-muted, #64748b);
+    color: var(--text-muted, #7A6E5D);
     margin: 0 0 10px;
     font-weight: 800;
   }
@@ -300,9 +300,9 @@ $suggestions = [
     gap: 8px;
   }
   .ask-followup-chip {
-    background: var(--bg, #f1f5f9);
-    color: var(--dark, #0f172a);
-    border: 1px solid var(--border, #e2e8f0);
+    background: var(--bg, #F7F3ED);
+    color: var(--dark, #1E1F18);
+    border: 1px solid var(--border, #E8E3DB);
     border-radius: 10px;
     padding: 8px 14px;
     font-family: inherit;
@@ -312,14 +312,14 @@ $suggestions = [
     text-align: right;
     transition: border-color .2s, background .2s;
   }
-  .ask-followup-chip:hover { border-color: #0f766e; background: rgba(13,148,136,.08); }
+  .ask-followup-chip:hover { border-color: #2D4520; background: rgba(61,90,40,.08); }
 
   .ask-loading {
     margin-top: 28px;
     text-align: center;
     padding: 40px 20px;
     background: var(--card, #fff);
-    border: 1px dashed var(--border, #e2e8f0);
+    border: 1px dashed var(--border, #E8E3DB);
     border-radius: 20px;
     display: none;
   }
@@ -331,7 +331,7 @@ $suggestions = [
   }
   .ask-loading-dots span {
     width: 10px; height: 10px;
-    background: #0f766e;
+    background: #2D4520;
     border-radius: 50%;
     animation: askDot 1.2s infinite ease-in-out;
   }
@@ -346,9 +346,9 @@ $suggestions = [
     margin-top: 28px;
     padding: 18px 22px;
     border-radius: 14px;
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    color: #991b1b;
+    background: #FAEEEE;
+    border: 1px solid #E5A0A8;
+    color: #8A0B1A;
     font-weight: 600;
     display: none;
   }
@@ -358,14 +358,14 @@ $suggestions = [
     margin-top: 18px;
     text-align: center;
     font-size: 12px;
-    color: var(--text-muted, #64748b);
+    color: var(--text-muted, #7A6E5D);
     line-height: 1.7;
   }
 
-  [data-theme="dark"] .ask-form { background: #1e293b; }
-  [data-theme="dark"] .ask-form input[type=text] { color: #f1f5f9; }
-  [data-theme="dark"] .ask-loading { background: #1e293b; }
-  [data-theme="dark"] .ask-error { background: #3f1111; border-color: #7f1d1d; color: #fecaca; }
+  [data-theme="dark"] .ask-form { background: #282A20; }
+  [data-theme="dark"] .ask-form input[type=text] { color: #F7F3ED; }
+  [data-theme="dark"] .ask-loading { background: #282A20; }
+  [data-theme="dark"] .ask-error { background: #3f1111; border-color: #7f1d1d; color: #E5A0A8; }
 
   @media (max-width: 640px) {
     .ask-hero { padding: 26px 18px; }
@@ -411,7 +411,7 @@ include __DIR__ . '/includes/components/site_header.php';
 
   <div class="ask-loading" id="askLoading">
     <div class="ask-loading-dots"><span></span><span></span><span></span></div>
-    <div style="font-size:14px;color:var(--text-muted,#64748b);">يبحث المساعد في أرشيف نيوز فيد…</div>
+    <div style="font-size:14px;color:var(--text-muted,#7A6E5D);">يبحث المساعد في أرشيف نيوز فيد…</div>
   </div>
 
   <div class="ask-error" id="askError"></div>

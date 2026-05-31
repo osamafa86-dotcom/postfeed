@@ -211,9 +211,9 @@ $canonicalUrl = $pageUrl;
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 <style>
   :root {
-    --es-accent: <?php echo !$notFound ? e($story['accent_color']) : '#0d9488'; ?>;
-    --bg:#faf6ec; --bg2:#fdfaf2; --card:#fff; --border:#e0e3e8;
-    --text:#1a1a2e; --muted:#6b7280; --gold:#f59e0b; --red:#dc2626;
+    --es-accent: <?php echo !$notFound ? e($story['accent_color']) : '#3D5A28'; ?>;
+    --bg:#F2EEE8; --bg2:#F7F3ED; --card:#fff; --border:#DDD5C7;
+    --text:#2C2416; --muted:#7A6E5D; --gold:#C99624; --red:#CE1126;
   }
   body { font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif; background:var(--bg); color:var(--text); }
   a { text-decoration:none; color:inherit; }
@@ -224,7 +224,7 @@ $canonicalUrl = $pageUrl;
     position:relative; overflow:hidden;
     border-radius:22px; margin:28px 0 24px;
     min-height:260px;
-    background:#1a1a2e;
+    background:#2C2416;
     box-shadow:0 12px 40px -18px rgba(0,0,0,.35);
   }
   .es1-hero-img {
@@ -245,7 +245,7 @@ $canonicalUrl = $pageUrl;
   }
   .es1-hero-icon {
     width:76px; height:76px; border-radius:18px;
-    background:rgba(255,255,255,.96); color:#1a1a2e;
+    background:rgba(255,255,255,.96); color:#2C2416;
     display:flex; align-items:center; justify-content:center;
     font-size:40px; flex-shrink:0;
     box-shadow:0 6px 20px rgba(0,0,0,.3);
@@ -272,12 +272,12 @@ $canonicalUrl = $pageUrl;
     text-shadow:0 3px 12px rgba(0,0,0,.4);
   }
   .es1-hero-desc {
-    font-size:15px; line-height:1.85; color:#e5e7eb;
+    font-size:15px; line-height:1.85; color:#DDD5C7;
     max-width:740px; margin-bottom:16px;
   }
   .es1-hero-stats {
     display:flex; flex-wrap:wrap; gap:20px;
-    font-size:13px; color:#e5e7eb; font-weight:600;
+    font-size:13px; color:#DDD5C7; font-weight:600;
   }
   .es1-hero-stats b { color:#fff; font-weight:900; }
   .es1-hero-actions { margin-top:16px; }
@@ -303,8 +303,8 @@ $canonicalUrl = $pageUrl;
     box-shadow:0 3px 14px -8px rgba(0,0,0,.08);
   }
   .es1-tm.is-travelling {
-    background:linear-gradient(135deg, #fef3c7 0%, #fffbeb 100%);
-    border-color:#fcd34d;
+    background:linear-gradient(135deg, #F5EBCE 0%, #F8F0DD 100%);
+    border-color:#E2C264;
     box-shadow:0 6px 22px -12px rgba(217,119,6,.3);
   }
   .es1-tm-head {
@@ -315,7 +315,7 @@ $canonicalUrl = $pageUrl;
     display:flex; align-items:center; gap:10px;
     font-size:14px; font-weight:700; color:var(--text);
   }
-  .es1-tm-title b { color:#b45309; font-weight:900; }
+  .es1-tm-title b { color:#8A5F08; font-weight:900; }
   .es1-tm-icon {
     width:36px; height:36px; border-radius:10px;
     background:var(--es-accent); color:#fff;
@@ -323,7 +323,7 @@ $canonicalUrl = $pageUrl;
     font-size:18px; flex-shrink:0;
   }
   .es1-tm.is-travelling .es1-tm-icon {
-    background:#d97706;
+    background:#B8860B;
     animation:es1-tm-spin 3s ease-in-out infinite;
   }
   @keyframes es1-tm-spin {
@@ -350,11 +350,11 @@ $canonicalUrl = $pageUrl;
     background:transparent; height:32px; cursor:pointer; direction:ltr;
   }
   .es1-tm-slider-wrap input[type=range]::-webkit-slider-runnable-track {
-    height:6px; background:linear-gradient(90deg, var(--es-accent), #f59e0b);
+    height:6px; background:linear-gradient(90deg, var(--es-accent), #C99624);
     border-radius:999px;
   }
   .es1-tm-slider-wrap input[type=range]::-moz-range-track {
-    height:6px; background:linear-gradient(90deg, var(--es-accent), #f59e0b);
+    height:6px; background:linear-gradient(90deg, var(--es-accent), #C99624);
     border-radius:999px; border:none;
   }
   .es1-tm-slider-wrap input[type=range]::-webkit-slider-thumb {
@@ -383,15 +383,15 @@ $canonicalUrl = $pageUrl;
   /* ============ AI narrative block ============ */
   .es1-narrative {
     background:linear-gradient(135deg, #fff 0%, #f0fdfa 100%);
-    border:1px solid rgba(13,148,136,.25);
+    border:1px solid rgba(61,90,40,.25);
     border-radius:18px; padding:26px 28px; margin-bottom:24px;
-    box-shadow:0 4px 20px -10px rgba(13,148,136,.14);
+    box-shadow:0 4px 20px -10px rgba(61,90,40,.14);
   }
   .es1-narrative-head {
     display:flex; align-items:center; gap:10px; margin-bottom:14px;
   }
   .es1-narrative-badge {
-    background:#0d9488; color:#fff;
+    background:#3D5A28; color:#fff;
     padding:5px 12px; border-radius:999px;
     font-size:11px; font-weight:800;
   }
@@ -421,10 +421,10 @@ $canonicalUrl = $pageUrl;
     display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;
   }
   .es1-event-date {
-    background:#fef3c7; color:#92400e;
+    background:#F5EBCE; color:#6B4F0B;
     padding:3px 11px; border-radius:999px;
     font-size:11.5px; font-weight:800;
-    border:1px solid #fcd34d;
+    border:1px solid #E2C264;
   }
   .es1-event-icon { font-size:20px; }
   .es1-event-title { font-size:17px; font-weight:800; line-height:1.5; margin-bottom:8px; }
@@ -465,7 +465,7 @@ $canonicalUrl = $pageUrl;
   }
   .es1-article-thumb {
     flex:0 0 140px; height:96px; border-radius:10px;
-    background-size:cover; background-position:center; background-color:#e5e7eb;
+    background-size:cover; background-position:center; background-color:#DDD5C7;
   }
   .es1-article-body { flex:1; min-width:0; }
   .es1-article-title { font-size:15.5px; font-weight:800; line-height:1.55; margin-bottom:6px; }
@@ -489,7 +489,7 @@ $canonicalUrl = $pageUrl;
 
   /* ============ Story by Numbers dashboard (Phase 2 #3) ============ */
   .es1-dash {
-    background:linear-gradient(135deg, #1a1a2e 0%, #2d2d44 100%);
+    background:linear-gradient(135deg, #2C2416 0%, #2d2d44 100%);
     border-radius:20px; padding:26px 28px; margin-bottom:24px;
     color:#f8fafc; position:relative; overflow:hidden;
     box-shadow:0 10px 36px -18px rgba(0,0,0,.45);
@@ -523,7 +523,7 @@ $canonicalUrl = $pageUrl;
     font-size:28px; font-weight:900; color:#fff; line-height:1; margin-bottom:6px;
     font-variant-numeric:tabular-nums;
   }
-  .es1-dash-stat .l { font-size:11.5px; color:#cbd5e1; font-weight:700; }
+  .es1-dash-stat .l { font-size:11.5px; color:#C5BFAB; font-weight:700; }
 
   .es1-dash-groups {
     display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
@@ -536,7 +536,7 @@ $canonicalUrl = $pageUrl;
   }
   .es1-dash-group-head {
     display:flex; align-items:center; gap:8px;
-    font-size:12px; font-weight:800; color:#cbd5e1;
+    font-size:12px; font-weight:800; color:#C5BFAB;
     text-transform:uppercase; letter-spacing:.5px;
     margin-bottom:12px;
   }
@@ -562,7 +562,7 @@ $canonicalUrl = $pageUrl;
     font-size:10.5px; font-weight:900;
   }
   .es1-dash-empty {
-    color:#cbd5e1; font-size:13px; padding:4px 0 2px;
+    color:#C5BFAB; font-size:13px; padding:4px 0 2px;
   }
 
   /* ============ Quote Wall preview (Phase 2 #6) ============ */
@@ -620,7 +620,7 @@ $canonicalUrl = $pageUrl;
   }
   .es1-quote-cta:hover {
     transform:translateY(-2px);
-    box-shadow:0 8px 24px -12px rgba(13,148,136,.5);
+    box-shadow:0 8px 24px -12px rgba(61,90,40,.5);
   }
 
   @media(max-width:760px) {
@@ -755,7 +755,7 @@ include __DIR__ . '/includes/components/site_header.php';
       <div class="es1-dash">
         <div class="es1-dash-head">
           <span class="es1-dash-badge">🔢 القصة بالأرقام</span>
-          <span style="color:#cbd5e1;font-size:12px;">استخرِج تلقائياً من تقارير القصة</span>
+          <span style="color:#C5BFAB;font-size:12px;">استخرِج تلقائياً من تقارير القصة</span>
         </div>
         <div class="es1-dash-stats">
           <div class="es1-dash-stat">

@@ -25,6 +25,7 @@ require_once __DIR__ . '/includes/user_auth.php';
 require_once __DIR__ . '/includes/user_functions.php';
 require_once __DIR__ . '/includes/article_cluster.php';
 require_once __DIR__ . '/includes/smart_brevity.php';
+require_once __DIR__ . '/includes/news_mirror.php';
 
 $viewer    = current_user();
 $viewerId  = $viewer ? (int)$viewer['id'] : 0;
@@ -123,11 +124,11 @@ $pageUrl = SITE_URL . '/cluster/' . $key;
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap"></noscript>
 <style>
   :root {
-    --bg:#faf6ec; --bg2:#fdfaf2; --bg3:#e4e6eb;
-    --card:#fff; --border:#e0e3e8;
-    --accent:#1a73e8; --accent2:#0d9488; --accent3:#16a34a;
-    --gold:#f59e0b; --gold2:#fcd34d; --gold-bg:#fef3c7; --gold-text:#92400e;
-    --red:#dc2626; --text:#1a1a2e; --muted:#6b7280; --muted2:#9ca3af;
+    --bg:#F2EEE8; --bg2:#F7F3ED; --bg3:#E8E3DB;
+    --card:#fff; --border:#DDD5C7;
+    --accent:#5B7F3B; --accent2:#3D5A28; --accent3:#1B7A3D;
+    --gold:#C99624; --gold2:#E2C264; --gold-bg:#F5EBCE; --gold-text:#6B4F0B;
+    --red:#CE1126; --text:#2C2416; --muted:#7A6E5D; --muted2:#968B78;
   }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
@@ -136,7 +137,7 @@ $pageUrl = SITE_URL . '/cluster/' . $key;
 
   /* HEADER */
   .cluster-hero {
-    background:linear-gradient(135deg,#fff 0%, #fefce8 100%);
+    background:linear-gradient(135deg,#fff 0%, #F5EBCE 100%);
     border:1px solid var(--gold2); border-radius:18px;
     padding:32px 28px; margin:28px 0;
     box-shadow:0 4px 24px -10px rgba(245,158,11,.18);
@@ -183,7 +184,7 @@ $pageUrl = SITE_URL . '/cluster/' . $key;
   .coverage-card:hover {
     transform:translateY(-3px);
     box-shadow:0 12px 32px -14px rgba(15,23,42,.16);
-    border-color:rgba(13,148,136,.25);
+    border-color:rgba(61,90,40,.25);
   }
   .coverage-img {
     background:var(--bg3); position:relative; overflow:hidden;
@@ -239,30 +240,30 @@ $pageUrl = SITE_URL . '/cluster/' . $key;
   .coverage-actions a.primary {
     background:var(--accent2); color:#fff; border-color:var(--accent2);
   }
-  .coverage-actions a.primary:hover { background:#0f766e; }
+  .coverage-actions a.primary:hover { background:#2D4520; }
 
   /* SMART BREVITY */
   .brevity-card {
-    background:linear-gradient(135deg,#f0fdf4 0%,#ecfdf5 50%,#f0fdfa 100%);
-    border:1px solid rgba(13,148,136,.25); border-radius:16px;
+    background:linear-gradient(135deg,#F0F4E5 0%,#ecfdf5 50%,#f0fdfa 100%);
+    border:1px solid rgba(61,90,40,.25); border-radius:16px;
     padding:0; margin:0 0 24px; overflow:hidden;
-    box-shadow:0 2px 12px -4px rgba(13,148,136,.12);
+    box-shadow:0 2px 12px -4px rgba(61,90,40,.12);
   }
   .brevity-header {
     display:flex; align-items:center; justify-content:space-between;
     padding:16px 22px; cursor:pointer; user-select:none;
-    background:rgba(13,148,136,.06);
-    border-bottom:1px solid rgba(13,148,136,.12);
+    background:rgba(61,90,40,.06);
+    border-bottom:1px solid rgba(61,90,40,.12);
   }
-  .brevity-header:hover { background:rgba(13,148,136,.1); }
-  .brevity-header h3 { font-size:15px; font-weight:800; color:#0f766e; margin:0; }
+  .brevity-header:hover { background:rgba(61,90,40,.1); }
+  .brevity-header h3 { font-size:15px; font-weight:800; color:#2D4520; margin:0; }
   .brevity-header .toggle { font-size:18px; transition:transform .3s; }
   .brevity-header.collapsed .toggle { transform:rotate(-90deg); }
   .brevity-body { padding:20px 22px; display:grid; gap:18px; }
   .brevity-body.hidden { display:none; }
   .brevity-section { }
   .brevity-section h4 {
-    font-size:13px; font-weight:800; color:#0f766e;
+    font-size:13px; font-weight:800; color:#2D4520;
     margin-bottom:6px; display:flex; align-items:center; gap:6px;
   }
   .brevity-section p, .brevity-section li {
@@ -272,11 +273,11 @@ $pageUrl = SITE_URL . '/cluster/' . $key;
     display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px;
   }
   .brevity-num {
-    background:#fff; border:1px solid rgba(13,148,136,.15);
+    background:#fff; border:1px solid rgba(61,90,40,.15);
     border-radius:10px; padding:12px 14px;
   }
   .brevity-num .val {
-    font-size:22px; font-weight:900; color:#0f766e; line-height:1.2;
+    font-size:22px; font-weight:900; color:#2D4520; line-height:1.2;
   }
   .brevity-num .ctx { font-size:12px; color:var(--muted); margin-top:2px; }
   .brevity-quotes { display:grid; gap:10px; }
@@ -286,6 +287,75 @@ $pageUrl = SITE_URL . '/cluster/' . $key;
   }
   .brevity-quote .qt { font-size:13px; line-height:1.7; color:var(--text); font-style:italic; }
   .brevity-quote .sp { font-size:11px; color:var(--muted); font-weight:700; margin-top:4px; }
+
+  /* NEWS MIRROR — مرايا الأخبار */
+  .mirror-card {
+    background:linear-gradient(135deg,#FBF7EE 0%,#F2F0F6 55%,#EAF0F4 100%);
+    border:1px solid var(--gold2); border-radius:16px;
+    padding:0; margin:0 0 24px; overflow:hidden;
+    box-shadow:0 2px 12px -4px rgba(31,41,55,.12);
+  }
+  .mirror-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 22px; cursor:pointer; user-select:none;
+    background:rgba(201,150,36,.08);
+    border-bottom:1px solid rgba(201,150,36,.18);
+  }
+  .mirror-header:hover { background:rgba(201,150,36,.13); }
+  .mirror-header h3 { font-size:15px; font-weight:800; color:var(--gold-text); margin:0; }
+  .mirror-header .toggle { font-size:18px; transition:transform .3s; }
+  .mirror-header.collapsed .toggle { transform:rotate(-90deg); }
+  .mirror-body { padding:20px 22px; display:grid; gap:22px; }
+  .mirror-body.hidden { display:none; }
+
+  .mirror-block h4 {
+    font-size:13px; font-weight:800; color:var(--accent2);
+    margin-bottom:10px; display:flex; align-items:center; gap:6px;
+  }
+  .mirror-neutral p {
+    font-size:14px; line-height:1.8; color:var(--text);
+    background:#fff; border:1px solid var(--border);
+    border-right:3px solid var(--accent); border-radius:0 10px 10px 0;
+    padding:12px 16px;
+  }
+
+  .mirror-term { margin-bottom:14px; }
+  .mirror-term:last-child { margin-bottom:0; }
+  .mirror-concept {
+    font-size:13px; font-weight:800; color:var(--text);
+    margin-bottom:8px; display:flex; align-items:center; gap:6px;
+  }
+  .mirror-concept::before { content:"≡"; color:var(--gold); font-weight:900; }
+  .mirror-variants { display:flex; flex-wrap:wrap; gap:8px; }
+  .mirror-chip {
+    display:inline-flex; flex-direction:column; gap:2px;
+    background:#fff; border:1px solid var(--border);
+    border-radius:10px; padding:8px 13px; max-width:100%;
+  }
+  .mirror-chip .term { font-size:14px; font-weight:800; line-height:1.4; }
+  .mirror-chip .src  { font-size:11px; color:var(--muted); font-weight:600; }
+  .mirror-chip.tone-neg { border-color:rgba(206,17,38,.45); background:#FDECEE; }
+  .mirror-chip.tone-neg .term { color:#9F0D1D; }
+  .mirror-chip.tone-pos { border-color:rgba(27,122,61,.45); background:#E8F6EE; }
+  .mirror-chip.tone-pos .term { color:#1B7A3D; }
+  .mirror-chip.tone-neutral { border-color:var(--gold2); background:var(--gold-bg); }
+  .mirror-chip.tone-neutral .term { color:var(--gold-text); }
+
+  .mirror-framings-list { display:grid; gap:10px; }
+  .mirror-framing {
+    background:#fff; border:1px solid var(--border); border-radius:10px;
+    padding:12px 16px;
+  }
+  .mirror-framing .fr-src {
+    font-size:12px; font-weight:800; color:var(--accent2); margin-bottom:4px;
+  }
+  .mirror-framing .fr-angle { font-size:14px; font-weight:700; color:var(--text); }
+  .mirror-framing .fr-emph { font-size:13px; color:var(--muted); line-height:1.7; margin-top:3px; }
+
+  .mirror-disclaimer {
+    font-size:11px; color:var(--muted2); line-height:1.6;
+    border-top:1px dashed var(--border); padding-top:12px;
+  }
 
   .empty-state { text-align:center; padding:80px 20px; color:var(--muted); }
   .empty-state .icon { font-size:56px; margin-bottom:18px; }
@@ -345,7 +415,7 @@ include __DIR__ . '/includes/components/site_header.php';
       ?>
       <div style="margin-top:12px;display:inline-flex;align-items:center;gap:8px;
                   padding:8px 16px;border-radius:10px;font-size:13px;font-weight:800;
-                  background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.2);color:#dc2626;">
+                  background:rgba(206,17,38,.08);border:1px solid rgba(206,17,38,.2);color:#CE1126;">
         <?php echo e($srcVel['label']); ?>
       </div>
       <?php endif; ?>
@@ -360,9 +430,9 @@ include __DIR__ . '/includes/components/site_header.php';
         <div style="margin-top:20px;">
           <a href="/timeline/<?php echo e($key); ?>"
              style="display:inline-flex;align-items:center;gap:10px;padding:12px 22px;
-                    background:linear-gradient(135deg,var(--accent2),#0f766e);color:#fff;
+                    background:linear-gradient(135deg,var(--accent2),#2D4520);color:#fff;
                     border-radius:12px;font-weight:800;font-size:14px;
-                    box-shadow:0 6px 18px -8px rgba(13,148,136,.5);transition:all .2s;">
+                    box-shadow:0 6px 18px -8px rgba(61,90,40,.5);transition:all .2s;">
             📅 شاهد الخط الزمني الذكي للقصّة ←
           </a>
           <div style="font-size:11px;color:var(--muted);margin-top:6px;">
@@ -442,6 +512,12 @@ include __DIR__ . '/includes/components/site_header.php';
     </div>
     <?php endif; ?>
 
+    <!-- NEWS MIRROR — مرايا الأخبار -->
+    <?php
+      $mirror = ($sourceCount >= 2) ? news_mirror_for_cluster($key, $articles) : null;
+      include __DIR__ . '/includes/components/news_mirror_card.php';
+    ?>
+
     <!-- COVERAGE LIST -->
     <div class="coverage-list">
       <?php foreach ($articles as $i => $article): ?>
@@ -449,7 +525,7 @@ include __DIR__ . '/includes/components/site_header.php';
           $img = $article['image_url'] ?? placeholderImage(400, 300);
           $snippet = trim(strip_tags((string)($article['ai_summary'] ?? $article['excerpt'] ?? '')));
           $srcInitial = mb_substr((string)($article['source_name'] ?? '?'), 0, 1);
-          $color = $article['logo_color'] ?? '#0d9488';
+          $color = $article['logo_color'] ?? '#3D5A28';
         ?>
         <article class="coverage-card">
           <div class="coverage-img">

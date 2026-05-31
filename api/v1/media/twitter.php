@@ -1,17 +1,81 @@
 <?php
 /**
- * GET /api/v1/media/twitter?limit=&since_id=
+ * GET /api/v1/media/twitter?limit=&since_id=&sync=
  * Returns the aggregated Twitter/X stream.
+ *
+ * When sync=1, opportunistically triggers a real scrape behind a file
+ * lock (same lock as twitter_feed.php on web) if the freshest DB row is
+ * older than TWAPI_SYNC_IF_STALE_SECS — so mobile users get the same
+ * freshness as web visitors instead of waiting for the cron.
  */
 require_once __DIR__ . '/../_bootstrap.php';
 
 api_method('GET');
 api_rate_limit('media:twitter', 240, 60);
 
+const TWAPI_SYNC_COOLDOWN_SECS = 15;
+const TWAPI_SYNC_IF_STALE_SECS = 30;
+
 $limit = max(1, min((int)($_GET['limit'] ?? 30), 100));
 $sinceId = max(0, (int)($_GET['since_id'] ?? 0));
+$syncReq = !empty($_GET['sync']);
 
 $db = getDB();
+
+// Trigger a real scrape if requested and the DB is stale. Uses the
+// same lock file as twitter_feed.php / twitter_stream.php so mobile
+// polls and web viewers cooperate — only one scrape per cooldown
+// across the whole system.
+$syncResult = null;
+if ($syncReq) {
+    try {
+        // Use created_at (DB insertion time) instead of posted_at —
+        // Twitter timestamps can land in the future relative to the
+        // server clock when timezone interpretation goes wrong, which
+        // would make (time() - newestTs) negative and trick this check
+        // into thinking the data is fresh forever.
+        $row = $db->query("SELECT UNIX_TIMESTAMP(MAX(created_at)) AS ts FROM twitter_messages WHERE is_active=1")->fetch(PDO::FETCH_ASSOC);
+        $newestTs = (int)($row['ts'] ?? 0);
+        if ($newestTs === 0 || (time() - $newestTs) >= TWAPI_SYNC_IF_STALE_SECS) {
+            $lockFile = sys_get_temp_dir() . '/nf_tw_sync.lock';
+            $nowTs    = time();
+            $canRun   = true;
+            if (file_exists($lockFile)) {
+                $age = $nowTs - (int)@filemtime($lockFile);
+                if ($age < TWAPI_SYNC_COOLDOWN_SECS) {
+                    $canRun = false;
+                    $syncResult = ['synced' => false, 'reason' => 'cooldown', 'age' => $age];
+                }
+            }
+            if ($canRun) {
+                $fp = @fopen($lockFile, 'c');
+                if ($fp && flock($fp, LOCK_EX | LOCK_NB)) {
+                    try {
+                        require_once __DIR__ . '/../../../includes/twitter_fetch.php';
+                        $added = tw_sync_all_sources();
+                        @ftruncate($fp, 0);
+                        @fwrite($fp, (string)$nowTs);
+                        @touch($lockFile, $nowTs);
+                        $syncResult = ['synced' => true, 'added' => $added];
+                    } catch (Throwable $e) {
+                        $syncResult = ['synced' => false, 'reason' => 'exception'];
+                    } finally {
+                        flock($fp, LOCK_UN);
+                        fclose($fp);
+                    }
+                } else {
+                    if ($fp) fclose($fp);
+                    $syncResult = ['synced' => false, 'reason' => 'lock_busy'];
+                }
+            }
+        } else {
+            $syncResult = ['synced' => false, 'reason' => 'fresh', 'age' => time() - $newestTs];
+        }
+    } catch (Throwable $e) {
+        $syncResult = ['synced' => false, 'reason' => 'stale_check_failed'];
+    }
+}
+
 $messages = [];
 try {
     if ($sinceId > 0) {
@@ -52,7 +116,9 @@ try {
     error_log('twitter api: ' . $e->getMessage());
 }
 
-api_ok($messages, [
+$meta = [
     'count' => count($messages),
     'latest_id' => $messages[0]['id'] ?? $sinceId,
-]);
+];
+if ($syncResult !== null) $meta['sync'] = $syncResult;
+api_ok($messages, $meta);

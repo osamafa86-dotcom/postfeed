@@ -68,7 +68,7 @@ if ($requestDate) {
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap"></noscript>
 <style>
-:root{--bg:#0f0f0f;--bg2:#1a1a1a;--card:#222;--border:#333;--accent2:#0d9488;--gold:#f59e0b;--text:#e5e5e5;--muted:#9ca3af}
+:root{--bg:#0f0f0f;--bg2:#1a1a1a;--card:#222;--border:#333;--accent2:#3D5A28;--gold:#C99624;--text:#E8E3DB;--muted:#968B78}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
 a{text-decoration:none;color:inherit}
@@ -178,7 +178,7 @@ include __DIR__ . '/includes/components/site_header.php';
           <p class="gallery-item-caption"><?php echo e($photo['caption']); ?></p>
         <?php endif; ?>
         <div class="gallery-item-meta">
-          <span class="dot" style="background:<?php echo e($photo['logo_color'] ?? '#0d9488'); ?>">
+          <span class="dot" style="background:<?php echo e($photo['logo_color'] ?? '#3D5A28'); ?>">
             <?php echo e(mb_substr($photo['source'] ?? '?', 0, 1)); ?>
           </span>
           <span><?php echo e($photo['source'] ?? ''); ?></span>

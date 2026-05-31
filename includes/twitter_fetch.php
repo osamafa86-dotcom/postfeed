@@ -23,50 +23,52 @@
  *     can grep the log if the section goes stale.
  */
 
-// Public Nitter instances tried in rotation. First one that returns
-// parseable RSS wins. Instances come and go — most went down in 2024
-// after Twitter's anti-scraping changes. Refresh this list from
-// https://github.com/zedeus/nitter/wiki/Instances when the section
-// goes stale across the board.
+// Public Nitter-style instances tried in rotation. First one that returns
+// parseable RSS wins. Order matters — most reliable / freshest first.
+// Includes xcancel.com and lightbrd.com which are non-Nitter forks but
+// expose the same /username/rss interface. Instances come and go — if
+// all start failing, refresh this list from
+// https://github.com/zedeus/nitter/wiki/Instances and check xcancel/space
+// status pages.
 const TW_NITTER_INSTANCES = [
+    'xcancel.com',
+    'nitter.space',
     'nitter.tiekoetter.com',
     'nitter.privacyredirect.com',
-    'nitter.space',
-    'nitter.lucabased.xyz',
-    'nitter.kavin.rocks',
+    'nitter.adminforge.de',
+    'lightbrd.com',
     'nitter.poast.org',
     'nitter.privacydev.net',
-    'nitter.net',
+];
+
+// User-Agent pool — rotated per request so Twitter/Nitter edges can't
+// fingerprint and cache a single client identity. Keep these recent
+// (within last ~12 months) to look like real traffic.
+const TW_USER_AGENTS = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
 ];
 
 /**
  * Fetch the latest tweets for a single username.
  *
- * Transports in order (most reliable first):
- *   1) CDN JSON — Twitter's own syndication endpoint. Was "mostly dead"
- *      historically but is the most accurate when it does respond, so
- *      try it first; failure is cheap (one HTTP roundtrip with 8s cap).
- *   2) NEXT_DATA (syndication.twitter.com) — reliable but cache-lagged.
- *   3) Nitter — scrapes the live profile page. Most Nitter instances
- *      are down since Twitter's 2024 anti-scrape changes but a handful
- *      still work for the top-N accounts.
- *   4) RSSHub — RSS bridge; Twitter route is often broken. Last-ditch.
- *
- * Why this reordering matters: the previous Nitter-first order looked
- * good on the largest accounts (Al Jazeera, BBC) because their Nitter
- * cache is always warm. For smaller accounts every Nitter instance
- * returned empty, and by the time we fell through to CDN JSON we had
- * already burned the per-source 10-second budget on Nitter retries.
- * CDN JSON first means smaller accounts get a chance.
+ * Transports in order (most reliable in 2026 first):
+ *   1) NEXT_DATA (syndication.twitter.com) — the only consistently
+ *      working path. Returns full timelines (~99 tweets) when not
+ *      rate-limited.
+ *   2) Nitter — almost every public instance is dead or blocked; kept
+ *      as a fallback for the day syndication itself goes 429.
+ *   3) RSSHub — mostly broken for Twitter, kept for completeness.
+ *   4) CDN JSON — dead; last resort.
  *
  * @return array<int, array{tweet_id:string, text:string, image_url:string, posted_at:string, url:string}>
  */
 function tw_fetch_user_tweets(string $username, int $limit = 20): array {
     $username = ltrim(trim($username), '@');
     if ($username === '') return [];
-
-    $out = tw_fetch_via_cdn_json($username, $limit);
-    if (!empty($out)) return tw_finalize_tweets($out, $username, $limit);
 
     $out = tw_fetch_via_next_data($username, $limit);
     if (!empty($out)) return tw_finalize_tweets($out, $username, $limit);
@@ -75,6 +77,9 @@ function tw_fetch_user_tweets(string $username, int $limit = 20): array {
     if (!empty($out)) return tw_finalize_tweets($out, $username, $limit);
 
     $out = tw_fetch_via_rsshub($username, $limit);
+    if (!empty($out)) return tw_finalize_tweets($out, $username, $limit);
+
+    $out = tw_fetch_via_cdn_json($username, $limit);
     if (!empty($out)) return tw_finalize_tweets($out, $username, $limit);
 
     return [];
@@ -146,13 +151,14 @@ function tw_parse_rss_feed(string $xml): array {
         $image = '';
         if (preg_match('#<img[^>]+src=["\']([^"\']+)["\']#i', $desc, $im)) {
             $image = html_entity_decode($im[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
-            // Nitter proxies images through /pic/<url-encoded-path>.
-            // Decode the proxy path and rewrite back to pbs.twimg.com so
-            // the image keeps loading if the instance that served the
-            // RSS later disappears. Two shapes we see in the wild:
+            // Nitter-style instances (including xcancel.com, lightbrd.com)
+            // proxy images through /pic/<url-encoded-path>. Decode and
+            // rewrite back to pbs.twimg.com so the image keeps loading
+            // if the instance that served the RSS later disappears.
+            // Two shapes we see in the wild:
             //   .../pic/media%2FXYZ.jpg?name=orig   (relative path)
             //   .../pic/https%3A%2F%2Fpbs.twimg...  (full URL wrapped)
-            if (preg_match('#^https?://[^/]*nitter[^/]*/pic/(.+)$#', $image, $pm)) {
+            if (preg_match('#^https?://[^/]+/pic/(.+)$#', $image, $pm)) {
                 $inner = rawurldecode($pm[1]);
                 if (preg_match('#^https?://#', $inner)) {
                     $image = $inner;
@@ -232,7 +238,7 @@ function tw_finalize_tweets(array $tweets, string $username, int $limit): array 
  */
 function tw_http_get(string $url, int $timeout = 15): ?string {
     $sep = (strpos($url, '?') === false) ? '?' : '&';
-    $url .= $sep . '_cb=' . time();
+    $url .= $sep . '_cb=' . time() . mt_rand(100, 999);
 
     $ch = curl_init($url);
     curl_setopt_array($ch, [
@@ -240,12 +246,12 @@ function tw_http_get(string $url, int $timeout = 15): ?string {
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_TIMEOUT        => $timeout,
         CURLOPT_CONNECTTIMEOUT => 8,
-        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        CURLOPT_USERAGENT      => TW_USER_AGENTS[array_rand(TW_USER_AGENTS)],
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_HTTPHEADER     => [
             'Accept: text/html,application/json,application/xhtml+xml',
             'Accept-Language: en-US,en;q=0.9,ar;q=0.8',
-            'Cache-Control: no-cache',
+            'Cache-Control: no-cache, no-store, must-revalidate',
             'Pragma: no-cache',
         ],
     ]);
@@ -298,8 +304,30 @@ function tw_fetch_via_cdn_json(string $username, int $limit): array {
 
 /**
  * Transport 2: syndication.twitter.com HTML page with __NEXT_DATA__.
+ *
+ * This is the primary working transport in 2026. Twitter's edge will
+ * 429 if hit too aggressively for the same UA — tw_http_get rotates UA
+ * per call, but we also stash the parsed result in a tiny per-user file
+ * cache so back-to-back debug runs and concurrent SSE streams reuse the
+ * payload instead of hammering syndication.
+ *
+ * Cache TTL is intentionally shorter than the SSE scrape cadence
+ * (TW_SCRAPE_EVERY_SECS = 8s) so each scheduled scrape actually hits
+ * Twitter for fresh data — otherwise new tweets sit invisible in the
+ * cache for ~25s and the "live" feed lags noticeably. The cache still
+ * absorbs bursts (debug + cron + concurrent SSE clients within the
+ * same few seconds), which is the only thing it's meant to protect.
  */
 function tw_fetch_via_next_data(string $username, int $limit): array {
+    $cacheFile = sys_get_temp_dir() . '/nf_tw_nd_' . md5($username) . '.json';
+    $cacheTtl  = 5; // seconds — short enough that SSE (8s cadence) always sees fresh data
+
+    if (is_file($cacheFile) && (time() - @filemtime($cacheFile)) < $cacheTtl) {
+        $cached = @file_get_contents($cacheFile);
+        $rows   = $cached ? json_decode($cached, true) : null;
+        if (is_array($rows) && !empty($rows)) return $rows;
+    }
+
     $url = 'https://syndication.twitter.com/srv/timeline-profile/screen-name/' . rawurlencode($username);
     $html = tw_http_get($url);
     if (!$html) return [];
@@ -332,6 +360,9 @@ function tw_fetch_via_next_data(string $username, int $limit): array {
               ?? null;
         $t = tw_normalize_tweet($tweet);
         if ($t) $out[] = $t;
+    }
+    if (!empty($out)) {
+        @file_put_contents($cacheFile, json_encode($out, JSON_UNESCAPED_UNICODE), LOCK_EX);
     }
     return $out;
 }
@@ -505,7 +536,7 @@ function tw_debug_http(string $url, int $timeout = 15): array {
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_TIMEOUT        => $timeout,
         CURLOPT_CONNECTTIMEOUT => 8,
-        CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        CURLOPT_USERAGENT      => TW_USER_AGENTS[array_rand(TW_USER_AGENTS)],
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_HTTPHEADER     => [
             'Accept: text/html,application/json,application/xhtml+xml',
@@ -639,7 +670,13 @@ function tw_sync_all_sources(): int {
     }
 
     $total = 0;
-    foreach ($sources as $src) {
+    foreach ($sources as $i => $src) {
+        // Small spacing between source fetches so a multi-source sync
+        // doesn't burst-then-429 against syndication.twitter.com.
+        // 200ms is enough to dodge the per-IP burst detector without
+        // adding visible lag to the SSE scrape cycle.
+        if ($i > 0) usleep(200000); // 200ms between sources
+
         $srcNew = 0;
         $err = null;
         $usedFallback = false;
@@ -652,7 +689,8 @@ function tw_sync_all_sources(): int {
 
         // Twitter transports came back empty — try the admin-configured
         // RSS fallback if one is set. This is how we keep the section
-        // alive for handles where Nitter is consistently blocked.
+        // alive for handles where Nitter / syndication are consistently
+        // blocked for that specific handle.
         if (empty($tweets) && !empty($src['fallback_rss_url'])) {
             try {
                 $tweets = tw_fetch_via_custom_rss((string)$src['fallback_rss_url'], 20);
