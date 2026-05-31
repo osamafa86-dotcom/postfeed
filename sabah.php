@@ -155,7 +155,7 @@ a{text-decoration:none;color:inherit}
 @media print{
   body{background:#fff;color:#000;font-size:12pt}
   .site-header,.site-footer,.sabah-archive,.sabah-actions,nav,header,footer,
-  .pwa-prompt,.cookie-bar,script,.no-print{display:none !important}
+  .pwa-prompt,.cookie-bar,script,.no-print,.pdf-preview-bar{display:none !important}
   .container{max-width:100% !important;padding:0 !important}
   .sabah-hero{
     background:#FEF3C7 !important;border:1px solid #D97706 !important;
@@ -168,6 +168,45 @@ a{text-decoration:none;color:inherit}
   .sabah-subhead{font-size:13pt !important}
   a{color:#000 !important;text-decoration:none !important}
 }
+
+/* PDF preview mode — toggled with body.pdf-preview. Shows the page in
+   a clean, paper-like format so users can see exactly how the PDF will
+   look before saving. Hides everything except the briefing + a fixed
+   action bar at the top. */
+body.pdf-preview{background:#9CA3AF !important}
+body.pdf-preview .site-header,
+body.pdf-preview .sabah-archive,
+body.pdf-preview .sabah-actions,
+body.pdf-preview header,
+body.pdf-preview nav,
+body.pdf-preview footer,
+body.pdf-preview .pwa-prompt,
+body.pdf-preview .cookie-bar{display:none !important}
+body.pdf-preview .container{
+  max-width:794px !important;     /* ~A4 width at 96dpi */
+  background:#fff;
+  margin:80px auto 40px;
+  padding:48px 56px !important;
+  box-shadow:0 8px 32px rgba(0,0,0,.25);
+  border-radius:4px;
+  min-height:1000px;
+}
+.pdf-preview-bar{
+  display:none;position:fixed;top:0;left:0;right:0;z-index:9999;
+  background:#1F2937;color:#fff;padding:12px 24px;
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  box-shadow:0 2px 12px rgba(0,0,0,.4);
+}
+body.pdf-preview .pdf-preview-bar{display:flex}
+.pdf-preview-bar .label{font-size:14px;font-weight:700;margin-inline-end:auto}
+.pdf-preview-bar button{
+  background:var(--gold);color:#fff;border:none;
+  padding:8px 16px;border-radius:8px;font-size:13px;font-weight:700;
+  cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+}
+.pdf-preview-bar button:hover{background:#A37516}
+.pdf-preview-bar button.secondary{background:transparent;border:1px solid rgba(255,255,255,.3)}
+.pdf-preview-bar button.secondary:hover{background:rgba(255,255,255,.1)}
 </style>
 <link rel="stylesheet" href="assets/css/site-header.min.css?v=m1">
 <link rel="stylesheet" href="assets/css/user.min.css?v=m1">
@@ -182,6 +221,15 @@ $showTicker = false;
 $userUnread = $viewerId ? user_unread_notifications_count($viewerId) : 0;
 include __DIR__ . '/includes/components/site_header.php';
 ?>
+
+<!-- PDF preview top bar — only visible when body.pdf-preview is active.
+     Lets the user save or share without leaving the preview, or back
+     out of it. Kept outside .container so it stays fixed across scroll. -->
+<div class="pdf-preview-bar">
+  <span class="label">👁️ معاينة PDF — هكذا سيظهر الملف عند الحفظ</span>
+  <button onclick="window.print()">📄 حفظ PDF</button>
+  <button class="secondary" onclick="sabahHidePreview()">✕ إغلاق المعاينة</button>
+</div>
 
 <div class="container">
 
@@ -217,7 +265,10 @@ include __DIR__ . '/includes/components/site_header.php';
   </div>
 
   <div class="sabah-actions no-print">
-    <button onclick="window.print()" title="حفظ كـ PDF">
+    <button onclick="sabahShowPreview()" title="معاينة قبل التحميل">
+      👁️ معاينة PDF
+    </button>
+    <button onclick="window.print()" title="حفظ كـ PDF مباشرة">
       📄 حفظ كـ PDF
     </button>
     <button onclick="if(navigator.share){navigator.share({title:document.title,url:location.href})}else{navigator.clipboard.writeText(location.href);this.textContent='✓ تم نسخ الرابط'}" style="background:#3D5A28">
@@ -299,5 +350,22 @@ include __DIR__ . '/includes/components/site_header.php';
 </div>
 
 <script src="assets/js/user.min.js?v=m1" defer></script>
+<script>
+  // PDF preview toggle — swaps the page into a paper-like rendering so
+  // the user can see exactly how the PDF will look before triggering
+  // window.print(). Esc closes the preview.
+  function sabahShowPreview() {
+    document.body.classList.add('pdf-preview');
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  }
+  function sabahHidePreview() {
+    document.body.classList.remove('pdf-preview');
+  }
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && document.body.classList.contains('pdf-preview')) {
+      sabahHidePreview();
+    }
+  });
+</script>
 </body>
 </html>
