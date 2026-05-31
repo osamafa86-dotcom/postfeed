@@ -13,6 +13,7 @@ import 'api_exception.dart';
 
 /// Override at build-time with --dart-define=API_BASE=https://feedsnews.net/api/v1
 const String _defaultBase = 'https://feedsnews.net/api/v1';
+const int _maxRetries = 2;
 
 class ApiBase {
   static const String url = String.fromEnvironment('API_BASE', defaultValue: _defaultBase);
@@ -97,6 +98,36 @@ class ApiClient {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               rootNavigatorKey.currentContext?.go('/login');
             });
+          }
+        }
+        handler.next(err);
+      },
+    ));
+
+    // Retry transient network blips (timeout / connection drop with no HTTP
+    // response) for idempotent GETs, so a momentary signal dip doesn't surface
+    // as a user-visible error. Bounded to _maxRetries with linear backoff.
+    // Errors that carry a response (401, 4xx, 5xx) are left untouched so the
+    // auth/error handling above still applies.
+    dio.interceptors.add(InterceptorsWrapper(
+      onError: (err, handler) async {
+        final opts = err.requestOptions;
+        final transient = err.response == null &&
+            (err.type == DioExceptionType.connectionTimeout ||
+                err.type == DioExceptionType.receiveTimeout ||
+                err.type == DioExceptionType.sendTimeout ||
+                err.type == DioExceptionType.connectionError);
+        final attempt = (opts.extra['retry_attempt'] as int?) ?? 0;
+        if (opts.method.toUpperCase() == 'GET' &&
+            transient &&
+            attempt < _maxRetries) {
+          opts.extra['retry_attempt'] = attempt + 1;
+          await Future<void>.delayed(
+              Duration(milliseconds: 350 * (attempt + 1)));
+          try {
+            return handler.resolve(await dio.fetch<dynamic>(opts));
+          } on DioException catch (e) {
+            return handler.next(e);
           }
         }
         handler.next(err);
