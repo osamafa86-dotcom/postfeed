@@ -39,7 +39,11 @@ $t0 = microtime(true);
 
 $briefing = sabah_generate();
 if (!$briefing || empty($briefing['hook'])) {
-    echo "failed: no briefing generated (not enough clusters?)\n";
+    // sabah_generate stashes the real reason (AI error vs. genuinely no
+    // clusters) so we don't print a misleading "not enough clusters" when
+    // the corpus was fine but the AI call 429'd.
+    $reason = $GLOBALS['_sabah_last_error'] ?? 'not enough clusters';
+    echo "failed: no briefing generated — {$reason}\n";
     exit(1);
 }
 

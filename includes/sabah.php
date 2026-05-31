@@ -198,6 +198,11 @@ function sabah_generate(): ?array {
 
     $call = ai_provider_tool_call($prompt, $tool, 3000);
     if (empty($call['ok']) || !is_array($call['input'])) {
+        // Distinguish AI failure from "not enough news" — the old code
+        // returned null for both, so a Gemini 429 looked identical to a
+        // quiet news day in the cron output ("not enough clusters?").
+        // Stash the real reason where the cron can read it.
+        $GLOBALS['_sabah_last_error'] = 'AI: ' . ($call['error'] ?? 'unknown');
         error_log('[sabah] AI failed: ' . ($call['error'] ?? ''));
         return null;
     }
