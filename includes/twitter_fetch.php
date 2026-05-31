@@ -24,20 +24,28 @@
  */
 
 // Public Nitter-style instances tried in rotation. First one that returns
-// parseable RSS wins. Order matters — most reliable / freshest first.
-// Includes xcancel.com and lightbrd.com which are non-Nitter forks but
-// expose the same /username/rss interface. Instances come and go — if
-// all start failing, refresh this list from
-// https://github.com/zedeus/nitter/wiki/Instances and check xcancel/space
-// status pages.
+// parseable RSS wins. Order matters — the budget across all instances is
+// only ~10s, so a few dead hosts at the top of the list eat the whole
+// window before we reach any live ones.
+//
+// 2026 state (per public status pages + community trackers):
+//   - nitter.poast.org : the most consistently alive public instance,
+//     aggressive rate-limiting on its side but still serves RSS
+//   - xcancel.com      : non-Nitter fork, separate operator, kept up
+//   - lightbrd.com     : non-Nitter fork, similar
+//   - everything else  : dying or dead. Kept as low-priority fallbacks
+//     so a single host coming back doesn't require a deploy to be tried
+//
+// Instances come and go — if all start failing, refresh this list from
+// https://github.com/zedeus/nitter/wiki/Instances.
 const TW_NITTER_INSTANCES = [
+    'nitter.poast.org',
     'xcancel.com',
+    'lightbrd.com',
+    'nitter.privacyredirect.com',
     'nitter.space',
     'nitter.tiekoetter.com',
-    'nitter.privacyredirect.com',
     'nitter.adminforge.de',
-    'lightbrd.com',
-    'nitter.poast.org',
     'nitter.privacydev.net',
 ];
 
@@ -69,6 +77,12 @@ const TW_USER_AGENTS = [
 function tw_fetch_user_tweets(string $username, int $limit = 20): array {
     $username = ltrim(trim($username), '@');
     if ($username === '') return [];
+
+    // One-time-per-hour visit to publish.twitter.com so the cookie jar
+    // carries the guest_id / personalization_id Twitter's syndication
+    // endpoint expects. Without those cookies the timeline payload comes
+    // back empty even with HTTP 200 + correct Origin header.
+    tw_warmup_session();
 
     $out = tw_fetch_via_next_data($username, $limit);
     if (!empty($out)) return tw_finalize_tweets($out, $username, $limit);
@@ -232,6 +246,65 @@ function tw_finalize_tweets(array $tweets, string $username, int $limit): array 
 }
 
 /**
+ * Path to the shared cookie jar — accumulates guest_id / personalization
+ * cookies set by twitter.com and publish.twitter.com so subsequent
+ * syndication requests carry the same browser-like session state. The
+ * file is rewritten on every request that returns Set-Cookie, so even
+ * stale cookies eventually refresh themselves.
+ */
+function tw_cookie_jar_path(): string {
+    return sys_get_temp_dir() . '/nf_tw_cookies.txt';
+}
+
+/**
+ * Visit publish.twitter.com once per session to acquire the guest cookies
+ * (guest_id, guest_id_marketing, personalization_id, etc.) that Twitter's
+ * syndication endpoint uses to decide whether to return a real timeline.
+ *
+ * Without these cookies, syndication.twitter.com returns an HTML page
+ * with __NEXT_DATA__.timeline.entries = [] even though the HTTP status
+ * is 200. Acquiring them once an hour is enough — the cookies are
+ * long-lived and persist via the cookie jar.
+ */
+function tw_warmup_session(): void {
+    $marker = sys_get_temp_dir() . '/nf_tw_session_warm';
+    // 1-hour TTL on the marker, but only if the warmup actually
+    // succeeded — we don't want a single 5xx blip to lock us out of
+    // re-trying for an hour.
+    if (is_file($marker) && (time() - @filemtime($marker)) < 3600) return;
+
+    // Hit two endpoints in sequence: x.com sets the guest_id family of
+    // cookies, then publish.twitter.com sets the embed-specific ones.
+    // Both write to the shared cookie jar via curl's COOKIEJAR.
+    foreach (['https://x.com/', 'https://publish.twitter.com/'] as $warmupUrl) {
+        $ch = curl_init($warmupUrl);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_TIMEOUT        => 8,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_USERAGENT      => TW_USER_AGENTS[array_rand(TW_USER_AGENTS)],
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_COOKIEJAR      => tw_cookie_jar_path(),
+            CURLOPT_COOKIEFILE     => tw_cookie_jar_path(),
+            CURLOPT_HTTPHEADER     => [
+                'Accept: text/html,application/xhtml+xml,application/xml;q=0.9',
+                'Accept-Language: en-US,en;q=0.9,ar;q=0.8',
+            ],
+        ]);
+        @curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        curl_close($ch);
+        error_log("tw_warmup: $warmupUrl -> HTTP $code");
+        // Hold off marking warm if we got blocked — a 403/429 means
+        // the cookies likely didn't get set either, and we'd rather
+        // retry in a minute than wait an hour for nothing.
+        if ($code === 403 || $code === 429 || $code === 0) return;
+    }
+    @touch($marker);
+}
+
+/**
  * GET helper with a cache-bypass query param so Cloudflare/CDN edges
  * don't hand us yesterday's cached response. $timeout lets slower
  * transports like rsshub.app extend the window before giving up.
@@ -241,6 +314,10 @@ function tw_finalize_tweets(array $tweets, string $username, int $limit): array 
  * endpoint, for example, only returns timeline data when Origin is set
  * to https://publish.twitter.com — without it the response is empty
  * even though the HTTP status is 200).
+ *
+ * Uses a shared cookie jar so cookies set by an earlier request (e.g.
+ * the publish.twitter.com session warm-up) automatically ride along on
+ * the next syndication/cdn call.
  */
 function tw_http_get(string $url, int $timeout = 15, array $extraHeaders = []): ?string {
     $sep = (strpos($url, '?') === false) ? '?' : '&';
@@ -261,6 +338,8 @@ function tw_http_get(string $url, int $timeout = 15, array $extraHeaders = []): 
         CURLOPT_CONNECTTIMEOUT => 8,
         CURLOPT_USERAGENT      => TW_USER_AGENTS[array_rand(TW_USER_AGENTS)],
         CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_COOKIEJAR      => tw_cookie_jar_path(),
+        CURLOPT_COOKIEFILE     => tw_cookie_jar_path(),
         CURLOPT_HTTPHEADER     => $headers,
     ]);
     $body = curl_exec($ch);
@@ -341,18 +420,40 @@ function tw_fetch_via_next_data(string $username, int $limit): array {
         if (is_array($rows) && !empty($rows)) return $rows;
     }
 
-    $url = 'https://syndication.twitter.com/srv/timeline-profile/screen-name/' . rawurlencode($username);
+    // Match the query-string shape the official publish widget sends —
+    // syndication's gatekeeper checks for these params (especially
+    // origin + widgetsVersion) when deciding whether to populate the
+    // timeline. A bare URL with just screen-name is more likely to come
+    // back empty than one that fully impersonates the widget. We skip
+    // the giant base64 `features` blob because its bucket values rotate
+    // and stale ones don't help, but the lightweight params still
+    // matter.
+    $url = 'https://syndication.twitter.com/srv/timeline-profile/screen-name/' . rawurlencode($username)
+         . '?dnt=true'
+         . '&embedId=twitter-widget-0'
+         . '&origin=https%3A%2F%2Fpublish.twitter.com'
+         . '&sessionId=' . md5($username . date('Ymd'))
+         . '&showHeader=false'
+         . '&showReplies=false'
+         . '&transparent=false';
     // syndication.twitter.com only returns timeline data when the
     // request looks like it came from the official publish widget —
     // Origin: https://publish.twitter.com is the magic header. Without
     // it we get a 200 response but the __NEXT_DATA__ blob has empty
     // entries (which is exactly what we were seeing in production —
-    // all sources failing with "no tweets returned"). The dnt=1 cookie
-    // matches what the embedded widget sends.
+    // all sources failing with "no tweets returned").
+    //
+    // Note: we deliberately do NOT pass an explicit "Cookie:" header
+    // here. Curl's cookie jar already carries the guest_id family from
+    // the warmup visit, and an explicit Cookie header would override
+    // the jar entirely in modern curl — leaving the request looking
+    // like it came from a fresh anonymous client again.
     $html = tw_http_get($url, 15, [
         'Origin: https://publish.twitter.com',
         'Referer: https://publish.twitter.com/',
-        'Cookie: dnt=1',
+        'Sec-Fetch-Dest: empty',
+        'Sec-Fetch-Mode: cors',
+        'Sec-Fetch-Site: cross-site',
     ]);
     if (!$html) return [];
 
