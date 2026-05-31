@@ -235,10 +235,23 @@ function tw_finalize_tweets(array $tweets, string $username, int $limit): array 
  * GET helper with a cache-bypass query param so Cloudflare/CDN edges
  * don't hand us yesterday's cached response. $timeout lets slower
  * transports like rsshub.app extend the window before giving up.
+ *
+ * Extra headers can be passed in via $extraHeaders for transports that
+ * Twitter expects to come from a specific origin (the syndication
+ * endpoint, for example, only returns timeline data when Origin is set
+ * to https://publish.twitter.com — without it the response is empty
+ * even though the HTTP status is 200).
  */
-function tw_http_get(string $url, int $timeout = 15): ?string {
+function tw_http_get(string $url, int $timeout = 15, array $extraHeaders = []): ?string {
     $sep = (strpos($url, '?') === false) ? '?' : '&';
     $url .= $sep . '_cb=' . time() . mt_rand(100, 999);
+
+    $headers = array_merge([
+        'Accept: text/html,application/json,application/xhtml+xml',
+        'Accept-Language: en-US,en;q=0.9,ar;q=0.8',
+        'Cache-Control: no-cache, no-store, must-revalidate',
+        'Pragma: no-cache',
+    ], $extraHeaders);
 
     $ch = curl_init($url);
     curl_setopt_array($ch, [
@@ -248,12 +261,7 @@ function tw_http_get(string $url, int $timeout = 15): ?string {
         CURLOPT_CONNECTTIMEOUT => 8,
         CURLOPT_USERAGENT      => TW_USER_AGENTS[array_rand(TW_USER_AGENTS)],
         CURLOPT_SSL_VERIFYPEER => false,
-        CURLOPT_HTTPHEADER     => [
-            'Accept: text/html,application/json,application/xhtml+xml',
-            'Accept-Language: en-US,en;q=0.9,ar;q=0.8',
-            'Cache-Control: no-cache, no-store, must-revalidate',
-            'Pragma: no-cache',
-        ],
+        CURLOPT_HTTPHEADER     => $headers,
     ]);
     $body = curl_exec($ch);
     $code = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
@@ -274,7 +282,12 @@ function tw_fetch_via_cdn_json(string $username, int $limit): array {
          . '?screen_name=' . rawurlencode($username)
          . '&with_replies=false&suppress_response_codes=true&lang=en';
 
-    $body = tw_http_get($url);
+    // Same Origin trick the syndication HTML endpoint needs — Twitter
+    // checks for it before serving timeline payloads.
+    $body = tw_http_get($url, 15, [
+        'Origin: https://publish.twitter.com',
+        'Referer: https://publish.twitter.com/',
+    ]);
     if (!$body) return [];
 
     // CDN sometimes wraps in JSONP — strip callback wrapper if present.
@@ -329,7 +342,18 @@ function tw_fetch_via_next_data(string $username, int $limit): array {
     }
 
     $url = 'https://syndication.twitter.com/srv/timeline-profile/screen-name/' . rawurlencode($username);
-    $html = tw_http_get($url);
+    // syndication.twitter.com only returns timeline data when the
+    // request looks like it came from the official publish widget —
+    // Origin: https://publish.twitter.com is the magic header. Without
+    // it we get a 200 response but the __NEXT_DATA__ blob has empty
+    // entries (which is exactly what we were seeing in production —
+    // all sources failing with "no tweets returned"). The dnt=1 cookie
+    // matches what the embedded widget sends.
+    $html = tw_http_get($url, 15, [
+        'Origin: https://publish.twitter.com',
+        'Referer: https://publish.twitter.com/',
+        'Cookie: dnt=1',
+    ]);
     if (!$html) return [];
 
     if (!preg_match('#<script[^>]+id="__NEXT_DATA__"[^>]*>(.+?)</script>#s', $html, $m)) {
