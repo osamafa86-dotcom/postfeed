@@ -73,13 +73,64 @@ class ContentRepository {
     final box = _offlineBox;
     if (box == null) return;
     try {
-      while (box.length >= _offlineCacheCap) {
-        box.deleteAt(0); // FIFO eviction so the cache stays bounded
+      // Evict only auto-cache entries (article_*), never user-saved ones.
+      final autoKeys = box.keys
+          .where((k) => k is String && k.startsWith('article_'))
+          .toList();
+      while (autoKeys.length >= _offlineCacheCap) {
+        box.delete(autoKeys.removeAt(0)); // FIFO
       }
       box.put('article_$id', data);
     } catch (_) {
       // Caching must never break article loading.
     }
+  }
+
+  // ── Explicit "save for offline" (user-pinned, never evicted) ──
+  static const String _savedIndexKey = '__offline_saved__';
+
+  /// IDs the user explicitly saved for offline reading, newest first.
+  List<int> savedArticleIds() {
+    final raw = _offlineBox?.get(_savedIndexKey);
+    return raw is List ? raw.whereType<int>().toList() : const [];
+  }
+
+  bool isSavedOffline(int id) => savedArticleIds().contains(id);
+
+  /// Pin an opened article: copy its cached payload to a non-evictable key
+  /// and record it in the saved index. Best-effort — relies on the article
+  /// having been fetched (so its payload is already in the auto-cache).
+  Future<void> saveOffline(int id) async {
+    final box = _offlineBox;
+    if (box == null) return;
+    final payload = box.get('article_$id');
+    if (payload != null) await box.put('saved_$id', payload);
+    final ids = savedArticleIds();
+    if (!ids.contains(id)) await box.put(_savedIndexKey, <int>[id, ...ids]);
+  }
+
+  Future<void> removeOffline(int id) async {
+    final box = _offlineBox;
+    if (box == null) return;
+    await box.delete('saved_$id');
+    await box.put(_savedIndexKey, savedArticleIds()..remove(id));
+  }
+
+  /// Saved articles (main article only), newest first; skips any whose
+  /// payload is missing.
+  List<Article> savedArticles() {
+    final box = _offlineBox;
+    if (box == null) return const [];
+    final out = <Article>[];
+    for (final id in savedArticleIds()) {
+      final payload = box.get('saved_$id') ?? box.get('article_$id');
+      if (payload is Map) {
+        try {
+          out.add(_parseArticlePayload(payload).article);
+        } catch (_) {}
+      }
+    }
+    return out;
   }
 
   Future<({Article article, List<Article> related})> article({int? id, String? slug}) async {
@@ -96,7 +147,8 @@ class ContentRepository {
       // Offline / timeout → serve a previously-opened copy when we have one,
       // so recently-read articles stay readable without a connection.
       if (id != null && (e.code == 'offline' || e.code == 'timeout')) {
-        final cached = _offlineBox?.get('article_$id');
+        final cached =
+            _offlineBox?.get('saved_$id') ?? _offlineBox?.get('article_$id');
         if (cached is Map) return _parseArticlePayload(cached);
       }
       rethrow;
@@ -238,3 +290,29 @@ final articleProvider =
     FutureProvider.family<({Article article, List<Article> related}), int>((ref, id) {
   return ref.watch(contentRepositoryProvider).article(id: id);
 });
+
+/// IDs of articles the user explicitly saved for offline reading.
+/// Kept in memory for fast toggle checks; backed by the Hive cache.
+final offlineSavedIdsProvider =
+    StateNotifierProvider<OfflineSavedNotifier, Set<int>>((ref) {
+  return OfflineSavedNotifier(ref.watch(contentRepositoryProvider));
+});
+
+class OfflineSavedNotifier extends StateNotifier<Set<int>> {
+  OfflineSavedNotifier(this._repo) : super(const {}) {
+    state = _repo.savedArticleIds().toSet();
+  }
+  final ContentRepository _repo;
+
+  /// Toggle offline-saved state. Returns true if now saved, false if removed.
+  Future<bool> toggle(int id) async {
+    if (state.contains(id)) {
+      await _repo.removeOffline(id);
+      state = {...state}..remove(id);
+      return false;
+    }
+    await _repo.saveOffline(id);
+    state = {...state, id};
+    return true;
+  }
+}

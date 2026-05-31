@@ -9,6 +9,7 @@ import '../../../core/theme/theme_controller.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../auth/data/auth_state_provider.dart';
 import '../data/user_repository.dart' show followedIdsProvider, bookmarkedIdsProvider;
+import '../../content/presentation/offline_saved_screen.dart';
 import 'blocked_users_screen.dart';
 import 'info_pages.dart';
 import 'notification_settings_screen.dart';
@@ -32,6 +33,17 @@ class SettingsScreen extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_left),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const NotificationSettingsScreen())),
+          ),
+          const Divider(),
+
+          // ── Offline reading ──
+          ListTile(
+            leading: const Icon(Icons.download_for_offline_outlined),
+            title: const Text('القراءة دون اتصال'),
+            subtitle: const Text('مقالاتك المحفوظة للقراءة بلا إنترنت'),
+            trailing: const Icon(Icons.chevron_left),
+            onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const OfflineSavedScreen())),
           ),
           const Divider(),
 

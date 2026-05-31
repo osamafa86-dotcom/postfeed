@@ -120,6 +120,8 @@ class _ArticleScreenState extends ConsumerState<ArticleScreen> {
     final bookmarks = ref.watch(bookmarkedIdsProvider);
     final isBookmarked = bookmarks.contains(widget.id);
     final textScale = ref.watch(readerTextScaleProvider);
+    final isSavedOffline =
+        ref.watch(offlineSavedIdsProvider).contains(widget.id);
 
     return Scaffold(
       appBar: AppBar(
@@ -144,6 +146,29 @@ class _ArticleScreenState extends ConsumerState<ArticleScreen> {
                   );
                 },
               ),
+            ),
+            orElse: () => const SizedBox.shrink(),
+          ),
+          asy.maybeWhen(
+            data: (_) => IconButton(
+              icon: Icon(isSavedOffline
+                  ? Icons.download_done
+                  : Icons.download_for_offline_outlined),
+              color: isSavedOffline ? AppColors.primary : null,
+              tooltip:
+                  isSavedOffline ? 'محفوظ دون اتصال' : 'حفظ للقراءة دون اتصال',
+              onPressed: () async {
+                final nowSaved = await ref
+                    .read(offlineSavedIdsProvider.notifier)
+                    .toggle(widget.id);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(nowSaved
+                        ? 'حُفِظ للقراءة دون اتصال'
+                        : 'أُزيل من قائمة دون اتصال'),
+                  ));
+                }
+              },
             ),
             orElse: () => const SizedBox.shrink(),
           ),
