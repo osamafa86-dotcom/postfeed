@@ -80,6 +80,15 @@ $sportsNews    = getArticlesByCategory('sports', 40);
 $artsNews      = getArticlesByCategory('arts', 40);
 $reportsNews   = getArticlesByCategory('reports', 40);
 
+// Content-type buckets for the new homepage tabs (تقارير / مقالات / صحة /
+// منوعات). These come from the content_classifier pipeline; if the
+// column hasn't been populated yet the helper returns [] and the
+// sections just won't render.
+$reportsByType   = getArticlesByContentType('report', 12);
+$articlesByType  = getArticlesByContentType('article', 12);
+$healthArticles  = getArticlesByCategory('health', 12);
+$varietyArticles = getArticlesByCategorySlugs(['sports', 'arts', 'tech', 'media'], 12);
+
 // ============================================================
 // منع تكرار الخبر عبر أكثر من قسم في الصفحة الرئيسية
 // Dedup by article ID *and* by fuzzy title match, so the same
@@ -182,6 +191,10 @@ $economyNews    = $dedup($economyNews, 4);
 $sportsNews     = $dedup($sportsNews, 4);
 $artsNews       = $dedup($artsNews, 4);
 $reportsNews    = $dedup($reportsNews, 4);
+$reportsByType   = $dedup($reportsByType, 8);
+$articlesByType  = $dedup($articlesByType, 8);
+$healthArticles  = $dedup($healthArticles, 8);
+$varietyArticles = $dedup($varietyArticles, 12);
 
 // Pre-fetch which of the articles on this page are already bookmarked for the viewer,
 // plus reaction counts and the viewer's own reactions.
@@ -359,6 +372,20 @@ include __DIR__ . '/includes/components/site_header.php';
     .wr-banner-body em { font-size: 12px; }
     .wr-banner-cta { display: none; }
   }
+  /* Homepage content-type sections (تقارير / مقالات / صحة / منوعات) — */
+  /* a 4-column grid of compact horizontal cards reusing nf-side-card. */
+  .ct-section { max-width: 1400px; margin: 36px auto 0; padding: 0 20px; scroll-margin-top: 90px; }
+  .ct-section > .section-header { display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid #eaeae0; }
+  .ct-section > .section-header .section-title { font-size: 20px; font-weight: 800;
+    color: #1B2517; display: flex; align-items: center; gap: 10px; }
+  .ct-section > .section-header .section-title .line { width: 4px; height: 22px; border-radius: 2px; }
+  .ct-section > .section-header .see-all { font-size: 13px; color: #5a6a3e; text-decoration: none;
+    font-weight: 700; padding: 6px 10px; border-radius: 8px; transition: background 0.15s; }
+  .ct-section > .section-header .see-all:hover { background: #f3f0e6; }
+  .ct-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  @media (max-width: 1100px) { .ct-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px)  { .ct-grid { grid-template-columns: 1fr; } }
 </style>
 <div id="wrBanner" class="wr-banner" data-yw="<?php echo $__wrYw; ?>" hidden>
   <a class="wr-banner-link" href="/weekly/<?php echo $__wrYw; ?>">
@@ -397,6 +424,10 @@ include __DIR__ . '/includes/components/site_header.php';
     <a class="sec-pill sec-pill-ask" href="ask.php"><span class="sec-pill-ico">🤖</span>اسأل الأخبار</a>
     <button type="button" class="sec-pill" data-sec="breaking" onclick="scrollToHomeSection(this,'breaking')"><span class="sec-pill-ico">🔴</span>عاجل</button>
     <button type="button" class="sec-pill" data-sec="latest" onclick="scrollToHomeSection(this,'latest')"><span class="sec-pill-ico">⏱</span>آخر الأخبار</button>
+    <button type="button" class="sec-pill" data-sec="reports" onclick="scrollToHomeSection(this,'reports')"><span class="sec-pill-ico">📑</span>تقارير</button>
+    <button type="button" class="sec-pill" data-sec="articles" onclick="scrollToHomeSection(this,'articles')"><span class="sec-pill-ico">✍️</span>مقالات</button>
+    <button type="button" class="sec-pill" data-sec="health" onclick="scrollToHomeSection(this,'health')"><span class="sec-pill-ico">🏥</span>صحة</button>
+    <button type="button" class="sec-pill" data-sec="variety" onclick="scrollToHomeSection(this,'variety')"><span class="sec-pill-ico">🎯</span>منوعات</button>
     <button type="button" class="sec-pill" data-sec="palestine" onclick="scrollToHomeSection(this,'palestine')"><span class="sec-pill-ico">🇵🇸</span>فلسطين</button>
     <button type="button" class="sec-pill" data-sec="trending" onclick="scrollToHomeSection(this,'trending')"><span class="sec-pill-ico">🔥</span>الأكثر تداولاً</button>
     <button type="button" class="sec-pill" data-sec="reels" onclick="scrollToHomeSection(this,'reels')"><span class="sec-pill-ico">🎬</span>ريلز</button>
@@ -541,6 +572,33 @@ $__featRest  = array_slice($latestArticles, 7);
   </div>
 </div>
 <?php endif; ?>
+
+<?php
+// Reusable content-type section: anchor id, title, accent color, icon,
+// articles array, and the "see all" target. Each section reuses the
+// nf-side-card layout that already powers the featured 3-column area.
+$__renderCtSection = function(string $id, string $title, string $color, string $ico, array $articles, string $seeAll) {
+    if (empty($articles)) return;
+    ?>
+    <section class="ct-section" id="<?php echo e($id); ?>">
+      <div class="section-header">
+        <div class="section-title"><span class="line" style="background:<?php echo e($color); ?>"></span><?php echo $ico; ?> <?php echo e($title); ?></div>
+        <a class="see-all" href="<?php echo e($seeAll); ?>">عرض الكل ›</a>
+      </div>
+      <div class="ct-grid">
+        <?php foreach (array_slice($articles, 0, 8) as $article): ?>
+          <?php include __DIR__ . '/includes/components/home_feature_side.php'; ?>
+        <?php endforeach; ?>
+      </div>
+    </section>
+    <?php
+};
+
+$__renderCtSection('reports',  'تقارير',  '#9c5d3b', '📑', $reportsByType,   'category.php?type=report');
+$__renderCtSection('articles', 'مقالات',  '#6b4f8f', '✍️', $articlesByType,  'category.php?type=article');
+$__renderCtSection('health',   'صحة',     '#3b8a6e', '🏥', $healthArticles,  categoryUrl('health'));
+$__renderCtSection('variety',  'منوعات',  '#c9a23e', '🎯', $varietyArticles, 'category.php?type=variety');
+?>
 
 <!-- MAIN CONTENT -->
 <div class="main-layout">

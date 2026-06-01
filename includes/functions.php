@@ -114,6 +114,66 @@ function getLatestArticles($limit = 6) {
     });
 }
 
+/**
+ * Latest articles filtered to a single content_type (news/report/article).
+ * Falls back to all latest if the content_type column hasn't been added
+ * yet — keeps the homepage rendering before the first cron run.
+ */
+function getArticlesByContentType(string $type, int $limit = 8) {
+    return cache_remember('ctype_' . $type . '_' . $limit, HOMEPAGE_CACHE_TTL, function() use ($type, $limit) {
+        $db = getDB();
+        try {
+            $stmt = $db->prepare("SELECT a.*, c.name as cat_name, c.slug as cat_slug, c.css_class,
+                                   s.name as source_name, s.logo_color
+                                   FROM articles a
+                                   LEFT JOIN categories c ON a.category_id = c.id
+                                   LEFT JOIN sources s ON a.source_id = s.id
+                                   WHERE a.status = 'published'
+                                     AND a.is_breaking = 0
+                                     AND a.is_hero = 0
+                                     AND a.content_type = ?
+                                   ORDER BY a.published_at DESC LIMIT ?");
+            $stmt->execute([$type, $limit]);
+            return $stmt->fetchAll();
+        } catch (Throwable $e) {
+            // content_type column missing — first deploy before backfill.
+            return [];
+        }
+    });
+}
+
+/**
+ * Latest articles whose category slug is one of $slugs. Used for the
+ * "منوعات" tab which aggregates sports + arts + tech + media into one
+ * stream so each topic gets a few slots instead of dominating.
+ */
+function getArticlesByCategorySlugs(array $slugs, int $limit = 8) {
+    if (empty($slugs)) return [];
+    $slugs = array_values(array_unique(array_map('strval', $slugs)));
+    $cacheKey = 'cat_multi_' . md5(implode(',', $slugs)) . '_' . $limit;
+    return cache_remember($cacheKey, HOMEPAGE_CACHE_TTL, function() use ($slugs, $limit) {
+        $db = getDB();
+        $placeholders = implode(',', array_fill(0, count($slugs), '?'));
+        $sql = "SELECT a.*, c.name as cat_name, c.slug as cat_slug, c.css_class,
+                       s.name as source_name, s.logo_color
+                  FROM articles a
+                  LEFT JOIN categories c ON a.category_id = c.id
+                  LEFT JOIN sources s ON a.source_id = s.id
+                 WHERE a.status = 'published'
+                   AND a.is_breaking = 0
+                   AND a.is_hero = 0
+                   AND c.slug IN ($placeholders)
+                 ORDER BY a.published_at DESC LIMIT ?";
+        $stmt = $db->prepare($sql);
+        foreach ($slugs as $i => $slug) {
+            $stmt->bindValue($i + 1, $slug, PDO::PARAM_STR);
+        }
+        $stmt->bindValue(count($slugs) + 1, $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    });
+}
+
 function getArticleById($id) {
     $db = getDB();
     $stmt = $db->prepare("SELECT a.*, c.name as cat_name, c.slug as cat_slug, c.css_class,
