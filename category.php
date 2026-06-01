@@ -78,6 +78,68 @@ if ($type === 'breaking') {
     $stmt->execute([$perPage, $offset]);
     $articles = $stmt->fetchAll();
 
+} elseif ($type === 'report' || $type === 'article') {
+    // Content-type filter: تقارير أو مقالات.
+    // These are orthogonal to the topical category — a sports column is
+    // type=article+category=sports, so we filter on content_type alone
+    // and let the category badge on each card show its topic.
+    $pageTitle = $type === 'report' ? 'تقارير' : 'مقالات';
+    $pageIcon  = $type === 'report' ? '📑' : '✍️';
+    $pageCss   = '';
+
+    try {
+        $countStmt = $db->prepare("SELECT COUNT(*) FROM articles
+                                    WHERE content_type = ? AND status = 'published'");
+        $countStmt->execute([$type]);
+        $totalCount = (int) $countStmt->fetchColumn();
+
+        $stmt = $db->prepare("SELECT a.*, c.name as cat_name, c.slug as cat_slug, c.css_class,
+                               s.name as source_name, s.logo_color
+                               FROM articles a
+                               LEFT JOIN categories c ON a.category_id = c.id
+                               LEFT JOIN sources s ON a.source_id = s.id
+                               WHERE a.content_type = ? AND a.status = 'published'
+                               ORDER BY a.published_at DESC LIMIT ? OFFSET ?");
+        $stmt->bindValue(1, $type,    PDO::PARAM_STR);
+        $stmt->bindValue(2, $perPage, PDO::PARAM_INT);
+        $stmt->bindValue(3, $offset,  PDO::PARAM_INT);
+        $stmt->execute();
+        $articles = $stmt->fetchAll();
+    } catch (Throwable $e) {
+        // content_type column not present yet — first deploy.
+        $articles = [];
+        $totalCount = 0;
+    }
+
+} elseif ($type === 'variety') {
+    // منوعات — aggregate of sports + arts + tech + media topical categories.
+    $varietySlugs = ['sports', 'arts', 'tech', 'media'];
+    $pageTitle = 'منوعات';
+    $pageIcon  = '🎯';
+    $pageCss   = '';
+
+    $ph = implode(',', array_fill(0, count($varietySlugs), '?'));
+
+    $countStmt = $db->prepare("SELECT COUNT(*) FROM articles a
+                                LEFT JOIN categories c ON a.category_id = c.id
+                                WHERE c.slug IN ($ph) AND a.status = 'published'");
+    $countStmt->execute($varietySlugs);
+    $totalCount = (int) $countStmt->fetchColumn();
+
+    $stmt = $db->prepare("SELECT a.*, c.name as cat_name, c.slug as cat_slug, c.css_class,
+                           s.name as source_name, s.logo_color
+                           FROM articles a
+                           LEFT JOIN categories c ON a.category_id = c.id
+                           LEFT JOIN sources s ON a.source_id = s.id
+                           WHERE c.slug IN ($ph) AND a.status = 'published'
+                           ORDER BY a.published_at DESC LIMIT ? OFFSET ?");
+    $i = 1;
+    foreach ($varietySlugs as $s) { $stmt->bindValue($i++, $s, PDO::PARAM_STR); }
+    $stmt->bindValue($i++, $perPage, PDO::PARAM_INT);
+    $stmt->bindValue($i,   $offset,  PDO::PARAM_INT);
+    $stmt->execute();
+    $articles = $stmt->fetchAll();
+
 } elseif ($slug !== '') {
     // تصنيف عادي
     if (isset($categoryMap[$slug])) {

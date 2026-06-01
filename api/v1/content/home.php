@@ -18,7 +18,17 @@ require_once __DIR__ . '/../../../includes/cache.php';
 api_method('GET');
 api_rate_limit('content:home', 240, 60);
 
-$payload = cache_remember('api:home:v1', 60, function () {
+// Cache-busting hook: ?nocache=1 forces a fresh build and updates the
+// stored value. Useful when a recent code change altered the payload
+// shape (new buckets, removed legacy categories, etc.) and the 60-second
+// TTL hasn't expired yet.
+$noCache = !empty($_GET['nocache']);
+if ($noCache) {
+    require_once __DIR__ . '/../../../includes/cache.php';
+    cache_forget('api:home:v2');
+}
+
+$payload = cache_remember('api:home:v2', 60, function () {
     $db = getDB();
 
     // Hero (newest article flagged as hero, or fallback to newest featured).
@@ -33,14 +43,31 @@ $payload = cache_remember('api:home:v1', 60, function () {
         'since' => date('Y-m-d H:i:s', time() - 86400),
     ], 10, 0);
 
-    // Latest feed (excluding hero).
-    $latest = fetch_articles([], 20, 0);
+    // Latest feed (excluding hero) — content_type='news' so the section
+    // matches what its header says. The reports/articles get their own
+    // virtual buckets in the buckets[] list below; mixing them here
+    // pulled feature pieces into the "latest news" rail. Fall back to
+    // unfiltered if the column doesn't exist yet (first deploy).
+    try {
+        $latest = fetch_articles(['content_type' => 'news'], 20, 0);
+        if (empty($latest)) $latest = fetch_articles([], 20, 0);
+    } catch (Throwable $e) {
+        $latest = fetch_articles([], 20, 0);
+    }
     if ($hero) {
         $latest = array_values(array_filter($latest, fn($a) => $a['id'] !== $hero['id']));
     }
 
     // Per-category buckets (top 6 articles each).
-    $catRows = $db->query("SELECT id, name, slug, icon, css_class, sort_order FROM categories WHERE is_active=1 ORDER BY sort_order, id LIMIT 12")->fetchAll();
+    // Skip the legacy "reports" topical category because the virtual
+    // content_type='report' bucket (ct-reports below) replaces it with
+    // a more accurate cross-topic feed. Two "تقارير" tabs side by side
+    // were confusing — old one stays accessible via /category/reports
+    // for inbound search traffic, just not on the home tabs row.
+    $catRows = $db->query("SELECT id, name, slug, icon, css_class, sort_order
+                             FROM categories
+                            WHERE is_active=1 AND slug <> 'reports'
+                            ORDER BY sort_order, id LIMIT 12")->fetchAll();
     $buckets = [];
     foreach ($catRows as $c) {
         $items = fetch_articles(['category_id' => (int)$c['id']], 6, 0);
@@ -52,6 +79,36 @@ $payload = cache_remember('api:home:v1', 60, function () {
                 'slug' => $c['slug'],
                 'icon' => $c['icon'],
                 'color' => $c['css_class'],
+            ],
+            'articles' => $items,
+        ];
+    }
+
+    // Virtual buckets driven by content_type and category aggregates.
+    // IDs in the 9000+ range so they don't collide with real categories.
+    // Slugs are prefixed (`ct-` / `agg-`) so the client can route them to
+    // the right filter view instead of a missing /category/<slug>.
+    $virtual = [
+        [9001, 'تقارير',  'ct-reports',  '📑', 'cat-reports',  ['content_type' => 'report']],
+        [9002, 'مقالات',  'ct-articles', '✍️', 'cat-arts',     ['content_type' => 'article']],
+        [9004, 'منوعات',  'agg-variety', '🎯', 'cat-arts',     ['category_slugs' => ['sports', 'arts', 'tech', 'media']]],
+    ];
+    foreach ($virtual as $v) {
+        [$vid, $vname, $vslug, $vicon, $vcss, $vfilter] = $v;
+        try {
+            $items = fetch_articles($vfilter, 6, 0);
+        } catch (Throwable $e) {
+            // content_type column missing — first deploy before classifier ran.
+            $items = [];
+        }
+        if (!$items) continue;
+        $buckets[] = [
+            'category' => [
+                'id' => $vid,
+                'name' => $vname,
+                'slug' => $vslug,
+                'icon' => $vicon,
+                'color' => $vcss,
             ],
             'articles' => $items,
         ];
