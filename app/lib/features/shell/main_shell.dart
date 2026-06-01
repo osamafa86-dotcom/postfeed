@@ -112,6 +112,11 @@ class _MainShellState extends ConsumerState<MainShell> {
             // back to /, not trigger a refresh.
             if (i == 0 && loc == '/') {
               HapticFeedback.mediumImpact();
+              // Jump the home feed back to offset 0 first — visible
+              // motion confirms the tap before the network refresh
+              // returns. The signal-provider bump triggers an animate-
+              // to-top inside _HomeBody.
+              ref.read(homeScrollToTopSignalProvider.notifier).state++;
               ref.invalidate(homeProvider);
               ref.invalidate(forYouProvider);
               ref.invalidate(evolvingStoriesProvider);

@@ -105,17 +105,45 @@ class HomeScreen extends ConsumerWidget {
 // HOME BODY
 // ═══════════════════════════════════════════════════════════════
 
-class _HomeBody extends ConsumerWidget {
+/// Bumped from MainShell when the user taps the home tab while already
+/// on /. _HomeBody listens for the bump and animates its CustomScrollView
+/// back to offset 0 — Twitter/Instagram-style "tap to jump to top".
+final homeScrollToTopSignalProvider = StateProvider<int>((_) => 0);
+
+class _HomeBody extends ConsumerStatefulWidget {
   const _HomeBody({required this.payload});
   final HomePayload payload;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_HomeBody> createState() => _HomeBodyState();
+}
+
+class _HomeBodyState extends ConsumerState<_HomeBody> {
+  final _scrollCtrl = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Whenever the home-tab tap signal increments, animate to the top.
+    ref.listen<int>(homeScrollToTopSignalProvider, (_, __) {
+      if (!_scrollCtrl.hasClients) return;
+      _scrollCtrl.animateTo(0,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOutCubic,
+      );
+    });
+    final payload = widget.payload;
     // Watch the reactive auth state — without this, the "خاص بك"
     // section never appears after sign-in (HomeScreen sits inside
     // MainShell's IndexedStack and won't rebuild on auth alone).
     final isAuthed = ref.watch(authStateProvider);
     return CustomScrollView(
+      controller: _scrollCtrl,
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         // ── 1. Hero Card — full-bleed at the very top ──
@@ -298,58 +326,93 @@ class _HeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Compact hero: image takes the top half, title + meta sit on a
+    // white card underneath so the headline is always legible — no
+    // dark-gradient-over-photo fight. Total height ~200-220 px = roughly
+    // a third of an iPhone home screen instead of half.
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: () => context.push('/article/${article.id}'),
-      child: SizedBox(
-        height: 340,
-        child: Stack(fit: StackFit.expand, children: [
-          if (article.imageUrl != null)
-            CachedNetworkImage(imageUrl: article.imageUrl!, fit: BoxFit.cover)
-          else
-            Container(color: AppColors.primary.withOpacity(0.2)),
-          // Triple gradient overlay
-          DecoratedBox(decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter, end: Alignment.bottomCenter,
-              stops: const [0.0, 0.35, 1.0],
-              colors: [Colors.black.withOpacity(0.3), Colors.transparent, Colors.black.withOpacity(0.92)],
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.neoDarkSurface : Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(isDark ? 0.4 : 0.08),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
             ),
-          )),
-          Positioned(left: 20, right: 20, bottom: 24,
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              if (article.category != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                  decoration: BoxDecoration(color: AppColors.breaking, borderRadius: BorderRadius.circular(6)),
-                  child: Text('${article.category!.icon ?? ''} ${article.category!.name}'.trim(),
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12)),
-                ),
-              const SizedBox(height: 12),
-              Text(article.title,
-                style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800, height: 1.5,
-                  shadows: [Shadow(color: Colors.black54, blurRadius: 8, offset: Offset(0, 2))]),
-                maxLines: 3, overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 12),
-              if (article.source != null)
-                Row(children: [
-                  Container(width: 28, height: 28,
-                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
-                    alignment: Alignment.center,
-                    child: Text(article.source!.logoLetter ?? '',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ── Image (clipped to top corners only) ──
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Stack(fit: StackFit.expand, children: [
+                if (article.imageUrl != null)
+                  CachedNetworkImage(imageUrl: article.imageUrl!, fit: BoxFit.cover)
+                else
+                  Container(color: AppColors.primary.withOpacity(0.2)),
+                // Small category chip floating on the image's top-right
+                if (article.category != null)
+                  Positioned(
+                    top: 10, right: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: AppColors.breaking,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text('${article.category!.icon ?? ''} ${article.category!.name}'.trim(),
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11)),
+                    ),
                   ),
-                  const SizedBox(width: 8),
-                  Text(article.source!.name,
-                    style: const TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w600)),
-                  Container(margin: const EdgeInsets.symmetric(horizontal: 8), width: 4, height: 4,
-                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.5), shape: BoxShape.circle)),
-                  if (article.publishedAt != null)
-                    Text(timeago.format(article.publishedAt!, locale: 'ar'),
-                      style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12)),
-                ]),
-            ]),
-          ),
-        ]),
+              ]),
+            ),
+            // ── Title + meta on white background ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(article.title,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : AppColors.textLight,
+                      fontSize: 16, fontWeight: FontWeight.w800, height: 1.5,
+                    ),
+                    maxLines: 2, overflow: TextOverflow.ellipsis),
+                  if (article.source != null) ...[
+                    const SizedBox(height: 8),
+                    Row(children: [
+                      Container(width: 20, height: 20,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(6)),
+                        alignment: Alignment.center,
+                        child: Text(article.source!.logoLetter ?? '',
+                          style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800, fontSize: 10)),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(article.source!.name,
+                        style: TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w600)),
+                      if (article.publishedAt != null) ...[
+                        Container(margin: const EdgeInsets.symmetric(horizontal: 6), width: 3, height: 3,
+                          decoration: BoxDecoration(color: AppColors.textMutedLight, shape: BoxShape.circle)),
+                        Text(timeago.format(article.publishedAt!, locale: 'ar'),
+                          style: TextStyle(color: AppColors.textMutedLight, fontSize: 11)),
+                      ],
+                    ]),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1203,13 +1266,14 @@ class _QuickAccessRow extends StatelessWidget {
             onTap: () => context.push('/sabah'),
           )),
           const SizedBox(width: 8),
-          // Weekly Review
+          // Weekly Review — opens the dedicated weekly rewind page,
+          // not the catch-all /summaries listing.
           Expanded(child: _QuickCard(
             title: 'مراجعة الأسبوع',
             subtitle: 'أبرز الأحداث',
             icon: Icons.calendar_view_week,
             color: const Color(0xFF10B981),
-            onTap: () => context.push('/summaries'),
+            onTap: () => context.push('/weekly'),
           )),
         ],
       ),
@@ -1230,41 +1294,39 @@ class _QuickCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Compact card: ~44px tall (was 68) so three of these in a row
+    // claim roughly a third of their old vertical footprint. Subtitle
+    // dropped because at this height it competed with the title for
+    // legibility — title alone tells the user what each button does.
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 68,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: NeoDecoration.soft(isDark: isDark, radius: 16),
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: NeoDecoration.soft(isDark: isDark, radius: 12),
         child: Row(
           children: [
             Container(
-              width: 38, height: 38,
+              width: 28, height: 28,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft, end: Alignment.bottomRight,
                   colors: [color, color.withOpacity(0.7)],
                 ),
-                borderRadius: BorderRadius.circular(11),
+                borderRadius: BorderRadius.circular(8),
                 boxShadow: [
-                  BoxShadow(color: color.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 3)),
+                  BoxShadow(color: color.withOpacity(0.3), blurRadius: 6, offset: const Offset(0, 2)),
                 ],
               ),
               alignment: Alignment.center,
-              child: Icon(icon, color: Colors.white, size: 18),
+              child: Icon(icon, color: Colors.white, size: 15),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(title, style: TextStyle(color: isDark ? Colors.white : AppColors.textLight,
-                    fontWeight: FontWeight.w700, fontSize: 11)),
-                  const SizedBox(height: 1),
-                  Text(subtitle, style: TextStyle(color: isDark ? Colors.white38 : AppColors.textMutedLight,
-                    fontSize: 9)),
-                ],
+              child: Text(title,
+                style: TextStyle(color: isDark ? Colors.white : AppColors.textLight,
+                  fontWeight: FontWeight.w800, fontSize: 11),
+                maxLines: 1, overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -1340,24 +1402,28 @@ class _GreetingStrip extends ConsumerWidget {
     final weather = ref.watch(_weatherProvider);
     final weatherInfo = weather.maybeWhen(data: (w) => w, orElse: () => null);
 
+    // Greeting strip shrunk to roughly half its original height —
+    // padding tightened on both axes, icon dropped to 32px, fonts down
+    // one step. Date drops to a single small line. Frees about 30px of
+    // vertical real estate above the fold.
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: NeoDecoration.raised(isDark: isDark, radius: 16, intensity: 0.7),
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: NeoDecoration.raised(isDark: isDark, radius: 14, intensity: 0.7),
       child: Row(
         children: [
           // Sun/moon icon in neo circle
           Container(
-            width: 42, height: 42,
-            decoration: NeoDecoration.soft(isDark: isDark, radius: 12),
+            width: 32, height: 32,
+            decoration: NeoDecoration.soft(isDark: isDark, radius: 10),
             alignment: Alignment.center,
             child: Icon(
               hour < 18 ? Icons.wb_sunny_rounded : Icons.nightlight_round,
               color: hour < 18 ? const Color(0xFFF59E0B) : const Color(0xFF818CF8),
-              size: 20,
+              size: 17,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1365,14 +1431,15 @@ class _GreetingStrip extends ConsumerWidget {
                 Text(
                   name != null ? '$greeting، $name' : greeting,
                   style: TextStyle(
-                    fontWeight: FontWeight.w800, fontSize: 15,
+                    fontWeight: FontWeight.w800, fontSize: 13,
                     color: isDark ? Colors.white : AppColors.textLight,
                   ),
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
                 Text(dateStr,
-                  style: TextStyle(fontSize: 11,
-                    color: isDark ? Colors.white38 : AppColors.textMutedLight)),
+                  style: TextStyle(fontSize: 10,
+                    color: isDark ? Colors.white38 : AppColors.textMutedLight),
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
               ],
             ),
           ),

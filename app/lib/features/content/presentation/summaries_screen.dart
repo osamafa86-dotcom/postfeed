@@ -1,12 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart' show Share;
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/loading_state.dart';
+
+/// Telegram report doesn't have a native screen yet — open it in the
+/// system browser via the website's /tg-report page. Falls back to a
+/// SnackBar if the launcher fails (e.g. permissions, no browser).
+Future<void> _openWeb(BuildContext context, String url) async {
+  final uri = Uri.parse(url);
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  } else if (context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('تعذّر فتح الرابط')),
+    );
+  }
+}
 
 // ── Data model for rich summaries ──
 
@@ -193,6 +209,9 @@ class SummariesScreen extends ConsumerWidget {
             const SizedBox(height: 20),
 
             // ── Telegram Summary (rich) ──
+            // Tapping the title row opens the full dedicated page for
+            // this kind of summary so the user can read the complete
+            // report instead of the inline preview.
             _RichSummaryCard(
               title: 'ملخص أخبار تلغرام',
               subtitle: 'آخر ما نُشر في قنوات تلغرام',
@@ -201,6 +220,7 @@ class SummariesScreen extends ConsumerWidget {
               provider: _telegramSummaryProvider,
               isDark: isDark,
               ref: ref,
+              onTitleTap: () => _openWeb(context, 'https://feedsnews.net/tg-report'),
             ),
 
             const SizedBox(height: 12),
@@ -214,6 +234,7 @@ class SummariesScreen extends ConsumerWidget {
               provider: _dailySummaryProvider,
               isDark: isDark,
               ref: ref,
+              onTitleTap: () => context.push('/sabah'),
             ),
 
             const SizedBox(height: 12),
@@ -227,6 +248,7 @@ class SummariesScreen extends ConsumerWidget {
               provider: _weeklySummaryProvider,
               isDark: isDark,
               ref: ref,
+              onTitleTap: () => context.push('/weekly'),
             ),
 
             const SizedBox(height: 12),
@@ -239,6 +261,7 @@ class SummariesScreen extends ConsumerWidget {
               gradient: const [Color(0xFF374151), Color(0xFF111827)],
               provider: _twitterSummaryProvider,
               isDark: isDark,
+              onTitleTap: () => context.push('/trending'),
               ref: ref,
             ),
 
@@ -263,6 +286,7 @@ class _RichSummaryCard extends StatefulWidget {
     required this.provider,
     required this.isDark,
     required this.ref,
+    this.onTitleTap,
   });
   final String title, subtitle;
   final IconData icon;
@@ -270,6 +294,10 @@ class _RichSummaryCard extends StatefulWidget {
   final FutureProvider<SummaryData> provider;
   final bool isDark;
   final WidgetRef ref;
+  /// Optional tap target for the title row — opens the dedicated
+  /// full-page view of this summary (sabah/weekly/tg-report/trending)
+  /// so the user can read the complete report.
+  final VoidCallback? onTitleTap;
 
   @override
   State<_RichSummaryCard> createState() => _RichSummaryCardState();
@@ -294,47 +322,59 @@ class _RichSummaryCardState extends State<_RichSummaryCard> {
       ),
       child: Column(
         children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-            child: Row(
-              children: [
-                Container(
-                  width: 36, height: 36,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: widget.gradient),
-                    borderRadius: BorderRadius.circular(10),
+          // Header — tap anywhere on this row to open the dedicated
+          // full-page view (sabah / weekly / tg-report / trending) so
+          // the user can read the entire briefing instead of just the
+          // inline preview underneath.
+          InkWell(
+            onTap: widget.onTitleTap,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36, height: 36,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: widget.gradient),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(widget.icon, color: Colors.white, size: 18),
                   ),
-                  alignment: Alignment.center,
-                  child: Icon(widget.icon, color: Colors.white, size: 18),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(widget.title,
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800,
-                          color: widget.isDark ? Colors.white : AppColors.textLight)),
-                      Text(widget.subtitle,
-                        style: TextStyle(fontSize: 11,
-                          color: widget.isDark ? Colors.white38 : AppColors.textMutedLight)),
-                    ],
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(widget.title,
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800,
+                            color: widget.isDark ? Colors.white : AppColors.textLight)),
+                        Text(widget.subtitle,
+                          style: TextStyle(fontSize: 11,
+                            color: widget.isDark ? Colors.white38 : AppColors.textMutedLight)),
+                      ],
+                    ),
                   ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: widget.gradient[0].withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
+                  if (widget.onTitleTap != null) ...[
+                    Icon(Icons.open_in_new_rounded,
+                      size: 14, color: widget.gradient[0].withOpacity(0.7)),
+                    const SizedBox(width: 6),
+                  ],
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: widget.gradient[0].withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.auto_awesome, size: 10, color: widget.gradient[0]),
+                      const SizedBox(width: 3),
+                      Text('AI', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: widget.gradient[0])),
+                    ]),
                   ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.auto_awesome, size: 10, color: widget.gradient[0]),
-                    const SizedBox(width: 3),
-                    Text('AI', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: widget.gradient[0])),
-                  ]),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
 
