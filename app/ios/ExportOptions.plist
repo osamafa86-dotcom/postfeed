@@ -3,23 +3,16 @@
 <plist version="1.0">
 <dict>
     <key>method</key>
-    <string>app-store</string>
+    <string>app-store-connect</string>
     <key>signingStyle</key>
-    <string>manual</string>
+    <string>automatic</string>
     <key>teamID</key>
-    <string>$(APPLE_TEAM_ID)</string>
-    <key>provisioningProfiles</key>
-    <dict>
-        <key>net.feedsnews.app</key>
-        <string>feedsnews</string>
-    </dict>
-    <key>uploadBitcode</key>
-    <false/>
+    <string>Y4R9ZHWK9Y</string>
     <key>uploadSymbols</key>
     <true/>
-    <key>compileBitcode</key>
-    <false/>
     <key>stripSwiftSymbols</key>
     <true/>
+    <key>destination</key>
+    <string>export</string>
 </dict>
 </plist>
