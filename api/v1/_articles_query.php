@@ -41,6 +41,34 @@ function fetch_articles(array $filters = [], int $limit = 20, int $offset = 0): 
     if (!empty($filters['breaking'])) {
         $where[] = 'a.is_breaking = 1';
     }
+    if (!empty($filters['content_type'])) {
+        // Multi-value support: ?content_type=report,article maps to IN(...).
+        // The column was added by the lazy migration in
+        // includes/content_classifier.php — try/catch keeps fetch_articles
+        // working on installs that haven't deployed the classifier yet.
+        $types = array_filter(array_map('trim', explode(',', (string)$filters['content_type'])));
+        $allowed = ['news', 'report', 'article'];
+        $types = array_values(array_intersect($allowed, $types));
+        if (count($types) === 1) {
+            $where[] = 'a.content_type = ?';
+            $params[] = $types[0];
+        } elseif (count($types) > 1) {
+            $ph = implode(',', array_fill(0, count($types), '?'));
+            $where[] = "a.content_type IN ($ph)";
+            foreach ($types as $t) $params[] = $t;
+        }
+    }
+    if (!empty($filters['category_slugs'])) {
+        // For aggregate tabs like "منوعات" (sports+arts+tech+media).
+        $slugs = is_array($filters['category_slugs'])
+            ? $filters['category_slugs']
+            : array_filter(array_map('trim', explode(',', (string)$filters['category_slugs'])));
+        if (!empty($slugs)) {
+            $ph = implode(',', array_fill(0, count($slugs), '?'));
+            $where[] = "c.slug IN ($ph)";
+            foreach ($slugs as $s) $params[] = $s;
+        }
+    }
     if (!empty($filters['featured'])) {
         $where[] = 'a.is_featured = 1';
     }

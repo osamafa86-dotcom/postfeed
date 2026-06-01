@@ -33,8 +33,17 @@ $payload = cache_remember('api:home:v1', 60, function () {
         'since' => date('Y-m-d H:i:s', time() - 86400),
     ], 10, 0);
 
-    // Latest feed (excluding hero).
-    $latest = fetch_articles([], 20, 0);
+    // Latest feed (excluding hero) — content_type='news' so the section
+    // matches what its header says. The reports/articles get their own
+    // virtual buckets in the buckets[] list below; mixing them here
+    // pulled feature pieces into the "latest news" rail. Fall back to
+    // unfiltered if the column doesn't exist yet (first deploy).
+    try {
+        $latest = fetch_articles(['content_type' => 'news'], 20, 0);
+        if (empty($latest)) $latest = fetch_articles([], 20, 0);
+    } catch (Throwable $e) {
+        $latest = fetch_articles([], 20, 0);
+    }
     if ($hero) {
         $latest = array_values(array_filter($latest, fn($a) => $a['id'] !== $hero['id']));
     }
@@ -52,6 +61,36 @@ $payload = cache_remember('api:home:v1', 60, function () {
                 'slug' => $c['slug'],
                 'icon' => $c['icon'],
                 'color' => $c['css_class'],
+            ],
+            'articles' => $items,
+        ];
+    }
+
+    // Virtual buckets driven by content_type and category aggregates.
+    // IDs in the 9000+ range so they don't collide with real categories.
+    // Slugs are prefixed (`ct-` / `agg-`) so the client can route them to
+    // the right filter view instead of a missing /category/<slug>.
+    $virtual = [
+        [9001, 'تقارير',  'ct-reports',  '📑', 'cat-reports',  ['content_type' => 'report']],
+        [9002, 'مقالات',  'ct-articles', '✍️', 'cat-arts',     ['content_type' => 'article']],
+        [9004, 'منوعات',  'agg-variety', '🎯', 'cat-arts',     ['category_slugs' => ['sports', 'arts', 'tech', 'media']]],
+    ];
+    foreach ($virtual as $v) {
+        [$vid, $vname, $vslug, $vicon, $vcss, $vfilter] = $v;
+        try {
+            $items = fetch_articles($vfilter, 6, 0);
+        } catch (Throwable $e) {
+            // content_type column missing — first deploy before classifier ran.
+            $items = [];
+        }
+        if (!$items) continue;
+        $buckets[] = [
+            'category' => [
+                'id' => $vid,
+                'name' => $vname,
+                'slug' => $vslug,
+                'icon' => $vicon,
+                'color' => $vcss,
             ],
             'articles' => $items,
         ];

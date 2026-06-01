@@ -31,6 +31,8 @@ class ContentRepository {
     String? source,
     bool? breaking,
     String? q,
+    String? contentType,           // news | report | article
+    List<String>? categorySlugs,   // aggregate tabs (e.g. منوعات = sports+arts+tech+media)
   }) async {
     final res = await _api.get<List<Article>>(
       '/content/articles',
@@ -41,6 +43,9 @@ class ContentRepository {
         if (source != null) 'source': source,
         if (breaking == true) 'breaking': 1,
         if (q != null && q.isNotEmpty) 'q': q,
+        if (contentType != null) 'content_type': contentType,
+        if (categorySlugs != null && categorySlugs.isNotEmpty)
+          'category_slugs': categorySlugs.join(','),
       },
       decode: (d) =>
           (d as List).whereType<Map>().map((m) => Article.fromJson(m.cast())).toList(),
@@ -246,9 +251,11 @@ class LatestExtraNotifier extends StateNotifier<LatestExtraState> {
     if (state.loading || !state.hasMore) return;
     state = state.copyWith(loading: true, error: null);
     try {
+      // Match the home payload's filter — "آخر الأخبار" is news-only,
+      // not a mixed feed of news + reports + opinion.
       final page = await _ref
           .read(contentRepositoryProvider)
-          .articles(page: state.nextPage, limit: 20);
+          .articles(page: state.nextPage, limit: 20, contentType: 'news');
       final seen = {...excludeIds, ...state.items.map((a) => a.id)};
       final fresh = page.items.where((a) => !seen.contains(a.id)).toList();
       state = state.copyWith(
