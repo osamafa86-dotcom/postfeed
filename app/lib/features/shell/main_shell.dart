@@ -50,16 +50,42 @@ class _MainShellState extends ConsumerState<MainShell> {
     return 0;
   }
 
+  /// Whether the location corresponds to one of the five primary tabs.
+  /// The shell shows IndexedStack for tab routes (preserves per-tab scroll
+  /// state, AI providers, etc.) and renders the routed `child` directly
+  /// for inner pages like /article/123 — so the bottom nav stays put no
+  /// matter how deep the user navigates.
+  bool _isTabRoute(String loc) {
+    for (final t in MainShell._tabs) {
+      if (loc == t.path) return true;
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = widget.state.uri.toString();
     final index = _indexFor(loc);
+    final isTab = _isTabRoute(loc);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      body: IndexedStack(
-        index: index,
-        children: _pages,
+      // IndexedStack is ALWAYS in the tree (wrapped in Offstage when an
+      // inner page is showing) so each tab's scroll position, providers,
+      // and AnimatedSwitcher state survive deep navigation. The inner
+      // page renders on top — same persistent bottom nav underneath, so
+      // a single tap on any tab takes the user home from any depth.
+      body: Stack(
+        children: [
+          Offstage(
+            offstage: !isTab,
+            child: TickerMode(
+              enabled: isTab,
+              child: IndexedStack(index: index, children: _pages),
+            ),
+          ),
+          if (!isTab) Positioned.fill(child: widget.child),
+        ],
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
