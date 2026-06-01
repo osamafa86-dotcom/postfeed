@@ -69,6 +69,27 @@ function fetch_articles(array $filters = [], int $limit = 20, int $offset = 0): 
             foreach ($slugs as $s) $params[] = $s;
         }
     }
+
+    // Palestine focus filter — keyword match on the title. Powers the
+    // dedicated أخبار فلسطين bucket. Same keyword list as the homepage's
+    // getPalestineNews() in includes/functions.php — keep them in sync
+    // so the app and the web show consistent rails. `not_palestine`
+    // negates it so the عربي ودولي bucket doesn't double-show items.
+    if (!empty($filters['palestine']) || !empty($filters['not_palestine'])) {
+        $palKeywords = [
+            'فلسطين', 'غزة', 'الضفة', 'القدس', 'الاحتلال', 'الفلسطيني',
+            'حماس', 'المقاومة', 'الأقصى', 'رفح', 'خان يونس', 'جنين',
+            'نابلس', 'طوفان', 'الشهداء', 'شهيد', 'إسرائيل', 'الإسرائيلي',
+            'بيت لحم', 'الخليل', 'طولكرم', 'قلقيلية',
+        ];
+        $palClauses = [];
+        foreach ($palKeywords as $kw) {
+            $palClauses[] = 'a.title LIKE ?';
+            $params[] = '%' . $kw . '%';
+        }
+        $combined = '(' . implode(' OR ', $palClauses) . ')';
+        $where[] = !empty($filters['palestine']) ? $combined : "NOT $combined";
+    }
     if (!empty($filters['featured'])) {
         $where[] = 'a.is_featured = 1';
     }

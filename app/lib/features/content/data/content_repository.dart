@@ -33,6 +33,8 @@ class ContentRepository {
     String? q,
     String? contentType,           // news | report | article
     List<String>? categorySlugs,   // aggregate tabs (e.g. منوعات = sports+arts+tech+media)
+    bool palestine = false,        // restrict to Palestine-keyword titles
+    bool notPalestine = false,     // exclude Palestine-keyword titles
   }) async {
     final res = await _api.get<List<Article>>(
       '/content/articles',
@@ -46,6 +48,8 @@ class ContentRepository {
         if (contentType != null) 'content_type': contentType,
         if (categorySlugs != null && categorySlugs.isNotEmpty)
           'category_slugs': categorySlugs.join(','),
+        if (palestine) 'palestine': 1,
+        if (notPalestine) 'not_palestine': 1,
       },
       decode: (d) =>
           (d as List).whereType<Map>().map((m) => Article.fromJson(m.cast())).toList(),

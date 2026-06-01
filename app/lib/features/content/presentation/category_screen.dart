@@ -5,13 +5,17 @@ import '../../../core/widgets/article_card.dart';
 import '../../../core/widgets/loading_state.dart';
 import '../data/content_repository.dart';
 
-// Virtual slugs from the home payload: content_type filters + topical
-// aggregates. Keep the routing key under one provider so callers don't
-// have to care which kind of bucket they're viewing.
+// Virtual slugs from the home payload: content_type filters, palestine
+// keyword splits, and topical aggregates. One provider so callers don't
+// branch on bucket kind — they just push '/category/<slug>'.
 final _articlesByCategoryProvider =
     FutureProvider.family((ref, String slug) {
   final repo = ref.watch(contentRepositoryProvider);
   switch (slug) {
+    case 'palestine-news':
+      return repo.articles(contentType: 'news', palestine: true, limit: 30);
+    case 'arab-intl':
+      return repo.articles(contentType: 'news', notPalestine: true, limit: 30);
     case 'ct-reports':
       return repo.articles(contentType: 'report', limit: 30);
     case 'ct-articles':
@@ -21,6 +25,8 @@ final _articlesByCategoryProvider =
         categorySlugs: const ['sports', 'arts', 'tech', 'media'],
         limit: 30,
       );
+    case 'cat-health':
+      return repo.articles(category: 'health', limit: 30);
     default:
       return repo.articles(category: slug, limit: 30);
   }
@@ -28,9 +34,12 @@ final _articlesByCategoryProvider =
 
 /// Human-readable titles for the virtual category slugs.
 const _virtualSlugTitles = <String, String>{
-  'ct-reports':  'تقارير',
-  'ct-articles': 'مقالات',
-  'agg-variety': 'منوعات',
+  'palestine-news': 'أخبار فلسطين',
+  'arab-intl':      'عربي ودولي',
+  'ct-reports':     'تقارير',
+  'ct-articles':    'مقالات رأي',
+  'agg-variety':    'منوعات',
+  'cat-health':     'صحة',
 };
 
 class CategoryScreen extends ConsumerWidget {
