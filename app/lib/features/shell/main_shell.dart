@@ -50,17 +50,32 @@ class _MainShellState extends ConsumerState<MainShell> {
     return 0;
   }
 
+  /// True for the five top-level tab paths exactly — anything deeper
+  /// (e.g. /article/123, /category/political) is a sub-route that needs
+  /// the widget child rendered, not the cached IndexedStack page.
+  bool _isTabRoot(String location) {
+    for (final t in MainShell._tabs) {
+      if (location == t.path) return true;
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = widget.state.uri.toString();
     final index = _indexFor(loc);
+    final isTabRoot = _isTabRoot(loc);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      body: IndexedStack(
-        index: index,
-        children: _pages,
-      ),
+      // Tab roots render through the IndexedStack so each tab keeps its
+      // scroll position and providers stay warm. Sub-routes (article,
+      // category, search, etc.) render the matched widget directly so
+      // the bottom-nav bar wrapping this Scaffold stays on screen during
+      // deep navigation — tap الرئيسية from anywhere to come home.
+      body: isTabRoot
+          ? IndexedStack(index: index, children: _pages)
+          : widget.child,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: isDark ? AppColors.neoDarkSurface : AppColors.neoSurface,

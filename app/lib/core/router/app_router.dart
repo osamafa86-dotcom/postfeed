@@ -78,83 +78,87 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
       GoRoute(path: '/forgot-password', builder: (_, __) => const ForgotPasswordScreen()),
 
+      // Everything that should keep the bottom-nav bar on screen lives
+      // inside the ShellRoute. Only the auth/onboarding flow above stays
+      // outside (full-screen takeover for sign-in, etc.).
       ShellRoute(
         builder: (ctx, state, child) => MainShell(state: state, child: child),
         routes: [
+          // Top-level tabs — rendered via IndexedStack inside MainShell.
           GoRoute(path: '/', builder: (_, __) => const _HomeRoot()),
           GoRoute(path: '/discover', builder: (_, __) => const _DiscoverRoot()),
           GoRoute(path: '/summaries', builder: (_, __) => const _SummariesRoot()),
           GoRoute(path: '/follow', builder: (_, __) => const _FollowRoot()),
           GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
+
+          // Sub-routes — rendered via widget.child inside MainShell so
+          // the bottom nav remains visible and tapping الرئيسية from
+          // any deep screen jumps straight back to /.
+          GoRoute(path: '/platforms', builder: (_, __) => const PlatformsScreen()),
+          GoRoute(
+            path: '/article/:id',
+            builder: (_, s) {
+              final raw = s.pathParameters['id'];
+              final id = int.tryParse(raw ?? '') ?? 0;
+              return ArticleScreen(id: id);
+            },
+          ),
+          GoRoute(
+            path: '/topic/:slug',
+            builder: (_, s) => TopicScreen(slug: s.pathParameters['slug']!),
+          ),
+          GoRoute(
+            path: '/category/:slug',
+            builder: (_, s) => CategoryScreen(slug: s.pathParameters['slug']!),
+          ),
+          GoRoute(
+            path: '/source/:slug',
+            builder: (_, s) => SourceScreen(slug: s.pathParameters['slug']!),
+          ),
+          GoRoute(path: '/trending', builder: (_, __) => const TrendingScreen()),
+          GoRoute(path: '/clusters', builder: (_, __) => const ClustersScreen()),
+          GoRoute(path: '/search', builder: (_, state) {
+            final q = state.uri.queryParameters['q'] ?? '';
+            return SearchScreen(initialQuery: q);
+          }),
+
+          // Evolving stories
+          GoRoute(path: '/stories', builder: (_, __) => const EvolvingStoriesScreen()),
+          GoRoute(
+            path: '/stories/:slug',
+            builder: (_, s) => EvolvingStoryScreen(slug: s.pathParameters['slug']!),
+          ),
+          GoRoute(path: '/timelines', builder: (_, __) => const TimelinesScreen()),
+          GoRoute(path: '/stories-network', builder: (_, __) => const StoriesNetworkScreen()),
+          GoRoute(
+            path: '/stories/:slug/quotes',
+            builder: (_, s) => QuotesWallScreen(
+              slug: s.pathParameters['slug']!,
+              storyName: s.uri.queryParameters['name'] ?? '',
+            ),
+          ),
+
+          // Media
+          GoRoute(path: '/telegram', builder: (_, __) => const TelegramScreen()),
+          GoRoute(path: '/twitter', builder: (_, __) => const TwitterScreen()),
+          GoRoute(path: '/youtube', builder: (_, __) => const YoutubeScreen()),
+          GoRoute(path: '/reels', builder: (_, __) => const ReelsScreen()),
+          GoRoute(path: '/gallery', builder: (_, __) => const GalleryScreen()),
+          GoRoute(path: '/map', builder: (_, __) => const NewsMapScreen()),
+
+          // Daily / weekly briefs
+          GoRoute(path: '/sabah', builder: (_, __) => const SabahScreen()),
+          GoRoute(path: '/weekly', builder: (_, __) => const WeeklyRewindScreen()),
+
+          // AI Q&A
+          GoRoute(path: '/ask', builder: (_, __) => const AskScreen()),
+
+          // User-only
+          GoRoute(path: '/bookmarks', builder: (_, __) => const BookmarksScreen()),
+          GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
+          GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
         ],
       ),
-
-      GoRoute(
-        path: '/platforms',
-        builder: (_, __) => const PlatformsScreen(),
-      ),
-      GoRoute(
-        path: '/article/:id',
-        builder: (_, s) {
-          final raw = s.pathParameters['id'];
-          final id = int.tryParse(raw ?? '') ?? 0;
-          return ArticleScreen(id: id);
-        },
-      ),
-      GoRoute(
-        path: '/topic/:slug',
-        builder: (_, s) => TopicScreen(slug: s.pathParameters['slug']!),
-      ),
-      GoRoute(
-        path: '/category/:slug',
-        builder: (_, s) => CategoryScreen(slug: s.pathParameters['slug']!),
-      ),
-      GoRoute(
-        path: '/source/:slug',
-        builder: (_, s) => SourceScreen(slug: s.pathParameters['slug']!),
-      ),
-      GoRoute(path: '/trending', builder: (_, __) => const TrendingScreen()),
-      GoRoute(path: '/clusters', builder: (_, __) => const ClustersScreen()),
-      GoRoute(path: '/search', builder: (_, state) {
-        final q = state.uri.queryParameters['q'] ?? '';
-        return SearchScreen(initialQuery: q);
-      }),
-
-      // Evolving stories
-      GoRoute(path: '/stories', builder: (_, __) => const EvolvingStoriesScreen()),
-      GoRoute(
-        path: '/stories/:slug',
-        builder: (_, s) => EvolvingStoryScreen(slug: s.pathParameters['slug']!),
-      ),
-      GoRoute(path: '/timelines', builder: (_, __) => const TimelinesScreen()),
-      GoRoute(path: '/stories-network', builder: (_, __) => const StoriesNetworkScreen()),
-      GoRoute(
-        path: '/stories/:slug/quotes',
-        builder: (_, s) => QuotesWallScreen(
-          slug: s.pathParameters['slug']!,
-          storyName: s.uri.queryParameters['name'] ?? '',
-        ),
-      ),
-
-      // Media
-      GoRoute(path: '/telegram', builder: (_, __) => const TelegramScreen()),
-      GoRoute(path: '/twitter', builder: (_, __) => const TwitterScreen()),
-      GoRoute(path: '/youtube', builder: (_, __) => const YoutubeScreen()),
-      GoRoute(path: '/reels', builder: (_, __) => const ReelsScreen()),
-      GoRoute(path: '/gallery', builder: (_, __) => const GalleryScreen()),
-      GoRoute(path: '/map', builder: (_, __) => const NewsMapScreen()),
-
-      // Daily / weekly briefs
-      GoRoute(path: '/sabah', builder: (_, __) => const SabahScreen()),
-      GoRoute(path: '/weekly', builder: (_, __) => const WeeklyRewindScreen()),
-
-      // AI Q&A
-      GoRoute(path: '/ask', builder: (_, __) => const AskScreen()),
-
-      // User-only
-      GoRoute(path: '/bookmarks', builder: (_, __) => const BookmarksScreen()),
-      GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
-      GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
     ],
   );
 });
