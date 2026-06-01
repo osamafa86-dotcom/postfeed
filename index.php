@@ -81,21 +81,16 @@ $tickerItems = array_slice($palestineNews, 0, 10);
 $totalArticles = countArticles();
 $totalSources = count($sources);
 
-// جلب أخبار التصنيفات (نطلب عدد أكبر لتعويض ما يتم حذفه عند منع التكرار)
-$politicalNews = getArticlesByCategory('political', 40);
-$economyNews   = getArticlesByCategory('economy', 40);
-$sportsNews    = getArticlesByCategory('sports', 40);
-$artsNews      = getArticlesByCategory('arts', 40);
-$reportsNews   = getArticlesByCategory('reports', 40);
-
-// Content-type buckets for the new homepage tabs (تقارير / مقالات / صحة /
-// منوعات). These come from the content_classifier pipeline; if the
-// column hasn't been populated yet the helper returns [] and the
-// sections just won't render.
-$reportsByType   = getArticlesByContentType('report', 12);
-$articlesByType  = getArticlesByContentType('article', 12);
-$healthArticles  = getArticlesByCategory('health', 12);
-$varietyArticles = getArticlesByCategorySlugs(['sports', 'arts', 'tech', 'media'], 12);
+// Homepage section buckets — six purpose-built feeds, no raw category
+// rails any more. The classifier-driven content_type column slices
+// each story into the right slot (news vs report vs opinion) and the
+// Palestine flag splits the news feed into two non-overlapping rails.
+$palestineNewsArticles = getArticlesByPalestineNews(true,  12);  // news + Palestine
+$arabIntlArticles      = getArticlesByPalestineNews(false, 12);  // news without Palestine
+$reportsByType         = getArticlesByContentType('report',  12);
+$articlesByType        = getArticlesByContentType('article', 12);
+$healthArticles        = getArticlesByCategory('health', 12);
+$varietyArticles       = getArticlesByCategorySlugs(['sports', 'arts', 'tech', 'media'], 12);
 
 // ============================================================
 // منع تكرار الخبر عبر أكثر من قسم في الصفحة الرئيسية
@@ -194,15 +189,12 @@ $dedup = function(array $list, int $keep) use (&$usedIds, &$usedTitleTokens, $nf
 $palestineNews  = $dedup($palestineNews, 4);
 $breakingNews   = $dedup($breakingNews, 4);
 $latestArticles = $dedup($latestArticles, 12);
-$politicalNews  = $dedup($politicalNews, 4);
-$economyNews    = $dedup($economyNews, 4);
-$sportsNews     = $dedup($sportsNews, 4);
-$artsNews       = $dedup($artsNews, 4);
-$reportsNews    = $dedup($reportsNews, 4);
-$reportsByType   = $dedup($reportsByType, 8);
-$articlesByType  = $dedup($articlesByType, 8);
-$healthArticles  = $dedup($healthArticles, 8);
-$varietyArticles = $dedup($varietyArticles, 12);
+$palestineNewsArticles = $dedup($palestineNewsArticles, 8);
+$arabIntlArticles      = $dedup($arabIntlArticles, 8);
+$reportsByType         = $dedup($reportsByType, 8);
+$articlesByType        = $dedup($articlesByType, 8);
+$healthArticles        = $dedup($healthArticles, 8);
+$varietyArticles       = $dedup($varietyArticles, 8);
 
 // Pre-fetch which of the articles on this page are already bookmarked for the viewer,
 // plus reaction counts and the viewer's own reactions.
@@ -214,7 +206,8 @@ $GLOBALS['__nf_timeline_keys']   = [];
 $__allIds = [];
 $__allClusterKeys = [];
 foreach ([$heroArticles, $personalFeed, $palestineNews, $breakingNews, $latestArticles,
-          $politicalNews, $economyNews, $sportsNews, $artsNews, $reportsNews] as $__list) {
+          $palestineNewsArticles, $arabIntlArticles, $reportsByType, $articlesByType,
+          $healthArticles, $varietyArticles] as $__list) {
     foreach ($__list as $__a) {
         $__allIds[] = (int)($__a['id'] ?? 0);
         $__ck = (string)($__a['cluster_key'] ?? '');
@@ -431,12 +424,12 @@ include __DIR__ . '/includes/components/site_header.php';
     <?php endif; ?>
     <a class="sec-pill sec-pill-ask" href="ask.php"><span class="sec-pill-ico">🤖</span>اسأل الأخبار</a>
     <button type="button" class="sec-pill" data-sec="breaking" onclick="scrollToHomeSection(this,'breaking')"><span class="sec-pill-ico">🔴</span>عاجل</button>
-    <button type="button" class="sec-pill" data-sec="latest" onclick="scrollToHomeSection(this,'latest')"><span class="sec-pill-ico">⏱</span>آخر الأخبار</button>
+    <button type="button" class="sec-pill" data-sec="palestine-news" onclick="scrollToHomeSection(this,'palestine-news')"><span class="sec-pill-ico">🇵🇸</span>أخبار فلسطين</button>
+    <button type="button" class="sec-pill" data-sec="arab-intl" onclick="scrollToHomeSection(this,'arab-intl')"><span class="sec-pill-ico">🌍</span>عربي ودولي</button>
     <button type="button" class="sec-pill" data-sec="reports" onclick="scrollToHomeSection(this,'reports')"><span class="sec-pill-ico">📑</span>تقارير</button>
-    <button type="button" class="sec-pill" data-sec="articles" onclick="scrollToHomeSection(this,'articles')"><span class="sec-pill-ico">✍️</span>مقالات</button>
-    <button type="button" class="sec-pill" data-sec="health" onclick="scrollToHomeSection(this,'health')"><span class="sec-pill-ico">🏥</span>صحة</button>
+    <button type="button" class="sec-pill" data-sec="articles" onclick="scrollToHomeSection(this,'articles')"><span class="sec-pill-ico">✍️</span>مقالات رأي</button>
     <button type="button" class="sec-pill" data-sec="variety" onclick="scrollToHomeSection(this,'variety')"><span class="sec-pill-ico">🎯</span>منوعات</button>
-    <button type="button" class="sec-pill" data-sec="palestine" onclick="scrollToHomeSection(this,'palestine')"><span class="sec-pill-ico">🇵🇸</span>فلسطين</button>
+    <button type="button" class="sec-pill" data-sec="health" onclick="scrollToHomeSection(this,'health')"><span class="sec-pill-ico">🏥</span>صحة</button>
     <button type="button" class="sec-pill" data-sec="trending" onclick="scrollToHomeSection(this,'trending')"><span class="sec-pill-ico">🔥</span>الأكثر تداولاً</button>
     <button type="button" class="sec-pill" data-sec="reels" onclick="scrollToHomeSection(this,'reels')"><span class="sec-pill-ico">🎬</span>ريلز</button>
   </div>
@@ -602,10 +595,12 @@ $__renderCtSection = function(string $id, string $title, string $color, string $
     <?php
 };
 
-$__renderCtSection('reports',  'تقارير',  '#9c5d3b', '📑', $reportsByType,   'category.php?type=report');
-$__renderCtSection('articles', 'مقالات',  '#6b4f8f', '✍️', $articlesByType,  'category.php?type=article');
-$__renderCtSection('health',   'صحة',     '#3b8a6e', '🏥', $healthArticles,  categoryUrl('health'));
-$__renderCtSection('variety',  'منوعات',  '#c9a23e', '🎯', $varietyArticles, 'category.php?type=variety');
+$__renderCtSection('palestine-news', 'أخبار فلسطين', '#1B7A3D', '🇵🇸', $palestineNewsArticles, 'category.php?type=palestine');
+$__renderCtSection('arab-intl',      'عربي ودولي',   '#3c5f8a', '🌍', $arabIntlArticles,      'category.php?type=arab-intl');
+$__renderCtSection('reports',        'تقارير',        '#9c5d3b', '📑', $reportsByType,         'category.php?type=report');
+$__renderCtSection('articles',       'مقالات رأي',    '#6b4f8f', '✍️', $articlesByType,        'category.php?type=article');
+$__renderCtSection('variety',        'منوعات',        '#c9a23e', '🎯', $varietyArticles,       'category.php?type=variety');
+$__renderCtSection('health',         'صحة',           '#3b8a6e', '🏥', $healthArticles,        categoryUrl('health'));
 ?>
 
 <!-- MAIN CONTENT -->
@@ -955,135 +950,11 @@ $__renderCtSection('variety',  'منوعات',  '#c9a23e', '🎯', $varietyArtic
     </div>
     <?php endif; ?>
 
-    <!-- POLITICAL NEWS -->
-    <div id="political" class="section-header">
-      <div class="section-title"><div class="line" style="background:#b05a5a"></div>🏛 أخبار سياسية</div>
-      <a class="see-all" href="category/political">عرض الكل ›</a>
-    </div>
-    <div class="news-rows" style="margin-bottom:28px">
-      <?php foreach ($politicalNews as $article): ?>
-        <div class="news-card">
-          <a class="news-card-link" href="<?php echo articleUrl($article); ?>">
-            <div class="card-img"><img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
-            <div class="card-body">
-              <span class="card-cat cat-political">سياسة</span>
-              <?php echo renderClusterBadge($article); if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($article); ?>
-              <div class="card-title"><?php echo e($article['title']); ?></div>
-              <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
-              <div class="card-meta">
-                <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#6b9fd4'); ?>"></span><?php echo e($article['source_name']); ?></div>
-                <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
-              </div>
-            </div>
-          </a>
-          <?php include __DIR__ . '/includes/components/action_bar.php'; ?>
-        </div>
-      <?php endforeach; ?>
-    </div>
-
-    <!-- ECONOMY -->
-    <div id="economy" class="section-header">
-      <div class="section-title green"><div class="line"></div>💹 أخبار اقتصادية</div>
-      <a class="see-all" href="category/economy">عرض الكل ›</a>
-    </div>
-    <div class="news-rows" style="margin-bottom:28px">
-      <?php foreach ($economyNews as $article): ?>
-        <div class="news-card">
-          <a class="news-card-link" href="<?php echo articleUrl($article); ?>">
-            <div class="card-img"><img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
-            <div class="card-body">
-              <span class="card-cat cat-economic">اقتصاد</span>
-              <?php echo renderClusterBadge($article); if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($article); ?>
-              <div class="card-title"><?php echo e($article['title']); ?></div>
-              <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
-              <div class="card-meta">
-                <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#85c1a3'); ?>"></span><?php echo e($article['source_name']); ?></div>
-                <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
-              </div>
-            </div>
-          </a>
-          <?php include __DIR__ . '/includes/components/action_bar.php'; ?>
-        </div>
-      <?php endforeach; ?>
-    </div>
-
-    <!-- SPORTS -->
-    <div id="sports" class="section-header">
-      <div class="section-title"><div class="line" style="background:#5a85b0"></div>⚽ رياضة</div>
-      <a class="see-all" href="category/sports">عرض الكل ›</a>
-    </div>
-    <div class="news-rows" style="margin-bottom:28px">
-      <?php foreach ($sportsNews as $article): ?>
-        <div class="news-card">
-          <a class="news-card-link" href="<?php echo articleUrl($article); ?>">
-            <div class="card-img"><img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
-            <div class="card-body">
-              <span class="card-cat cat-sports">رياضة</span>
-              <?php echo renderClusterBadge($article); if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($article); ?>
-              <div class="card-title"><?php echo e($article['title']); ?></div>
-              <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
-              <div class="card-meta">
-                <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#6b9fd4'); ?>"></span><?php echo e($article['source_name']); ?></div>
-                <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
-              </div>
-            </div>
-          </a>
-          <?php include __DIR__ . '/includes/components/action_bar.php'; ?>
-        </div>
-      <?php endforeach; ?>
-    </div>
-
-    <!-- ARTS -->
-    <div id="arts" class="section-header">
-      <div class="section-title"><div class="line" style="background:#7a5a9a"></div>🎨 فنون وثقافة</div>
-      <a class="see-all" href="category/arts">عرض الكل ›</a>
-    </div>
-    <div class="news-rows" style="margin-bottom:28px">
-      <?php foreach ($artsNews as $article): ?>
-        <div class="news-card">
-          <a class="news-card-link" href="<?php echo articleUrl($article); ?>">
-            <div class="card-img"><img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
-            <div class="card-body">
-              <span class="card-cat cat-arts">فنون</span>
-              <?php echo renderClusterBadge($article); if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($article); ?>
-              <div class="card-title"><?php echo e($article['title']); ?></div>
-              <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
-              <div class="card-meta">
-                <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#a08cc8'); ?>"></span><?php echo e($article['source_name']); ?></div>
-                <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
-              </div>
-            </div>
-          </a>
-          <?php include __DIR__ . '/includes/components/action_bar.php'; ?>
-        </div>
-      <?php endforeach; ?>
-    </div>
-
-    <!-- REPORTS -->
-    <div id="reports" class="section-header">
-      <div class="section-title gold"><div class="line"></div>📊 التقارير</div>
-      <a class="see-all" href="category/reports">عرض الكل ›</a>
-    </div>
-    <div class="news-rows" style="margin-bottom:28px">
-      <?php foreach ($reportsNews as $article): ?>
-        <div class="news-card">
-          <a class="news-card-link" href="<?php echo articleUrl($article); ?>">
-            <div class="card-img"><img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async"></div>
-            <div class="card-body">
-              <span class="card-cat cat-reports">تقرير</span>
-              <?php echo renderClusterBadge($article); if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($article); ?>
-              <div class="card-title"><?php echo e($article['title']); ?></div>
-              <div class="card-excerpt"><?php echo e(mb_substr($article['excerpt'] ?? '', 0, 150)); ?></div>
-              <div class="card-meta">
-                <div class="card-source"><span class="source-dot" style="background:<?php echo e($article['logo_color'] ?? '#c9ab6e'); ?>"></span><?php echo e($article['source_name']); ?></div>
-                <span class="card-time"><?php echo timeAgo($article['published_at']); ?></span>
-              </div>
-            </div>
-          </a>
-          <?php include __DIR__ . '/includes/components/action_bar.php'; ?>
-        </div>
-      <?php endforeach; ?>
-    </div>
+    <!-- Topical category rails (سياسة/اقتصاد/رياضة/فنون/تقارير) were
+         retired here. They've been replaced by the six purpose-built
+         sections rendered above the main-layout block via the
+         __renderCtSection helper. The /category/<slug> pages stay
+         live for inbound search traffic. -->
 
     <!-- REELS -->
     <?php if (!empty($homeReels)): ?>

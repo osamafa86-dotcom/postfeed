@@ -174,6 +174,52 @@ function getArticlesByCategorySlugs(array $slugs, int $limit = 8) {
     });
 }
 
+/**
+ * News items split on the Palestine/non-Palestine axis. Powers the
+ * homepage "أخبار فلسطين" and "عربي ودولي" sections so the two never
+ * overlap. Matches the title-keyword logic that the API's _articles_query
+ * uses, so the website and the mobile app surface the same split.
+ *
+ * @param bool $palestine true → Palestine keywords only, false → exclude them
+ */
+function getArticlesByPalestineNews(bool $palestine, int $limit = 12) {
+    $key = ($palestine ? 'pal_news_' : 'arab_intl_') . $limit;
+    return cache_remember($key, HOMEPAGE_CACHE_TTL, function() use ($palestine, $limit) {
+        $db = getDB();
+        $keywords = ['فلسطين', 'غزة', 'الضفة', 'القدس', 'الاحتلال', 'الفلسطيني',
+                     'حماس', 'المقاومة', 'الأقصى', 'رفح', 'خان يونس', 'جنين',
+                     'نابلس', 'طوفان', 'الشهداء', 'شهيد', 'إسرائيل', 'الإسرائيلي',
+                     'بيت لحم', 'الخليل', 'طولكرم', 'قلقيلية'];
+        $likes  = [];
+        $params = [];
+        foreach ($keywords as $kw) {
+            $likes[]  = 'a.title LIKE ?';
+            $params[] = '%' . $kw . '%';
+        }
+        $palClause = '(' . implode(' OR ', $likes) . ')';
+        $palCond   = $palestine ? $palClause : "NOT $palClause";
+        try {
+            $sql = "SELECT a.*, c.name as cat_name, c.slug as cat_slug, c.css_class,
+                           s.name as source_name, s.logo_color
+                      FROM articles a
+                      LEFT JOIN categories c ON a.category_id = c.id
+                      LEFT JOIN sources    s ON a.source_id   = s.id
+                     WHERE a.status='published'
+                       AND a.is_breaking=0 AND a.is_hero=0
+                       AND a.content_type='news'
+                       AND $palCond
+                     ORDER BY a.published_at DESC LIMIT ?";
+            $params[] = $limit;
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetchAll();
+        } catch (Throwable $e) {
+            // content_type column missing — first deploy before classifier ran.
+            return [];
+        }
+    });
+}
+
 function getArticleById($id) {
     $db = getDB();
     $stmt = $db->prepare("SELECT a.*, c.name as cat_name, c.slug as cat_slug, c.css_class,

@@ -78,6 +78,57 @@ if ($type === 'breaking') {
     $stmt->execute([$perPage, $offset]);
     $articles = $stmt->fetchAll();
 
+} elseif ($type === 'palestine' || $type === 'arab-intl') {
+    // Palestine / Arab-and-international news rails. Same content_type
+    // filter (news) but split on the Palestine-keyword title match so
+    // each page shows a non-overlapping slice.
+    $palMode = $type === 'palestine';
+    $pageTitle = $palMode ? 'أخبار فلسطين' : 'عربي ودولي';
+    $pageIcon  = $palMode ? '🇵🇸' : '🌍';
+    $pageCss   = '';
+
+    $palKeywords = ['فلسطين', 'غزة', 'الضفة', 'القدس', 'الاحتلال', 'الفلسطيني',
+                    'حماس', 'المقاومة', 'الأقصى', 'رفح', 'خان يونس', 'جنين',
+                    'نابلس', 'طوفان', 'الشهداء', 'شهيد', 'إسرائيل', 'الإسرائيلي',
+                    'بيت لحم', 'الخليل', 'طولكرم', 'قلقيلية'];
+    $likes  = [];
+    $params = [];
+    foreach ($palKeywords as $kw) {
+        $likes[]  = 'a.title LIKE ?';
+        $params[] = '%' . $kw . '%';
+    }
+    $palClause = '(' . implode(' OR ', $likes) . ')';
+    $palCond   = $palMode ? $palClause : "NOT $palClause";
+
+    try {
+        $countStmt = $db->prepare("SELECT COUNT(*) FROM articles a
+                                    WHERE a.status='published'
+                                      AND a.content_type='news'
+                                      AND $palCond");
+        $countStmt->execute($params);
+        $totalCount = (int) $countStmt->fetchColumn();
+
+        $sql = "SELECT a.*, c.name as cat_name, c.slug as cat_slug, c.css_class,
+                       s.name as source_name, s.logo_color
+                  FROM articles a
+                  LEFT JOIN categories c ON a.category_id = c.id
+                  LEFT JOIN sources    s ON a.source_id   = s.id
+                 WHERE a.status='published'
+                   AND a.content_type='news'
+                   AND $palCond
+                 ORDER BY a.published_at DESC LIMIT ? OFFSET ?";
+        $stmt = $db->prepare($sql);
+        $i = 1;
+        foreach ($params as $p) { $stmt->bindValue($i++, $p, PDO::PARAM_STR); }
+        $stmt->bindValue($i++, $perPage, PDO::PARAM_INT);
+        $stmt->bindValue($i,   $offset,  PDO::PARAM_INT);
+        $stmt->execute();
+        $articles = $stmt->fetchAll();
+    } catch (Throwable $e) {
+        $articles = [];
+        $totalCount = 0;
+    }
+
 } elseif ($type === 'report' || $type === 'article') {
     // Content-type filter: تقارير أو مقالات.
     // These are orthogonal to the topical category — a sports column is

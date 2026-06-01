@@ -25,10 +25,10 @@ api_rate_limit('content:home', 240, 60);
 $noCache = !empty($_GET['nocache']);
 if ($noCache) {
     require_once __DIR__ . '/../../../includes/cache.php';
-    cache_forget('api:home:v2');
+    cache_forget('api:home:v3');
 }
 
-$payload = cache_remember('api:home:v2', 60, function () {
+$payload = cache_remember('api:home:v3', 60, function () {
     $db = getDB();
 
     // Hero (newest article flagged as hero, or fallback to newest featured).
@@ -58,41 +58,29 @@ $payload = cache_remember('api:home:v2', 60, function () {
         $latest = array_values(array_filter($latest, fn($a) => $a['id'] !== $hero['id']));
     }
 
-    // Per-category buckets (top 6 articles each).
-    // Skip the legacy "reports" topical category because the virtual
-    // content_type='report' bucket (ct-reports below) replaces it with
-    // a more accurate cross-topic feed. Two "تقارير" tabs side by side
-    // were confusing — old one stays accessible via /category/reports
-    // for inbound search traffic, just not on the home tabs row.
-    $catRows = $db->query("SELECT id, name, slug, icon, css_class, sort_order
-                             FROM categories
-                            WHERE is_active=1 AND slug <> 'reports'
-                            ORDER BY sort_order, id LIMIT 12")->fetchAll();
-    $buckets = [];
-    foreach ($catRows as $c) {
-        $items = fetch_articles(['category_id' => (int)$c['id']], 6, 0);
-        if (!$items) continue;
-        $buckets[] = [
-            'category' => [
-                'id' => (int)$c['id'],
-                'name' => $c['name'],
-                'slug' => $c['slug'],
-                'icon' => $c['icon'],
-                'color' => $c['css_class'],
-            ],
-            'articles' => $items,
-        ];
-    }
-
-    // Virtual buckets driven by content_type and category aggregates.
-    // IDs in the 9000+ range so they don't collide with real categories.
-    // Slugs are prefixed (`ct-` / `agg-`) so the client can route them to
-    // the right filter view instead of a missing /category/<slug>.
+    // Homepage buckets — six virtual sections, no more raw topical
+    // categories. Each is a single deliberate slice of the feed so the
+    // user always knows what they're getting:
+    //
+    //   أخبار فلسطين  → content_type=news, Palestine keywords only
+    //   عربي ودولي    → content_type=news, NOT Palestine (no overlap)
+    //   تقارير        → content_type=report
+    //   مقالات رأي    → content_type=article
+    //   منوعات        → sports + arts + tech + media topical aggregate
+    //   صحة           → health topical category
+    //
+    // Slugs are prefixed so the client routes them to the right filter
+    // view (category_screen.dart) instead of a missing /category/<slug>.
+    // IDs in the 9000+ range never collide with real categories table rows.
     $virtual = [
-        [9001, 'تقارير',  'ct-reports',  '📑', 'cat-reports',  ['content_type' => 'report']],
-        [9002, 'مقالات',  'ct-articles', '✍️', 'cat-arts',     ['content_type' => 'article']],
-        [9004, 'منوعات',  'agg-variety', '🎯', 'cat-arts',     ['category_slugs' => ['sports', 'arts', 'tech', 'media']]],
+        [9000, 'أخبار فلسطين', 'palestine-news', '🇵🇸', 'cat-political', ['content_type' => 'news', 'palestine' => 1]],
+        [9001, 'عربي ودولي',   'arab-intl',      '🌍', 'cat-political', ['content_type' => 'news', 'not_palestine' => 1]],
+        [9002, 'تقارير',       'ct-reports',     '📑', 'cat-reports',   ['content_type' => 'report']],
+        [9003, 'مقالات رأي',   'ct-articles',    '✍️', 'cat-arts',      ['content_type' => 'article']],
+        [9004, 'منوعات',       'agg-variety',    '🎯', 'cat-arts',      ['category_slugs' => ['sports', 'arts', 'tech', 'media']]],
+        [9005, 'صحة',          'cat-health',     '🏥', 'cat-political', ['category' => 'health']],
     ];
+    $buckets = [];
     foreach ($virtual as $v) {
         [$vid, $vname, $vslug, $vicon, $vcss, $vfilter] = $v;
         try {
