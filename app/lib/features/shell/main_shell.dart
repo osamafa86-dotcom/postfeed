@@ -70,15 +70,26 @@ class _MainShellState extends ConsumerState<MainShell> {
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      // IndexedStack is ALWAYS in the tree (wrapped in Offstage when an
-      // inner page is showing) so each tab's scroll position, providers,
-      // and AnimatedSwitcher state survive deep navigation. The inner
-      // page renders on top — same persistent bottom nav underneath, so
-      // a single tap on any tab takes the user home from any depth.
+      // IndexedStack is ALWAYS in the tree (made invisible via Visibility
+      // when an inner page is showing) so each tab's scroll position,
+      // providers, and AnimatedSwitcher state survive deep navigation.
+      // The inner page renders on top — same persistent bottom nav
+      // underneath, so a single tap on any tab takes the user home from
+      // any depth.
+      //
+      // ⚠️ Why Visibility with maintainSize: true (not Offstage):
+      // Offstage(offstage: true) collapses its child to 0x0. If that's
+      // the only non-positioned child in a Stack, the Stack itself
+      // collapses to 0x0, and Positioned.fill(widget.child) then
+      // renders into nothing — every inner route (article, category,
+      // search …) came back as a blank white screen.
       body: Stack(
         children: [
-          Offstage(
-            offstage: !isTab,
+          Visibility(
+            visible: isTab,
+            maintainState: true,
+            maintainAnimation: true,
+            maintainSize: true,
             child: TickerMode(
               enabled: isTab,
               child: IndexedStack(index: index, children: _pages),
