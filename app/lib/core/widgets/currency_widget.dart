@@ -12,6 +12,12 @@ class _CurrencyRate {
   final double rate;
 }
 
+/// Currencies surfaced in the home rail. Trimmed from the original
+/// nine to the three the user actually checks each morning — Shekel,
+/// Jordanian Dinar, Euro. The API still returns the others; we just
+/// filter the visible set here.
+const _visibleCurrencies = ['ILS', 'JOD', 'EUR'];
+
 final _currencyProvider = FutureProvider<List<_CurrencyRate>>((ref) async {
   final api = ref.watch(apiClientProvider);
   final res = await api.raw.get('https://feedsnews.net/api/currency.php');
@@ -22,21 +28,17 @@ final _currencyProvider = FutureProvider<List<_CurrencyRate>>((ref) async {
     'ILS': ('شيكل', '🇮🇱'),
     'JOD': ('دينار أردني', '🇯🇴'),
     'EUR': ('يورو', '🇪🇺'),
-    'GBP': ('جنيه إسترليني', '🇬🇧'),
-    'SAR': ('ريال سعودي', '🇸🇦'),
-    'EGP': ('جنيه مصري', '🇪🇬'),
-    'TRY': ('ليرة تركية', '🇹🇷'),
-    'AED': ('درهم إماراتي', '🇦🇪'),
-    'KWD': ('دينار كويتي', '🇰🇼'),
   };
 
-  return rates.entries
-      .where((e) => meta.containsKey(e.key))
-      .map((e) {
-        final m = meta[e.key]!;
-        return _CurrencyRate(e.key, m.$1, m.$2, (e.value as num).toDouble());
-      })
-      .toList();
+  // Build in the explicit order from _visibleCurrencies so the rail
+  // always reads ILS → JOD → EUR regardless of which order the API
+  // happened to serialize the map.
+  return [
+    for (final code in _visibleCurrencies)
+      if (rates.containsKey(code) && meta.containsKey(code))
+        _CurrencyRate(code, meta[code]!.$1, meta[code]!.$2,
+          (rates[code] as num).toDouble()),
+  ];
 });
 
 class CurrencyWidget extends ConsumerWidget {

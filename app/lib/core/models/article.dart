@@ -21,6 +21,8 @@ class Article {
     this.comments = 0,
     this.publishedAt,
     this.createdAt,
+    this.clusterKey,
+    this.clusterCount = 1,
   });
 
   final int id;
@@ -41,6 +43,13 @@ class Article {
   final int comments;
   final DateTime? publishedAt;
   final DateTime? createdAt;
+  /// SHA-1 hex key that groups articles about the same story across
+  /// sources. Null when the cluster pipeline didn't tag this row.
+  final String? clusterKey;
+  /// How many published articles share this clusterKey. 1 means only
+  /// this one; ≥2 means the story has multi-source coverage and the
+  /// UI should show a "📰 N مصادر" badge linking to /cluster/<key>.
+  final int clusterCount;
 
   factory Article.fromJson(Map<String, dynamic> j) => Article(
         id: j['id'] as int,
@@ -67,6 +76,9 @@ class Article {
         comments: (j['comments'] as num?)?.toInt() ?? 0,
         publishedAt: _parseDt(j['published_at']),
         createdAt: _parseDt(j['created_at']),
+        clusterKey: (j['cluster_key'] as String?)?.trim().isEmpty == true
+            ? null : j['cluster_key'] as String?,
+        clusterCount: (j['cluster_count'] as num?)?.toInt() ?? 1,
       );
 
   static DateTime? _parseDt(dynamic v) {

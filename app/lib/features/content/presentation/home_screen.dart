@@ -177,15 +177,18 @@ class _HomeBodyState extends ConsumerState<_HomeBody> {
             ).toList(),
           )),
 
-        // ── 6. For You — personalized feed ──
-        if (isAuthed)
-          SliverToBoxAdapter(child: _ForYouSection()),
+        // ── 6. Platforms Box — Telegram / X / YouTube. Moved up so it
+        //    sits directly under categories; the user wanted these two
+        //    "content source switchers" adjacent to each other instead
+        //    of split by For You / Evolving Stories. ──
+        SliverToBoxAdapter(child: _PlatformsBox()),
 
         // ── 7. Evolving Stories — horizontal carousel ──
         SliverToBoxAdapter(child: _EvolvingStoriesSection()),
 
-        // ── 8. Platforms Box — Telegram / X / YouTube ──
-        SliverToBoxAdapter(child: _PlatformsBox()),
+        // ── 8. For You — personalized feed (relabeled "خاص لك") ──
+        if (isAuthed)
+          SliverToBoxAdapter(child: _ForYouSection()),
 
         // ── 9. Latest News + load-more pagination ──
         SliverToBoxAdapter(
@@ -317,7 +320,12 @@ class _LoadMoreCell extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// HERO CARD — full-bleed with triple gradient
+// HERO CARD — modern, editorial feel: large image with a tinted
+// gradient that's strong enough to keep the white text legible without
+// flattening the photo, a vivid "حصري" / category chip floating on
+// the image, and a title block that breathes (extra leading, bigger
+// type) so the hero feels like a magazine cover instead of just
+// another news card.
 // ═══════════════════════════════════════════════════════════════
 
 class _HeroCard extends StatelessWidget {
@@ -326,94 +334,223 @@ class _HeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Compact hero: image takes the top half, title + meta sit on a
-    // white card underneath so the headline is always legible — no
-    // dark-gradient-over-photo fight. Total height ~200-220 px = roughly
-    // a third of an iPhone home screen instead of half.
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = AppColors.categoryColors[article.category?.color] ?? AppColors.primary;
     return GestureDetector(
       onTap: () => context.push('/article/${article.id}'),
       child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: isDark ? AppColors.neoDarkSurface : Colors.white,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(24),
           boxShadow: [
+            // Sharp ground shadow + a softer wider glow = depth without
+            // looking like the rest of the cards on the page.
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.4 : 0.08),
-              blurRadius: 14,
-              offset: const Offset(0, 4),
+              color: Colors.black.withOpacity(isDark ? 0.5 : 0.12),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
+            ),
+            BoxShadow(
+              color: accent.withOpacity(isDark ? 0.25 : 0.15),
+              blurRadius: 36,
+              offset: const Offset(0, 18),
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // ── Image (clipped to top corners only) ──
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: Stack(fit: StackFit.expand, children: [
-                if (article.imageUrl != null)
-                  CachedNetworkImage(imageUrl: article.imageUrl!, fit: BoxFit.cover)
-                else
-                  Container(color: AppColors.primary.withOpacity(0.2)),
-                // Small category chip floating on the image's top-right
+        child: AspectRatio(
+          // 4:3 instead of 16:9 — taller hero has more presence on a
+          // phone without dominating the fold.
+          aspectRatio: 4 / 3,
+          child: Stack(fit: StackFit.expand, children: [
+            // ── Image background ──
+            if (article.imageUrl != null)
+              CachedNetworkImage(imageUrl: article.imageUrl!, fit: BoxFit.cover)
+            else
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [accent, accent.withOpacity(0.7)],
+                    begin: Alignment.topLeft, end: Alignment.bottomRight,
+                  ),
+                ),
+              ),
+            // ── Dark-to-clear gradient: keeps the bottom-text area
+            //    readable without painting over the photo. ──
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                  stops: [0.0, 0.45, 1.0],
+                  colors: [
+                    Color(0x33000000), // 20% black at top so chip stays legible
+                    Color(0x00000000), // transparent middle
+                    Color(0xE6000000), // 90% black at bottom for title text
+                  ],
+                ),
+              ),
+            ),
+            // ── Top row: "خبر مميز" pulse + category chip ──
+            Positioned(
+              top: 14, right: 14, left: 14,
+              child: Row(children: [
+                // Pulsing accent dot + "مميز" label
+                _PulseTag(color: accent, label: 'مميز'),
+                const Spacer(),
                 if (article.category != null)
-                  Positioned(
-                    top: 10, right: 10,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: AppColors.breaking,
-                        borderRadius: BorderRadius.circular(6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.18),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white.withOpacity(0.35), width: 0.6),
+                    ),
+                    child: Text(
+                      '${article.category!.icon ?? ''} ${article.category!.name}'.trim(),
+                      style: const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11,
+                        letterSpacing: 0.2,
                       ),
-                      child: Text('${article.category!.icon ?? ''} ${article.category!.name}'.trim(),
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11)),
                     ),
                   ),
               ]),
             ),
-            // ── Title + meta on white background ──
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            // ── Bottom block: title + meta + CTA ──
+            Positioned(
+              left: 18, right: 18, bottom: 18,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(article.title,
-                    style: TextStyle(
-                      color: isDark ? Colors.white : AppColors.textLight,
-                      fontSize: 16, fontWeight: FontWeight.w800, height: 1.5,
+                  Text(
+                    article.title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 22, fontWeight: FontWeight.w900,
+                      height: 1.4, letterSpacing: -0.2,
+                      shadows: [Shadow(color: Color(0x99000000), blurRadius: 12, offset: Offset(0, 2))],
                     ),
-                    maxLines: 2, overflow: TextOverflow.ellipsis),
-                  if (article.source != null) ...[
-                    const SizedBox(height: 8),
-                    Row(children: [
-                      Container(width: 20, height: 20,
+                    maxLines: 3, overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(children: [
+                    if (article.source != null) ...[
+                      Container(
+                        width: 26, height: 26,
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(6)),
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withOpacity(0.2),
+                              blurRadius: 6, offset: const Offset(0, 2)),
+                          ],
+                        ),
                         alignment: Alignment.center,
-                        child: Text(article.source!.logoLetter ?? '',
-                          style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800, fontSize: 10)),
+                        child: Text(
+                          article.source!.logoLetter ?? '',
+                          style: TextStyle(
+                            color: accent, fontWeight: FontWeight.w900, fontSize: 12,
+                          ),
+                        ),
                       ),
-                      const SizedBox(width: 6),
-                      Text(article.source!.name,
-                        style: TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w600)),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          article.source!.name,
+                          style: const TextStyle(
+                            color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                       if (article.publishedAt != null) ...[
-                        Container(margin: const EdgeInsets.symmetric(horizontal: 6), width: 3, height: 3,
-                          decoration: BoxDecoration(color: AppColors.textMutedLight, shape: BoxShape.circle)),
-                        Text(timeago.format(article.publishedAt!, locale: 'ar'),
-                          style: TextStyle(color: AppColors.textMutedLight, fontSize: 11)),
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 8),
+                          width: 3, height: 3,
+                          decoration: const BoxDecoration(
+                            color: Colors.white54, shape: BoxShape.circle),
+                        ),
+                        Text(
+                          timeago.format(article.publishedAt!, locale: 'ar'),
+                          style: const TextStyle(
+                            color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w500),
+                        ),
                       ],
-                    ]),
-                  ],
+                    ],
+                    const Spacer(),
+                    // CTA pill — "اقرأ المزيد"
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Text('اقرأ',
+                          style: TextStyle(
+                            color: accent, fontSize: 11, fontWeight: FontWeight.w900)),
+                        const SizedBox(width: 4),
+                        Icon(Icons.arrow_back_rounded, color: accent, size: 13),
+                      ]),
+                    ),
+                  ]),
                 ],
               ),
             ),
-          ],
+          ]),
         ),
       ),
+    );
+  }
+}
+
+/// Pulsing accent dot + label — gives the hero a "live" feel without
+/// adding clutter. Only used inside the hero card.
+class _PulseTag extends StatefulWidget {
+  const _PulseTag({required this.color, required this.label});
+  final Color color;
+  final String label;
+
+  @override
+  State<_PulseTag> createState() => _PulseTagState();
+}
+
+class _PulseTagState extends State<_PulseTag> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this, duration: const Duration(milliseconds: 1400))..repeat(reverse: true);
+
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: widget.color,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: widget.color.withOpacity(0.5), blurRadius: 12, offset: const Offset(0, 2)),
+        ],
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        AnimatedBuilder(
+          animation: _ctrl,
+          builder: (_, __) => Container(
+            width: 7, height: 7,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.4 + 0.6 * _ctrl.value),
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(widget.label,
+          style: const TextStyle(
+            color: Colors.white, fontWeight: FontWeight.w900, fontSize: 10,
+            letterSpacing: 0.5,
+          ),
+        ),
+      ]),
     );
   }
 }
@@ -1573,7 +1710,7 @@ class _ForYouSection extends ConsumerWidget {
                   child: const Icon(Icons.person, color: Colors.white, size: 16),
                 ),
                 const SizedBox(width: 8),
-                Text('خاص بك',
+                Text('خاص لك',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900,
                     color: isDark ? Colors.white : AppColors.textLight)),
                 const Spacer(),

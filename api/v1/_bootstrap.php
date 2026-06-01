@@ -256,6 +256,15 @@ function api_format_article(array $a): array {
             $keyPoints = array_values(array_filter(array_map('strval', $decoded), 'strlen'));
         }
     }
+    // Surface the cluster key when it looks like the canonical 40-char
+    // sha1 the rest of the pipeline stamps. The Flutter client renders
+    // a "📰 N مصادر" badge when this is set and uses it to navigate to
+    // /cluster/<key> — the same coverage-comparison view the website
+    // shows. A blank or "-" stays null so the client doesn't draw an
+    // empty badge.
+    $rawClusterKey = (string)($a['cluster_key'] ?? '');
+    $clusterKey = preg_match('/^[a-f0-9]{40}$/', $rawClusterKey) ? $rawClusterKey : null;
+
     return [
         'id'            => (int)$a['id'],
         'title'         => (string)$a['title'],
@@ -264,6 +273,7 @@ function api_format_article(array $a): array {
         'content'       => $a['content'] ?? null,
         'image_url'     => api_image_url($a['image_url'] ?? null),
         'source_url'    => $a['source_url'] ?? null,
+        'cluster_key'   => $clusterKey,
         'ai_summary'    => $a['ai_summary'] ?? null,
         'ai_key_points' => $keyPoints,
         'category' => isset($a['category_slug']) ? [

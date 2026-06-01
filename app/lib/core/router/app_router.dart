@@ -7,6 +7,7 @@ import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 import '../../features/content/presentation/article_screen.dart';
 import '../../features/content/presentation/category_screen.dart';
+import '../../features/content/presentation/cluster_screen.dart';
 import '../../features/content/presentation/clusters_screen.dart';
 import '../../features/content/presentation/summaries_screen.dart';
 import '../../features/content/presentation/quotes_wall_screen.dart';
@@ -116,6 +117,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(path: '/trending', builder: (_, __) => const TrendingScreen()),
           GoRoute(path: '/clusters', builder: (_, __) => const ClustersScreen()),
+          GoRoute(
+            path: '/cluster/:key',
+            builder: (_, s) => ClusterScreen(clusterKey: s.pathParameters['key']!),
+          ),
           GoRoute(path: '/search', builder: (_, state) {
             final q = state.uri.queryParameters['q'] ?? '';
             return SearchScreen(initialQuery: q);

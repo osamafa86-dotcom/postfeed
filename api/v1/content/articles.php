@@ -12,6 +12,7 @@ $filters = [
     'category_id'    => $_GET['category_id']    ?? null,
     'category_slugs' => $_GET['category_slugs'] ?? null,
     'content_type'   => $_GET['content_type']   ?? null,
+    'cluster_key'    => $_GET['cluster_key']    ?? null,
     'palestine'      => $_GET['palestine']      ?? null,
     'not_palestine'  => $_GET['not_palestine']  ?? null,
     'source'         => $_GET['source']         ?? null,

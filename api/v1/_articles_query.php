@@ -8,7 +8,7 @@ function articles_select_sql(): string {
         a.id, a.title, a.slug, a.excerpt, a.image_url, a.source_url,
         a.is_breaking, a.is_featured, a.is_hero,
         a.view_count, a.comments, a.published_at, a.created_at,
-        a.category_id, a.source_id,
+        a.category_id, a.source_id, a.cluster_key,
         a.ai_summary, a.ai_key_points,
         c.name AS category_name, c.slug AS category_slug, c.icon AS category_icon, c.css_class,
         s.name AS source_name, s.slug AS source_slug, s.logo_letter, s.logo_color, s.logo_bg, s.url AS source_site
@@ -112,6 +112,17 @@ function fetch_articles(array $filters = [], int $limit = 20, int $offset = 0): 
     if (!empty($filters['ids']) && is_array($filters['ids'])) {
         $in = implode(',', array_map('intval', $filters['ids']));
         if ($in !== '') $where[] = "a.id IN ($in)";
+    }
+    if (!empty($filters['cluster_key'])) {
+        // Coverage-comparison view: pull every article that shares a
+        // cluster_key. Only accept the canonical 40-char sha1 the
+        // pipeline stamps; anything else is silently ignored so we
+        // never bind garbage to the query.
+        $ck = (string)$filters['cluster_key'];
+        if (preg_match('/^[a-f0-9]{40}$/', $ck)) {
+            $where[] = 'a.cluster_key = ?';
+            $params[] = $ck;
+        }
     }
 
     $order = $filters['order'] ?? 'published_at DESC';

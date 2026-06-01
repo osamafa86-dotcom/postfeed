@@ -25,10 +25,10 @@ api_rate_limit('content:home', 240, 60);
 $noCache = !empty($_GET['nocache']);
 if ($noCache) {
     require_once __DIR__ . '/../../../includes/cache.php';
-    cache_forget('api:home:v3');
+    cache_forget('api:home:v4');
 }
 
-$payload = cache_remember('api:home:v3', 60, function () {
+$payload = cache_remember('api:home:v4', 60, function () {
     $db = getDB();
 
     // Hero (newest article flagged as hero, or fallback to newest featured).
@@ -43,20 +43,17 @@ $payload = cache_remember('api:home:v3', 60, function () {
         'since' => date('Y-m-d H:i:s', time() - 86400),
     ], 10, 0);
 
-    // Latest feed (excluding hero) — content_type='news' so the section
-    // matches what its header says. The reports/articles get their own
-    // virtual buckets in the buckets[] list below; mixing them here
-    // pulled feature pieces into the "latest news" rail. Fall back to
-    // unfiltered if the column doesn't exist yet (first deploy).
+    // Latest feed (deferred — we build it AFTER the section buckets so
+    // we can dedupe against everything those buckets already claimed.
+    // The over-sample (40) leaves room for that filtering.
     try {
-        $latest = fetch_articles(['content_type' => 'news'], 20, 0);
-        if (empty($latest)) $latest = fetch_articles([], 20, 0);
+        $latestRaw = fetch_articles(['content_type' => 'news'], 40, 0);
+        if (empty($latestRaw)) $latestRaw = fetch_articles([], 40, 0);
     } catch (Throwable $e) {
-        $latest = fetch_articles([], 20, 0);
+        $latestRaw = fetch_articles([], 40, 0);
     }
-    if ($hero) {
-        $latest = array_values(array_filter($latest, fn($a) => $a['id'] !== $hero['id']));
-    }
+    $latest = [];
+    $heroId = $hero ? (int)$hero['id'] : 0;
 
     // Homepage buckets — six virtual sections, no more raw topical
     // categories. Each is a single deliberate slice of the feed so the
@@ -80,16 +77,35 @@ $payload = cache_remember('api:home:v3', 60, function () {
         [9004, 'منوعات',       'agg-variety',    '🎯', 'cat-arts',      ['category_slugs' => ['sports', 'arts', 'tech', 'media']]],
         [9005, 'صحة',          'cat-health',     '🏥', 'cat-political', ['category' => 'health']],
     ];
-    $buckets = [];
+    // Buckets are rendered top-down on the home screen, so we pull an
+    // over-sample (12 instead of 6) for each one and then dedupe by
+    // article id across buckets in declaration order. The first bucket
+    // claims an article; later buckets skip it. Result: the same story
+    // never shows up in two tabs on the same screen, no matter how the
+    // filters overlap (a Palestinian sports news item won't appear in
+    // both أخبار فلسطين and منوعات).
+    $buckets   = [];
+    $usedIds   = [];
     foreach ($virtual as $v) {
         [$vid, $vname, $vslug, $vicon, $vcss, $vfilter] = $v;
         try {
-            $items = fetch_articles($vfilter, 6, 0);
+            $items = fetch_articles($vfilter, 12, 0);
         } catch (Throwable $e) {
             // content_type column missing — first deploy before classifier ran.
             $items = [];
         }
         if (!$items) continue;
+
+        $deduped = [];
+        foreach ($items as $a) {
+            $aid = (int)($a['id'] ?? 0);
+            if ($aid > 0 && isset($usedIds[$aid])) continue;
+            $usedIds[$aid] = true;
+            $deduped[] = $a;
+            if (count($deduped) >= 6) break;
+        }
+        if (!$deduped) continue;
+
         $buckets[] = [
             'category' => [
                 'id' => $vid,
@@ -98,9 +114,73 @@ $payload = cache_remember('api:home:v3', 60, function () {
                 'icon' => $vicon,
                 'color' => $vcss,
             ],
-            'articles' => $items,
+            'articles' => $deduped,
         ];
     }
+
+    // Build latest now, skipping the hero + every article already
+    // claimed by a bucket above. Falls back to the raw list if the
+    // dedupe stripped everything (unlikely but defensive).
+    foreach ($latestRaw as $a) {
+        $aid = (int)($a['id'] ?? 0);
+        if ($aid === $heroId) continue;
+        if ($aid > 0 && isset($usedIds[$aid])) continue;
+        $latest[] = $a;
+        if (count($latest) >= 20) break;
+    }
+    if (empty($latest)) $latest = $latestRaw; // emergency fallback
+
+    // ── Cluster-coverage counts (one query for the whole payload) ──
+    // Walk every article surfaced on this home payload, collect their
+    // cluster_keys, run a single GROUP BY to learn how many sources are
+    // covering each story, and inject the count back. The Flutter app
+    // shows a "📰 N مصادر" badge whenever cluster_count >= 2 and routes
+    // taps to /cluster/<key>.
+    $clusterKeys = [];
+    $collectKey = function ($a) use (&$clusterKeys) {
+        if (is_array($a) && !empty($a['cluster_key'])) {
+            $clusterKeys[(string)$a['cluster_key']] = true;
+        }
+    };
+    if ($hero) $collectKey($hero);
+    foreach ($breaking as $a) $collectKey($a);
+    foreach ($latest as $a) $collectKey($a);
+    foreach ($buckets as $bucket) {
+        foreach (($bucket['articles'] ?? []) as $a) $collectKey($a);
+    }
+    $clusterCounts = [];
+    if (!empty($clusterKeys)) {
+        try {
+            $keys = array_keys($clusterKeys);
+            $ph = implode(',', array_fill(0, count($keys), '?'));
+            $st = $db->prepare("SELECT cluster_key, COUNT(*) AS cnt
+                                  FROM articles
+                                 WHERE cluster_key IN ($ph)
+                                   AND status='published'
+                                 GROUP BY cluster_key");
+            $st->execute($keys);
+            foreach ($st->fetchAll() as $row) {
+                $clusterCounts[(string)$row['cluster_key']] = (int)$row['cnt'];
+            }
+        } catch (Throwable $e) {
+            error_log('home cluster counts: ' . $e->getMessage());
+        }
+    }
+    $attachCount = function (&$a) use ($clusterCounts) {
+        if (!is_array($a)) return;
+        $ck = $a['cluster_key'] ?? null;
+        $a['cluster_count'] = ($ck && isset($clusterCounts[$ck])) ? $clusterCounts[$ck] : 1;
+    };
+    if ($hero) $attachCount($hero);
+    foreach ($breaking as &$a) $attachCount($a); unset($a);
+    foreach ($latest   as &$a) $attachCount($a); unset($a);
+    foreach ($buckets  as &$bucket) {
+        if (!empty($bucket['articles'])) {
+            foreach ($bucket['articles'] as &$a) $attachCount($a);
+            unset($a);
+        }
+    }
+    unset($bucket);
 
     // Trending tags.
     $trends = [];

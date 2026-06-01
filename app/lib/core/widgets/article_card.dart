@@ -74,6 +74,16 @@ class ArticleCard extends StatelessWidget {
                     style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
               ),
             ],
+            // Coverage-comparison badge: surfaces when the same story is
+            // running on multiple sources. Tap → /cluster/<key> opens
+            // the cross-source comparison page.
+            if (article.clusterCount >= 2 && article.clusterKey != null) ...[
+              const SizedBox(width: 6),
+              _ClusterBadge(
+                count: article.clusterCount,
+                onTap: () => context.push('/cluster/${article.clusterKey}'),
+              ),
+            ],
           ],
         ),
         const SizedBox(height: 8),
@@ -231,6 +241,43 @@ class ArticleCard extends StatelessWidget {
       child: Text(
         letter,
         style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w700),
+      ),
+    );
+  }
+}
+
+/// Small "📰 N مصادر ›" chip rendered next to the category when an
+/// article belongs to a multi-source cluster. Tap = compare-coverage
+/// view at /cluster/<key>.
+class _ClusterBadge extends StatelessWidget {
+  const _ClusterBadge({required this.count, required this.onTap});
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 0.6),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.layers_rounded, size: 11, color: AppColors.primary),
+            const SizedBox(width: 4),
+            Text('$count مصادر',
+              style: TextStyle(
+                color: AppColors.primary, fontSize: 10.5, fontWeight: FontWeight.w800)),
+            const SizedBox(width: 2),
+            Icon(Icons.chevron_left_rounded, size: 12, color: AppColors.primary),
+          ]),
+        ),
       ),
     );
   }

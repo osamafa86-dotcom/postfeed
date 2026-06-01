@@ -33,6 +33,7 @@ class ContentRepository {
     String? q,
     String? contentType,           // news | report | article
     List<String>? categorySlugs,   // aggregate tabs (e.g. منوعات = sports+arts+tech+media)
+    String? clusterKey,            // coverage-comparison: same story across sources
     bool palestine = false,        // restrict to Palestine-keyword titles
     bool notPalestine = false,     // exclude Palestine-keyword titles
   }) async {
@@ -48,6 +49,7 @@ class ContentRepository {
         if (contentType != null) 'content_type': contentType,
         if (categorySlugs != null && categorySlugs.isNotEmpty)
           'category_slugs': categorySlugs.join(','),
+        if (clusterKey != null) 'cluster_key': clusterKey,
         if (palestine) 'palestine': 1,
         if (notPalestine) 'not_palestine': 1,
       },
