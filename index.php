@@ -43,7 +43,15 @@ $heroArticles = getHeroArticles();
 // Fetch generous pools so dedup (by id + fuzzy title) still leaves enough visible items.
 $palestineNews = getPalestineNews(20);
 $breakingNews = getBreakingNews(20);
-$latestArticles = getLatestArticles(40);
+// "آخر الأخبار" must only contain content_type='news' so the section
+// header matches what it shows — reports and opinion pieces have their
+// own dedicated sections below.
+$latestArticles = getArticlesByContentType('news', 40);
+if (empty($latestArticles)) {
+    // First deploy before backfill ran — fall back to mixed latest so
+    // the homepage still has a featured row.
+    $latestArticles = getLatestArticles(40);
+}
 $categories = getCategories();
 $notifications = getNotifications(6);
 $unreadCount = getUnreadNotifCount();

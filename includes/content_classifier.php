@@ -219,14 +219,27 @@ function classify_by_ai_batch(array $articles): array {
             $confidence = max(0.5, min(1.0, (float)($r['confidence'] ?? 0.75)));
             $reason     = 'ai: ' . mb_substr((string)($r['reason'] ?? ''), 0, 80);
 
-            // Sanity check: AI tends to over-call "article" on narrative-titled
-            // feature pieces ("من غزة إلى العالم..."). Require at least one
-            // hard opinion marker (URL path, byline, or first-person language)
-            // before we agree. Otherwise downgrade to "report".
+            // Sanity check 1: AI tends to over-call "article" on narrative-
+            // titled feature pieces ("من غزة إلى العالم..."). Require at
+            // least one hard opinion marker (URL path, byline, or first-
+            // person language) before we agree. Otherwise downgrade to "report".
             if ($type === 'article' && !classify_has_opinion_markers($a)) {
                 $type       = 'report';
                 $confidence = max(0.55, $confidence - 0.15);
                 $reason     = 'ai→report (no opinion markers): ' . $reason;
+            }
+
+            // Sanity check 2: a report is by definition long-form. Anything
+            // shorter than ~800 chars of body is a news item even if the
+            // AI was charmed by the title. (800 chars ≈ 130-150 Arabic
+            // words ≈ a wire-service headline + short lede, not a feature.)
+            if ($type === 'report') {
+                $bodyLen = mb_strlen(strip_tags((string)($a['content'] ?? $a['excerpt'] ?? '')));
+                if ($bodyLen > 0 && $bodyLen < 800) {
+                    $type       = 'news';
+                    $confidence = max(0.55, $confidence - 0.20);
+                    $reason     = "ai→news (body {$bodyLen}c too short for report): " . $reason;
+                }
             }
 
             $out[$i] = ['type' => $type, 'method' => 'ai', 'confidence' => $confidence, 'reason' => $reason];
