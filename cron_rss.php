@@ -9,6 +9,7 @@ require_once __DIR__ . '/includes/article_fetch.php';
 require_once __DIR__ . '/includes/article_cluster.php';
 require_once __DIR__ . '/includes/cache.php';
 require_once __DIR__ . '/includes/evolving_stories.php';
+require_once __DIR__ . '/includes/content_classifier.php';
 
 $db = getDB();
 $startTime = microtime(true);
@@ -233,6 +234,19 @@ foreach ($pendingInserts as $it) {
             $newId = (int)$db->lastInsertId();
             if ($newId > 0) {
                 evolving_story_match_article($newId, $it['title'], $it['excerpt']);
+                // Pattern-only classification for the fresh row — no AI
+                // call here so the cron stays fast. The nightly backfill
+                // picks up anything patterns couldn't decide.
+                try {
+                    classify_new_article($newId, [
+                        'title'      => $it['title'],
+                        'excerpt'    => $it['excerpt'],
+                        'content'    => $fullContent,
+                        'source_url' => $it['source_url'],
+                    ]);
+                } catch (Throwable $e) {
+                    error_log('[cron_rss] classify: ' . $e->getMessage());
+                }
                 // Collect for IndexNow submission after the whole
                 // ingest batch finishes. One batched POST is much
                 // cheaper than pinging per article.
