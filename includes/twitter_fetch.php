@@ -64,12 +64,15 @@ const TW_USER_AGENTS = [
  * Fetch the latest tweets for a single username.
  *
  * Transports in order (most reliable in 2026 first):
- *   0) Authenticated GraphQL (x.com/i/api) — the ONLY path that reliably
- *      works from a datacenter IP in 2026. Requires a logged-in session
- *      (auth_token + ct0 cookies pasted in the admin panel). Tried first
- *      whenever those credentials are configured.
+ *   A) TwitterAPI.io — paid third-party with residential proxies. Tried
+ *      first when an api key is configured: most reliable, zero
+ *      maintenance, no account-ban risk. ~$0.15 per 1000 tweets ($1
+ *      free credit on signup).
+ *   B) Authenticated GraphQL (x.com/i/api) — free but needs a logged-in
+ *      session (auth_token + ct0 cookies pasted in the admin panel).
+ *      Cookies expire every few weeks → manual rotation.
  *   1) NEXT_DATA (syndication.twitter.com) — blocked (403/429) for most
- *      datacenter IPs now; kept for hosts that still reach it.
+ *      datacenter IPs since Jan 2025. Kept for hosts that still reach it.
  *   2) Nitter — almost every public instance is dead or blocked.
  *   3) RSSHub — mostly broken for Twitter, kept for completeness.
  *   4) CDN JSON — dead; last resort.
@@ -80,7 +83,16 @@ function tw_fetch_user_tweets(string $username, int $limit = 20): array {
     $username = ltrim(trim($username), '@');
     if ($username === '') return [];
 
-    // Transport 0 (preferred when configured): authenticated GraphQL.
+    // Transport A (preferred when configured): paid TwitterAPI.io.
+    // Residential proxies on their side mean the IP block on our
+    // datacenter is irrelevant — and there's no account-ban risk
+    // because no personal credentials cross the wire.
+    if (tw_apiio_enabled()) {
+        $out = tw_fetch_via_twitterapi_io($username, $limit);
+        if (!empty($out)) return tw_finalize_tweets($out, $username, $limit);
+    }
+
+    // Transport B (free fallback when configured): authenticated GraphQL.
     // Twitter blocks the anonymous syndication/Nitter routes at the IP
     // level for datacenter hosts, so a real logged-in session is the
     // only reliable free path. Skipped automatically when no cookies
@@ -489,6 +501,177 @@ function tw_finalize_tweets(array $tweets, string $username, int $limit): array 
     }
     unset($t);
     return array_slice($tweets, 0, $limit);
+}
+
+// ════════════════════════════════════════════════════════════════
+// TwitterAPI.io TRANSPORT (paid, residential-proxy backed)
+// ════════════════════════════════════════════════════════════════
+// Third-party gateway that sits on residential proxies and exposes a
+// clean REST API. Two reasons it's our preferred path in 2026:
+//   • Twitter blocks every anonymous server-side method at the IP layer
+//     since Jan 2025 — only residential addresses get past that.
+//   • Zero credential leakage: no personal session crosses the wire,
+//     so an account ban can't take down the feed.
+//
+// Endpoint: GET https://api.twitterapi.io/twitter/user/last_tweets
+// Auth:     X-API-Key header
+// Params:   userName=<handle>   (NOT screen_name)
+// Cost:     ~$0.15 per 1,000 tweets returned ($1 starter credit on
+//           signup, no card required). With the per-source 75 s floor
+//           and 20 tweets per call, a 10-handle install runs around
+//           ~$1-3/month — the floor is the budget knob; raise
+//           settings.twitter_refetch_floor_secs to throttle further.
+
+function tw_apiio_credentials(): string {
+    return trim((string)getSetting('twitterapi_io_key', ''));
+}
+
+function tw_apiio_enabled(): bool {
+    return tw_apiio_credentials() !== '';
+}
+
+/**
+ * Low-level GET to the TwitterAPI.io user-timeline endpoint. Returns a
+ * uniform structured result so callers can surface the real cause
+ * (bad key, rate limit, unknown handle) in the admin diagnostic.
+ *   ['ok'=>bool, 'http'=>int, 'data'=>array|null, 'error'=>?string, 'body'=>string]
+ */
+function tw_apiio_request(string $username): array {
+    $key = tw_apiio_credentials();
+    if ($key === '') {
+        return ['ok'=>false,'http'=>0,'data'=>null,'error'=>'no_key','body'=>''];
+    }
+    $url = 'https://api.twitterapi.io/twitter/user/last_tweets?userName=' . rawurlencode($username);
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT        => 15,
+        CURLOPT_CONNECTTIMEOUT => 8,
+        CURLOPT_USERAGENT      => 'feedsnews/1.0 (+https://feedsnews.net)',
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_HTTPHEADER     => [
+            'X-API-Key: ' . $key,
+            'Accept: application/json',
+        ],
+    ]);
+    $body = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    $cErr = curl_error($ch);
+    curl_close($ch);
+
+    if (!is_string($body) || $body === '') {
+        return ['ok'=>false,'http'=>$code,'data'=>null,
+                'error'=>'curl: ' . ($cErr ?: 'empty body'), 'body'=>''];
+    }
+    $data = json_decode($body, true);
+    if (!is_array($data)) {
+        return ['ok'=>false,'http'=>$code,'data'=>null,
+                'error'=>'json_decode_failed','body'=>$body];
+    }
+    // 4xx surfaces the gateway's error message in a "message" or "error"
+    // field — propagate verbatim so an expired key reads "Invalid API
+    // key" in the panel, not just "HTTP 401".
+    if ($code >= 400) {
+        $msg = $data['message'] ?? $data['error'] ?? $data['msg'] ?? ('HTTP ' . $code);
+        return ['ok'=>false,'http'=>$code,'data'=>$data,
+                'error'=>'gateway: ' . $msg,'body'=>$body];
+    }
+    return ['ok'=>true,'http'=>$code,'data'=>$data,'error'=>null,'body'=>$body];
+}
+
+/**
+ * Transport A: TwitterAPI.io user/last_tweets. Returns rows in our
+ * internal shape — logs and returns [] on any failure (caller falls
+ * through to the next transport).
+ */
+function tw_fetch_via_twitterapi_io(string $username, int $limit): array {
+    if (!tw_apiio_enabled()) return [];
+    $res = tw_apiio_request($username);
+    if (!$res['ok']) {
+        error_log('tw_apiio: failed for ' . $username . ' — ' . $res['error']);
+        return [];
+    }
+    // Tweets live under data.tweets in the documented shape. A few
+    // older responses ship them at the top level — handle both.
+    $tweets = $res['data']['data']['tweets']
+           ?? $res['data']['tweets']
+           ?? $res['data']['data']
+           ?? [];
+    if (!is_array($tweets)) {
+        error_log('tw_apiio: tweets field not array for ' . $username);
+        return [];
+    }
+    $rows = [];
+    foreach ($tweets as $t) {
+        $row = tw_apiio_normalize($t);
+        if ($row) $rows[] = $row;
+    }
+    error_log('tw_apiio: parsed ' . count($rows) . ' tweets for ' . $username);
+    return $rows;
+}
+
+/**
+ * Map one TwitterAPI.io tweet dict to our internal row shape.
+ *
+ * The gateway returns fields like { id, url, text, createdAt,
+ * isReply, retweetCount, extendedEntities|entities.media, ... }.
+ * We mirror tw_normalize_tweet's contract: skip retweets and empty
+ * tweets, strip the trailing t.co link, surface the first image.
+ */
+function tw_apiio_normalize($t): ?array {
+    if (!is_array($t)) return null;
+    $id = (string)($t['id'] ?? $t['id_str'] ?? '');
+    if ($id === '') return null;
+
+    // Retweets — gateway exposes them as either a flag or a nested
+    // "retweeted_tweet" / "retweeted_status" object. Skip all of them.
+    if (!empty($t['isRetweet']) || !empty($t['retweeted_status'])
+        || !empty($t['retweeted_tweet']) || !empty($t['retweetedStatusId'])) {
+        return null;
+    }
+
+    $text = (string)($t['fullText'] ?? $t['full_text'] ?? $t['text'] ?? '');
+    $text = trim((string)preg_replace('#https?://t\.co/\S+\s*$#', '', $text));
+
+    // Image: walk the media arrays in priority order. Some payloads put
+    // photos under extendedEntities.media, others under entities.media,
+    // others ship a flat "media" array. Take the first photo URL we find.
+    $image = '';
+    $candidates = [
+        $t['extendedEntities']['media'] ?? null,
+        $t['extended_entities']['media'] ?? null,
+        $t['entities']['media'] ?? null,
+        $t['media'] ?? null,
+    ];
+    foreach ($candidates as $mediaList) {
+        if (!is_array($mediaList)) continue;
+        foreach ($mediaList as $m) {
+            $u = $m['media_url_https'] ?? $m['mediaUrlHttps']
+              ?? $m['media_url'] ?? $m['url'] ?? '';
+            // Drop video poster frames? No — they look fine as thumbnails.
+            if ($u) { $image = $u; break 2; }
+        }
+    }
+
+    // createdAt is ISO or Twitter's legacy "Wed Oct 10 20:19:24 +0000 2018".
+    // strtotime handles both. Fall back to "now" only if we can't parse.
+    $ts = 0;
+    $when = (string)($t['createdAt'] ?? $t['created_at'] ?? '');
+    if ($when !== '') $ts = strtotime($when);
+    $postedAt = $ts ? date('Y-m-d H:i:s', $ts) : date('Y-m-d H:i:s');
+
+    if ($text === '' && $image === '') return null;
+
+    return [
+        'tweet_id'  => $id,
+        'text'      => $text,
+        'image_url' => $image,
+        'posted_at' => $postedAt,
+        // url filled by tw_finalize_tweets if empty.
+        'url'       => (string)($t['url'] ?? $t['tweetUrl'] ?? ''),
+    ];
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -1074,8 +1257,57 @@ function tw_debug_fetch_source(string $username): array {
         return $report;
     }
 
-    // Transport 0 (preferred): authenticated GraphQL. Shown first since
-    // it's the only reliable path in 2026. Reports whether credentials
+    // Transport A (preferred): TwitterAPI.io. Probed first since it's
+    // the most reliable path in 2026 — residential proxies sidestep the
+    // datacenter IP block. Surfaces the gateway's error verbatim ("Invalid
+    // API key", "Rate limit exceeded", "User not found") so an operator
+    // knows which way to fix it.
+    if (tw_apiio_enabled()) {
+        $t0 = microtime(true);
+        $res = tw_apiio_request($username);
+        $a = [
+            'label' => 'TwitterAPI.io',
+            'url'   => 'api.twitterapi.io/twitter/user/last_tweets?userName=' . rawurlencode($username),
+            'http_code'  => $res['http'],
+            'total_time' => round(microtime(true) - $t0, 2),
+            'size'       => strlen($res['body'] ?? ''),
+            'parsed_count' => 0,
+            'body_snippet' => mb_substr((string)($res['body'] ?? ''), 0, 500),
+            'curl_error' => null,
+        ];
+        if ($res['ok']) {
+            $tweets = $res['data']['data']['tweets']
+                   ?? $res['data']['tweets']
+                   ?? $res['data']['data']
+                   ?? [];
+            $parsed = [];
+            if (is_array($tweets)) {
+                foreach ($tweets as $t) {
+                    $row = tw_apiio_normalize($t);
+                    if ($row) $parsed[] = $row;
+                }
+            }
+            $a['parsed_count'] = count($parsed);
+            $a['newest_posted_at'] = $parsed[0]['posted_at'] ?? null;
+        } else {
+            $a['parse_error'] = $res['error'];
+        }
+        $report['transports'][] = $a;
+        // Success on the paid gateway → don't burn diagnostic time on
+        // the doomed anonymous transports.
+        if ($a['parsed_count'] > 0) return $report;
+    } else {
+        $report['transports'][] = [
+            'label' => 'TwitterAPI.io',
+            'url'   => '—',
+            'http_code' => 0, 'total_time' => 0, 'size' => 0,
+            'parsed_count' => 0,
+            'parse_error' => 'لا يوجد مفتاح API — أضفه بالأسفل',
+            'body_snippet' => null,
+        ];
+    }
+
+    // Transport B: authenticated GraphQL. Reports whether credentials
     // are set, the HTTP code, any GraphQL error message, and how many
     // tweets parsed — so an operator can tell at a glance whether the
     // session cookies are valid / expired / missing a feature flag.
