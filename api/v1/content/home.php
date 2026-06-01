@@ -18,7 +18,17 @@ require_once __DIR__ . '/../../../includes/cache.php';
 api_method('GET');
 api_rate_limit('content:home', 240, 60);
 
-$payload = cache_remember('api:home:v1', 60, function () {
+// Cache-busting hook: ?nocache=1 forces a fresh build and updates the
+// stored value. Useful when a recent code change altered the payload
+// shape (new buckets, removed legacy categories, etc.) and the 60-second
+// TTL hasn't expired yet.
+$noCache = !empty($_GET['nocache']);
+if ($noCache) {
+    require_once __DIR__ . '/../../../includes/cache.php';
+    cache_forget('api:home:v2');
+}
+
+$payload = cache_remember('api:home:v2', 60, function () {
     $db = getDB();
 
     // Hero (newest article flagged as hero, or fallback to newest featured).
