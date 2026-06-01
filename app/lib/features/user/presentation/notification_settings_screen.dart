@@ -71,6 +71,7 @@ class NotificationSettingsScreen extends ConsumerWidget {
           // ── Essential Section ──
           _SectionHeader(title: 'أساسية', icon: '⚡'),
           _NotifToggle(channel: NotifChannel.breaking, prefs: prefs),
+          _NotifToggle(channel: NotifChannel.palestine, prefs: prefs),
           _NotifToggle(channel: NotifChannel.daily, prefs: prefs),
           const Divider(height: 24),
 

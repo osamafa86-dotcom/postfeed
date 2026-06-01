@@ -27,7 +27,7 @@ try {
     error_log('notif-prefs ensure_table: ' . $e->getMessage());
 }
 
-$validChannels = ['breaking','daily','categories','sources','stories','trending','weekly','comments'];
+$validChannels = ['breaking','palestine','daily','categories','sources','stories','trending','weekly','comments'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $st = $db->prepare("SELECT prefs FROM user_notification_prefs WHERE user_id=?");

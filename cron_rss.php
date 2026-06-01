@@ -8,6 +8,7 @@ require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/article_fetch.php';
 require_once __DIR__ . '/includes/article_cluster.php';
 require_once __DIR__ . '/includes/cache.php';
+require_once __DIR__ . '/includes/push.php';
 require_once __DIR__ . '/includes/evolving_stories.php';
 require_once __DIR__ . '/includes/content_classifier.php';
 
@@ -251,6 +252,47 @@ foreach ($pendingInserts as $it) {
                 // ingest batch finishes. One batched POST is much
                 // cheaper than pinging per article.
                 $freshArticleIds[] = $newId;
+
+                // Real-time push fan-out. Three tiers, in priority order:
+                //   1) is_breaking=1  → notify_breaking (bypasses quiet hours)
+                //   2) Palestine kw   → notify_palestine
+                // Both share an article_id payload so the client deep-
+                // links to /article/<id>. Wrapped in try/catch because
+                // a misconfigured FCM project shouldn't break the cron.
+                try {
+                    $isBreaking = !empty($it['is_breaking'])
+                                  || stripos((string)$it['title'], 'عاجل') === 0;
+                    $palKeywords = ['فلسطين','غزة','الضفة','القدس','الاحتلال','حماس',
+                                    'الأقصى','رفح','خان يونس','جنين','نابلس','الشهداء',
+                                    'إسرائيل','الإسرائيلي','بيت لحم'];
+                    $isPalestine = false;
+                    foreach ($palKeywords as $kw) {
+                        if (mb_stripos($it['title'], $kw) !== false) { $isPalestine = true; break; }
+                    }
+                    $pushPayload = [
+                        'channel'    => $isBreaking ? 'breaking' : ($isPalestine ? 'palestine' : 'news'),
+                        'article_id' => (string)$newId,
+                        'link'       => '/article/' . $newId,
+                    ];
+                    if ($isBreaking) {
+                        push_broadcast(
+                            '🔴 عاجل',
+                            mb_substr((string)$it['title'], 0, 140),
+                            $pushPayload,
+                            'notify_breaking',
+                            true /* bypass quiet hours */
+                        );
+                    } elseif ($isPalestine) {
+                        push_broadcast(
+                            '🇵🇸 فلسطين',
+                            mb_substr((string)$it['title'], 0, 140),
+                            $pushPayload,
+                            'notify_palestine'
+                        );
+                    }
+                } catch (Throwable $e) {
+                    error_log('[cron_rss] push fan-out: ' . $e->getMessage());
+                }
             }
         } catch (Throwable $e) {
             error_log('[cron_rss] evolving match: ' . $e->getMessage());
