@@ -70,34 +70,21 @@ class _MainShellState extends ConsumerState<MainShell> {
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      // IndexedStack is ALWAYS in the tree (made invisible via Visibility
-      // when an inner page is showing) so each tab's scroll position,
-      // providers, and AnimatedSwitcher state survive deep navigation.
-      // The inner page renders on top — same persistent bottom nav
-      // underneath, so a single tap on any tab takes the user home from
-      // any depth.
+      // Plain conditional render instead of a Stack + Visibility layered
+      // setup. The Stack pattern caused intermittent blank screens after
+      // returning from an inner Scaffold (Ask/Sabah/Weekly) and pushing
+      // another inner route — the Visibility(maintainSize) child seemed
+      // to lose its layout slot in that exact sequence, collapsing the
+      // body to 0×0 just as widget.child rendered into it.
       //
-      // ⚠️ Why Visibility with maintainSize: true (not Offstage):
-      // Offstage(offstage: true) collapses its child to 0x0. If that's
-      // the only non-positioned child in a Stack, the Stack itself
-      // collapses to 0x0, and Positioned.fill(widget.child) then
-      // renders into nothing — every inner route (article, category,
-      // search …) came back as a blank white screen.
-      body: Stack(
-        children: [
-          Visibility(
-            visible: isTab,
-            maintainState: true,
-            maintainAnimation: true,
-            maintainSize: true,
-            child: TickerMode(
-              enabled: isTab,
-              child: IndexedStack(index: index, children: _pages),
-            ),
-          ),
-          if (!isTab) Positioned.fill(child: widget.child),
-        ],
-      ),
+      // Trade-off: the IndexedStack is unmounted on sub-routes and rebuilt
+      // when the user returns to a tab. Scroll position resets, but the
+      // per-tab providers (homeProvider, etc.) cache their data via
+      // Riverpod so re-rendering is instant — no extra network round-trips,
+      // no spinner.
+      body: isTab
+          ? IndexedStack(index: index, children: _pages)
+          : widget.child,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: isDark ? AppColors.neoDarkSurface : AppColors.neoSurface,
