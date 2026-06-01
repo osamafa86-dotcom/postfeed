@@ -128,13 +128,15 @@ class _HomeBody extends ConsumerWidget {
         // ── 2. Personal Greeting ──
         SliverToBoxAdapter(child: _GreetingStrip()),
 
-        // ── 3. Ticker only — the BreakingStrip below the greeting was
-        //    hidden on purpose to declutter the top of the home screen.
-        //    Re-enable by un-commenting the BreakingStrip line.
+        // ── 3. (Both the BreakingStrip and the TickerBar that used to
+        //    sit below the greeting were hidden on purpose to declutter
+        //    the top of the home screen. payload.breaking and
+        //    payload.ticker are still fetched so we can re-enable either
+        //    by uncommenting the line below.) ──
         // if (payload.breaking.isNotEmpty)
         //   SliverToBoxAdapter(child: BreakingStrip(items: payload.breaking)),
-        if (payload.ticker.isNotEmpty)
-          SliverToBoxAdapter(child: TickerBar(items: payload.ticker)),
+        // if (payload.ticker.isNotEmpty)
+        //   SliverToBoxAdapter(child: TickerBar(items: payload.ticker)),
 
         // ── 4. Quick Access — AI + Morning Briefing + Weekly Review ──
         SliverToBoxAdapter(child: _QuickAccessRow()),
@@ -163,7 +165,8 @@ class _HomeBody extends ConsumerWidget {
         ),
         _LatestArticlesSlivers(initial: payload.latest),
 
-        // ── 10. Currency Rates ──
+        // ── 10. Currency Rates (Trending moved further down — after
+        //    Sources — so the home leads with content, not hashtags) ──
         const SliverToBoxAdapter(child: CurrencyWidget()),
 
         // ── 11. Sources ──

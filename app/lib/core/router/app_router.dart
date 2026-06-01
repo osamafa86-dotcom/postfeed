@@ -85,7 +85,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ShellRoute(
         builder: (ctx, state, child) => MainShell(state: state, child: child),
         routes: [
-          // ── Primary tabs ──
+          // ── Primary tabs (rendered via IndexedStack in MainShell) ──
           GoRoute(path: '/', builder: (_, __) => const _HomeRoot()),
           GoRoute(path: '/discover', builder: (_, __) => const _DiscoverRoot()),
           GoRoute(path: '/summaries', builder: (_, __) => const _SummariesRoot()),
@@ -93,10 +93,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
 
           // ── Inner pages — render below the persistent bottom nav ──
-          GoRoute(
-            path: '/platforms',
-            builder: (_, __) => const PlatformsScreen(),
-          ),
+          GoRoute(path: '/platforms', builder: (_, __) => const PlatformsScreen()),
           GoRoute(
             path: '/article/:id',
             builder: (_, s) {
