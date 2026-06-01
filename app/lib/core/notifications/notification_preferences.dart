@@ -12,7 +12,8 @@ import '../../features/auth/data/auth_storage.dart';
 
 /// All notification channels the user can toggle.
 enum NotifChannel {
-  breaking   ('breaking',    '🔴 أخبار عاجلة',           'إشعار فوري عند ورود خبر عاجل'),
+  breaking   ('breaking',    '🔴 أخبار عاجلة',           'إشعار فوري عند ورود خبر عاجل (يتجاوز ساعات الهدوء)'),
+  palestine  ('palestine',   '🇵🇸 أخبار فلسطين',          'كل خبر جديد يخص فلسطين والمنطقة'),
   daily      ('daily',       '☀️ ملخص الصباح',           'ملخص يومي بأهم الأخبار صباحاً'),
   categories ('categories',  '📂 أقسامك المفضلة',        'أخبار جديدة في الأقسام التي تتابعها'),
   sources    ('sources',     '📰 مصادرك المفضلة',        'تحديثات من المصادر التي تتابعها'),
@@ -46,10 +47,11 @@ class NotificationPreferences extends ChangeNotifier {
   bool _defaultFor(NotifChannel ch) {
     switch (ch) {
       case NotifChannel.breaking:
+      case NotifChannel.palestine:
       case NotifChannel.daily:
       case NotifChannel.categories:
       case NotifChannel.sources:
-        return true; // On by default
+        return true; // On by default — high-signal channels most users want
       case NotifChannel.stories:
       case NotifChannel.trending:
       case NotifChannel.weekly:

@@ -159,6 +159,26 @@ function fcm_send_one(string $accessToken, string $projectId, string $token, arr
 }
 
 /**
+ * Quiet-hours guard. Returns true when the current Jerusalem-local
+ * clock falls inside the no-push window (default 23:00 → 07:00). The
+ * window can be tightened/loosened via the `push_quiet_start` and
+ * `push_quiet_end` settings; both are 0-23 integers. Breaking news
+ * bypasses this check — pass $bypass = true at the call site.
+ */
+function push_is_quiet_hour(): bool {
+    $start = (int)getSetting('push_quiet_start', 23);
+    $end   = (int)getSetting('push_quiet_end',    7);
+    $tz    = new DateTimeZone('Asia/Jerusalem');
+    $hour  = (int)(new DateTime('now', $tz))->format('G');
+    // Window crosses midnight (e.g. 23 → 7): out-of-window = (h < start) && (h >= end)
+    if ($start > $end) {
+        return $hour >= $start || $hour < $end;
+    }
+    // Window inside same day (e.g. 1 → 5)
+    return $hour >= $start && $hour < $end;
+}
+
+/**
  * Broadcast a notification to every active device whose owner has the
  * given notify_* preference enabled.
  *
@@ -166,11 +186,16 @@ function fcm_send_one(string $accessToken, string $projectId, string $token, arr
  * @param string $body
  * @param array  $data    Extra data payload (channel, link, article_id...)
  * @param string $prefColumn  users column gating this push (e.g. notify_digest)
+ * @param bool   $bypassQuiet  true to ignore quiet-hours (e.g. عاجل).
  * @return array{sent:int, pruned:int, skipped:bool}
  */
-function push_broadcast(string $title, string $body, array $data = [], string $prefColumn = 'notify_digest'): array {
+function push_broadcast(string $title, string $body, array $data = [], string $prefColumn = 'notify_digest', bool $bypassQuiet = false): array {
     if (!fcm_is_configured()) {
         error_log('[push] not configured — skipping broadcast');
+        return ['sent' => 0, 'pruned' => 0, 'skipped' => true];
+    }
+    if (!$bypassQuiet && push_is_quiet_hour()) {
+        error_log('[push] quiet hour — skipping ' . $prefColumn);
         return ['sent' => 0, 'pruned' => 0, 'skipped' => true];
     }
     $accessToken = fcm_access_token();
@@ -183,22 +208,57 @@ function push_broadcast(string $title, string $body, array $data = [], string $p
 
     // Only message users who opted into this notification type. The
     // column is validated against a whitelist to avoid SQL injection
-    // via the caller.
-    $allowedPrefs = ['notify_breaking', 'notify_followed', 'notify_digest'];
+    // via the caller. notify_palestine is a new opt-in for the
+    // Palestine-keyword fast lane.
+    $allowedPrefs = ['notify_breaking', 'notify_followed', 'notify_digest', 'notify_palestine'];
     if (!in_array($prefColumn, $allowedPrefs, true)) {
         $prefColumn = 'notify_digest';
     }
 
+    // Lazy-add the column if it's missing — keeps the first deploy of
+    // a new notify_* channel from blowing up the query below.
+    try {
+        $hasCol = $db->query("SHOW COLUMNS FROM users LIKE '$prefColumn'")->fetch();
+        if (!$hasCol) {
+            $db->exec("ALTER TABLE users ADD COLUMN $prefColumn TINYINT(1) DEFAULT 1");
+        }
+    } catch (Throwable $e) {}
+
+    // Pull active device tokens whose owner opted in. We read both the
+    // legacy users.$prefColumn (set by older signup flow) and the JSON
+    // blob in user_notification_prefs (set by the mobile settings
+    // screen) — the user is gated in if EITHER says yes, so a brand-
+    // new install with empty JSON still receives the channels the
+    // legacy column had on by default.
+    $jsonKey = preg_replace('/^notify_/', '', $prefColumn);
     $sql = "SELECT d.token
-            FROM user_devices d
-            INNER JOIN users u ON u.id = d.user_id
-            WHERE d.is_active = 1 AND COALESCE(u.$prefColumn, 1) = 1";
+              FROM user_devices d
+              INNER JOIN users u ON u.id = d.user_id
+              LEFT JOIN user_notification_prefs np ON np.user_id = u.id
+             WHERE d.is_active = 1
+               AND COALESCE(u.$prefColumn, 1) = 1
+               AND (
+                 np.prefs IS NULL
+                 OR JSON_EXTRACT(np.prefs, '$.$jsonKey') IS NULL
+                 OR JSON_EXTRACT(np.prefs, '$.$jsonKey') = true
+                 OR JSON_EXTRACT(np.prefs, '$.$jsonKey') = 1
+               )";
     $tokens = [];
     try {
         $tokens = $db->query($sql)->fetchAll(PDO::FETCH_COLUMN) ?: [];
     } catch (Throwable $e) {
         error_log('[push] token query failed: ' . $e->getMessage());
-        return ['sent' => 0, 'pruned' => 0, 'skipped' => true];
+        // Fallback: query without the JSON join in case JSON_EXTRACT
+        // isn't supported (MySQL < 5.7).
+        try {
+            $tokens = $db->query("SELECT d.token FROM user_devices d
+                                    INNER JOIN users u ON u.id = d.user_id
+                                   WHERE d.is_active = 1 AND COALESCE(u.$prefColumn, 1) = 1")
+                          ->fetchAll(PDO::FETCH_COLUMN) ?: [];
+        } catch (Throwable $e2) {
+            error_log('[push] fallback token query failed: ' . $e2->getMessage());
+            return ['sent' => 0, 'pruned' => 0, 'skipped' => true];
+        }
     }
 
     // Stringify all data values — FCM data payload must be string→string.
