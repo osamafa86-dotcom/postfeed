@@ -23,7 +23,9 @@ import '../../auth/data/auth_storage.dart';
 import '../../media/data/media_repository.dart';
 import '../data/content_repository.dart';
 import '../../user/presentation/reorder_categories_screen.dart' show categoryOrderProvider;
-import 'widgets/breaking_strip.dart';
+// breaking_strip import removed — the strip below the greeting is
+// currently hidden. Re-add `import 'widgets/breaking_strip.dart';`
+// when un-commenting the BreakingStrip line in _HomeBody.
 import 'widgets/source_chips_rail.dart';
 import '../../../core/widgets/currency_widget.dart';
 import 'widgets/ticker_bar.dart';
@@ -126,20 +128,18 @@ class _HomeBody extends ConsumerWidget {
         // ── 2. Personal Greeting ──
         SliverToBoxAdapter(child: _GreetingStrip()),
 
-        // ── 3. Breaking + Ticker ──
-        if (payload.breaking.isNotEmpty)
-          SliverToBoxAdapter(child: BreakingStrip(items: payload.breaking)),
+        // ── 3. Ticker only — the BreakingStrip below the greeting was
+        //    hidden on purpose to declutter the top of the home screen.
+        //    Re-enable by un-commenting the BreakingStrip line.
+        // if (payload.breaking.isNotEmpty)
+        //   SliverToBoxAdapter(child: BreakingStrip(items: payload.breaking)),
         if (payload.ticker.isNotEmpty)
           SliverToBoxAdapter(child: TickerBar(items: payload.ticker)),
 
-        // ── 4. Trending — horizontal scrollable chips ──
-        if (payload.trends.isNotEmpty)
-          SliverToBoxAdapter(child: _TrendingChips(trends: payload.trends)),
-
-        // ── 5. Quick Access — AI + Morning Briefing + Weekly Review ──
+        // ── 4. Quick Access — AI + Morning Briefing + Weekly Review ──
         SliverToBoxAdapter(child: _QuickAccessRow()),
 
-        // ── 6. Categories Box — premium tabbed design (exclude عاجل) ──
+        // ── 5. Categories Box — premium tabbed design (exclude عاجل) ──
         if (payload.buckets.isNotEmpty)
           SliverToBoxAdapter(child: _CategoriesBox(
             buckets: payload.buckets.where((b) =>
@@ -147,26 +147,26 @@ class _HomeBody extends ConsumerWidget {
             ).toList(),
           )),
 
-        // ── 7. For You — personalized feed ──
+        // ── 6. For You — personalized feed ──
         if (isAuthed)
           SliverToBoxAdapter(child: _ForYouSection()),
 
-        // ── 8. Evolving Stories — horizontal carousel ──
+        // ── 7. Evolving Stories — horizontal carousel ──
         SliverToBoxAdapter(child: _EvolvingStoriesSection()),
 
-        // ── 9. Platforms Box — Telegram / X / YouTube ──
+        // ── 8. Platforms Box — Telegram / X / YouTube ──
         SliverToBoxAdapter(child: _PlatformsBox()),
 
-        // ── 10. Latest News + load-more pagination ──
+        // ── 9. Latest News + load-more pagination ──
         SliverToBoxAdapter(
           child: SectionHeader(title: 'آخر الأخبار', icon: Icons.fiber_new),
         ),
         _LatestArticlesSlivers(initial: payload.latest),
 
-        // ── 11. Currency Rates ──
+        // ── 10. Currency Rates ──
         const SliverToBoxAdapter(child: CurrencyWidget()),
 
-        // ── 12. Sources ──
+        // ── 11. Sources ──
         if (payload.sources.isNotEmpty) ...[
           SliverToBoxAdapter(
             child: SectionHeader(title: 'مصادر الأخبار', icon: Icons.public,
@@ -174,6 +174,13 @@ class _HomeBody extends ConsumerWidget {
           ),
           SliverToBoxAdapter(child: SourceChipsRail(sources: payload.sources)),
         ],
+
+        // ── 12. Trending — moved to the bottom so the top of the home
+        //    screen leads with hero + greeting + quick actions instead
+        //    of a hashtag row. Hashtags surface naturally as the user
+        //    scrolls through to the end.
+        if (payload.trends.isNotEmpty)
+          SliverToBoxAdapter(child: _TrendingChips(trends: payload.trends)),
 
         const SliverToBoxAdapter(child: SizedBox(height: 24)),
       ],
@@ -395,44 +402,12 @@ class _CategoriesBoxState extends ConsumerState<_CategoriesBox> {
       decoration: NeoDecoration.raised(isDark: isDark, radius: 24),
       child: Column(
         children: [
-          // ── Header with gradient accent ──
-          Container(
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
-            child: Row(
-              children: [
-                Container(
-                  width: 36, height: 36,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [color, color.withOpacity(0.7)]),
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: [BoxShadow(color: color.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 3))],
-                  ),
-                  alignment: Alignment.center,
-                  child: const Icon(Icons.grid_view_rounded, color: Colors.white, size: 18),
-                ),
-                const SizedBox(width: 10),
-                Text('الأقسام', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17,
-                  color: isDark ? Colors.white : AppColors.textLight)),
-                const Spacer(),
-                // Live dot indicator
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Container(width: 6, height: 6,
-                      decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle)),
-                    const SizedBox(width: 4),
-                    Text('مباشر', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
-                      color: AppColors.primaryDark)),
-                  ]),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
+          // Header (icon + "الأقسام" label + LIVE pill) was removed to
+          // reclaim vertical space and reduce visual noise at the top of
+          // the home screen — the category pills below already make the
+          // section's purpose obvious. A small spacer keeps the first
+          // pill row from sitting flush against the box's rounded corner.
+          const SizedBox(height: 16),
 
           // ── Scrollable category pills ──
           SizedBox(
