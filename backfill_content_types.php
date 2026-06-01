@@ -69,23 +69,24 @@ echo "  by AI:           {$stats['ai']}\n";
 echo "  failed:          {$stats['failed']}\n";
 echo "  elapsed:         {$stats['elapsed_sec']}s\n\n";
 
-// Show resulting distribution
-if ($stats['total'] > 0) {
-    $db = getDB();
-    $dist = $db->query("SELECT content_type, COUNT(*) AS cnt
-                          FROM articles
-                         WHERE published_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)
-                           AND content_type IS NOT NULL
-                         GROUP BY content_type
-                         ORDER BY cnt DESC")->fetchAll(PDO::FETCH_ASSOC);
-    if ($dist) {
-        echo "📊 Distribution (last {$days} days):\n";
-        $arabicNames = ['news' => 'أخبار', 'report' => 'تقارير', 'article' => 'مقالات'];
-        foreach ($dist as $row) {
-            $label = $arabicNames[$row['content_type']] ?? $row['content_type'];
-            $pct = $stats['total'] > 0 ? round(100 * (int)$row['cnt'] / $stats['total'], 1) : 0;
-            echo "  {$label} ({$row['content_type']}): {$row['cnt']} ({$pct}%)\n";
-        }
+// Show resulting distribution. Percentages are over the total classified
+// in the window — not over $stats['total'], which is only the rows this
+// particular run touched (so it would exceed 100% on a partial reclassify).
+$db = getDB();
+$dist = $db->query("SELECT content_type, COUNT(*) AS cnt
+                      FROM articles
+                     WHERE published_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)
+                       AND content_type IS NOT NULL
+                     GROUP BY content_type
+                     ORDER BY cnt DESC")->fetchAll(PDO::FETCH_ASSOC);
+if ($dist) {
+    $windowTotal = array_sum(array_map(fn($r) => (int)$r['cnt'], $dist));
+    echo "📊 Distribution (last {$days} days, {$windowTotal} classified):\n";
+    $arabicNames = ['news' => 'أخبار', 'report' => 'تقارير', 'article' => 'مقالات'];
+    foreach ($dist as $row) {
+        $label = $arabicNames[$row['content_type']] ?? $row['content_type'];
+        $pct = $windowTotal > 0 ? round(100 * (int)$row['cnt'] / $windowTotal, 1) : 0;
+        echo "  {$label} ({$row['content_type']}): {$row['cnt']} ({$pct}%)\n";
     }
 }
 
