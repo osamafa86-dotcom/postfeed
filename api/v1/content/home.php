@@ -49,7 +49,15 @@ $payload = cache_remember('api:home:v1', 60, function () {
     }
 
     // Per-category buckets (top 6 articles each).
-    $catRows = $db->query("SELECT id, name, slug, icon, css_class, sort_order FROM categories WHERE is_active=1 ORDER BY sort_order, id LIMIT 12")->fetchAll();
+    // Skip the legacy "reports" topical category because the virtual
+    // content_type='report' bucket (ct-reports below) replaces it with
+    // a more accurate cross-topic feed. Two "تقارير" tabs side by side
+    // were confusing — old one stays accessible via /category/reports
+    // for inbound search traffic, just not on the home tabs row.
+    $catRows = $db->query("SELECT id, name, slug, icon, css_class, sort_order
+                             FROM categories
+                            WHERE is_active=1 AND slug <> 'reports'
+                            ORDER BY sort_order, id LIMIT 12")->fetchAll();
     $buckets = [];
     foreach ($catRows as $c) {
         $items = fetch_articles(['category_id' => (int)$c['id']], 6, 0);
