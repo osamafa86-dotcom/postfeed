@@ -27,10 +27,12 @@ require_once __DIR__ . '/includes/content_classifier.php';
 $days  = 7;
 $max   = 10000;
 $useAi = true;
+$reclassify = false;
 
 foreach ($argv as $i => $arg) {
     if ($i === 0) continue;
     if ($arg === '--no-ai')               { $useAi = false; continue; }
+    if ($arg === '--reclassify-weak')     { $reclassify = true; continue; }
     if (str_starts_with($arg, '--max=')) { $max = (int)substr($arg, 6); continue; }
     if (ctype_digit($arg))                { $days = (int)$arg; continue; }
 }
@@ -40,7 +42,24 @@ echo "  Content-type backfill\n";
 echo "═══════════════════════════════════════════════\n";
 echo "  Window:    last {$days} days\n";
 echo "  Max:       {$max} articles\n";
-echo "  AI mode:   " . ($useAi ? 'ON (Gemini for ambiguous)' : 'OFF (patterns only)') . "\n\n";
+echo "  AI mode:   " . ($useAi ? 'ON (Gemini for ambiguous)' : 'OFF (patterns only)') . "\n";
+if ($reclassify) echo "  Mode:      RECLASSIFY weak (confidence < 0.70) — clears stamp first\n";
+echo "\n";
+
+// Reclassify mode: clear content_type_at for any row whose previous
+// pass landed it on a low-confidence pattern guess (typically the
+// "default news" stamp from a --no-ai run). The next pass picks them
+// up exactly like fresh unclassified rows.
+if ($reclassify) {
+    classify_ensure_columns();
+    $db = getDB();
+    $stmt = $db->prepare("UPDATE articles
+                             SET content_type_at = NULL
+                           WHERE published_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+                             AND content_type_confidence < 0.70");
+    $stmt->execute([$days]);
+    echo "↻ cleared " . $stmt->rowCount() . " weak classifications, reprocessing...\n\n";
+}
 
 $stats = classify_backfill($days, $max, $useAi);
 
