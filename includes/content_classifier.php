@@ -161,18 +161,30 @@ function classify_by_ai_batch(array $articles): array {
     $n = count($articles);
     if ($n === 0) return [];
 
-    $prompt = "أنت محرّر صحفي خبير. صنّف كل عنصر إلى نوع واحد من ثلاثة:\n"
-            . "  - news    (خبر): تقرير قصير عن حدث/واقعة محددة، يجاوب على من/ماذا/متى/أين.\n"
-            . "  - report  (تقرير): تغطية موسعة أو تحليل أو تحقيق، عادة >1000 كلمة، عدة مصادر، وأرقام.\n"
-            . "  - article (مقالة): رأي شخصي أو عمود أو وجهة نظر، صوت مؤلف واضح.\n\n"
-            . "أعد JSON فقط بهذا الشكل:\n"
-            . '{"results":[{"id":1,"type":"news","confidence":0.85,"reason":"شرح قصير"}]}' . "\n\n"
+    $prompt = "أنت محرّر صحفي خبير. صنّف كل عنصر إلى نوع واحد من ثلاثة. كن صارمًا في الحدود.\n\n"
+            . "▸ news (خبر): تقرير قصير عن حدث وقع (عادة < 500 كلمة). صوت محايد. يجيب على من/ماذا/متى/أين.\n"
+            . "   مثال: «وزير الخارجية يلتقي نظيره الأمريكي في الدوحة».\n\n"
+            . "▸ report (تقرير): تغطية تفصيلية، تحليل موضوعي، تحقيق صحفي، أو ملف خاص.\n"
+            . "   - صوت محايد (لا ضمير متكلم، لا رأي شخصي)\n"
+            . "   - يستشهد بمصادر/أرقام/خلفية تاريخية/شهادات\n"
+            . "   - قد يبدأ بـ «تقرير:»، «تحليل:»، «تحقيق:»، «ملف:»، «قراءة في»\n"
+            . "   مثال: «تحليل: كيف غيّر قرار البنك المركزي مسار الاقتصاد».\n"
+            . "   ⚠️ التحليل والتغطية الموسعة المحايدة = تقرير، ليس مقالة.\n\n"
+            . "▸ article (مقالة): رأي شخصي صريح للكاتب، عمود رأي، أو افتتاحية.\n"
+            . "   يجب توافر واحد على الأقل من هذه:\n"
+            . "   (أ) ضمير المتكلم: «أرى»، «أعتقد»، «برأيي»، «في نظري»، «نحن بحاجة»، «يجب علينا»\n"
+            . "   (ب) توقيع كاتب صريح: «بقلم: فلان»، «يكتب فلان»، «كولومن:» اسم كاتب\n"
+            . "   (ج) URL يحوي صراحة /opinion/ أو /rai/ أو /column/ أو /editorial/\n"
+            . "   مثال: «بقلم محمد: لماذا يجب أن نعيد النظر في موقفنا من...».\n\n"
+            . "▸ قاعدة عند الشك: إن لم تجد علامات رأي شخصي واضحة → اختر report بدل article.\n\n"
+            . "أعد JSON فقط:\n"
+            . '{"results":[{"id":1,"type":"news","confidence":0.85,"reason":"شرح قصير في 5 كلمات"}]}' . "\n\n"
             . "العناصر:\n";
 
     foreach ($articles as $i => $a) {
         $idx     = $i + 1;
         $title   = trim((string)($a['title'] ?? ''));
-        $excerpt = trim(mb_substr(strip_tags((string)($a['excerpt'] ?? $a['content'] ?? '')), 0, 400));
+        $excerpt = trim(mb_substr(strip_tags((string)($a['excerpt'] ?? $a['content'] ?? '')), 0, 500));
         $url     = (string)($a['source_url'] ?? '');
         $prompt .= "\n[$idx] {$title}\n     URL: {$url}\n     مقتطف: {$excerpt}\n";
     }
@@ -199,21 +211,61 @@ function classify_by_ai_batch(array $articles): array {
         if ($id > 0) $byId[$id] = $r;
     }
 
-    foreach ($articles as $i => $_) {
+    foreach ($articles as $i => $a) {
         $id = $i + 1;
         $r  = $byId[$id] ?? null;
         if ($r && in_array($r['type'] ?? '', ['news', 'report', 'article'], true)) {
-            $out[$i] = [
-                'type'       => $r['type'],
-                'method'     => 'ai',
-                'confidence' => max(0.5, min(1.0, (float)($r['confidence'] ?? 0.75))),
-                'reason'     => 'ai: ' . mb_substr((string)($r['reason'] ?? ''), 0, 80),
-            ];
+            $type       = $r['type'];
+            $confidence = max(0.5, min(1.0, (float)($r['confidence'] ?? 0.75)));
+            $reason     = 'ai: ' . mb_substr((string)($r['reason'] ?? ''), 0, 80);
+
+            // Sanity check: AI tends to over-call "article" on narrative-titled
+            // feature pieces ("من غزة إلى العالم..."). Require at least one
+            // hard opinion marker (URL path, byline, or first-person language)
+            // before we agree. Otherwise downgrade to "report".
+            if ($type === 'article' && !classify_has_opinion_markers($a)) {
+                $type       = 'report';
+                $confidence = max(0.55, $confidence - 0.15);
+                $reason     = 'ai→report (no opinion markers): ' . $reason;
+            }
+
+            $out[$i] = ['type' => $type, 'method' => 'ai', 'confidence' => $confidence, 'reason' => $reason];
         } else {
             $out[$i] = ['type' => 'news', 'method' => 'pattern', 'confidence' => 0.30, 'reason' => 'ai_missed'];
         }
     }
     return $out;
+}
+
+/**
+ * Look for hard evidence that a piece is actually an opinion column:
+ *   - URL contains an explicit opinion path (/opinion/, /rai/, /column/, /op-ed/)
+ *   - Byline appears in title or first ~600 chars of content
+ *   - First-person opinion language appears in body
+ *
+ * Used as a guard against the AI's tendency to label narrative-titled
+ * features as "article".
+ */
+function classify_has_opinion_markers(array $article): bool {
+    $url     = (string)($article['source_url'] ?? '');
+    $title   = (string)($article['title'] ?? '');
+    $content = (string)($article['content'] ?? $article['excerpt'] ?? '');
+    $head    = mb_substr(strip_tags($content), 0, 600);
+
+    // URL — strongest signal.
+    if (preg_match('#/(opinion|opinions|column|columns|op-ed|editorial|editorials|maqal|maqalat|rai|raie|views|viewpoint|blog|blogs|writers)/#i', $url)) {
+        return true;
+    }
+    // Byline in title or content head.
+    if (preg_match('/(^|\s)(يكتب|بقلم|بقلم:|قلم:|كولومن:)\s*\S/u', $title . "\n" . $head)) {
+        return true;
+    }
+    // First-person opinion verbs anywhere in body head.
+    $opinionWords = ['أرى أن', 'في رأيي', 'برأيي', 'أعتقد أن', 'من وجهة نظري', 'يجب علينا', 'نحن بحاجة', 'لا شك أن', 'يتوجب علينا'];
+    foreach ($opinionWords as $w) {
+        if (mb_strpos($head, $w) !== false) return true;
+    }
+    return false;
 }
 
 /**

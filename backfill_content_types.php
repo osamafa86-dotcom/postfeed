@@ -28,11 +28,13 @@ $days  = 7;
 $max   = 10000;
 $useAi = true;
 $reclassify = false;
+$reclassifyArticles = false;
 
 foreach ($argv as $i => $arg) {
     if ($i === 0) continue;
     if ($arg === '--no-ai')               { $useAi = false; continue; }
     if ($arg === '--reclassify-weak')     { $reclassify = true; continue; }
+    if ($arg === '--reclassify-articles') { $reclassifyArticles = true; continue; }
     if (str_starts_with($arg, '--max=')) { $max = (int)substr($arg, 6); continue; }
     if (ctype_digit($arg))                { $days = (int)$arg; continue; }
 }
@@ -43,7 +45,8 @@ echo "════════════════════════�
 echo "  Window:    last {$days} days\n";
 echo "  Max:       {$max} articles\n";
 echo "  AI mode:   " . ($useAi ? 'ON (Gemini for ambiguous)' : 'OFF (patterns only)') . "\n";
-if ($reclassify) echo "  Mode:      RECLASSIFY weak (confidence < 0.70) — clears stamp first\n";
+if ($reclassify)         echo "  Mode:      RECLASSIFY weak (confidence < 0.70) — clears stamp first\n";
+if ($reclassifyArticles) echo "  Mode:      RECLASSIFY all content_type='article' rows with stricter rules\n";
 echo "\n";
 
 // Reclassify mode: clear content_type_at for any row whose previous
@@ -59,6 +62,21 @@ if ($reclassify) {
                              AND content_type_confidence < 0.70");
     $stmt->execute([$days]);
     echo "↻ cleared " . $stmt->rowCount() . " weak classifications, reprocessing...\n\n";
+}
+
+// Reclassify-articles mode: AI's previous pass over-called "article" on
+// narrative-titled features. With the stricter prompt + opinion-marker
+// guard, re-run AI on every row currently labeled 'article' so the
+// genuine opinion pieces stay and the features move to 'report'.
+if ($reclassifyArticles) {
+    classify_ensure_columns();
+    $db = getDB();
+    $stmt = $db->prepare("UPDATE articles
+                             SET content_type_at = NULL
+                           WHERE published_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+                             AND content_type = 'article'");
+    $stmt->execute([$days]);
+    echo "↻ cleared " . $stmt->rowCount() . " 'article' classifications, reprocessing with stricter rules...\n\n";
 }
 
 $stats = classify_backfill($days, $max, $useAi);
