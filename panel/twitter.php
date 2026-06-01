@@ -69,7 +69,31 @@ if ($action === 'delete' && isset($_GET['id'])) {
     $action = 'list';
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// Save the authenticated X session cookies (separate form from source
+// CRUD). These power the GraphQL transport — the only reliable path in
+// 2026 now that anonymous scraping is IP-blocked.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_session'])) {
+    $authTok = trim($_POST['twitter_auth_token'] ?? '');
+    $ct0     = trim($_POST['twitter_ct0'] ?? '');
+    // Tolerate a pasted "name=value; name=value" cookie string — pull
+    // the two we need out of it so the admin can paste the whole thing.
+    if ($authTok === '' || $ct0 === '') {
+        $blob = $_POST['twitter_auth_token'] ?? '';
+        if (preg_match('/auth_token=([0-9a-f]+)/i', $blob, $m)) $authTok = $m[1];
+        if (preg_match('/ct0=([0-9a-z]+)/i', $blob, $m))        $ct0     = $m[1];
+    }
+    $up = $db->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)
+                        ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");
+    $up->execute(['twitter_auth_token', $authTok]);
+    $up->execute(['twitter_ct0', $ct0]);
+    if (function_exists('cache_forget')) cache_forget('settings_all');
+    $success = ($authTok !== '' && $ct0 !== '')
+        ? 'تم حفظ كوكيز جلسة X ✓ — اضغط "🔄 جلب الآن" ثم 🩺 للتأكد'
+        : 'تم مسح كوكيز جلسة X';
+    $action = 'list';
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['save_session'])) {
     $id           = !empty($_POST['id']) ? (int)$_POST['id'] : null;
     $username     = ltrim(trim($_POST['username'] ?? ''), '@');
     $display_name = trim($_POST['display_name'] ?? '');
@@ -134,6 +158,13 @@ $recentMsgs = $db->query("SELECT m.*, s.display_name, s.username
                           FROM twitter_messages m
                           JOIN twitter_sources s ON m.source_id = s.id
                           ORDER BY m.posted_at DESC LIMIT 20")->fetchAll();
+
+// Current X session state (for the cookie card). We never re-display the
+// stored cookie values — just whether they're set — so a shoulder-surfer
+// or screenshot can't lift the session.
+$twAuthSet = trim((string)getSetting('twitter_auth_token', '')) !== '';
+$twCt0Set  = trim((string)getSetting('twitter_ct0', '')) !== '';
+$twSessionReady = $twAuthSet && $twCt0Set;
 
 $pageTitle  = 'مصادر تويتر - نيوز فيد';
 $activePage = 'twitter';
@@ -218,6 +249,48 @@ include __DIR__ . '/includes/panel_layout_head.php';
     </div>
 
   <?php else: ?>
+
+    <!-- ── X session cookies card ───────────────────────────────── -->
+    <div class="card" style="margin-bottom:20px;padding:18px;border:1px solid <?php echo $twSessionReady ? '#16a34a33' : '#f59e0b55'; ?>;background:<?php echo $twSessionReady ? '#f0fdf4' : '#fffbeb'; ?>;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+        <h3 style="margin:0;font-size:15px;">🔑 جلسة X (الطريقة الموثوقة لجلب التغريدات)</h3>
+        <?php if ($twSessionReady): ?>
+          <span class="badge badge-success">مُفعّلة ✓</span>
+        <?php else: ?>
+          <span class="badge" style="background:#fef3c7;color:#a16207;">غير مُفعّلة</span>
+        <?php endif; ?>
+      </div>
+      <p style="color:var(--text-muted);font-size:12.5px;line-height:1.9;margin:0 0 14px;">
+        تويتر يحجب جلب التغريدات المجهول من أي سيرفر (2026). الحل: حساب X (يُفضّل احتياطي)،
+        سجّل دخوله من متصفّح، ثم انسخ قيمتي الكوكي <code dir="ltr">auth_token</code> و <code dir="ltr">ct0</code>
+        وألصقهما هنا. السيرفر بيستخدم الـ API الرسمي بهالجلسة = جلب موثوق.
+        <br><strong>كيف أجيب الكوكيز؟</strong>
+        افتح <code dir="ltr">x.com</code> وأنت مسجّل دخول ← F12 ← Application/Storage ← Cookies ← <code dir="ltr">https://x.com</code>
+        ← انسخ قيمة <code dir="ltr">auth_token</code> وقيمة <code dir="ltr">ct0</code>.
+      </p>
+      <form method="POST">
+        <?php echo csrf_field(); ?>
+        <input type="hidden" name="save_session" value="1">
+        <div class="form-row">
+          <div class="form-group">
+            <label>auth_token <small style="color:var(--text-muted);font-weight:normal;">(40 خانة hex، أو ألصق سلسلة الكوكي كاملة)</small></label>
+            <input type="text" name="twitter_auth_token" class="form-control" dir="ltr" autocomplete="off"
+                   placeholder="<?php echo $twAuthSet ? '•••••••• (محفوظ — اترك فارغاً للإبقاء عليه أو ألصق جديداً)' : 'مثال: 1a2b3c...'; ?>">
+          </div>
+          <div class="form-group">
+            <label>ct0 <small style="color:var(--text-muted);font-weight:normal;">(CSRF token)</small></label>
+            <input type="text" name="twitter_ct0" class="form-control" dir="ltr" autocomplete="off"
+                   placeholder="<?php echo $twCt0Set ? '•••••••• (محفوظ)' : 'مثال: 9f8e7d...'; ?>">
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <button type="submit" class="btn-primary">💾 حفظ الجلسة</button>
+          <small style="color:var(--text-muted);font-size:11.5px;">
+            تُخزَّن بقاعدة البيانات (وصول الأدمن فقط). إذا توقّف الجلب لاحقاً غالباً انتهت صلاحية الكوكي — كرّر الخطوة.
+          </small>
+        </div>
+      </form>
+    </div>
 
     <?php if ($debugReport): ?>
       <div class="card" style="margin-bottom:20px;padding:18px;">
