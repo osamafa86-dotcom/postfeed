@@ -140,8 +140,15 @@ class _ReadProgressBarState extends State<_ReadProgressBar> {
     super.didChangeDependencies();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final controller = PrimaryScrollController.of(context);
-      if (_controller == controller) return;
+      // maybeOf instead of of — if no PrimaryScrollController is in scope
+      // (which happens when the article screen is mounted under MainShell's
+      // shell body without a primary scroller above) we silently skip the
+      // progress bar instead of throwing. The throw used to surface as a
+      // blank gray screen after returning from an inner Scaffold like
+      // Ask/Sabah/Weekly because the post-frame callback aborted the
+      // current frame.
+      final controller = PrimaryScrollController.maybeOf(context);
+      if (controller == null || _controller == controller) return;
       _controller?.removeListener(_onScroll);
       _controller = controller;
       _controller?.addListener(_onScroll);
