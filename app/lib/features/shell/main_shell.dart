@@ -39,6 +39,33 @@ class _MainShellState extends ConsumerState<MainShell> {
     ProfileScreen(),
   ];
 
+  String? _lastLoc;
+
+  @override
+  void didUpdateWidget(covariant MainShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final loc = widget.state.uri.toString();
+    if (_lastLoc != null && _lastLoc != loc) {
+      // Route changed — drop any sticky focus / keyboard left behind by
+      // the previous screen. AskScreen's TextField in particular kept the
+      // soft keyboard's input connection alive across navigation, which
+      // skewed the next screen's MediaQuery and showed up as a blank
+      // gray article view after returning from Ask/Sabah/Weekly.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final focus = FocusManager.instance.primaryFocus;
+        if (focus != null && focus.hasFocus) focus.unfocus();
+      });
+    }
+    _lastLoc = loc;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _lastLoc = widget.state.uri.toString();
+  }
+
   int _indexFor(String location) {
     for (var i = 0; i < MainShell._tabs.length; i++) {
       if (location == MainShell._tabs[i].path) return i;
@@ -70,21 +97,21 @@ class _MainShellState extends ConsumerState<MainShell> {
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      // Plain conditional render instead of a Stack + Visibility layered
-      // setup. The Stack pattern caused intermittent blank screens after
-      // returning from an inner Scaffold (Ask/Sabah/Weekly) and pushing
-      // another inner route — the Visibility(maintainSize) child seemed
-      // to lose its layout slot in that exact sequence, collapsing the
-      // body to 0×0 just as widget.child rendered into it.
-      //
-      // Trade-off: the IndexedStack is unmounted on sub-routes and rebuilt
-      // when the user returns to a tab. Scroll position resets, but the
-      // per-tab providers (homeProvider, etc.) cache their data via
-      // Riverpod so re-rendering is instant — no extra network round-trips,
-      // no spinner.
+      // Tab roots render through the IndexedStack so state survives a
+      // tab switch. Inner routes (article, search, telegram, …) render
+      // through the route widget directly with a route-keyed wrapper —
+      // this forces Flutter to treat each navigation as a fresh subtree
+      // even when the previous one was an inner Scaffold that left
+      // focus / scroll / media-query state behind (the specific cause
+      // of the gray-screen-after-AI-screens bug: returning from one
+      // inner Scaffold and pushing another would reuse the same shell
+      // body slot without rebuilding the inner state cleanly).
       body: isTab
           ? IndexedStack(index: index, children: _pages)
-          : widget.child,
+          : KeyedSubtree(
+              key: ValueKey('shell-child:$loc'),
+              child: widget.child,
+            ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: isDark ? AppColors.neoDarkSurface : AppColors.neoSurface,
