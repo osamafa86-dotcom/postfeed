@@ -93,7 +93,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_session'])) {
     $action = 'list';
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['save_session'])) {
+// Save the TwitterAPI.io key (separate form). This is the preferred 2026
+// transport — residential proxies on the gateway side mean the
+// datacenter IP block doesn't bite us, and there's no account-ban risk.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_apiio'])) {
+    $apiKey = trim($_POST['twitterapi_io_key'] ?? '');
+    $up = $db->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)
+                        ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");
+    $up->execute(['twitterapi_io_key', $apiKey]);
+    if (function_exists('cache_forget')) cache_forget('settings_all');
+    $success = $apiKey !== ''
+        ? 'تم حفظ مفتاح TwitterAPI.io ✓ — اضغط "🔄 جلب الآن" ثم 🩺 للتأكد'
+        : 'تم مسح مفتاح TwitterAPI.io';
+    $action = 'list';
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['save_session']) && !isset($_POST['save_apiio'])) {
     $id           = !empty($_POST['id']) ? (int)$_POST['id'] : null;
     $username     = ltrim(trim($_POST['username'] ?? ''), '@');
     $display_name = trim($_POST['display_name'] ?? '');
@@ -165,6 +180,7 @@ $recentMsgs = $db->query("SELECT m.*, s.display_name, s.username
 $twAuthSet = trim((string)getSetting('twitter_auth_token', '')) !== '';
 $twCt0Set  = trim((string)getSetting('twitter_ct0', '')) !== '';
 $twSessionReady = $twAuthSet && $twCt0Set;
+$twApiKeySet   = trim((string)getSetting('twitterapi_io_key', '')) !== '';
 
 $pageTitle  = 'مصادر تويتر - نيوز فيد';
 $activePage = 'twitter';
@@ -250,10 +266,44 @@ include __DIR__ . '/includes/panel_layout_head.php';
 
   <?php else: ?>
 
-    <!-- ── X session cookies card ───────────────────────────────── -->
+    <!-- ── TwitterAPI.io key card (preferred transport) ────────────── -->
+    <div class="card" style="margin-bottom:20px;padding:18px;border:1px solid <?php echo $twApiKeySet ? '#16a34a33' : '#3b82f655'; ?>;background:<?php echo $twApiKeySet ? '#f0fdf4' : '#eff6ff'; ?>;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+        <h3 style="margin:0;font-size:15px;">🚀 TwitterAPI.io (الأكثر موثوقية — موصى به)</h3>
+        <?php if ($twApiKeySet): ?>
+          <span class="badge badge-success">مُفعّل ✓</span>
+        <?php else: ?>
+          <span class="badge" style="background:#dbeafe;color:#1e40af;">غير مُفعّل</span>
+        <?php endif; ?>
+      </div>
+      <p style="color:var(--text-muted);font-size:12.5px;line-height:1.9;margin:0 0 14px;">
+        خدمة طرف-ثالث على proxies حقيقية — تتجاوز حجب IP السيرفر تلقائياً، صفر صيانة، صفر خطر حظر حسابك.
+        السعر: <strong>$0.15 لكل 1000 تغريدة</strong> (~$1-3/شهر لـ 10 حسابات). تسجيل عبر Google يعطيك <strong>$1 رصيد مجاني</strong> بدون بطاقة.
+        <br><strong>كيف؟</strong>
+        ادخل <a href="https://twitterapi.io" target="_blank" rel="noopener noreferrer" style="color:#2563eb;">twitterapi.io</a>
+        ← سجّل بـ Google ← اذهب لتبويب Dashboard/API Keys ← انسخ المفتاح ← الصقه هون.
+      </p>
+      <form method="POST">
+        <?php echo csrf_field(); ?>
+        <input type="hidden" name="save_apiio" value="1">
+        <div class="form-group">
+          <label>مفتاح TwitterAPI.io <small style="color:var(--text-muted);font-weight:normal;">(يبدأ غالباً بأحرف وأرقام، طوله ~32-64 خانة)</small></label>
+          <input type="text" name="twitterapi_io_key" class="form-control" dir="ltr" autocomplete="off"
+                 placeholder="<?php echo $twApiKeySet ? '•••••••• (محفوظ — اترك فارغاً للإبقاء عليه أو ألصق جديداً)' : 'مثال: abc123def456...'; ?>">
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <button type="submit" class="btn-primary">💾 حفظ المفتاح</button>
+          <small style="color:var(--text-muted);font-size:11.5px;">
+            للتحكّم بالتكلفة: ارفع <code dir="ltr">settings.twitter_refetch_floor_secs</code> من 75 إلى 300+ ثانية (تقليل التحديث) إذا فاتورتك صارت أعلى من المتوقّع.
+          </small>
+        </div>
+      </form>
+    </div>
+
+    <!-- ── X session cookies card (free fallback) ────────────────── -->
     <div class="card" style="margin-bottom:20px;padding:18px;border:1px solid <?php echo $twSessionReady ? '#16a34a33' : '#f59e0b55'; ?>;background:<?php echo $twSessionReady ? '#f0fdf4' : '#fffbeb'; ?>;">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
-        <h3 style="margin:0;font-size:15px;">🔑 جلسة X (الطريقة الموثوقة لجلب التغريدات)</h3>
+        <h3 style="margin:0;font-size:15px;">🔑 جلسة X (بديل مجاني — يحتاج صيانة)</h3>
         <?php if ($twSessionReady): ?>
           <span class="badge badge-success">مُفعّلة ✓</span>
         <?php else: ?>
