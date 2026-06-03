@@ -10,6 +10,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import 'core/api/api_client.dart';
+import 'core/debug/debug_overlay.dart';
+import 'core/debug/debug_state.dart';
 import 'core/notifications/push_service.dart';
 import 'core/router/app_router.dart';
 import 'core/storage/hive_init.dart';
@@ -22,6 +24,38 @@ Future<void> main() async {
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(statusBarColor: Colors.transparent),
   );
+
+  // ── Catch every framework error and surface it in the on-screen
+  //    trace overlay. Without this, a build-time throw on iOS release
+  //    just produces a silent blank screen — exactly the symptom we've
+  //    been chasing.
+  final originalOnError = FlutterError.onError;
+  FlutterError.onError = (FlutterErrorDetails details) {
+    DebugTrace.log(
+      'error',
+      '${details.exception.runtimeType}: ${details.exceptionAsString().split('\n').first}',
+      level: DebugLevel.error,
+    );
+    originalOnError?.call(details);
+  };
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    DebugTrace.log(
+      'error.widget',
+      details.exceptionAsString().split('\n').first,
+      level: DebugLevel.error,
+    );
+    return Container(
+      color: const Color(0xFF7F1D1D),
+      alignment: Alignment.center,
+      padding: const EdgeInsets.all(16),
+      child: Text(
+        'ERROR WIDGET\n${details.exceptionAsString()}',
+        style: const TextStyle(color: Colors.white, fontSize: 10),
+        textAlign: TextAlign.center,
+      ),
+    );
+  };
+  DebugTrace.log('boot', 'app starting');
 
   timeago.setLocaleMessages('ar', timeago.ArMessages());
 
@@ -125,7 +159,15 @@ class _FeedsNewsAppState extends ConsumerState<FeedsNewsApp> {
                     maxScaleFactor: 1.3,
                   ),
             ),
-            child: child ?? const SizedBox.shrink(),
+            // The trace overlay floats above every route so a single
+            // screenshot of the blank screen captures the active route,
+            // probes, and the last few events.
+            child: Stack(
+              children: [
+                child ?? const SizedBox.shrink(),
+                const DebugOverlay(),
+              ],
+            ),
           ),
         );
       },

@@ -8,6 +8,7 @@ import 'package:timeago/timeago.dart' as timeago;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/api_exception.dart';
+import '../../../core/debug/debug_state.dart';
 import '../../../core/utils/safe_launch.dart';
 import '../../../core/models/article.dart';
 import '../../../core/theme/app_theme.dart';
@@ -27,6 +28,9 @@ class ArticleScreen extends ConsumerStatefulWidget {
   ConsumerState<ArticleScreen> createState() => _ArticleScreenState();
 }
 
+String _stateLabel<T>(AsyncValue<T> v) =>
+    v.isLoading ? 'loading' : v.hasError ? 'error' : 'data';
+
 class _ArticleScreenState extends ConsumerState<ArticleScreen> {
   late final DateTime _openedAt;
 
@@ -34,6 +38,7 @@ class _ArticleScreenState extends ConsumerState<ArticleScreen> {
   void initState() {
     super.initState();
     _openedAt = DateTime.now();
+    DebugTrace.log('article.life', 'initState id=${widget.id}');
   }
 
   @override
@@ -52,6 +57,17 @@ class _ArticleScreenState extends ConsumerState<ArticleScreen> {
     final asy = ref.watch(articleProvider(widget.id));
     final bookmarks = ref.watch(bookmarkedIdsProvider);
     final isBookmarked = bookmarks.contains(widget.id);
+
+    // Tell the overlay what state we're in. The user can take one
+    // screenshot at the moment of the blank screen and the overlay
+    // shows whether we're still loading, errored, or rendered data.
+    DebugTrace.probe('article.id', widget.id.toString());
+    DebugTrace.probe('article.state', _stateLabel(asy));
+    if (asy.hasError) {
+      DebugTrace.log('article.err',
+        asy.error?.toString().split('\n').first ?? 'unknown',
+        level: DebugLevel.error);
+    }
 
     return Scaffold(
       appBar: AppBar(
