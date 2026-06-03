@@ -35,40 +35,38 @@ try {
     // Limit search term length to prevent abuse
     $query = substr($query, 0, 100);
 
-    // Try FULLTEXT search first (faster, better relevance), fall back to LIKE
-    $hasFulltext = false;
-    try {
-        $idx = $db->query("SHOW INDEX FROM articles WHERE Key_name = 'ft_title_excerpt'")->fetch();
-        if ($idx) $hasFulltext = true;
-    } catch (Throwable $e) {}
+    // Share the v1 tokenizer so legacy /search.php and the app's v1 endpoint
+    // agree on what a query like "الأقصى حماس" actually matches.
+    require_once __DIR__ . '/v1/_articles_query.php';
 
     $fields = "a.id, a.title, a.slug, a.excerpt, a.image_url, a.published_at,
                a.view_count, c.name as category_name, c.slug as category_slug,
                c.css_class, s.name as source_name";
 
-    if ($hasFulltext) {
+    $ftSearch = articles_search_clause(trim($query));
+    if ($ftSearch) {
+        // Same MATCH expression appears in WHERE and ORDER BY; MySQL is
+        // smart enough to evaluate it once when the texts match.
         $sql = "SELECT {$fields}
                 FROM articles a
                 LEFT JOIN categories c ON a.category_id = c.id
                 LEFT JOIN sources s ON a.source_id = s.id
-                WHERE a.status = 'published' AND MATCH(a.title, a.excerpt) AGAINST(? IN BOOLEAN MODE)
-                ORDER BY a.published_at DESC
+                WHERE a.status = 'published' AND {$ftSearch['sql']}
+                ORDER BY {$ftSearch['sql']} DESC, a.published_at DESC
                 LIMIT 20";
-        // Append wildcard for partial matching in BOOLEAN MODE
-        $ftQuery = trim($query) . '*';
         $stmt = $db->prepare($sql);
-        $stmt->execute([$ftQuery]);
+        $stmt->execute([$ftSearch['param'], $ftSearch['param']]);
     } else {
         $searchTerm = '%' . trim($query) . '%';
         $sql = "SELECT {$fields}
                 FROM articles a
                 LEFT JOIN categories c ON a.category_id = c.id
                 LEFT JOIN sources s ON a.source_id = s.id
-                WHERE a.status = 'published' AND (a.title LIKE ? OR a.excerpt LIKE ?)
+                WHERE a.status = 'published' AND (a.title LIKE ? OR a.excerpt LIKE ? OR a.ai_summary LIKE ?)
                 ORDER BY a.published_at DESC
                 LIMIT 20";
         $stmt = $db->prepare($sql);
-        $stmt->execute([$searchTerm, $searchTerm]);
+        $stmt->execute([$searchTerm, $searchTerm, $searchTerm]);
     }
     $articles = $stmt->fetchAll();
 

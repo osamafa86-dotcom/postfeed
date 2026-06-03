@@ -3,6 +3,56 @@
  * Shared article-fetch helpers used by multiple endpoints.
  */
 
+/**
+ * Build a FULLTEXT MATCH...AGAINST expression for a user search query.
+ * Returns ['sql' => '...', 'param' => '...'] when the wider search index
+ * (ft_articles_search on title+excerpt+ai_summary) is present AND the
+ * tokenized query yields at least one usable token. Returns null
+ * otherwise so callers fall back to LIKE.
+ *
+ * Token rules: strip punctuation/tatweel, peel the Arabic "ال/وال/فال…"
+ * prefix off each token (so "الأقصى" still finds documents that say
+ * "أقصى"), and require every remaining token (BOOLEAN MODE +word*).
+ * Tokens under 2 chars are dropped because BOOLEAN MODE wildcards
+ * need a non-empty stem.
+ */
+function articles_search_clause(string $q): ?array {
+    static $hasIdx = null;
+    if ($hasIdx === null) {
+        try {
+            $hasIdx = (bool)getDB()
+                ->query("SHOW INDEX FROM articles WHERE Key_name = 'ft_articles_search'")
+                ->fetch();
+        } catch (Throwable $e) {
+            $hasIdx = false;
+        }
+    }
+    if (!$hasIdx) return null;
+
+    $q = preg_replace('/[\p{P}\p{S}\x{0640}]+/u', ' ', $q);
+    $tokens = preg_split('/\s+/u', trim((string)$q), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+    if (!$tokens) return null;
+
+    $exprs = [];
+    foreach ($tokens as $t) {
+        if (mb_strlen($t) < 2) continue;
+        // Peel a common Arabic prefix so the stem matches both forms.
+        $stripped = preg_replace('/^(وال|فال|بال|كال|ال|لل)/u', '', $t);
+        if ($stripped !== '' && mb_strlen($stripped) >= 2) $t = $stripped;
+        // BOOLEAN MODE needs operators escaped — drop them entirely
+        // rather than try to escape; users don't type these in Arabic.
+        $t = str_replace(['+', '-', '*', '"', '~', '<', '>', '(', ')', '@'], '', $t);
+        if (mb_strlen($t) < 2) continue;
+        $exprs[] = '+' . $t . '*';
+    }
+    if (!$exprs) return null;
+
+    return [
+        'sql'   => 'MATCH(a.title, a.excerpt, a.ai_summary) AGAINST(? IN BOOLEAN MODE)',
+        'param' => implode(' ', $exprs),
+    ];
+}
+
 function articles_select_sql(): string {
     return "SELECT
         a.id, a.title, a.slug, a.excerpt, a.image_url, a.source_url,
@@ -104,10 +154,21 @@ function fetch_articles(array $filters = [], int $limit = 20, int $offset = 0): 
         $where[] = 'a.published_at <= ?';
         $params[] = $filters['until'];
     }
+    $ftSearch = null;
     if (!empty($filters['q'])) {
-        $where[] = '(a.title LIKE ? OR a.excerpt LIKE ?)';
-        $like = '%' . $filters['q'] . '%';
-        $params[] = $like; $params[] = $like;
+        $ftSearch = articles_search_clause((string)$filters['q']);
+        if ($ftSearch) {
+            $where[] = $ftSearch['sql'];
+            $params[] = $ftSearch['param'];
+        } else {
+            // LIKE fallback when the wide FULLTEXT index isn't deployed yet
+            // OR the query tokenized to nothing usable (e.g. all 1-char
+            // tokens). ai_summary is included so the AI-extracted keywords
+            // still drive matches — same column the FULLTEXT covers.
+            $where[] = '(a.title LIKE ? OR a.excerpt LIKE ? OR a.ai_summary LIKE ?)';
+            $like = '%' . $filters['q'] . '%';
+            $params[] = $like; $params[] = $like; $params[] = $like;
+        }
     }
     if (!empty($filters['ids']) && is_array($filters['ids'])) {
         $in = implode(',', array_map('intval', $filters['ids']));
@@ -133,6 +194,14 @@ function fetch_articles(array $filters = [], int $limit = 20, int $offset = 0): 
     ];
     if (!in_array($order, $allowedOrders, true)) $order = 'published_at DESC';
 
+    // Search results: relevance first, recency as tiebreaker. MySQL
+    // computes MATCH() once when the same expression appears in WHERE
+    // and ORDER BY, so the extra placeholder is free at execution time.
+    if ($ftSearch) {
+        $order = $ftSearch['sql'] . ' DESC, a.published_at DESC';
+        $params[] = $ftSearch['param'];
+    }
+
     $sql = articles_select_sql()
         . ' WHERE ' . implode(' AND ', $where)
         . ' ORDER BY ' . $order
@@ -152,9 +221,15 @@ function count_articles(array $filters = []): int {
     if (!empty($filters['source']))   { $where[] = 's.slug = ?'; $params[] = $filters['source']; }
     if (!empty($filters['breaking'])) { $where[] = 'a.is_breaking = 1'; }
     if (!empty($filters['q'])) {
-        $where[] = '(a.title LIKE ? OR a.excerpt LIKE ?)';
-        $like = '%' . $filters['q'] . '%';
-        $params[] = $like; $params[] = $like;
+        $ftSearch = articles_search_clause((string)$filters['q']);
+        if ($ftSearch) {
+            $where[] = $ftSearch['sql'];
+            $params[] = $ftSearch['param'];
+        } else {
+            $where[] = '(a.title LIKE ? OR a.excerpt LIKE ? OR a.ai_summary LIKE ?)';
+            $like = '%' . $filters['q'] . '%';
+            $params[] = $like; $params[] = $like; $params[] = $like;
+        }
     }
     $sql = "SELECT COUNT(*) FROM articles a
             LEFT JOIN categories c ON c.id = a.category_id

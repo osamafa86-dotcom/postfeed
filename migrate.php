@@ -300,6 +300,22 @@ try {
     $applied[] = "! FULLTEXT index skipped: " . $e->getMessage();
 }
 
+// --- Wider FULLTEXT covering ai_summary for richer relevance scoring ---
+// The original ft_title_excerpt is great for headlines but misses the
+// body-of-article keywords the AI summary captures. This wider index
+// is what the v1 search endpoint actually uses (see articles_search_clause
+// in api/v1/_articles_query.php), so without it the app falls back to
+// LIKE %word% — accurate but seconds slow on a multi-thousand-row table.
+try {
+    $hasIdx = $db->query("SHOW INDEX FROM articles WHERE Key_name = 'ft_articles_search'")->fetch();
+    if (!$hasIdx) {
+        $db->exec("ALTER TABLE articles ADD FULLTEXT INDEX ft_articles_search (title, excerpt, ai_summary)");
+        $applied[] = "+ added FULLTEXT index ft_articles_search on articles(title, excerpt, ai_summary)";
+    }
+} catch (Throwable $e) {
+    $applied[] = "! ft_articles_search skipped: " . $e->getMessage();
+}
+
 // ---------- evolving stories (admin-defined persistent topics) ----------
 // Creates the tables and, on first deploy, seeds the 5 initial
 // stories (الأقصى، الأسرى، غزة، الضفة، الاستيطان). Subsequent runs
