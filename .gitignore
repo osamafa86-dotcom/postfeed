@@ -16,6 +16,8 @@ storage/ratelimit/*
 storage/podcast/*
 storage/tts/*
 storage/.secret_key
+storage/fcm-service-account.json
+storage/*-service-account.json
 !storage/cache/.gitkeep
 !storage/cache/.htaccess
 !storage/ratelimit/.gitkeep
