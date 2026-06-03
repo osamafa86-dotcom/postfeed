@@ -64,11 +64,16 @@ const TW_USER_AGENTS = [
  * Fetch the latest tweets for a single username.
  *
  * Transports in order (most reliable in 2026 first):
- *   1) NEXT_DATA (syndication.twitter.com) — the only consistently
- *      working path. Returns full timelines (~99 tweets) when not
- *      rate-limited.
- *   2) Nitter — almost every public instance is dead or blocked; kept
- *      as a fallback for the day syndication itself goes 429.
+ *   A) TwitterAPI.io — paid third-party with residential proxies. Tried
+ *      first when an api key is configured: most reliable, zero
+ *      maintenance, no account-ban risk. ~$0.15 per 1000 tweets ($1
+ *      free credit on signup).
+ *   B) Authenticated GraphQL (x.com/i/api) — free but needs a logged-in
+ *      session (auth_token + ct0 cookies pasted in the admin panel).
+ *      Cookies expire every few weeks → manual rotation.
+ *   1) NEXT_DATA (syndication.twitter.com) — blocked (403/429) for most
+ *      datacenter IPs since Jan 2025. Kept for hosts that still reach it.
+ *   2) Nitter — almost every public instance is dead or blocked.
  *   3) RSSHub — mostly broken for Twitter, kept for completeness.
  *   4) CDN JSON — dead; last resort.
  *
@@ -77,6 +82,25 @@ const TW_USER_AGENTS = [
 function tw_fetch_user_tweets(string $username, int $limit = 20): array {
     $username = ltrim(trim($username), '@');
     if ($username === '') return [];
+
+    // Transport A (preferred when configured): paid TwitterAPI.io.
+    // Residential proxies on their side mean the IP block on our
+    // datacenter is irrelevant — and there's no account-ban risk
+    // because no personal credentials cross the wire.
+    if (tw_apiio_enabled()) {
+        $out = tw_fetch_via_twitterapi_io($username, $limit);
+        if (!empty($out)) return tw_finalize_tweets($out, $username, $limit);
+    }
+
+    // Transport B (free fallback when configured): authenticated GraphQL.
+    // Twitter blocks the anonymous syndication/Nitter routes at the IP
+    // level for datacenter hosts, so a real logged-in session is the
+    // only reliable free path. Skipped automatically when no cookies
+    // are set, falling through to the legacy anonymous transports.
+    if (tw_gql_enabled()) {
+        $out = tw_fetch_via_graphql($username, $limit);
+        if (!empty($out)) return tw_finalize_tweets($out, $username, $limit);
+    }
 
     // One-time-per-hour visit to publish.twitter.com so the cookie jar
     // carries the guest_id / personalization_id Twitter's syndication
@@ -479,6 +503,452 @@ function tw_finalize_tweets(array $tweets, string $username, int $limit): array 
     return array_slice($tweets, 0, $limit);
 }
 
+// ════════════════════════════════════════════════════════════════
+// TwitterAPI.io TRANSPORT (paid, residential-proxy backed)
+// ════════════════════════════════════════════════════════════════
+// Third-party gateway that sits on residential proxies and exposes a
+// clean REST API. Two reasons it's our preferred path in 2026:
+//   • Twitter blocks every anonymous server-side method at the IP layer
+//     since Jan 2025 — only residential addresses get past that.
+//   • Zero credential leakage: no personal session crosses the wire,
+//     so an account ban can't take down the feed.
+//
+// Endpoint: GET https://api.twitterapi.io/twitter/user/last_tweets
+// Auth:     X-API-Key header
+// Params:   userName=<handle>   (NOT screen_name)
+// Cost:     ~$0.15 per 1,000 tweets returned ($1 starter credit on
+//           signup, no card required). With the per-source 75 s floor
+//           and 20 tweets per call, a 10-handle install runs around
+//           ~$1-3/month — the floor is the budget knob; raise
+//           settings.twitter_refetch_floor_secs to throttle further.
+
+function tw_apiio_credentials(): string {
+    return trim((string)getSetting('twitterapi_io_key', ''));
+}
+
+function tw_apiio_enabled(): bool {
+    return tw_apiio_credentials() !== '';
+}
+
+/**
+ * Low-level GET to the TwitterAPI.io user-timeline endpoint. Returns a
+ * uniform structured result so callers can surface the real cause
+ * (bad key, rate limit, unknown handle) in the admin diagnostic.
+ *   ['ok'=>bool, 'http'=>int, 'data'=>array|null, 'error'=>?string, 'body'=>string]
+ */
+function tw_apiio_request(string $username): array {
+    $key = tw_apiio_credentials();
+    if ($key === '') {
+        return ['ok'=>false,'http'=>0,'data'=>null,'error'=>'no_key','body'=>''];
+    }
+    $url = 'https://api.twitterapi.io/twitter/user/last_tweets?userName=' . rawurlencode($username);
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT        => 15,
+        CURLOPT_CONNECTTIMEOUT => 8,
+        CURLOPT_USERAGENT      => 'feedsnews/1.0 (+https://feedsnews.net)',
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_HTTPHEADER     => [
+            'X-API-Key: ' . $key,
+            'Accept: application/json',
+        ],
+    ]);
+    $body = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    $cErr = curl_error($ch);
+    curl_close($ch);
+
+    if (!is_string($body) || $body === '') {
+        return ['ok'=>false,'http'=>$code,'data'=>null,
+                'error'=>'curl: ' . ($cErr ?: 'empty body'), 'body'=>''];
+    }
+    $data = json_decode($body, true);
+    if (!is_array($data)) {
+        return ['ok'=>false,'http'=>$code,'data'=>null,
+                'error'=>'json_decode_failed','body'=>$body];
+    }
+    // 4xx surfaces the gateway's error message in a "message" or "error"
+    // field — propagate verbatim so an expired key reads "Invalid API
+    // key" in the panel, not just "HTTP 401".
+    if ($code >= 400) {
+        $msg = $data['message'] ?? $data['error'] ?? $data['msg'] ?? ('HTTP ' . $code);
+        return ['ok'=>false,'http'=>$code,'data'=>$data,
+                'error'=>'gateway: ' . $msg,'body'=>$body];
+    }
+    return ['ok'=>true,'http'=>$code,'data'=>$data,'error'=>null,'body'=>$body];
+}
+
+/**
+ * Transport A: TwitterAPI.io user/last_tweets. Returns rows in our
+ * internal shape — logs and returns [] on any failure (caller falls
+ * through to the next transport).
+ */
+function tw_fetch_via_twitterapi_io(string $username, int $limit): array {
+    if (!tw_apiio_enabled()) return [];
+    $res = tw_apiio_request($username);
+    if (!$res['ok']) {
+        error_log('tw_apiio: failed for ' . $username . ' — ' . $res['error']);
+        return [];
+    }
+    // Tweets live under data.tweets in the documented shape. A few
+    // older responses ship them at the top level — handle both.
+    $tweets = $res['data']['data']['tweets']
+           ?? $res['data']['tweets']
+           ?? $res['data']['data']
+           ?? [];
+    if (!is_array($tweets)) {
+        error_log('tw_apiio: tweets field not array for ' . $username);
+        return [];
+    }
+    $rows = [];
+    foreach ($tweets as $t) {
+        $row = tw_apiio_normalize($t);
+        if ($row) $rows[] = $row;
+    }
+    error_log('tw_apiio: parsed ' . count($rows) . ' tweets for ' . $username);
+    return $rows;
+}
+
+/**
+ * Map one TwitterAPI.io tweet dict to our internal row shape.
+ *
+ * The gateway returns fields like { id, url, text, createdAt,
+ * isReply, retweetCount, extendedEntities|entities.media, ... }.
+ * We mirror tw_normalize_tweet's contract: skip retweets and empty
+ * tweets, strip the trailing t.co link, surface the first image.
+ */
+function tw_apiio_normalize($t): ?array {
+    if (!is_array($t)) return null;
+    $id = (string)($t['id'] ?? $t['id_str'] ?? '');
+    if ($id === '') return null;
+
+    // Retweets — gateway exposes them as either a flag or a nested
+    // "retweeted_tweet" / "retweeted_status" object. Skip all of them.
+    if (!empty($t['isRetweet']) || !empty($t['retweeted_status'])
+        || !empty($t['retweeted_tweet']) || !empty($t['retweetedStatusId'])) {
+        return null;
+    }
+
+    $text = (string)($t['fullText'] ?? $t['full_text'] ?? $t['text'] ?? '');
+    $text = trim((string)preg_replace('#https?://t\.co/\S+\s*$#', '', $text));
+
+    // Image: walk the media arrays in priority order. Some payloads put
+    // photos under extendedEntities.media, others under entities.media,
+    // others ship a flat "media" array. Take the first photo URL we find.
+    $image = '';
+    $candidates = [
+        $t['extendedEntities']['media'] ?? null,
+        $t['extended_entities']['media'] ?? null,
+        $t['entities']['media'] ?? null,
+        $t['media'] ?? null,
+    ];
+    foreach ($candidates as $mediaList) {
+        if (!is_array($mediaList)) continue;
+        foreach ($mediaList as $m) {
+            $u = $m['media_url_https'] ?? $m['mediaUrlHttps']
+              ?? $m['media_url'] ?? $m['url'] ?? '';
+            // Drop video poster frames? No — they look fine as thumbnails.
+            if ($u) { $image = $u; break 2; }
+        }
+    }
+
+    // createdAt is ISO or Twitter's legacy "Wed Oct 10 20:19:24 +0000 2018".
+    // strtotime handles both. Fall back to "now" only if we can't parse.
+    $ts = 0;
+    $when = (string)($t['createdAt'] ?? $t['created_at'] ?? '');
+    if ($when !== '') $ts = strtotime($when);
+    $postedAt = $ts ? date('Y-m-d H:i:s', $ts) : date('Y-m-d H:i:s');
+
+    if ($text === '' && $image === '') return null;
+
+    return [
+        'tweet_id'  => $id,
+        'text'      => $text,
+        'image_url' => $image,
+        'posted_at' => $postedAt,
+        // url filled by tw_finalize_tweets if empty.
+        'url'       => (string)($t['url'] ?? $t['tweetUrl'] ?? ''),
+    ];
+}
+
+// ════════════════════════════════════════════════════════════════
+// AUTHENTICATED GraphQL TRANSPORT (x.com/i/api/graphql)
+// ════════════════════════════════════════════════════════════════
+// In 2026 the anonymous timeline endpoints (syndication.twitter.com,
+// cdn.syndication.twimg.com) return 403/429 to every datacenter IP —
+// no header/cookie trick gets around an IP-level block. The only
+// reliable free path is the same GraphQL API x.com's own web client
+// calls, authenticated with a real logged-in session.
+//
+// The admin pastes two cookies from a (burner) X account in the panel:
+//   • auth_token  — the session cookie
+//   • ct0         — the CSRF double-submit token
+// stored as settings.twitter_auth_token / settings.twitter_ct0.
+
+// Public web-app bearer token. NOT a per-user secret — it's a constant
+// baked into x.com's JS bundle, identical for every visitor. Auth comes
+// from the cookies, not this.
+const TW_GQL_BEARER = 'AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA';
+
+// GraphQL query IDs (the hash in the URL path) rotate every few weeks.
+// These defaults are current as of early 2026; override without a
+// deploy via settings if X rotates them:
+//   twitter_gql_userbyscreenname_qid
+//   twitter_gql_usertweets_qid
+const TW_GQL_QID_USER_BY_NAME = 'oUZZZ8Oddwxs8Cd3iW3UEA';
+const TW_GQL_QID_USER_TWEETS  = 'E3opETHurmVJflFsUBVuUQ';
+
+/** Read the stored session cookies. */
+function tw_gql_credentials(): array {
+    return [
+        'auth_token' => trim((string)getSetting('twitter_auth_token', '')),
+        'ct0'        => trim((string)getSetting('twitter_ct0', '')),
+    ];
+}
+
+/** True when both cookies are configured. */
+function tw_gql_enabled(): bool {
+    $c = tw_gql_credentials();
+    return $c['auth_token'] !== '' && $c['ct0'] !== '';
+}
+
+/**
+ * Low-level GraphQL GET. Returns a structured result:
+ *   ['ok'=>bool, 'http'=>int, 'data'=>array|null, 'error'=>?string, 'body'=>string]
+ * Never throws — callers inspect ['ok'].
+ */
+function tw_gql_request(string $opName, string $qid, array $variables, array $features): array {
+    $cred = tw_gql_credentials();
+    if ($cred['auth_token'] === '' || $cred['ct0'] === '') {
+        return ['ok' => false, 'http' => 0, 'data' => null, 'error' => 'no_credentials', 'body' => ''];
+    }
+
+    $url = 'https://x.com/i/api/graphql/' . rawurlencode($qid) . '/' . $opName
+         . '?variables=' . rawurlencode(json_encode($variables, JSON_UNESCAPED_UNICODE))
+         . '&features='  . rawurlencode(json_encode($features,  JSON_UNESCAPED_UNICODE));
+
+    $headers = [
+        'Authorization: Bearer ' . TW_GQL_BEARER,
+        'x-csrf-token: ' . $cred['ct0'],
+        'x-twitter-auth-type: OAuth2Session',
+        'x-twitter-active-user: yes',
+        'x-twitter-client-language: ar',
+        'Accept: */*',
+        'Accept-Language: ar,en-US;q=0.9,en;q=0.8',
+        'Content-Type: application/json',
+        'Referer: https://x.com/',
+        'Origin: https://x.com',
+        // Both cookies on the wire. ct0 must match the x-csrf-token header.
+        'Cookie: auth_token=' . $cred['auth_token'] . '; ct0=' . $cred['ct0'],
+    ];
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT        => 12,
+        CURLOPT_CONNECTTIMEOUT => 8,
+        CURLOPT_USERAGENT      => TW_USER_AGENTS[array_rand(TW_USER_AGENTS)],
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_HTTPHEADER     => $headers,
+    ]);
+    $body = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+    $cErr = curl_error($ch);
+    curl_close($ch);
+
+    if (!is_string($body) || $body === '') {
+        return ['ok' => false, 'http' => $code, 'data' => null,
+                'error' => 'curl: ' . ($cErr ?: 'empty body'), 'body' => ''];
+    }
+    $data = json_decode($body, true);
+    if (!is_array($data)) {
+        return ['ok' => false, 'http' => $code, 'data' => null,
+                'error' => 'json_decode_failed', 'body' => $body];
+    }
+    // GraphQL surfaces problems in a top-level "errors" array even on
+    // HTTP 200. The message names the cause (bad auth, missing feature
+    // flag, rate limit) — propagate it so the diagnostic is actionable.
+    if (!empty($data['errors'])) {
+        $msg = $data['errors'][0]['message'] ?? 'unknown graphql error';
+        return ['ok' => false, 'http' => $code, 'data' => $data,
+                'error' => 'graphql: ' . $msg, 'body' => $body];
+    }
+    return ['ok' => true, 'http' => $code, 'data' => $data, 'error' => null, 'body' => $body];
+}
+
+/** Feature flags for UserByScreenName (smaller set than UserTweets). */
+function tw_gql_userbyname_features(): array {
+    return [
+        'hidden_profile_subscriptions_enabled' => true,
+        'rweb_tipjar_consumption_enabled' => true,
+        'responsive_web_graphql_exclude_directive_enabled' => true,
+        'verified_phone_label_enabled' => false,
+        'subscriptions_verification_info_is_identity_verified_enabled' => true,
+        'subscriptions_verification_info_verified_since_enabled' => true,
+        'highlights_tweets_tab_ui_enabled' => true,
+        'responsive_web_twitter_article_notes_tab_enabled' => true,
+        'subscriptions_feature_can_gift_premium' => true,
+        'creator_subscriptions_tweet_preview_api_enabled' => true,
+        'responsive_web_graphql_skip_user_profile_image_extensions_enabled' => false,
+        'responsive_web_graphql_timeline_navigation_enabled' => true,
+    ];
+}
+
+/**
+ * Feature flags for UserTweets. Overridable wholesale via
+ * settings.twitter_gql_features (a JSON object) so we can add a flag X
+ * starts requiring ("The following features cannot be null: …") without
+ * shipping a new build.
+ */
+function tw_gql_usertweets_features(): array {
+    $override = trim((string)getSetting('twitter_gql_features', ''));
+    if ($override !== '') {
+        $decoded = json_decode($override, true);
+        if (is_array($decoded) && !empty($decoded)) return $decoded;
+    }
+    return [
+        'rweb_tipjar_consumption_enabled' => true,
+        'responsive_web_graphql_exclude_directive_enabled' => true,
+        'verified_phone_label_enabled' => false,
+        'creator_subscriptions_tweet_preview_api_enabled' => true,
+        'responsive_web_graphql_timeline_navigation_enabled' => true,
+        'responsive_web_graphql_skip_user_profile_image_extensions_enabled' => false,
+        'communities_web_enable_tweet_community_results_fetch' => true,
+        'c9s_tweet_anatomy_moderator_badge_enabled' => true,
+        'articles_preview_enabled' => true,
+        'responsive_web_edit_tweet_api_enabled' => true,
+        'graphql_is_translatable_rweb_tweet_is_translatable_enabled' => true,
+        'view_counts_everywhere_api_enabled' => true,
+        'longform_notetweets_consumption_enabled' => true,
+        'responsive_web_twitter_article_tweet_consumption_enabled' => true,
+        'tweet_awards_web_tipping_enabled' => false,
+        'creator_subscriptions_quote_tweet_preview_enabled' => false,
+        'freedom_of_speech_not_reach_fetch_enabled' => true,
+        'standardized_nudges_misinfo' => true,
+        'tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled' => true,
+        'rweb_video_timestamps_enabled' => true,
+        'longform_notetweets_rich_text_read_enabled' => true,
+        'longform_notetweets_inline_media_enabled' => true,
+        'responsive_web_enhance_cards_enabled' => false,
+    ];
+}
+
+/**
+ * Resolve a screen name to its numeric user id (rest_id), cached on disk
+ * for a day since it never changes for a given handle.
+ */
+function tw_gql_user_id(string $username): ?string {
+    $cacheFile = sys_get_temp_dir() . '/nf_tw_uid_' . md5(strtolower($username)) . '.txt';
+    if (is_file($cacheFile) && (time() - @filemtime($cacheFile)) < 86400) {
+        $cached = trim((string)@file_get_contents($cacheFile));
+        if ($cached !== '') return $cached;
+    }
+    $qid = trim((string)getSetting('twitter_gql_userbyscreenname_qid', '')) ?: TW_GQL_QID_USER_BY_NAME;
+    $res = tw_gql_request('UserByScreenName', $qid,
+        ['screen_name' => $username, 'withSafetyModeUserFields' => true],
+        tw_gql_userbyname_features());
+    if (!$res['ok']) {
+        error_log('tw_gql: UserByScreenName failed for ' . $username . ' — ' . $res['error']);
+        return null;
+    }
+    $id = $res['data']['data']['user']['result']['rest_id'] ?? null;
+    if (!$id) {
+        error_log('tw_gql: no rest_id in UserByScreenName response for ' . $username);
+        return null;
+    }
+    @file_put_contents($cacheFile, (string)$id, LOCK_EX);
+    return (string)$id;
+}
+
+/**
+ * Transport 0: authenticated UserTweets GraphQL call. Returns our normal
+ * tweet-row shape, or [] (and logs why) on any failure.
+ */
+function tw_fetch_via_graphql(string $username, int $limit): array {
+    if (!tw_gql_enabled()) return [];
+    $userId = tw_gql_user_id($username);
+    if (!$userId) return [];
+
+    $qid = trim((string)getSetting('twitter_gql_usertweets_qid', '')) ?: TW_GQL_QID_USER_TWEETS;
+    $res = tw_gql_request('UserTweets', $qid, [
+        'userId' => $userId,
+        'count'  => max(20, min($limit, 40)),
+        'includePromotedContent' => false,
+        'withQuickPromoteEligibilityTweetFields' => false,
+        'withVoice' => false,
+        'withV2Timeline' => true,
+    ], tw_gql_usertweets_features());
+
+    if (!$res['ok']) {
+        error_log('tw_gql: UserTweets failed for ' . $username . ' — ' . $res['error']);
+        return [];
+    }
+    $rows = tw_gql_parse_user_tweets($res['data']);
+    error_log('tw_gql: UserTweets parsed ' . count($rows) . ' tweets for ' . $username);
+    return $rows;
+}
+
+/**
+ * Walk the UserTweets timeline instructions and normalize each tweet
+ * entry. Skips cursors, pinned entries, promoted content, and retweets.
+ */
+function tw_gql_parse_user_tweets(array $data): array {
+    $instructions = $data['data']['user']['result']['timeline_v2']['timeline']['instructions']
+                 ?? $data['data']['user']['result']['timeline']['timeline']['instructions']
+                 ?? [];
+    if (!is_array($instructions)) return [];
+
+    $out = [];
+    foreach ($instructions as $inst) {
+        // Pinned tweets arrive in their own instruction — skip so an old
+        // pinned tweet can't shadow newer posts at the top of our feed.
+        if (($inst['type'] ?? '') === 'TimelinePinEntry') continue;
+        $entries = $inst['entries'] ?? [];
+        if (!is_array($entries)) continue;
+
+        foreach ($entries as $entry) {
+            // Only top-level tweet entries. Skip cursor-*, promoted-*,
+            // who-to-follow-*, and conversation module wrappers.
+            if (strpos((string)($entry['entryId'] ?? ''), 'tweet-') !== 0) continue;
+            $result = $entry['content']['itemContent']['tweet_results']['result'] ?? null;
+            $t = tw_gql_normalize_result($result);
+            if ($t) $out[] = $t;
+        }
+    }
+    return $out;
+}
+
+/**
+ * Turn one GraphQL tweet_results.result node into our row shape by
+ * extracting its `legacy` object and handing it to tw_normalize_tweet
+ * (the legacy object is the same v1.1-style dict that helper already
+ * understands). Handles the TweetWithVisibilityResults wrapper and
+ * long-form note tweets, and drops retweets.
+ */
+function tw_gql_normalize_result($result): ?array {
+    if (!is_array($result)) return null;
+    // Limited-visibility tweets wrap the real payload one level down.
+    if (($result['__typename'] ?? '') === 'TweetWithVisibilityResults' && isset($result['tweet'])) {
+        $result = $result['tweet'];
+    }
+    $legacy = $result['legacy'] ?? null;
+    if (!is_array($legacy)) return null;
+
+    // GraphQL marks retweets with retweeted_status_result (not the
+    // legacy retweeted_status field tw_normalize_tweet checks for).
+    if (!empty($legacy['retweeted_status_result'])) return null;
+
+    // Long-form "note" tweets keep the full body outside legacy.full_text.
+    $note = $result['note_tweet']['note_tweet_results']['result']['text'] ?? null;
+    if (is_string($note) && $note !== '') $legacy['full_text'] = $note;
+
+    return tw_normalize_tweet($legacy);
+}
+
 /**
  * Path to the shared cookie jar — accumulates guest_id / personalization
  * cookies set by twitter.com and publish.twitter.com so subsequent
@@ -785,6 +1255,100 @@ function tw_debug_fetch_source(string $username): array {
     if ($username === '') {
         $report['error'] = 'empty username';
         return $report;
+    }
+
+    // Transport A (preferred): TwitterAPI.io. Probed first since it's
+    // the most reliable path in 2026 — residential proxies sidestep the
+    // datacenter IP block. Surfaces the gateway's error verbatim ("Invalid
+    // API key", "Rate limit exceeded", "User not found") so an operator
+    // knows which way to fix it.
+    if (tw_apiio_enabled()) {
+        $t0 = microtime(true);
+        $res = tw_apiio_request($username);
+        $a = [
+            'label' => 'TwitterAPI.io',
+            'url'   => 'api.twitterapi.io/twitter/user/last_tweets?userName=' . rawurlencode($username),
+            'http_code'  => $res['http'],
+            'total_time' => round(microtime(true) - $t0, 2),
+            'size'       => strlen($res['body'] ?? ''),
+            'parsed_count' => 0,
+            'body_snippet' => mb_substr((string)($res['body'] ?? ''), 0, 500),
+            'curl_error' => null,
+        ];
+        if ($res['ok']) {
+            $tweets = $res['data']['data']['tweets']
+                   ?? $res['data']['tweets']
+                   ?? $res['data']['data']
+                   ?? [];
+            $parsed = [];
+            if (is_array($tweets)) {
+                foreach ($tweets as $t) {
+                    $row = tw_apiio_normalize($t);
+                    if ($row) $parsed[] = $row;
+                }
+            }
+            $a['parsed_count'] = count($parsed);
+            $a['newest_posted_at'] = $parsed[0]['posted_at'] ?? null;
+        } else {
+            $a['parse_error'] = $res['error'];
+        }
+        $report['transports'][] = $a;
+        // Success on the paid gateway → don't burn diagnostic time on
+        // the doomed anonymous transports.
+        if ($a['parsed_count'] > 0) return $report;
+    } else {
+        $report['transports'][] = [
+            'label' => 'TwitterAPI.io',
+            'url'   => '—',
+            'http_code' => 0, 'total_time' => 0, 'size' => 0,
+            'parsed_count' => 0,
+            'parse_error' => 'لا يوجد مفتاح API — أضفه بالأسفل',
+            'body_snippet' => null,
+        ];
+    }
+
+    // Transport B: authenticated GraphQL. Reports whether credentials
+    // are set, the HTTP code, any GraphQL error message, and how many
+    // tweets parsed — so an operator can tell at a glance whether the
+    // session cookies are valid / expired / missing a feature flag.
+    $g = ['label' => 'GraphQL مُصادَق (جلسة X)', 'http_code' => 0,
+          'total_time' => 0, 'size' => 0, 'parsed_count' => 0,
+          'curl_error' => null, 'body_snippet' => null, 'url' => 'x.com/i/api/graphql/UserTweets'];
+    if (!tw_gql_enabled()) {
+        $g['parse_error'] = 'لا توجد كوكيز — أضف auth_token و ct0 بالأسفل';
+        $report['transports'][] = $g;
+    } else {
+        $t0 = microtime(true);
+        $userId = tw_gql_user_id($username);
+        if (!$userId) {
+            $g['parse_error'] = 'فشل UserByScreenName — الكوكيز غالباً منتهية أو خاطئة (شوف error.log)';
+            $g['total_time'] = round(microtime(true) - $t0, 2);
+            $report['transports'][] = $g;
+        } else {
+            $qid = trim((string)getSetting('twitter_gql_usertweets_qid', '')) ?: TW_GQL_QID_USER_TWEETS;
+            $res = tw_gql_request('UserTweets', $qid, [
+                'userId' => $userId, 'count' => 20,
+                'includePromotedContent' => false,
+                'withQuickPromoteEligibilityTweetFields' => false,
+                'withVoice' => false, 'withV2Timeline' => true,
+            ], tw_gql_usertweets_features());
+            $g['http_code']  = $res['http'];
+            $g['total_time'] = round(microtime(true) - $t0, 2);
+            $g['size']       = is_string($res['body'] ?? null) ? strlen($res['body']) : 0;
+            $g['body_snippet'] = isset($res['body']) ? mb_substr((string)$res['body'], 0, 500) : null;
+            if ($res['ok']) {
+                $rows = tw_gql_parse_user_tweets($res['data']);
+                $g['parsed_count'] = count($rows);
+                $g['newest_posted_at'] = $rows[0]['posted_at'] ?? null;
+                $g['resolved_user_id'] = $userId;
+            } else {
+                $g['parse_error'] = $res['error'];
+            }
+            $report['transports'][] = $g;
+            // GraphQL worked — no need to hammer the dead anonymous
+            // transports in the diagnostic too.
+            if ($g['parsed_count'] > 0) return $report;
+        }
     }
 
     // Transport 0: Nitter — try each public instance. Mirrors
