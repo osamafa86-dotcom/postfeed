@@ -33,17 +33,41 @@ function articles_search_clause(string $q): ?array {
     $tokens = preg_split('/\s+/u', trim((string)$q), -1, PREG_SPLIT_NO_EMPTY) ?: [];
     if (!$tokens) return null;
 
+    // MySQL FULLTEXT indexes each Arabic word AS-IS — "الأقصى" and
+    // "أقصى" are independent tokens. So a query for one form won't
+    // match documents that only contain the other. To get LIKE-level
+    // recall we expand every token into its forms-with-and-without the
+    // common Arabic article prefixes and OR them together inside a
+    // required group: +(الأقصى* أقصى*) means "must contain one of
+    // these forms". This roughly doubles the index hits but keeps the
+    // FULLTEXT speed (still milliseconds, even on hundreds of thousands
+    // of rows).
     $exprs = [];
+    $opStrip = ['+', '-', '*', '"', '~', '<', '>', '(', ')', '@'];
     foreach ($tokens as $t) {
+        $t = str_replace($opStrip, '', $t);
         if (mb_strlen($t) < 2) continue;
-        // Peel a common Arabic prefix so the stem matches both forms.
+
+        $variants = [];
+        $variants[$t] = true;
+
+        // If the token starts with a common Arabic article prefix, also
+        // search the stem ("الأقصى" → also "أقصى").
         $stripped = preg_replace('/^(وال|فال|بال|كال|ال|لل)/u', '', $t);
-        if ($stripped !== '' && mb_strlen($stripped) >= 2) $t = $stripped;
-        // BOOLEAN MODE needs operators escaped — drop them entirely
-        // rather than try to escape; users don't type these in Arabic.
-        $t = str_replace(['+', '-', '*', '"', '~', '<', '>', '(', ')', '@'], '', $t);
-        if (mb_strlen($t) < 2) continue;
-        $exprs[] = '+' . $t . '*';
+        if ($stripped !== '' && $stripped !== $t && mb_strlen($stripped) >= 2) {
+            $variants[$stripped] = true;
+        } else {
+            // Otherwise, also search with "ال" prepended ("أقصى" →
+            // also "الأقصى") because content is more often prefixed
+            // than bare.
+            $variants['ال' . $t] = true;
+        }
+
+        $forms = array_map(fn($v) => $v . '*', array_keys($variants));
+        // Single variant → +word* ; multiple → +(form1* form2*)
+        $exprs[] = count($forms) === 1
+            ? '+' . $forms[0]
+            : '+(' . implode(' ', $forms) . ')';
     }
     if (!$exprs) return null;
 
