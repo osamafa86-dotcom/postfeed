@@ -20,50 +20,76 @@ import 'core/theme/theme_controller.dart';
 import 'features/auth/data/auth_storage.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(statusBarColor: Colors.transparent),
-  );
+  // Wrap everything in a zone guard so even errors that escape
+  // FlutterError.onError (Dart-level zone errors, e.g. inside
+  // microtasks or post-frame callbacks) get captured in the trace
+  // overlay. The previous build saw "_TypeError: Null check operator"
+  // fire on /weekly but the on-screen log showed only the post-error
+  // ErrorWidget render — the original Dart-level exception was
+  // never recorded because it was thrown outside Flutter's zone.
+  await runZonedGuarded<Future<void>>(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(statusBarColor: Colors.transparent),
+    );
 
-  // ── Catch every framework error and surface it in the on-screen
-  //    trace overlay. Without this, a build-time throw on iOS release
-  //    just produces a silent blank screen — exactly the symptom we've
-  //    been chasing.
-  final originalOnError = FlutterError.onError;
-  FlutterError.onError = (FlutterErrorDetails details) {
+    // ── Catch every framework error and surface it in the on-screen
+    //    trace overlay. Without this, a build-time throw on iOS release
+    //    just produces a silent blank screen — exactly the symptom we've
+    //    been chasing.
+    final originalOnError = FlutterError.onError;
+    FlutterError.onError = (FlutterErrorDetails details) {
+      DebugTrace.log(
+        'error',
+        '${details.exception.runtimeType}: ${details.exceptionAsString().split('\n').first}',
+        level: DebugLevel.error,
+      );
+      // Also capture a short stack frame to identify which file is
+      // throwing (in release the names are obfuscated but the structure
+      // still helps narrow it down).
+      final stackLine = details.stack?.toString().split('\n').take(3).join(' | ') ?? '';
+      if (stackLine.isNotEmpty) {
+        DebugTrace.log('error.stack', stackLine, level: DebugLevel.error);
+      }
+      originalOnError?.call(details);
+    };
+    ErrorWidget.builder = (FlutterErrorDetails details) {
+      DebugTrace.log(
+        'error.widget',
+        details.exceptionAsString().split('\n').first,
+        level: DebugLevel.error,
+      );
+      return Container(
+        color: const Color(0xFF7F1D1D),
+        alignment: Alignment.center,
+        padding: const EdgeInsets.all(16),
+        child: Text(
+          'ERROR WIDGET\n${details.exceptionAsString()}',
+          style: const TextStyle(color: Colors.white, fontSize: 10),
+          textAlign: TextAlign.center,
+        ),
+      );
+    };
+    DebugTrace.log('boot', 'app starting');
+
+    timeago.setLocaleMessages('ar', timeago.ArMessages());
+
+    await Hive.initFlutter();
+    await initHiveBoxes();
+    await AuthStorage.init();
+
+    runApp(const ProviderScope(child: FeedsNewsApp()));
+  }, (Object error, StackTrace stack) {
+    // Last-chance handler for anything that escaped the framework's
+    // own onError (zone-level errors, microtask exceptions, etc.).
     DebugTrace.log(
-      'error',
-      '${details.exception.runtimeType}: ${details.exceptionAsString().split('\n').first}',
+      'error.zone',
+      '${error.runtimeType}: ${error.toString().split('\n').first}',
       level: DebugLevel.error,
     );
-    originalOnError?.call(details);
-  };
-  ErrorWidget.builder = (FlutterErrorDetails details) {
-    DebugTrace.log(
-      'error.widget',
-      details.exceptionAsString().split('\n').first,
-      level: DebugLevel.error,
-    );
-    return Container(
-      color: const Color(0xFF7F1D1D),
-      alignment: Alignment.center,
-      padding: const EdgeInsets.all(16),
-      child: Text(
-        'ERROR WIDGET\n${details.exceptionAsString()}',
-        style: const TextStyle(color: Colors.white, fontSize: 10),
-        textAlign: TextAlign.center,
-      ),
-    );
-  };
-  DebugTrace.log('boot', 'app starting');
-
-  timeago.setLocaleMessages('ar', timeago.ArMessages());
-
-  await Hive.initFlutter();
-  await initHiveBoxes();
-  await AuthStorage.init();
-
-  runApp(const ProviderScope(child: FeedsNewsApp()));
+    final stackLine = stack.toString().split('\n').take(3).join(' | ');
+    DebugTrace.log('error.zone.stack', stackLine, level: DebugLevel.error);
+  });
 }
 
 class FeedsNewsApp extends ConsumerStatefulWidget {

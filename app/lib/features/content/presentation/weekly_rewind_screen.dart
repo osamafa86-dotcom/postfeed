@@ -72,7 +72,22 @@ final _weeklyProvider = FutureProvider<_WeeklyRewind>((ref) async {
   final api = ref.watch(apiClientProvider);
   final res = await api.get<Map<String, dynamic>>('/content/weekly-rewind',
       decode: (d) => (d as Map).cast<String, dynamic>());
-  return _WeeklyRewind.fromJson(res.data!);
+  // `res.data!` used to throw "Null check operator used on a null value"
+  // when the envelope came back with `data: null` (no rewind generated
+  // for this week yet, server-side `api_ok(null)`). The throw bubbled
+  // up to ErrorWidget.builder before Riverpod's error path could swap
+  // in our friendly empty-state, leaving the user staring at the gray
+  // RenderErrorBox. Now we coerce null → ApiException 404 so the
+  // screen's existing 404 branch shows the EmptyView instead.
+  final data = res.data;
+  if (data == null) {
+    throw const ApiException('not_found', 'لا توجد مراجعة أسبوعية بعد', status: 404);
+  }
+  try {
+    return _WeeklyRewind.fromJson(data);
+  } catch (e) {
+    throw ApiException('parse_failed', 'تعذّر قراءة بيانات المراجعة: $e');
+  }
 });
 
 // ── Screen ──
