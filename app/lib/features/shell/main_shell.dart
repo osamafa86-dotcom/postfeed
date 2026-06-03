@@ -13,6 +13,19 @@ import '../media/data/media_repository.dart';
 import '../user/presentation/follow_screen.dart';
 import '../user/presentation/profile_screen.dart';
 
+/// The 5-tab shell. Only handles tab routes (/, /discover, /summaries,
+/// /follow, /profile) — every other route in the app is OUTSIDE the
+/// ShellRoute and pushed full-screen on top of this widget.
+///
+/// History: we briefly tried to keep the bottom nav visible on every
+/// sub-route by moving them inside the ShellRoute and overlaying
+/// widget.child on top of IndexedStack. That combo crashed inside
+/// StatefulElement.activate (framework.dart:5938) on the second
+/// sub-route navigation in a session — Flutter ended up reactivating
+/// elements whose State had already been disposed. Reverted to the
+/// same routing topology as the App Store-approved 2.2.1+18 build:
+/// sub-routes are pushed full-screen, losing the bottom nav for those
+/// pages but gaining rock-solid navigation.
 class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key, required this.state, required this.child});
   final GoRouterState state;
@@ -31,66 +44,14 @@ class MainShell extends ConsumerStatefulWidget {
 }
 
 class _MainShellState extends ConsumerState<MainShell> {
-  // Stable GlobalKeys per tab page. Without these, the const _pages
-  // widgets get identified by widget type alone, which collides with
-  // any other place in the tree that mounts the same `const HomeScreen()`
-  // instance (notably go_router's _HomeRoot, also `const HomeScreen()`).
-  // The duplicate identity triggered StatefulElement.activate on an
-  // element whose State had already been disposed by the other mount —
-  // exactly the framework.dart:5938 crash. GlobalKeys disambiguate them
-  // across the whole element tree.
-  static final GlobalKey _homeKey      = GlobalKey(debugLabel: 'shell.home');
-  static final GlobalKey _discoverKey  = GlobalKey(debugLabel: 'shell.discover');
-  static final GlobalKey _summariesKey = GlobalKey(debugLabel: 'shell.summaries');
-  static final GlobalKey _followKey    = GlobalKey(debugLabel: 'shell.follow');
-  static final GlobalKey _profileKey   = GlobalKey(debugLabel: 'shell.profile');
-
-  // Non-const list so we can attach unique keys; the widgets themselves
-  // are still keyed-const. State preservation comes from IndexedStack
-  // always staying in the tree (see build()).
-  late final List<Widget> _pages = [
-    HomeScreen(key: _homeKey),
-    DiscoverScreen(key: _discoverKey),
-    SummariesScreen(key: _summariesKey),
-    FollowScreen(key: _followKey),
-    ProfileScreen(key: _profileKey),
+  // Pages are created once and kept alive via IndexedStack.
+  final _pages = const [
+    HomeScreen(),
+    DiscoverScreen(),
+    SummariesScreen(),
+    FollowScreen(),
+    ProfileScreen(),
   ];
-
-  String? _lastLoc;
-
-  @override
-  void didUpdateWidget(covariant MainShell oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final loc = widget.state.uri.toString();
-    final prev = _lastLoc;
-    if (prev != null && prev != loc) {
-      DebugTrace.log('shell.nav', '$prev → $loc');
-      // Route changed — drop any sticky focus / keyboard left behind by
-      // the previous screen. AskScreen's TextField in particular kept the
-      // soft keyboard's input connection alive across navigation, which
-      // skewed the next screen's MediaQuery and showed up as a blank
-      // gray article view after returning from Ask/Sabah/Weekly.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        try {
-          final focus = FocusManager.instance.primaryFocus;
-          if (focus != null && focus.hasFocus) {
-            DebugTrace.log('shell', 'unfocus on route change');
-            focus.unfocus();
-          }
-        } catch (e) {
-          DebugTrace.log('shell', 'unfocus failed: $e', level: DebugLevel.warn);
-        }
-      });
-    }
-    _lastLoc = loc;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _lastLoc = widget.state.uri.toString();
-  }
 
   int _indexFor(String location) {
     for (var i = 0; i < MainShell._tabs.length; i++) {
@@ -103,79 +64,21 @@ class _MainShellState extends ConsumerState<MainShell> {
     return 0;
   }
 
-  /// Whether the location corresponds to one of the five primary tabs.
-  /// The shell shows IndexedStack for tab routes (preserves per-tab scroll
-  /// state, AI providers, etc.) and renders the routed `child` directly
-  /// for inner pages like /article/123 — so the bottom nav stays put no
-  /// matter how deep the user navigates.
-  bool _isTabRoute(String loc) {
-    for (final t in MainShell._tabs) {
-      if (loc == t.path) return true;
-    }
-    return false;
-  }
-
   @override
   Widget build(BuildContext context) {
     final loc = widget.state.uri.toString();
     final index = _indexFor(loc);
-    final isTab = _isTabRoute(loc);
 
     // Trace overlay probes — overwritten each rebuild so the panel
     // always shows the latest shell state.
     DebugTrace.probe('shell.loc', loc);
-    DebugTrace.probe('shell.isTab', isTab.toString());
-    DebugTrace.probe('shell.child', widget.child.runtimeType.toString());
-    final mq = MediaQuery.of(context);
-    DebugTrace.probe('shell.viewport',
-      '${mq.size.width.toStringAsFixed(0)}×${mq.size.height.toStringAsFixed(0)} '
-      'inset.bottom=${mq.viewInsets.bottom.toStringAsFixed(0)}');
+    DebugTrace.probe('shell.tab', MainShell._tabs[index].path);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      // Root-cause fix for the gray/red error widget on /article (and
-      // other sub-routes) after returning from Ask/Sabah/Weekly:
-      //
-      // The previous if-else swapped between IndexedStack(_pages) for
-      // tabs and widget.child for sub-routes. Each switch tore the
-      // entire IndexedStack out of the tree, which disposed every
-      // _pages State (HomeScreen, DiscoverScreen, …). When the user
-      // navigated back to a tab and we re-mounted the same
-      // `const HomeScreen()` instance, Flutter called
-      // StatefulElement.activate on it, found `_state == null` (it had
-      // been disposed), and crashed:
-      //   _TypeError: Null check operator used on a null value
-      //   #0 StatefulElement.state (framework.dart:5938)
-      //   #1 StatefulElement.activate
-      //
-      // Fix: keep IndexedStack in the tree at all times. When a sub-
-      // route is active we render its widget on top of the same Stack
-      // — the sub-route's own Scaffold has an opaque background so the
-      // user doesn't see the tabs underneath, but the tab States stay
-      // alive across deep navigation.
-      body: Stack(
-        children: [
-          // Base layer — always mounted, preserves tab state. TickerMode
-          // pauses animations on hidden tabs (story carousel, pulse tag,
-          // ...) while a sub-route is on screen so they don't burn CPU.
-          TickerMode(
-            enabled: isTab,
-            child: IndexedStack(index: index, children: _pages),
-          ),
-          // Overlay layer — wrapped in a KeyedSubtree with a stable
-          // ValueKey so Flutter treats this slot as the same logical
-          // position across rebuilds. Without the stable key,
-          // transitioning between two articles (/article/42637 →
-          // /article/42616) made Flutter mistake go_router's internal
-          // Navigator for a candidate to reparent, and the framework
-          // ended up reactivating an Element whose State was already
-          // disposed — same "StatefulElement.state null" framework
-          // crash, just on a different code path than the tab case.
-          if (!isTab) KeyedSubtree(
-            key: const ValueKey('shell.overlay'),
-            child: widget.child,
-          ),
-        ],
+      body: IndexedStack(
+        index: index,
+        children: _pages,
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -196,40 +99,30 @@ class _MainShellState extends ConsumerState<MainShell> {
           currentIndex: index,
           onTap: (i) {
             // Tapping the home tab while already on home refreshes the
-            // feed — matches the standard pattern in Twitter/Instagram.
-            // Check the exact location (not index) because sub-routes
-            // like /article/123 also map to index 0 and should navigate
-            // back to /, not trigger a refresh.
+            // feed AND animates the home scroll view back to the top —
+            // matches Twitter/Instagram. Sub-routes can no longer map
+            // to a tab index since they live outside the shell, so the
+            // loc==tab.path check is enough.
             if (i == 0 && loc == '/') {
               HapticFeedback.mediumImpact();
-              // Jump the home feed back to offset 0 first — visible
-              // motion confirms the tap before the network refresh
-              // returns. The signal-provider bump triggers an animate-
-              // to-top inside _HomeBody.
               ref.read(homeScrollToTopSignalProvider.notifier).state++;
               ref.invalidate(homeProvider);
               ref.invalidate(forYouProvider);
               ref.invalidate(evolvingStoriesProvider);
               ref.invalidate(youtubeFeedProvider);
-              // Brief visible confirmation so the tap doesn't feel like
-              // it did nothing while the network round-trip is in flight.
               ScaffoldMessenger.of(context)
                 ..hideCurrentSnackBar()
                 ..showSnackBar(
                   SnackBar(
-                    content: Row(
-                      children: const [
-                        SizedBox(
-                          width: 16, height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        ),
-                        SizedBox(width: 12),
-                        Text('جارٍ تحديث الأخبار…'),
-                      ],
-                    ),
+                    content: Row(children: const [
+                      SizedBox(
+                        width: 16, height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                      ),
+                      SizedBox(width: 12),
+                      Text('جارٍ تحديث الأخبار…'),
+                    ]),
                     duration: const Duration(milliseconds: 1200),
                     behavior: SnackBarBehavior.floating,
                     backgroundColor: AppColors.primary,
