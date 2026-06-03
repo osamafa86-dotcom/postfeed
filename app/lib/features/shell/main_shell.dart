@@ -31,13 +31,29 @@ class MainShell extends ConsumerStatefulWidget {
 }
 
 class _MainShellState extends ConsumerState<MainShell> {
-  // Pages are created once and kept alive via IndexedStack.
-  final _pages = const [
-    HomeScreen(),
-    DiscoverScreen(),
-    SummariesScreen(),
-    FollowScreen(),
-    ProfileScreen(),
+  // Stable GlobalKeys per tab page. Without these, the const _pages
+  // widgets get identified by widget type alone, which collides with
+  // any other place in the tree that mounts the same `const HomeScreen()`
+  // instance (notably go_router's _HomeRoot, also `const HomeScreen()`).
+  // The duplicate identity triggered StatefulElement.activate on an
+  // element whose State had already been disposed by the other mount —
+  // exactly the framework.dart:5938 crash. GlobalKeys disambiguate them
+  // across the whole element tree.
+  static final GlobalKey _homeKey      = GlobalKey(debugLabel: 'shell.home');
+  static final GlobalKey _discoverKey  = GlobalKey(debugLabel: 'shell.discover');
+  static final GlobalKey _summariesKey = GlobalKey(debugLabel: 'shell.summaries');
+  static final GlobalKey _followKey    = GlobalKey(debugLabel: 'shell.follow');
+  static final GlobalKey _profileKey   = GlobalKey(debugLabel: 'shell.profile');
+
+  // Non-const list so we can attach unique keys; the widgets themselves
+  // are still keyed-const. State preservation comes from IndexedStack
+  // always staying in the tree (see build()).
+  late final List<Widget> _pages = [
+    HomeScreen(key: _homeKey),
+    DiscoverScreen(key: _discoverKey),
+    SummariesScreen(key: _summariesKey),
+    FollowScreen(key: _followKey),
+    ProfileScreen(key: _profileKey),
   ];
 
   String? _lastLoc;
@@ -146,9 +162,19 @@ class _MainShellState extends ConsumerState<MainShell> {
             enabled: isTab,
             child: IndexedStack(index: index, children: _pages),
           ),
-          // Overlay layer — only rendered for sub-routes. The sub-route
-          // Scaffold's solid background covers the IndexedStack visually.
-          if (!isTab) widget.child,
+          // Overlay layer — wrapped in a KeyedSubtree with a stable
+          // ValueKey so Flutter treats this slot as the same logical
+          // position across rebuilds. Without the stable key,
+          // transitioning between two articles (/article/42637 →
+          // /article/42616) made Flutter mistake go_router's internal
+          // Navigator for a candidate to reparent, and the framework
+          // ended up reactivating an Element whose State was already
+          // disposed — same "StatefulElement.state null" framework
+          // crash, just on a different code path than the tab case.
+          if (!isTab) KeyedSubtree(
+            key: const ValueKey('shell.overlay'),
+            child: widget.child,
+          ),
         ],
       ),
       bottomNavigationBar: Container(
