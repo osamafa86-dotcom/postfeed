@@ -87,10 +87,63 @@ class PushService {
       _navigateTo(_linkFrom(initial.data));
     }
 
-    // Initial token + listener for refreshes.
-    final token = await messaging.getToken();
-    if (token != null) await _registerToken(api, token);
-    messaging.onTokenRefresh.listen((t) => _registerToken(api, t));
+    // Keep the api reference so a post-login call can flush the pending
+    // token without having to thread the client back through.
+    _api = api;
+
+    // Obtain + register the token. On iOS this has to wait for the APNs
+    // token first (see _obtainAndRegister), so it's its own method with retry.
+    await _obtainAndRegister(messaging);
+    messaging.onTokenRefresh.listen((t) {
+      _lastToken = t;
+      _registerToken(api, t);
+    });
+  }
+
+  /// iOS will not hand out an FCM token until the APNs device token has
+  /// been registered with Apple and set on the Firebase instance. If we
+  /// call getToken() too early it returns null and — with the old code —
+  /// the device was simply never registered, so no push ever arrived.
+  /// Wait for the APNs token (a few short retries cover the round-trip),
+  /// then fetch the FCM token, also with a couple of retries.
+  static Future<void> _obtainAndRegister(FirebaseMessaging messaging) async {
+    try {
+      if (Platform.isIOS) {
+        String? apns;
+        for (var i = 0; i < 8; i++) {
+          apns = await messaging.getAPNSToken();
+          if (apns != null) break;
+          await Future.delayed(const Duration(milliseconds: 1500));
+        }
+        if (apns == null) {
+          debugPrint('[push] APNs token unavailable after retries — '
+              'check: Push capability, provisioning profile, and that an '
+              'APNs key is uploaded in Firebase Console.');
+          // Still try getToken below; it may succeed on a later refresh.
+        }
+      }
+
+      String? token;
+      for (var i = 0; i < 3; i++) {
+        try {
+          token = await messaging.getToken();
+        } catch (e) {
+          debugPrint('[push] getToken attempt ${i + 1} failed: $e');
+        }
+        if (token != null) break;
+        await Future.delayed(const Duration(seconds: 2));
+      }
+
+      if (token != null) {
+        _lastToken = token;
+        if (_api != null) await _registerToken(_api!, token);
+        debugPrint('[push] FCM token obtained (${token.substring(0, 12)}…)');
+      } else {
+        debugPrint('[push] no FCM token — push disabled on this device');
+      }
+    } catch (e) {
+      debugPrint('[push] _obtainAndRegister failed: $e');
+    }
   }
 
   /// Extract an in-app route from a message's data payload. Falls back
@@ -123,9 +176,16 @@ class PushService {
     'comments':   'ردود وتفاعلات',
   };
 
+  static ApiClient? _api;
+  // The most recent FCM token, kept regardless of auth state so we can
+  // register it the moment the user logs in (the /user/devices endpoint
+  // requires a JWT, so anonymous tokens can't be sent yet).
+  static String? _lastToken;
+
   static Future<void> _registerToken(ApiClient api, String token) async {
+    _lastToken = token;
     if (!AuthStorage.isAuthenticated) {
-      _pendingToken = token;
+      debugPrint('[push] token held — will register after login');
       return;
     }
     try {
@@ -136,16 +196,21 @@ class PushService {
         'app_version': info.version,
         'locale': 'ar',
       });
+      debugPrint('[push] device registered');
     } catch (e) {
-      debugPrint('device register failed: $e');
+      debugPrint('[push] device register failed: $e');
     }
   }
 
-  static String? _pendingToken;
-  static Future<void> registerPendingTokenIfAny(ApiClient api) async {
-    if (_pendingToken != null && AuthStorage.isAuthenticated) {
-      await _registerToken(api, _pendingToken!);
-      _pendingToken = null;
+  /// Call this right after a successful login/register so the token we
+  /// already hold (obtained while anonymous) gets sent to the backend.
+  /// Previously this existed but was never invoked, so a user who logged
+  /// in *after* launch never had their device registered → no push.
+  static Future<void> registerPendingTokenIfAny([ApiClient? api]) async {
+    final client = api ?? _api;
+    final token = _lastToken;
+    if (client != null && token != null && AuthStorage.isAuthenticated) {
+      await _registerToken(client, token);
     }
   }
 }

@@ -5,6 +5,7 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../core/models/user.dart';
+import '../../../core/notifications/push_service.dart';
 import 'auth_storage.dart';
 
 /// Flip to true once you've created the iOS OAuth client in Google
@@ -166,6 +167,11 @@ class AuthRepository {
     }
     final user = AppUser.fromJson(userMap.cast<String, dynamic>());
     await AuthStorage.save(token, user.id);
+    // Now that we have a JWT, push the FCM token we've been holding since
+    // launch. Without this, a user who logs in after app start never gets
+    // their device registered and receives no notifications. Fire-and-
+    // forget — a failure here must not block the login.
+    PushService.registerPendingTokenIfAny(_api);
     return user;
   }
 
