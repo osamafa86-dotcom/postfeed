@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/debug/debug_state.dart';
 import '../../core/theme/app_theme.dart';
 import '../content/data/content_repository.dart';
 import '../content/presentation/discover_screen.dart';
@@ -46,6 +47,7 @@ class _MainShellState extends ConsumerState<MainShell> {
     super.didUpdateWidget(oldWidget);
     final loc = widget.state.uri.toString();
     if (_lastLoc != null && _lastLoc != loc) {
+      DebugTrace.log('shell.nav', '${_lastLoc!} → $loc');
       // Route changed — drop any sticky focus / keyboard left behind by
       // the previous screen. AskScreen's TextField in particular kept the
       // soft keyboard's input connection alive across navigation, which
@@ -54,7 +56,10 @@ class _MainShellState extends ConsumerState<MainShell> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         final focus = FocusManager.instance.primaryFocus;
-        if (focus != null && focus.hasFocus) focus.unfocus();
+        if (focus != null && focus.hasFocus) {
+          DebugTrace.log('shell', 'unfocus on route change');
+          focus.unfocus();
+        }
       });
     }
     _lastLoc = loc;
@@ -94,6 +99,16 @@ class _MainShellState extends ConsumerState<MainShell> {
     final loc = widget.state.uri.toString();
     final index = _indexFor(loc);
     final isTab = _isTabRoute(loc);
+
+    // Trace overlay probes — overwritten each rebuild so the panel
+    // always shows the latest shell state.
+    DebugTrace.probe('shell.loc', loc);
+    DebugTrace.probe('shell.isTab', isTab.toString());
+    DebugTrace.probe('shell.child', widget.child.runtimeType.toString());
+    final mq = MediaQuery.of(context);
+    DebugTrace.probe('shell.viewport',
+      '${mq.size.width.toStringAsFixed(0)}×${mq.size.height.toStringAsFixed(0)} '
+      'inset.bottom=${mq.viewInsets.bottom.toStringAsFixed(0)}');
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
