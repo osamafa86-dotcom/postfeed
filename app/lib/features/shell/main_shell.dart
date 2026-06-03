@@ -117,21 +117,40 @@ class _MainShellState extends ConsumerState<MainShell> {
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      // Tab roots render through the IndexedStack so state survives a
-      // tab switch. Inner routes (article, search, telegram, …) render
-      // through the route widget directly with a route-keyed wrapper —
-      // this forces Flutter to treat each navigation as a fresh subtree
-      // even when the previous one was an inner Scaffold that left
-      // focus / scroll / media-query state behind (the specific cause
-      // of the gray-screen-after-AI-screens bug: returning from one
-      // inner Scaffold and pushing another would reuse the same shell
-      // body slot without rebuilding the inner state cleanly).
-      body: isTab
-          ? IndexedStack(index: index, children: _pages)
-          : KeyedSubtree(
-              key: ValueKey('shell-child:$loc'),
-              child: widget.child,
-            ),
+      // Root-cause fix for the gray/red error widget on /article (and
+      // other sub-routes) after returning from Ask/Sabah/Weekly:
+      //
+      // The previous if-else swapped between IndexedStack(_pages) for
+      // tabs and widget.child for sub-routes. Each switch tore the
+      // entire IndexedStack out of the tree, which disposed every
+      // _pages State (HomeScreen, DiscoverScreen, …). When the user
+      // navigated back to a tab and we re-mounted the same
+      // `const HomeScreen()` instance, Flutter called
+      // StatefulElement.activate on it, found `_state == null` (it had
+      // been disposed), and crashed:
+      //   _TypeError: Null check operator used on a null value
+      //   #0 StatefulElement.state (framework.dart:5938)
+      //   #1 StatefulElement.activate
+      //
+      // Fix: keep IndexedStack in the tree at all times. When a sub-
+      // route is active we render its widget on top of the same Stack
+      // — the sub-route's own Scaffold has an opaque background so the
+      // user doesn't see the tabs underneath, but the tab States stay
+      // alive across deep navigation.
+      body: Stack(
+        children: [
+          // Base layer — always mounted, preserves tab state. TickerMode
+          // pauses animations on hidden tabs (story carousel, pulse tag,
+          // ...) while a sub-route is on screen so they don't burn CPU.
+          TickerMode(
+            enabled: isTab,
+            child: IndexedStack(index: index, children: _pages),
+          ),
+          // Overlay layer — only rendered for sub-routes. The sub-route
+          // Scaffold's solid background covers the IndexedStack visually.
+          if (!isTab) widget.child,
+        ],
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: isDark ? AppColors.neoDarkSurface : AppColors.neoSurface,
