@@ -28,6 +28,37 @@ require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/cache.php';
 require_once __DIR__ . '/ai_provider.php';
 
+// Aggregation-style articles (hourly briefings, daily roundups) clog
+// the retrieval results for every broad question because their titles
+// match common words like "أخبار" but their bodies are just lists of
+// other articles with no substantive content. Filter them out at the
+// SQL level using a SHARED pattern so we can't accidentally leak one
+// into the corpus from one path but not another.
+const QA_AGGREGATION_TITLE_NOT_LIKE = [
+    'موجز أخبار%',
+    'موجز اخبار%',
+    'موجز الساعة%',
+    'موجز اليوم%',
+    'موجز يومي%',
+    'موجز إخباري%',
+    'موجز اخباري%',
+    'النشرة%',
+    'نشرة الأخبار%',
+    'ملخص الأخبار%',
+    'ملخص اخبار%',
+];
+
+/** Build `AND (title NOT LIKE ? AND ...)` clause + params. */
+function qa_aggregation_exclusion_clause(string $alias = 'a'): array {
+    $parts  = [];
+    $params = [];
+    foreach (QA_AGGREGATION_TITLE_NOT_LIKE as $pat) {
+        $parts[]  = "{$alias}.title NOT LIKE ?";
+        $params[] = $pat;
+    }
+    return ['sql' => '(' . implode(' AND ', $parts) . ')', 'params' => $params];
+}
+
 // ---------------------------------------------------------------------
 // Arabic stopwords — pruned so only content words feed the LIKE search
 // ---------------------------------------------------------------------
@@ -112,6 +143,8 @@ function qa_retrieve_articles(string $question, int $limit = 10, int $windowDays
         $orClauses[] = '(a.title LIKE ? OR a.ai_summary LIKE ? OR a.ai_keywords LIKE ? OR a.excerpt LIKE ?)';
         array_push($params, $like, $like, $like, $like);
     }
+    $excl = qa_aggregation_exclusion_clause('a');
+    $params = array_merge($params, $excl['params']);
     $params[] = $windowDays;
 
     $sql = "SELECT a.id, a.title, a.slug, a.excerpt, a.ai_summary, a.ai_keywords,
@@ -123,6 +156,7 @@ function qa_retrieve_articles(string $question, int $limit = 10, int $windowDays
               LEFT JOIN sources s    ON a.source_id  = s.id
              WHERE a.status = 'published'
                AND (" . implode(' OR ', $orClauses) . ")
+               AND " . $excl['sql'] . "
                AND a.published_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
              ORDER BY a.published_at DESC
              LIMIT 80";
@@ -143,6 +177,7 @@ function qa_retrieve_articles(string $question, int $limit = 10, int $windowDays
                    LEFT JOIN sources s    ON a.source_id  = s.id
                   WHERE a.status = 'published'
                     AND (" . implode(' OR ', $orClauses) . ")
+                    AND " . $excl['sql'] . "
                     AND a.published_at >= DATE_SUB(NOW(), INTERVAL 60 DAY)
                   ORDER BY a.published_at DESC
                   LIMIT 80";
@@ -153,6 +188,7 @@ function qa_retrieve_articles(string $question, int $limit = 10, int $windowDays
             $like = '%' . $kw . '%';
             array_push($params2, $like, $like, $like, $like);
         }
+        $params2 = array_merge($params2, $excl['params']);
         $stmt = $db->prepare($sql2);
         $stmt->execute($params2);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -188,6 +224,167 @@ function qa_retrieve_articles(string $question, int $limit = 10, int $windowDays
 }
 
 /**
+ * Detect a "broad" / "what's new today" style question. These don't
+ * benefit from keyword retrieval because the user isn't asking about a
+ * specific story — they want a digest. We route them to cluster-based
+ * retrieval instead so the AI sees the day's actual top stories
+ * (organized by editorial consensus) rather than whatever LIKE-matched
+ * the word "أخبار".
+ */
+function qa_is_broad_query(string $question): bool {
+    $kws = qa_extract_keywords($question);
+    // Empty after stopword stripping → user typed something like "إيش
+    // الجديد" with only filler words → broad digest is the best fallback.
+    if (empty($kws)) return true;
+
+    // "Intent" words signal the question SHAPE (what's new / today's
+    // top), not a specific topic. Strip them and see if anything
+    // substantive remains. If nothing remains → broad. If even one real
+    // topic word remains (e.g. "غزة", "الكنيست") → specific.
+    static $intent = [
+        // News intent
+        'اخبار','أخبار','احداث','أحداث','ملخص','موجز','نشرة','تطورات','مستجدات',
+        // Ranking adjectives
+        'ابرز','أبرز','اهم','أهم','اخر','آخر','احدث','أحدث','جديد','الجديد',
+        // Time anchors
+        'اليوم','يوم','الان','الآن','عاجل','عاجلة','حاليا','الآنية',
+        // Question/intent verbs
+        'ماذا','حدث','يحدث','صار','شو','حصل','يحصل','يجري','جرى',
+        // English fallbacks
+        'news','today','top','latest','breaking','summary','stories','story',
+        'happening','events','update','updates',
+    ];
+    $intentSet = array_flip(array_map('mb_strtolower', $intent));
+    foreach ($kws as $kw) {
+        if (!isset($intentSet[mb_strtolower($kw)])) return false;
+    }
+    return true;
+}
+
+/**
+ * Cluster-based retrieval for broad queries. Picks the top recent
+ * clusters by editorial consensus (multi-source first, falling back to
+ * single-source on quiet days) and flattens them into article rows
+ * shaped exactly like qa_retrieve_articles output. Excludes aggregation
+ * articles so the AI never sees "موجز الساعة" as if it were a real
+ * story.
+ */
+function qa_retrieve_top_today(int $limit = 12, int $hoursWindow = 24): array {
+    $db = getDB();
+    $excl = qa_aggregation_exclusion_clause('a');
+
+    try {
+        // First pass: clusters with 2+ sources in the last $hoursWindow.
+        $sql = "SELECT a.cluster_key,
+                       COUNT(DISTINCT a.source_id) AS src_count,
+                       COUNT(*) AS art_count,
+                       MAX(a.published_at) AS latest_at
+                  FROM articles a
+                 WHERE a.status = 'published'
+                   AND a.cluster_key IS NOT NULL AND a.cluster_key <> '-'
+                   AND a.published_at >= DATE_SUB(NOW(), INTERVAL ? HOUR)
+                   AND " . $excl['sql'] . "
+                 GROUP BY a.cluster_key
+                HAVING src_count >= 2
+                 ORDER BY src_count DESC, latest_at DESC
+                 LIMIT ?";
+        $stmt = $db->prepare($sql);
+        $params = array_merge([$hoursWindow], $excl['params'], [$limit]);
+        $i = 1;
+        foreach ($params as $p) {
+            $type = is_int($p) ? PDO::PARAM_INT : PDO::PARAM_STR;
+            $stmt->bindValue($i++, $p, $type);
+        }
+        $stmt->execute();
+        $clusters = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Fallback to single-source clusters when consensus is thin.
+        if (count($clusters) < 4) {
+            $sql2 = "SELECT a.cluster_key,
+                            COUNT(DISTINCT a.source_id) AS src_count,
+                            COUNT(*) AS art_count,
+                            MAX(a.published_at) AS latest_at
+                       FROM articles a
+                      WHERE a.status = 'published'
+                        AND a.cluster_key IS NOT NULL AND a.cluster_key <> '-'
+                        AND a.published_at >= DATE_SUB(NOW(), INTERVAL ? HOUR)
+                        AND " . $excl['sql'] . "
+                      GROUP BY a.cluster_key
+                      ORDER BY art_count DESC, latest_at DESC
+                      LIMIT ?";
+            $stmt = $db->prepare($sql2);
+            $params = array_merge([$hoursWindow], $excl['params'], [$limit]);
+            $i = 1;
+            foreach ($params as $p) {
+                $type = is_int($p) ? PDO::PARAM_INT : PDO::PARAM_STR;
+                $stmt->bindValue($i++, $p, $type);
+            }
+            $stmt->execute();
+            $clusters = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        if (!$clusters) {
+            // Last-ditch: just the latest non-aggregation articles.
+            $sql3 = "SELECT a.id, a.title, a.slug, a.excerpt, a.ai_summary, a.ai_keywords,
+                            a.image_url, a.published_at, a.source_id, a.category_id,
+                            c.name AS cat_name, c.slug AS cat_slug,
+                            s.name AS source_name
+                       FROM articles a
+                       LEFT JOIN categories c ON a.category_id = c.id
+                       LEFT JOIN sources s    ON a.source_id  = s.id
+                      WHERE a.status = 'published'
+                        AND a.published_at >= DATE_SUB(NOW(), INTERVAL ? HOUR)
+                        AND " . $excl['sql'] . "
+                      ORDER BY a.published_at DESC
+                      LIMIT ?";
+            $stmt = $db->prepare($sql3);
+            $params = array_merge([$hoursWindow], $excl['params'], [$limit]);
+            $i = 1;
+            foreach ($params as $p) {
+                $type = is_int($p) ? PDO::PARAM_INT : PDO::PARAM_STR;
+                $stmt->bindValue($i++, $p, $type);
+            }
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        }
+
+        // Pick one representative article per cluster (the longest-titled
+        // one with an AI summary tends to be the most useful) — gives the
+        // AI N distinct stories instead of N copies of the same story.
+        $rows = [];
+        foreach ($clusters as $cl) {
+            $ck = $cl['cluster_key'];
+            $artSql = "SELECT a.id, a.title, a.slug, a.excerpt, a.ai_summary, a.ai_keywords,
+                              a.image_url, a.published_at, a.source_id, a.category_id,
+                              c.name AS cat_name, c.slug AS cat_slug,
+                              s.name AS source_name,
+                              ? AS _src_count, ? AS _art_count
+                         FROM articles a
+                         LEFT JOIN categories c ON a.category_id = c.id
+                         LEFT JOIN sources s    ON a.source_id  = s.id
+                        WHERE a.cluster_key = ? AND a.status = 'published'
+                          AND " . $excl['sql'] . "
+                        ORDER BY (a.ai_summary IS NOT NULL AND a.ai_summary <> '') DESC,
+                                 LENGTH(a.title) DESC
+                        LIMIT 1";
+            $stmt = $db->prepare($artSql);
+            $params = array_merge(
+                [(int)$cl['src_count'], (int)$cl['art_count'], $ck],
+                $excl['params']
+            );
+            $stmt->execute($params);
+            $r = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($r) $rows[] = $r;
+            if (count($rows) >= $limit) break;
+        }
+        return $rows;
+    } catch (Throwable $e) {
+        error_log('qa_retrieve_top_today: ' . $e->getMessage());
+        return [];
+    }
+}
+
+/**
  * Turn retrieved articles into a compact Arabic context block for
  * Claude. Each entry has an ID tag so the model can cite it as [#123].
  *
@@ -206,9 +403,18 @@ function qa_build_context(array $rows): array {
         if (mb_strlen($summary) > 600) {
             $summary = mb_substr($summary, 0, 600) . '…';
         }
-        $when   = !empty($r['published_at']) ? date('Y-m-d', strtotime($r['published_at'])) : '';
+        $when   = !empty($r['published_at']) ? date('Y-m-d H:i', strtotime($r['published_at'])) : '';
         $source = trim((string)($r['source_name'] ?? ''));
-        $line   = "[#{$id}] ({$when}" . ($source !== '' ? " — {$source}" : '') . ")\n"
+        // Cluster metadata (only present when retrieved via the broad path)
+        // helps the AI rank what's "abrz" (most prominent) — a story with
+        // 5 sources is by definition bigger than a 1-source filing.
+        $srcCount = isset($r['_src_count']) ? (int)$r['_src_count'] : 0;
+        $artCount = isset($r['_art_count']) ? (int)$r['_art_count'] : 0;
+        $clusterTag = '';
+        if ($srcCount > 1) {
+            $clusterTag = " — {$srcCount} مصادر تغطّيها، {$artCount} مقال";
+        }
+        $line   = "[#{$id}] ({$when}" . ($source !== '' ? " — {$source}" : '') . "{$clusterTag})\n"
                 . "العنوان: {$title}\n"
                 . "الملخص: {$summary}\n";
         $len = mb_strlen($line);
@@ -227,7 +433,7 @@ function qa_build_context(array $rows): array {
 // Claude call — forced structured output via tool_use
 // ---------------------------------------------------------------------
 
-function qa_call_claude(string $question, string $context, array $id_map): array {
+function qa_call_claude(string $question, string $context, array $id_map, bool $isBroad = false): array {
     if (trim($context) === '') {
         return [
             'ok'       => true,
@@ -237,17 +443,41 @@ function qa_call_claude(string $question, string $context, array $id_map): array
         ];
     }
 
-    $prompt = "أنت مساعد ذكي لموقع نيوز فيد الإخباري العربي. مهمتك الإجابة عن سؤال القارئ "
-            . "بالاعتماد حصرياً على المقالات المُرفقة أدناه — لا تستخدم أي معلومة خارجية.\n\n"
-            . "قواعد صارمة:\n"
-            . "- أجب بالعربية الفصحى، بأسلوب صحفي محايد وواضح.\n"
-            . "- اذكر معرّف المقالة بين قوسين مربّعين عند كل معلومة تستشهد بها، مثال: [#123].\n"
-            . "- إذا كانت المقالات المُرفقة لا تحتوي على إجابة كافية، قل ذلك صراحة واقترح صياغة أفضل.\n"
-            . "- لا تُلفّق أسماء أو أرقام أو تواريخ غير موجودة في المقالات.\n"
-            . "- ابنِ إجابة من 2 إلى 5 فقرات قصيرة حسب تعقيد السؤال.\n"
-            . "- استدعِ أداة submit_answer دائماً لإرجاع الإجابة.\n\n"
-            . "سؤال القارئ:\n{$question}\n\n"
-            . "المقالات المتاحة (كل مقالة لها معرّف [#id]):\n{$context}";
+    // Broad "what's today's news" queries get a digest-style prompt that
+    // tells the model to write a multi-section roundup ranked by editorial
+    // weight (cluster size = how many outlets covered it). Specific
+    // queries get the original "answer the question" prompt.
+    if ($isBroad) {
+        $prompt = "أنت مساعد ذكي لموقع نيوز فيد الإخباري العربي. القارئ طلب موجزًا "
+                . "لأبرز الأخبار، وعليك أن تصنع له موجزًا صحفيًا متماسكًا اعتمادًا "
+                . "حصريًا على المقالات المُرفقة أدناه.\n\n"
+                . "قواعد صارمة:\n"
+                . "- ابدأ بفقرة افتتاحية (3-5 أسطر) تلخّص الصورة العامة لليوم.\n"
+                . "- ثم اكتب 4 إلى 6 محاور قصيرة، كلّ محور برأس عريض (سطر مفرد ينتهي بـ :) "
+                  . "متبوعًا بفقرة من 2-3 جمل تشرح القصة.\n"
+                . "- رتّب المحاور بحسب الأهمية: القصص التي غطّتها أكثر من مصدر تأتي أولًا "
+                  . "(انظر إلى عدد المصادر في وصف كل مقال).\n"
+                . "- أعطِ أولوية للأخبار الفلسطينية إن وُجدت.\n"
+                . "- اذكر معرّف المقالة بين قوسين مربّعين عند كل معلومة، مثال: [#123].\n"
+                . "- لا تُلفّق أرقامًا أو أسماءً أو تواريخ غير موجودة في المقالات.\n"
+                . "- العربية الفصحى، أسلوب صحفي محايد وواضح.\n"
+                . "- استدعِ أداة submit_answer لإرجاع الإجابة، واملأ cited_ids "
+                  . "بكل المقالات التي ذكرتها فعلًا.\n\n"
+                . "سؤال القارئ:\n{$question}\n\n"
+                . "أبرز قصص اليوم (كل مقال يمثّل قصّة، مع عدد المصادر التي غطّتها):\n{$context}";
+    } else {
+        $prompt = "أنت مساعد ذكي لموقع نيوز فيد الإخباري العربي. مهمتك الإجابة عن سؤال القارئ "
+                . "بالاعتماد حصرياً على المقالات المُرفقة أدناه — لا تستخدم أي معلومة خارجية.\n\n"
+                . "قواعد صارمة:\n"
+                . "- أجب بالعربية الفصحى، بأسلوب صحفي محايد وواضح.\n"
+                . "- اذكر معرّف المقالة بين قوسين مربّعين عند كل معلومة تستشهد بها، مثال: [#123].\n"
+                . "- إذا كانت المقالات المُرفقة لا تحتوي على إجابة كافية، قل ذلك صراحة واقترح صياغة أفضل.\n"
+                . "- لا تُلفّق أسماء أو أرقام أو تواريخ غير موجودة في المقالات.\n"
+                . "- ابنِ إجابة من 2 إلى 5 فقرات قصيرة حسب تعقيد السؤال.\n"
+                . "- استدعِ أداة submit_answer دائماً لإرجاع الإجابة.\n\n"
+                . "سؤال القارئ:\n{$question}\n\n"
+                . "المقالات المتاحة (كل مقالة لها معرّف [#id]):\n{$context}";
+    }
 
     $validIds = array_keys($id_map);
     $tool = [
@@ -279,7 +509,9 @@ function qa_call_claude(string $question, string $context, array $id_map): array
         ],
     ];
 
-    $call = ai_provider_tool_call($prompt, $tool, 1500);
+    // Broad queries (digest) need more tokens than a Q&A answer.
+    $maxTokens = $isBroad ? 2500 : 1500;
+    $call = ai_provider_tool_call($prompt, $tool, $maxTokens);
     if (empty($call['ok'])) {
         return ['ok' => false, 'error' => (string)($call['error'] ?? 'تعذّر توليد الإجابة.')];
     }
@@ -349,11 +581,19 @@ function qa_ask(string $question, int $ttl = 3600): array {
         $question = mb_substr($question, 0, 500);
     }
 
-    $cacheKey = qa_cache_key($question);
-    $result = cache_remember($cacheKey, $ttl, function() use ($question) {
-        $rows = qa_retrieve_articles($question, 10, 14);
+    $isBroad = qa_is_broad_query($question);
+    // Broad queries are time-sensitive ("today's news" goes stale fast),
+    // so cap their cache at 15 min. Specific queries can ride the full
+    // hour because the underlying article body doesn't change.
+    if ($isBroad) $ttl = min($ttl, 900);
+
+    $cacheKey = qa_cache_key($question) . ($isBroad ? ':broad' : '');
+    $result = cache_remember($cacheKey, $ttl, function() use ($question, $isBroad) {
+        $rows = $isBroad
+            ? qa_retrieve_top_today(12, 24)
+            : qa_retrieve_articles($question, 10, 14);
         $ctx  = qa_build_context($rows);
-        $ai   = qa_call_claude($question, $ctx['context'], $ctx['id_map']);
+        $ai   = qa_call_claude($question, $ctx['context'], $ctx['id_map'], $isBroad);
         if (empty($ai['ok'])) {
             // Return null so cache_remember treats this as a miss and
             // the next request retries instead of getting the same
