@@ -16,7 +16,16 @@ final _sabahProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final api = ref.watch(apiClientProvider);
   final res = await api.get<Map<String, dynamic>>('/content/sabah',
       decode: (d) => (d as Map).cast<String, dynamic>());
-  return res.data!;
+  // Same defensive coercion as the weekly provider — a `data: null`
+  // envelope used to throw "Null check operator used on a null value"
+  // (from the old `res.data!`) before the screen's error branch could
+  // show its EmptyView. Now we promote it to a 404 so the existing
+  // empty-state path lights up cleanly.
+  final data = res.data;
+  if (data == null) {
+    throw const ApiException('not_found', 'لا يوجد موجز صباحي', status: 404);
+  }
+  return data;
 });
 
 class SabahScreen extends ConsumerWidget {

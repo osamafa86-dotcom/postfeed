@@ -46,8 +46,9 @@ class _MainShellState extends ConsumerState<MainShell> {
   void didUpdateWidget(covariant MainShell oldWidget) {
     super.didUpdateWidget(oldWidget);
     final loc = widget.state.uri.toString();
-    if (_lastLoc != null && _lastLoc != loc) {
-      DebugTrace.log('shell.nav', '${_lastLoc!} → $loc');
+    final prev = _lastLoc;
+    if (prev != null && prev != loc) {
+      DebugTrace.log('shell.nav', '$prev → $loc');
       // Route changed — drop any sticky focus / keyboard left behind by
       // the previous screen. AskScreen's TextField in particular kept the
       // soft keyboard's input connection alive across navigation, which
@@ -55,10 +56,14 @@ class _MainShellState extends ConsumerState<MainShell> {
       // gray article view after returning from Ask/Sabah/Weekly.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        final focus = FocusManager.instance.primaryFocus;
-        if (focus != null && focus.hasFocus) {
-          DebugTrace.log('shell', 'unfocus on route change');
-          focus.unfocus();
+        try {
+          final focus = FocusManager.instance.primaryFocus;
+          if (focus != null && focus.hasFocus) {
+            DebugTrace.log('shell', 'unfocus on route change');
+            focus.unfocus();
+          }
+        } catch (e) {
+          DebugTrace.log('shell', 'unfocus failed: $e', level: DebugLevel.warn);
         }
       });
     }
