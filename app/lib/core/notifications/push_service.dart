@@ -10,6 +10,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../api/api_client.dart';
 import '../router/app_router.dart';
 import '../../features/auth/data/auth_storage.dart';
+import '../../firebase_options.dart';
 
 /// Bootstraps Firebase + FCM + APNs and registers the token with our backend
 /// once the user is authenticated. Safe to call before login — the token
@@ -19,7 +20,15 @@ class PushService {
 
   static Future<void> init({required ApiClient api}) async {
     try {
-      await Firebase.initializeApp();
+      // iOS: pass options explicitly so the build does not depend on a
+      // GoogleService-Info.plist being wired into the Xcode target
+      // (easy to forget; fails silently). Android reads its own
+      // google-services.json via the Gradle plugin, unchanged.
+      if (Platform.isIOS) {
+        await Firebase.initializeApp(options: kFeedsNewsIosFirebaseOptions);
+      } else {
+        await Firebase.initializeApp();
+      }
     } catch (e) {
       debugPrint('Firebase init failed: $e');
       return;
