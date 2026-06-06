@@ -23,6 +23,7 @@ class Article {
     this.createdAt,
     this.clusterKey,
     this.clusterCount = 1,
+    this.coverageOrder = 0,
   });
 
   final int id;
@@ -50,6 +51,9 @@ class Article {
   /// this one; ≥2 means the story has multi-source coverage and the
   /// UI should show a "📰 N مصادر" badge linking to /cluster/<key>.
   final int clusterCount;
+  /// 1-based position inside a cluster's chronological coverage list.
+  /// Only set on `/content/cluster` responses; 0 elsewhere (badge hidden).
+  final int coverageOrder;
 
   factory Article.fromJson(Map<String, dynamic> j) => Article(
         id: j['id'] as int,
@@ -79,6 +83,7 @@ class Article {
         clusterKey: (j['cluster_key'] as String?)?.trim().isEmpty == true
             ? null : j['cluster_key'] as String?,
         clusterCount: (j['cluster_count'] as num?)?.toInt() ?? 1,
+        coverageOrder: (j['order'] as num?)?.toInt() ?? 0,
       );
 
   static DateTime? _parseDt(dynamic v) {

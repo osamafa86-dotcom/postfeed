@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/models/article.dart';
 import '../../../core/models/category.dart';
+import '../../../core/models/cluster_coverage.dart';
 import '../../../core/models/evolving_story.dart';
 import '../../../core/models/home_payload.dart';
 import '../../../core/models/source.dart';
@@ -57,6 +58,19 @@ class ContentRepository {
           (d as List).whereType<Map>().map((m) => Article.fromJson(m.cast())).toList(),
     );
     return PaginatedArticles(items: res.data ?? const [], hasMore: res.hasMore, total: res.total);
+  }
+
+  /// Full "قارن التغطية" payload — mirrors the website's /cluster/<key> page.
+  Future<ClusterCoverage?> cluster(String key) async {
+    final res = await _api.get<ClusterCoverage?>(
+      '/content/cluster',
+      query: {'key': key},
+      decode: (d) {
+        if (d is! Map) return null;
+        return ClusterCoverage.fromJson(d.cast<String, dynamic>());
+      },
+    );
+    return res.data;
   }
 
   Future<({Article article, List<Article> related})> article({int? id, String? slug}) async {

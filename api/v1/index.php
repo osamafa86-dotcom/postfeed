@@ -38,6 +38,7 @@ api_ok([
             'GET /api/v1/content/ticker',
             'GET /api/v1/content/search?q=',
             'GET /api/v1/content/clusters',
+            'GET /api/v1/content/cluster?key=',
             'GET /api/v1/content/topic?slug=',
             'GET /api/v1/content/timeline?key=',
             'GET /api/v1/content/timelines',
