@@ -1246,8 +1246,11 @@ class _EvolvingStoriesSection extends ConsumerWidget {
             ),
 
             // ── Horizontal cards carousel ──
+            // Each card shows the cover + name on top, then the latest
+            // 3 headlines for the story underneath (mirrors the website
+            // /index.php evolving rail so app and web stay in sync).
             SizedBox(
-              height: 290,
+              height: 340,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -1261,7 +1264,7 @@ class _EvolvingStoriesSection extends ConsumerWidget {
                   return GestureDetector(
                     onTap: () => context.push('/stories/${story.slug}'),
                     child: Container(
-                      width: 260,
+                      width: 280,
                       margin: const EdgeInsets.symmetric(horizontal: 5),
                       decoration: NeoDecoration.raised(isDark: isDark, radius: 18, intensity: 0.7),
                       child: Column(
@@ -1271,7 +1274,7 @@ class _EvolvingStoriesSection extends ConsumerWidget {
                           ClipRRect(
                             borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
                             child: SizedBox(
-                              height: 160,
+                              height: 130,
                               width: double.infinity,
                               child: Stack(fit: StackFit.expand, children: [
                                 if (coverUrl != null)
@@ -1290,19 +1293,17 @@ class _EvolvingStoriesSection extends ConsumerWidget {
                                     child: Text(story.icon.isNotEmpty ? story.icon : '📅',
                                       style: const TextStyle(fontSize: 32)),
                                   ),
-                                // Gradient overlay
+                                // Gradient overlay so the badges over the image stay legible.
                                 DecoratedBox(decoration: BoxDecoration(
                                   gradient: LinearGradient(
                                     begin: Alignment.topCenter,
                                     end: Alignment.bottomCenter,
                                     stops: const [0.5, 1.0],
-                                    colors: [Colors.transparent, Colors.black.withOpacity(0.5)],
+                                    colors: [Colors.transparent, Colors.black.withOpacity(0.55)],
                                   ),
                                 )),
-                                // Accent top bar
                                 Positioned(top: 0, left: 0, right: 0,
                                   child: Container(height: 3, color: accent)),
-                                // LIVE badge
                                 if (story.isLive)
                                   Positioned(top: 8, left: 8,
                                     child: Container(
@@ -1315,49 +1316,85 @@ class _EvolvingStoriesSection extends ConsumerWidget {
                                         style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800)),
                                     ),
                                   ),
-                                // Article count
                                 Positioned(bottom: 8, left: 8,
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: Colors.black.withOpacity(0.5),
+                                      color: Colors.black.withOpacity(0.55),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Text('${story.articleCount} تقرير',
                                       style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
                                   ),
                                 ),
-                              ]),
-                            ),
-                          ),
-                          // Text content
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.all(10),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(children: [
+                                Positioned(bottom: 6, right: 8, left: 60,
+                                  child: Row(children: [
                                     if (story.icon.isNotEmpty)
                                       Text(story.icon, style: const TextStyle(fontSize: 14)),
                                     if (story.icon.isNotEmpty) const SizedBox(width: 4),
                                     Expanded(
                                       child: Text(story.name,
-                                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800,
-                                          color: isDark ? Colors.white : AppColors.textLight),
+                                        textAlign: TextAlign.right,
+                                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900,
+                                          color: Colors.white,
+                                          shadows: [Shadow(blurRadius: 4, color: Colors.black54)]),
                                         maxLines: 1, overflow: TextOverflow.ellipsis),
                                     ),
                                   ]),
-                                  const SizedBox(height: 4),
-                                  if (story.description != null)
-                                    Expanded(
-                                      child: Text(story.description!,
-                                        style: TextStyle(fontSize: 11, height: 1.4,
-                                          color: isDark ? Colors.white38 : AppColors.textMutedLight),
-                                        maxLines: 3, overflow: TextOverflow.ellipsis),
+                                ),
+                              ]),
+                            ),
+                          ),
+                          // Latest 3 headlines under the cover.
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                              child: story.latest.isEmpty
+                                ? Center(
+                                    child: Text(
+                                      story.description ?? 'في انتظار أول خبر…',
+                                      style: TextStyle(fontSize: 11.5, height: 1.5,
+                                        color: isDark ? Colors.white60 : AppColors.textMutedLight),
+                                      maxLines: 3, overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center,
                                     ),
-                                ],
-                              ),
+                                  )
+                                : Builder(builder: (_) {
+                                    final preview = story.latest.take(3).toList();
+                                    return Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        for (int idx = 0; idx < preview.length; idx++) ...[
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(vertical: 5),
+                                            child: Row(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Container(
+                                                  margin: const EdgeInsets.only(top: 6),
+                                                  width: 5, height: 5,
+                                                  decoration: BoxDecoration(
+                                                    color: accent,
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 7),
+                                                Expanded(
+                                                  child: Text(preview[idx].title,
+                                                    style: TextStyle(fontSize: 11.5, height: 1.45,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: isDark ? Colors.white70 : AppColors.textLight),
+                                                    maxLines: 2, overflow: TextOverflow.ellipsis),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          if (idx < preview.length - 1)
+                                            Divider(height: 1, color: (isDark ? Colors.white : Colors.black).withOpacity(0.06)),
+                                        ],
+                                      ],
+                                    );
+                                  }),
                             ),
                           ),
                         ],
