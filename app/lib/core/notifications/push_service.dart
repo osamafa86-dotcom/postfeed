@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api/api_client.dart';
 import '../router/app_router.dart';
@@ -129,6 +130,29 @@ class PushService {
               'check: Push capability, provisioning profile, and that an '
               'APNs key is uploaded in Firebase Console.');
           // Still try getToken below; it may succeed on a later refresh.
+        }
+
+        // iOS Keychain preserves the Firebase Installation ID across app
+        // uninstall/reinstall AND across the debug→TestFlight environment
+        // transition. The cached FCM token then stays paired with a stale
+        // APNs token from a previous build's environment, and every push
+        // fails with BadEnvironmentKeyInToken — invisibly, because the
+        // server-side error log only sees "error" without the body.
+        // Forcing one deleteToken per build breaks that stale mapping so
+        // getToken below mints a fresh FCM↔APNs pairing tied to the
+        // current build's environment (production for TestFlight/AppStore).
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final info = await PackageInfo.fromPlatform();
+          final ver = '${info.version}+${info.buildNumber}';
+          const flagKey = '_fcm_refreshed_for_version';
+          if (prefs.getString(flagKey) != ver) {
+            await messaging.deleteToken();
+            await prefs.setString(flagKey, ver);
+            debugPrint('[push] forced FCM token refresh for $ver');
+          }
+        } catch (e) {
+          debugPrint('[push] forced refresh check failed: $e');
         }
       }
 
