@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:go_router/go_router.dart';
@@ -17,6 +18,7 @@ import '../../firebase_options.dart';
 /// once the user is authenticated. Safe to call before login — the token
 /// will be uploaded as soon as a JWT becomes available.
 class PushService {
+  static const _installationsChannel = MethodChannel('postfeed.feedsnews/installations');
   static final FlutterLocalNotificationsPlugin _local = FlutterLocalNotificationsPlugin();
 
   static Future<void> init({required ApiClient api}) async {
@@ -132,21 +134,25 @@ class PushService {
           // Still try getToken below; it may succeed on a later refresh.
         }
 
-        // Belt-and-suspenders FCM token refresh after the native
-        // AppDelegate has already wiped the Firebase Installation for
-        // this build. Calling deleteToken() here ensures the next
-        // getToken() below mints the new token against the freshly-
-        // created FID, not a cached stale one. Gated by version flag so
-        // it only fires once per install.
+        // iOS Keychain preserves the Firebase Installation ID across app
+        // uninstall/reinstall AND across the debug→TestFlight environment
+        // transition. The cached FCM token then stays paired with a stale
+        // APNs token from a previous build, and every push fails with
+        // BadEnvironmentKeyInToken. Wiping the Installation natively (via
+        // the AppDelegate Method Channel) and then deleting the FCM token
+        // forces Firebase to mint a fresh FID + FCM + APNs chain tied to
+        // the current build's environment. Gated by version so it fires
+        // once per install/update.
         try {
           final prefs = await SharedPreferences.getInstance();
           final info = await PackageInfo.fromPlatform();
           final ver = '${info.version}+${info.buildNumber}';
           const flagKey = '_fcm_refreshed_for_version';
           if (prefs.getString(flagKey) != ver) {
+            try { await _installationsChannel.invokeMethod('deleteInstallation'); } catch (_) {}
             try { await messaging.deleteToken(); } catch (_) {}
             await prefs.setString(flagKey, ver);
-            debugPrint('[push] forced FCM token refresh for $ver');
+            debugPrint('[push] forced Installation+token refresh for $ver');
           }
         } catch (e) {
           debugPrint('[push] forced refresh check failed: $e');
