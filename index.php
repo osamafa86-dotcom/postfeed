@@ -65,12 +65,12 @@ $trendingNow      = trending_get_top(8);
 $trendingReaders  = trending_active_readers();
 
 // Evolving stories rail — admin-defined persistent topics
-// (أخبار الأقصى، غزة، الأسرى…). Only the single freshest story
-// is featured on the homepage; the rest live on /evolving-stories.
+// (القدس، غزة، الأسرى…). All active stories are featured on the
+// homepage, each with its latest 3 headlines. The full archive
+// view still lives on /evolving-stories.
 // Cached 5 min; sorts by freshness inside evolving_stories_with_previews.
-$evolvingRail = cache_remember('home_evolving_rail_v2', 300, function() {
-    $stories = evolving_stories_with_previews(5);
-    return array_slice($stories, 0, 1);
+$evolvingRail = cache_remember('home_evolving_rail_v3', 300, function() {
+    return evolving_stories_with_previews(3);
 });
 
 // Ticker pulls from the latest Palestine news stream so the "عاجل" strip
@@ -691,7 +691,7 @@ $__renderCtSection('health',         'صحة',           '#3b8a6e', '🏥', $hea
             <div class="evrail-body">
               <?php if (!empty($st['latest'])): ?>
                 <ul class="evrail-latest">
-                  <?php foreach (array_slice($st['latest'], 0, 5) as $la): ?>
+                  <?php foreach (array_slice($st['latest'], 0, 3) as $la): ?>
                     <li>
                       <span class="bullet" style="background:<?php echo e($color); ?>;"></span>
                       <span class="txt"><?php echo e(mb_substr((string)$la['title'], 0, 75)); ?></span>
@@ -710,11 +710,11 @@ $__renderCtSection('health',         'صحة',           '#3b8a6e', '🏥', $hea
         <?php endforeach; ?>
       </div>
       <style>
-        /* Single featured card on the homepage: horizontal layout,
-           cover on one side, latest headlines on the other. The
-           /evolving-stories page still uses the grid version. */
+        /* Multi-card homepage rail: all active stories visible in a
+           responsive grid, each card showing cover + latest 3 headlines.
+           The /evolving-stories page uses the same grid version. */
         .evrail-grid {
-          display:grid; grid-template-columns:1fr;
+          display:grid; grid-template-columns:repeat(auto-fit, minmax(420px, 1fr));
           gap:16px; margin-bottom:32px;
         }
         .evrail-card {

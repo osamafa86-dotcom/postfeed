@@ -14,6 +14,7 @@
 require_once __DIR__ . '/../_bootstrap.php';
 require_once __DIR__ . '/../_articles_query.php';
 require_once __DIR__ . '/../../../includes/cache.php';
+require_once __DIR__ . '/../../../includes/article_dedup.php';
 
 api_method('GET');
 api_rate_limit('content:home', 240, 60);
@@ -25,10 +26,10 @@ api_rate_limit('content:home', 240, 60);
 $noCache = !empty($_GET['nocache']);
 if ($noCache) {
     require_once __DIR__ . '/../../../includes/cache.php';
-    cache_forget('api:home:v4');
+    cache_forget('api:home:v5');
 }
 
-$payload = cache_remember('api:home:v4', 60, function () {
+$payload = cache_remember('api:home:v5', 60, function () {
     $db = getDB();
 
     // Hero (newest article flagged as hero, or fallback to newest featured).
@@ -78,14 +79,25 @@ $payload = cache_remember('api:home:v4', 60, function () {
         [9005, 'صحة',          'cat-health',     '🏥', 'cat-political', ['category' => 'health']],
     ];
     // Buckets are rendered top-down on the home screen, so we pull an
-    // over-sample (12 instead of 6) for each one and then dedupe by
-    // article id across buckets in declaration order. The first bucket
-    // claims an article; later buckets skip it. Result: the same story
-    // never shows up in two tabs on the same screen, no matter how the
-    // filters overlap (a Palestinian sports news item won't appear in
-    // both أخبار فلسطين and منوعات).
-    $buckets   = [];
-    $usedIds   = [];
+    // over-sample (12 instead of 6) for each one and then dedupe across
+    // buckets in declaration order. The first bucket claims a story; later
+    // buckets skip it. Dedup is now THREE layers — same as the website:
+    //   1) article id (same DB row)
+    //   2) cluster_key (same auto-clustered story)
+    //   3) title-token Jaccard ≥ 0.55 (same story, different cluster/sources)
+    // Result: the same news from multiple sources only appears once on the
+    // home payload, exactly matching what the website does.
+    $usedIds      = [];
+    $usedTokens   = [];
+    $usedClusters = [];
+
+    // Seed dedup state with the hero so it never reappears below.
+    if ($hero) article_dedup_seed([$hero], $usedIds, $usedTokens, $usedClusters);
+    // And with breaking — breaking strip stays on top, but the same
+    // article shouldn't also fill a bucket slot.
+    article_dedup_seed($breaking, $usedIds, $usedTokens, $usedClusters);
+
+    $buckets = [];
     foreach ($virtual as $v) {
         [$vid, $vname, $vslug, $vicon, $vcss, $vfilter] = $v;
         try {
@@ -96,14 +108,7 @@ $payload = cache_remember('api:home:v4', 60, function () {
         }
         if (!$items) continue;
 
-        $deduped = [];
-        foreach ($items as $a) {
-            $aid = (int)($a['id'] ?? 0);
-            if ($aid > 0 && isset($usedIds[$aid])) continue;
-            $usedIds[$aid] = true;
-            $deduped[] = $a;
-            if (count($deduped) >= 6) break;
-        }
+        $deduped = article_dedup_filter($items, 6, $usedIds, $usedTokens, $usedClusters);
         if (!$deduped) continue;
 
         $buckets[] = [
@@ -119,15 +124,8 @@ $payload = cache_remember('api:home:v4', 60, function () {
     }
 
     // Build latest now, skipping the hero + every article already
-    // claimed by a bucket above. Falls back to the raw list if the
-    // dedupe stripped everything (unlikely but defensive).
-    foreach ($latestRaw as $a) {
-        $aid = (int)($a['id'] ?? 0);
-        if ($aid === $heroId) continue;
-        if ($aid > 0 && isset($usedIds[$aid])) continue;
-        $latest[] = $a;
-        if (count($latest) >= 20) break;
-    }
+    // claimed by a bucket above. Same three-layer dedup.
+    $latest = article_dedup_filter($latestRaw, 20, $usedIds, $usedTokens, $usedClusters);
     if (empty($latest)) $latest = $latestRaw; // emergency fallback
 
     // ── Cluster-coverage counts (one query for the whole payload) ──

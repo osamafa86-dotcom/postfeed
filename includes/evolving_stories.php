@@ -4,9 +4,10 @@
  *
  * Unlike the automatic cluster-based "story timelines" (see
  * includes/story_timeline.php), this module powers *persistent*
- * editor-defined topics. The admin creates a story ("أخبار الأقصى"),
- * provides a list of Arabic keywords, and every new article that
- * matches enough of them is linked to that story automatically.
+ * editor-defined topics. The admin creates a story ("أخبار القدس"),
+ * provides a list of Arabic keywords (and optional exclude_keywords),
+ * and every new article that matches enough of them is linked to that
+ * story automatically.
  *
  * Storage:
  *   - evolving_stories           — the topics themselves

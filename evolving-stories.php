@@ -3,7 +3,7 @@
  * نيوز فيد — فهرس القصص المتطوّرة المُعرَّفة من الإدارة
  *
  * The public discovery page for admin-curated persistent stories
- * (أخبار الأقصى، أخبار الأسرى، غزة، الضفة، الاستيطان…).
+ * (أخبار القدس، أخبار الأسرى، غزة، الضفة، الاستيطان…).
  *
  * Unlike /timelines which surfaces *auto-generated* AI story
  * timelines (cluster-based, ephemeral), this page surfaces the
@@ -24,8 +24,8 @@ $pageTheme  = current_theme();
 $userUnread = $viewerId ? user_unread_notifications_count($viewerId) : 0;
 
 // Cache for 3 minutes — content is live but not second-by-second.
-$stories = cache_remember('evolving_stories_index_v1', 180, function() {
-    return evolving_stories_with_previews(4);
+$stories = cache_remember('evolving_stories_index_v2', 180, function() {
+    return evolving_stories_with_previews(3);
 });
 
 $totalArticles = 0;

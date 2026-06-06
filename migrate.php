@@ -318,7 +318,7 @@ try {
 
 // ---------- evolving stories (admin-defined persistent topics) ----------
 // Creates the tables and, on first deploy, seeds the 5 initial
-// stories (الأقصى، الأسرى، غزة، الضفة، الاستيطان). Subsequent runs
+// stories (القدس، الأسرى، غزة، الضفة، الاستيطان). Subsequent runs
 // are no-ops — the INSERT IGNORE on slug guarantees we never
 // overwrite admin edits.
 try {
@@ -353,34 +353,137 @@ try {
         KEY idx_story_matched (story_id, matched_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+    // Defensive ALTER for installations that pre-date the
+    // exclude_keywords column. MariaDB on shared hosts often runs
+    // 10.3 / 10.5 where IF NOT EXISTS on ADD COLUMN may not be
+    // supported, so we check first and only ALTER when needed.
+    try {
+        $col = $db->query("SHOW COLUMNS FROM evolving_stories LIKE 'exclude_keywords'")->fetch();
+        if (!$col) {
+            $db->exec("ALTER TABLE evolving_stories ADD COLUMN exclude_keywords TEXT NULL AFTER keywords");
+            $applied[] = "+ added evolving_stories.exclude_keywords column";
+        }
+    } catch (Throwable $e) {
+        $applied[] = "! evolving_stories.exclude_keywords add skipped: " . $e->getMessage();
+    }
+
     // Seed the five initial stories on first deploy. INSERT IGNORE
     // so admin edits to slug/name are preserved across migrations.
     $seedStories = [
-        ['أخبار الأقصى', 'al-aqsa', 'كل ما يتعلق بالمسجد الأقصى المبارك وقبة الصخرة وساحات الحرم القدسي — اقتحامات، صلوات، قرارات، وردود الأفعال.', '🕌', '#B8860B',
-            ["الأقصى","المسجد الأقصى","قبة الصخرة","الحرم القدسي","باب العمود","باب الأسباط","اقتحام الأقصى","اقتحام المسجد","ساحات الأقصى","المصلى القبلي","المصلى المرواني"], 1],
+        ['أخبار القدس', 'al-aqsa', 'كل ما يتعلق بالقدس الشريف والمسجد الأقصى المبارك — اقتحامات، اعتداءات، أوقاف، وقرارات الاحتلال في المدينة المقدسة.', '🕌', '#B8860B',
+            ["القدس","الأقصى","المسجد الأقصى","قبة الصخرة","الحرم القدسي","باب العمود","باب الأسباط","اقتحام الأقصى","اقتحام المسجد","ساحات الأقصى","المصلى القبلي","المصلى المرواني","البلدة القديمة","حي الشيخ جراح","سلوان","حائط البراق","كنيسة القيامة","أوقاف القدس","شرقي القدس","شرق القدس","القدس الشرقية","بلدية الاحتلال في القدس"],
+            ["طوفان الأقصى","جامعة الأقصى","مستشفى الأقصى","كتائب الأقصى","كتيبة الأقصى","سرايا الأقصى","شهداء الأقصى","قناة الأقصى","إذاعة الأقصى","حركة الأقصى","ملاعب الأقصى","فضائية الأقصى"], 1],
         ['أخبار الأسرى', 'prisoners', 'آخر المستجدات المتعلقة بالأسرى الفلسطينيين في سجون الاحتلال — اعتقالات، إضرابات، صفقات تبادل، وشهادات.', '⛓️', '#4A4030',
-            ["الأسرى","الأسير","الأسيرات","أسير فلسطيني","المعتقلين","معتقل إداري","الاعتقال الإداري","صفقة تبادل","صفقة التبادل","إضراب عن الطعام","نادي الأسير","هيئة الأسرى","سجون الاحتلال","سجن عوفر","سجن النقب","سجن مجدو"], 2],
+            ["الأسرى الفلسطينيين","أسير فلسطيني","المعتقلين الفلسطينيين","معتقل إداري","الاعتقال الإداري","صفقة تبادل","صفقة التبادل","إضراب عن الطعام","نادي الأسير","هيئة الأسرى","نادي الأسرى","سجون الاحتلال","سجن عوفر","سجن النقب","سجن مجدو","سجن ريمون","سجن نفحة","سجن جلبوع","الأسرى في سجون","أسرى الحرية"],
+            ["أسرى الاحتلال","أسرى إسرائيليين","أسرى أوكرانيين","أسرى روس","أسرى أوكرانيا","أسرى الحرب الأوكرانية","الأسرى الأمريكيين","الأسرى البريطانيين"], 2],
         ['أخبار غزة', 'gaza', 'تغطية شاملة لقطاع غزة — العدوان، المساعدات، الهدنة، والمواقف الإقليمية والدولية.', '🇵🇸', '#CE1126',
-            ["غزة","قطاع غزة","رفح","خان يونس","بيت حانون","بيت لاهيا","جباليا","الشجاعية","دير البلح","النصيرات","المغازي","البريج","مخيم الشاطئ","شمال غزة","جنوب غزة","معبر رفح","معبر كرم أبو سالم"], 3],
+            ["غزة","قطاع غزة","رفح","خان يونس","بيت حانون","بيت لاهيا","جباليا","الشجاعية","دير البلح","النصيرات","المغازي","البريج","مخيم الشاطئ","شمال غزة","جنوب غزة","معبر رفح","معبر كرم أبو سالم","العدوان على غزة","الحرب على غزة","قصف غزة"],
+            ["غزة هاشم","سرايا غزة","موسم في غزة"], 3],
         ['أخبار الضفة', 'west-bank', 'مستجدات الضفة الغربية — اقتحامات، اعتقالات، عمليات، وحياة المدن والقرى تحت الاحتلال.', '🏔️', '#059669',
-            ["الضفة","الضفة الغربية","نابلس","جنين","مخيم جنين","رام الله","الخليل","طولكرم","قلقيلية","بيت لحم","أريحا","سلفيت","طوباس","بيتا","حوارة","مخيم بلاطة","مخيم نور شمس"], 4],
+            ["الضفة الغربية","نابلس","جنين","مخيم جنين","رام الله","الخليل","طولكرم","قلقيلية","بيت لحم","أريحا","سلفيت","طوباس","بيتا","حوارة","مخيم بلاطة","مخيم نور شمس","اقتحام نابلس","اقتحام جنين","اقتحام طولكرم"],
+            ["الضفة الأخرى","الضفة المقابلة","الضفة اليسرى","الضفة اليمنى","ضفة النيل","ضفة النهر"], 4],
         ['الاستيطان', 'settlements', 'تتبّع المشروع الاستيطاني الإسرائيلي في الضفة والقدس — بناء، مصادرة، بؤر، واعتداءات المستوطنين.', '🏗️', '#7c2d12',
-            ["مستوطن","مستوطنين","المستوطنين","الاستيطان","استيطان","مستوطنة","مستوطنات","بؤرة استيطانية","بؤر استيطانية","قافلة استيطانية","اعتداءات المستوطنين","إرهاب المستوطنين","وحدات استيطانية","معاليه أدوميم","كريات أربع","يتسهار"], 5],
+            ["مستوطن إسرائيلي","المستوطنين الإسرائيليين","الاستيطان الإسرائيلي","استيطان في الضفة","مستوطنة إسرائيلية","مستوطنات الضفة","بؤرة استيطانية","بؤر استيطانية","قافلة استيطانية","اعتداءات المستوطنين","إرهاب المستوطنين","وحدات استيطانية","معاليه أدوميم","كريات أربع","يتسهار","مستوطني الضفة","المشروع الاستيطاني"],
+            ["استيطان نفسي","استيطان غذائي","استيطان رقمي","استيطان ذهني"], 5],
     ];
     $seedStmt = $db->prepare("INSERT IGNORE INTO evolving_stories
-        (name, slug, description, icon, accent_color, keywords, min_match_score, sort_order)
-        VALUES (?, ?, ?, ?, ?, ?, 1, ?)");
+        (name, slug, description, icon, accent_color, keywords, exclude_keywords, min_match_score, sort_order)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)");
     $seeded = 0;
     foreach ($seedStories as $s) {
         $seedStmt->execute([
             $s[0], $s[1], $s[2], $s[3], $s[4],
             json_encode($s[5], JSON_UNESCAPED_UNICODE),
-            $s[6]
+            json_encode($s[6], JSON_UNESCAPED_UNICODE),
+            $s[7]
         ]);
         if ($seedStmt->rowCount() > 0) $seeded++;
     }
     if ($seeded > 0) {
         $applied[] = "+ seeded $seeded evolving stories";
+    }
+
+    // One-shot rename + smart keyword refresh for existing installations
+    // that still have the old "أخبار الأقصى" row. Idempotent: after the
+    // first run the WHERE clause won't match anymore.
+    foreach ($seedStories as $s) {
+        $upd = $db->prepare("UPDATE evolving_stories
+                                SET name = ?, description = ?,
+                                    keywords = ?, exclude_keywords = ?
+                              WHERE slug = ?
+                                AND (name = 'أخبار الأقصى'
+                                     OR (slug = ? AND (exclude_keywords IS NULL OR exclude_keywords = '' OR exclude_keywords = '[]')))");
+        // Only the al-aqsa row carries the legacy "أخبار الأقصى" name;
+        // the second clause backfills exclude_keywords on the four other
+        // rows where they were never seeded.
+        $upd->execute([
+            $s[0], $s[2],
+            json_encode($s[5], JSON_UNESCAPED_UNICODE),
+            json_encode($s[6], JSON_UNESCAPED_UNICODE),
+            $s[1], $s[1],
+        ]);
+        if ($upd->rowCount() > 0) {
+            $applied[] = "~ refreshed story '{$s[0]}'";
+        }
+    }
+
+    // Purge false-positive matches that the old keyword-only matcher
+    // attached to "أخبار القدس" before exclude_keywords existed. Hospitals,
+    // universities, and Hamas brigades named "الأقصى" are not Jerusalem.
+    try {
+        $del = $db->prepare("DELETE esa FROM evolving_story_articles esa
+                              JOIN articles a ON a.id = esa.article_id
+                              JOIN evolving_stories es ON es.id = esa.story_id
+                              WHERE es.slug = 'al-aqsa'
+                                AND (a.title LIKE '%طوفان الأقصى%'
+                                  OR a.title LIKE '%جامعة الأقصى%'
+                                  OR a.title LIKE '%مستشفى الأقصى%'
+                                  OR a.title LIKE '%كتائب الأقصى%'
+                                  OR a.title LIKE '%كتيبة الأقصى%'
+                                  OR a.title LIKE '%سرايا الأقصى%'
+                                  OR a.title LIKE '%شهداء الأقصى%'
+                                  OR a.title LIKE '%قناة الأقصى%'
+                                  OR a.title LIKE '%إذاعة الأقصى%'
+                                  OR a.title LIKE '%فضائية الأقصى%')");
+        $del->execute();
+        $purged = $del->rowCount();
+        if ($purged > 0) {
+            $applied[] = "- purged $purged false-positive القدس matches";
+            // Resync the cached article_count after the purge.
+            $db->exec("UPDATE evolving_stories es
+                          SET article_count = (
+                              SELECT COUNT(*) FROM evolving_story_articles
+                               WHERE story_id = es.id
+                          )
+                        WHERE es.slug = 'al-aqsa'");
+        }
+    } catch (Throwable $e) {
+        $applied[] = "! purge al-aqsa false positives skipped: " . $e->getMessage();
+    }
+
+    // One-time backfill marker so the keyword/exclude refresh actually
+    // surfaces recent articles. Without this, the homepage rail would
+    // show only what cron_rss matches going forward. The marker row
+    // (settings table) keeps subsequent migrate runs idempotent.
+    try {
+        require_once __DIR__ . '/includes/evolving_stories.php';
+        $marker = 'evolving_backfill_al_aqsa_v2';
+        $existing = $db->query("SELECT setting_value FROM settings WHERE setting_key = " . $db->quote($marker))->fetchColumn();
+        if (!$existing) {
+            $aqsa = $db->query("SELECT id FROM evolving_stories WHERE slug = 'al-aqsa' LIMIT 1")->fetchColumn();
+            if ($aqsa) {
+                $added = evolving_story_backfill((int)$aqsa, 30);
+                if ($added > 0) {
+                    $applied[] = "+ backfilled $added Jerusalem articles (last 30d)";
+                }
+                $db->exec("INSERT INTO settings (setting_key, setting_value) VALUES ("
+                          . $db->quote($marker) . ", "
+                          . $db->quote((string)$added)
+                          . ") ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");
+            }
+        }
+    } catch (Throwable $e) {
+        $applied[] = "! al-aqsa backfill skipped: " . $e->getMessage();
     }
 } catch (Throwable $e) {
     $applied[] = "! evolving stories skipped: " . $e->getMessage();
