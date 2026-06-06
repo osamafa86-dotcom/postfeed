@@ -19,7 +19,13 @@ class PushService {
 
   static Future<void> init({required ApiClient api}) async {
     try {
-      await Firebase.initializeApp();
+      // Guard against a double init: main() already initializes Firebase so
+      // it can register the background handler. Calling initializeApp() a
+      // second time throws `duplicate-app`, which previously aborted this
+      // whole method (and with it token registration).
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp();
+      }
     } catch (e) {
       debugPrint('Firebase init failed: $e');
       return;
@@ -30,6 +36,14 @@ class PushService {
       alert: true, badge: true, sound: true, provisional: false,
     );
     debugPrint('FCM permission: ${settings.authorizationStatus}');
+
+    // If the user explicitly denied notifications there is no point
+    // continuing: iOS will never deliver an APNs token, so getToken()
+    // would fail and we'd register a dead token. Bail out cleanly.
+    if (settings.authorizationStatus == AuthorizationStatus.denied) {
+      debugPrint('FCM permission denied — skipping token registration');
+      return;
+    }
 
     // Local notifications channel (Android requires explicit channel creation).
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -45,6 +59,28 @@ class PushService {
         if (payload != null && payload.isNotEmpty) _navigateTo(payload);
       },
     );
+
+    // Android 8+ requires a channel to exist before any notification posts.
+    // A backgrounded FCM `notification` message is routed by the OS to
+    // `default_notification_channel_id` (= `breaking` in AndroidManifest),
+    // so that channel must already exist — the foreground path used to
+    // create channels lazily, which left background messages on a silent
+    // fallback channel. Create them all up front.
+    if (Platform.isAndroid) {
+      final android = _local.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      for (final entry in _channelNames.entries) {
+        await android?.createNotificationChannel(
+          AndroidNotificationChannel(
+            entry.key,
+            entry.value,
+            description: 'إشعارات فيد نيوز',
+            importance:
+                entry.key == 'breaking' ? Importance.max : Importance.high,
+          ),
+        );
+      }
+    }
 
     if (Platform.isIOS) {
       await messaging.setForegroundNotificationPresentationOptions(
@@ -87,8 +123,30 @@ class PushService {
       _navigateTo(_linkFrom(initial.data));
     }
 
+    // On iOS the APNs token must be set before requesting the FCM token,
+    // otherwise getToken() throws `apns-token-not-set` and returns null —
+    // which is the classic "tokens never register on iPhone" bug. With the
+    // default AppDelegate proxy enabled the APNs token arrives shortly after
+    // permission is granted, so poll briefly (up to ~3s) for it.
+    if (Platform.isIOS) {
+      String? apns = await messaging.getAPNSToken();
+      for (var i = 0; i < 6 && apns == null; i++) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        apns = await messaging.getAPNSToken();
+      }
+      if (apns == null) {
+        debugPrint(
+            'APNs token unavailable — verify Push capability + APNs .p8 key in Firebase');
+      }
+    }
+
     // Initial token + listener for refreshes.
-    final token = await messaging.getToken();
+    String? token;
+    try {
+      token = await messaging.getToken();
+    } catch (e) {
+      debugPrint('getToken failed: $e');
+    }
     if (token != null) await _registerToken(api, token);
     messaging.onTokenRefresh.listen((t) => _registerToken(api, t));
   }

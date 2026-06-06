@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:app_links/app_links.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -18,6 +20,25 @@ import 'core/storage/hive_init.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_controller.dart';
 import 'features/auth/data/auth_storage.dart';
+
+/// Background / terminated-state FCM handler.
+///
+/// Must be a top-level function annotated with `@pragma('vm:entry-point')`
+/// because the OS spins it up in a *separate isolate* from the UI, so it has
+/// to initialize Firebase itself. Without a registered background handler,
+/// data-only messages delivered while the app is backgrounded or killed are
+/// silently dropped. Keep the work minimal — the OS renders `notification`
+/// payloads automatically; this just guarantees data messages aren't lost.
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  try {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp();
+    }
+  } catch (_) {
+    // Missing GoogleService config in the bg isolate — nothing to do.
+  }
+}
 
 Future<void> main() async {
   // Wrap everything in a zone guard so even errors that escape
@@ -71,6 +92,24 @@ Future<void> main() async {
       );
     };
     DebugTrace.log('boot', 'app starting');
+
+    // ── Firebase + FCM background handler ──────────────────────────────
+    // Initialize Firebase early and register the background message handler
+    // *before* runApp. The handler must be registered here (not inside
+    // PushService, which runs post-frame) so the OS can wake the app's
+    // isolate for messages that arrive while it's terminated. Guarded with a
+    // try/catch + Firebase.apps check so a missing GoogleService config never
+    // blocks startup — PushService.init reuses this same default app.
+    try {
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp();
+      }
+      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    } catch (e) {
+      debugPrint('Firebase early init failed: $e');
+      DebugTrace.log('boot', 'firebase early init failed: $e',
+          level: DebugLevel.warn);
+    }
 
     timeago.setLocaleMessages('ar', timeago.ArMessages());
 
