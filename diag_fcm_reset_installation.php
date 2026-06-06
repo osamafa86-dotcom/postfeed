@@ -69,16 +69,14 @@ $accessToken = $data['access_token'] ?? null;
 if (!$accessToken) { exit("no access token in response\n"); }
 echo "✓ minted access token\n\n";
 
-// Use the legacy Instance ID (IID) admin API — it accepts the full FCM
-// token directly (unlike Firebase Installations v1, which needs the FID
-// and there's no public lookup from token→FID). Deleting the IID removes
-// the FCM↔APNs pairing at Firebase backend, so the SDK on next launch
-// mints a fresh pairing using the current build's APNs environment.
-$url = "https://iid.googleapis.com/iid/v1/{$fcmToken}";
-echo "DELETE https://iid.googleapis.com/iid/v1/<fcm_token>\n";
-$ch = curl_init($url);
+// Step 1: ask the legacy IID info endpoint for the FID belonging to this
+// FCM token. There's no public token→FID lookup, but this endpoint still
+// works (it's the only path that does on most projects). We need the FID
+// because the modern Installations DELETE only accepts FIDs, not tokens.
+echo "1) ask IID info endpoint for FID...\n";
+$infoUrl = "https://iid.googleapis.com/iid/info/" . rawurlencode($fcmToken) . "?details=true";
+$ch = curl_init($infoUrl);
 curl_setopt_array($ch, [
-    CURLOPT_CUSTOMREQUEST  => 'DELETE',
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_TIMEOUT        => 20,
     CURLOPT_HTTPHEADER     => [
@@ -86,25 +84,58 @@ curl_setopt_array($ch, [
         'access_token_auth: true',
     ],
 ]);
-$resp = curl_exec($ch);
-$code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$infoResp = curl_exec($ch);
+$infoCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
+echo "   HTTP $infoCode\n";
+echo "   " . substr($infoResp, 0, 400) . "\n\n";
 
-echo "=== HTTP $code ===\n";
-echo ($resp === '' ? "(empty body)" : $resp) . "\n\n";
+$fid = null;
+if ($infoCode === 200) {
+    $info = json_decode($infoResp, true);
+    $fid = $info['rel']['installation']['fid']
+        ?? $info['installation']['fid']
+        ?? $info['fid']
+        ?? null;
+}
 
-if ($code === 200 || $code === 404) {
-    echo "✓ IID deleted (or already gone).\n\n";
-    echo "الخطوات التالية:\n";
-    echo "  1. على iPhone: force-quit التطبيق (App Switcher → swipe up)\n";
-    echo "  2. افتح التطبيق من جديد — Firebase رح ينشئ token جديد\n";
-    echo "  3. استنى 10 ثوانٍ، ثم اختبر:\n";
-    echo "       php diag_fcm.php send\n";
-    // Also drop the device row so the next register gets a fresh INSERT.
-    $db->prepare("DELETE FROM user_devices WHERE id=?")->execute([$row['id']]);
-    echo "\n✓ كذلك مسحت row الجهاز من DB — التطبيق رح يسجل توكن جديد عند الفتح.\n";
+// Step 2: if we got the FID, delete the Installation via the modern API.
+if ($fid) {
+    echo "2) FID = $fid — delete via Installations API...\n";
+    $delUrl = "https://firebaseinstallations.googleapis.com/v1/projects/{$projectId}/installations/{$fid}";
+    $ch = curl_init($delUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_CUSTOMREQUEST  => 'DELETE',
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 20,
+        CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $accessToken],
+    ]);
+    $delResp = curl_exec($ch);
+    $delCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    echo "   HTTP $delCode\n";
+    echo "   " . ($delResp === '' ? "(empty body)" : substr($delResp, 0, 300)) . "\n\n";
+
+    if ($delCode === 200 || $delCode === 204 || $delCode === 404) {
+        echo "✓ Installation deleted at Firebase backend.\n";
+        $db->prepare("DELETE FROM user_devices WHERE id=?")->execute([$row['id']]);
+        echo "✓ device row mمسوح من DB.\n\n";
+        echo "الخطوات التالية:\n";
+        echo "  1. على iPhone: App Switcher → اقفل التطبيق كامل\n";
+        echo "  2. افتحه من جديد — Firebase رح ينشئ Installation + token جديد\n";
+        echo "  3. استنى 10 ثوانٍ، ثم: php diag_fcm.php send\n";
+    } else {
+        echo "❌ فشل حذف Installation رغم توفر FID.\n";
+    }
 } else {
-    echo "❌ فشل الحذف.\n";
-    echo "  - 401/403: service account ينقصه دور 'Firebase Cloud Messaging Admin'\n";
-    echo "  - 400: التوكن غير صالح أصلاً (نادر)\n";
+    echo "❌ ما قدرنا نطلع FID من التوكن.\n\n";
+    echo "هذا يعني الـ IID API لم يعد متاحاً لهذا المشروع، ولا يوجد طريق\n";
+    echo "آخر لحذف الـ Installation من السيرفر. الحل الوحيد:\n\n";
+    echo "  1. ابني build 43 من Xcode (الكود الجديد فيه force-refresh).\n";
+    echo "  2. ارفع للـ TestFlight عبر Transporter.\n";
+    echo "  3. لما تثبّت 43 على iPhone، الكود تلقائياً يحذف التوكن القديم\n";
+    echo "     وينشئ مزواج FCM↔APNs جديد للبيئة الصحيحة (production).\n\n";
+    // Drop the device row anyway, build 43 will register a fresh one.
+    $db->prepare("DELETE FROM user_devices WHERE id=?")->execute([$row['id']]);
+    echo "✓ مسحت row الجهاز من DB استعداداً للتسجيل الجديد من build 43.\n";
 }
