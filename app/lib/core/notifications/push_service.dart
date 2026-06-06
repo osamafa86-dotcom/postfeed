@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_installations/firebase_installations.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -138,18 +139,20 @@ class PushService {
         // APNs token from a previous build's environment, and every push
         // fails with BadEnvironmentKeyInToken — invisibly, because the
         // server-side error log only sees "error" without the body.
-        // Forcing one deleteToken per build breaks that stale mapping so
-        // getToken below mints a fresh FCM↔APNs pairing tied to the
-        // current build's environment (production for TestFlight/AppStore).
+        // Deleting the Installation (not just the FCM token) once per build
+        // forces Firebase to re-mint the full FID + FCM + APNs chain, so
+        // getToken below returns a pairing tied to the current build's
+        // environment (production for TestFlight/AppStore).
         try {
           final prefs = await SharedPreferences.getInstance();
           final info = await PackageInfo.fromPlatform();
           final ver = '${info.version}+${info.buildNumber}';
           const flagKey = '_fcm_refreshed_for_version';
           if (prefs.getString(flagKey) != ver) {
-            await messaging.deleteToken();
+            try { await FirebaseInstallations.instance.delete(); } catch (_) {}
+            try { await messaging.deleteToken(); } catch (_) {}
             await prefs.setString(flagKey, ver);
-            debugPrint('[push] forced FCM token refresh for $ver');
+            debugPrint('[push] forced Installation+FCM token refresh for $ver');
           }
         } catch (e) {
           debugPrint('[push] forced refresh check failed: $e');
