@@ -122,6 +122,7 @@ $__nfVer = app_version();
       <a href="category/media" class="<?php echo $nf_nav_link_class('category', 'media'); ?>">ميديا</a>
       <a href="category/reports" class="<?php echo $nf_nav_link_class('category', 'reports'); ?>">تقارير</a>
       <a href="telegram.php" class="<?php echo $nf_nav_link_class('telegram'); ?>">📢 تلغرام</a>
+      <a href="/platforms" class="<?php echo $nf_nav_link_class('platforms'); ?>">📡 المنصات</a>
       <a href="reels.php" class="<?php echo $nf_nav_link_class('reels'); ?>">🎬 ريلز</a>
     </div>
   </nav>
@@ -146,6 +147,7 @@ $__nfVer = app_version();
   <a href="category/media"<?php echo $activeSlug === 'media' ? ' class="active"' : ''; ?>>🎥 ميديا</a>
   <a href="category/reports"<?php echo $activeSlug === 'reports' ? ' class="active"' : ''; ?>>📊 تقارير</a>
   <a href="telegram.php"<?php echo $activeType === 'telegram' ? ' class="active"' : ''; ?>>📢 تلغرام</a>
+  <a href="/platforms"<?php echo $activeType === 'platforms' ? ' class="active"' : ''; ?>>📡 المنصات</a>
   <a href="reels.php">🎬 ريلز</a>
 </nav>
 
