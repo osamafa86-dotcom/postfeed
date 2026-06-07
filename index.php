@@ -852,103 +852,14 @@ $__renderCtSection('health',         'صحة',           '#3b8a6e', '🏥', $hea
                 : (!empty($twMsgs) ? 'twitter'
                 : (!empty($ytMsgs) ? 'youtube' : null));
     ?>
-    <?php if ($activeFeed !== null): ?>
-    <!-- SOCIAL BREAKING (Telegram + Twitter tabs) -->
-    <div class="feed-tabs-wrap" data-active="<?php echo $activeFeed; ?>" style="margin-bottom:28px">
-      <div class="section-header feed-tabs-header">
-        <div class="feed-tabs" role="tablist">
-          <?php if (!empty($tgMsgs)): ?>
-            <button type="button" class="feed-tab<?php echo $activeFeed==='telegram'?' active':''; ?>" data-tab="telegram" role="tab" aria-selected="<?php echo $activeFeed==='telegram'?'true':'false'; ?>">
-              <span class="feed-tab-ico feed-tab-ico-tg" aria-hidden="true">
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 7.24l-1.66 7.81c-.12.56-.45.7-.91.44L11.55 15.4l-1.79 1.73c-.2.2-.37.37-.76.37l.27-3.84 6.97-6.3c.3-.27-.07-.42-.47-.16L7.14 12.43l-3.71-1.16c-.8-.25-.82-.8.17-1.19l14.49-5.59c.67-.25 1.26.16 1.04 1.19z"/></svg>
-              </span>
-              <span class="feed-tab-label"><span class="feed-tab-pre">أخبار </span>تلغرام</span>
-            </button>
-          <?php endif; ?>
-          <?php if (!empty($twMsgs)): ?>
-            <button type="button" class="feed-tab<?php echo $activeFeed==='twitter'?' active':''; ?>" data-tab="twitter" role="tab" aria-selected="<?php echo $activeFeed==='twitter'?'true':'false'; ?>">
-              <span class="feed-tab-ico feed-tab-ico-x" aria-hidden="true">
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.451-6.231zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/></svg>
-              </span>
-              <span class="feed-tab-label"><span class="feed-tab-pre">أخبار منصة </span>اكس</span>
-            </button>
-          <?php endif; ?>
-          <?php if (!empty($ytMsgs)): ?>
-            <button type="button" class="feed-tab<?php echo $activeFeed==='youtube'?' active':''; ?>" data-tab="youtube" role="tab" aria-selected="<?php echo $activeFeed==='youtube'?'true':'false'; ?>">
-              <span class="feed-tab-ico feed-tab-ico-yt" aria-hidden="true">
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
-              </span>
-              <span class="feed-tab-label"><span class="feed-tab-pre">أخبار </span>يوتيوب</span>
-            </button>
-          <?php endif; ?>
-        </div>
-        <a class="see-all" href="telegram.php" data-see-all<?php echo $activeFeed!=='telegram'?' hidden':''; ?>>عرض الكل ›</a>
-      </div>
-
-      <?php if (!empty($tgMsgs)): ?>
-      <div class="tg-breaking feed-panel" data-feed-panel="telegram" data-latest-id="<?php echo (int)$tgLatestId; ?>" data-page="1"<?php echo $activeFeed!=='telegram'?' hidden':''; ?>>
-        <?php foreach ($tgMsgs as $m): ?>
-          <a href="<?php echo e($m['post_url']); ?>" target="_blank" rel="noopener" class="tg-card" data-tg-id="<?php echo (int)$m['id']; ?>">
-            <?php if (!empty($m['image_url'])): ?>
-              <div class="tg-img"><img src="<?php echo e($m['image_url']); ?>" alt="<?php echo e($m['text'] ?? ''); ?>" loading="lazy" decoding="async"></div>
-            <?php endif; ?>
-            <div class="tg-body">
-              <div class="tg-source">
-                <span class="tg-badge">📢 تيليغرام</span>
-                <strong>@<?php echo e($m['username']); ?></strong>
-                <span class="tg-time"><?php echo timeAgo($m['posted_at']); ?></span>
-              </div>
-              <div class="tg-text"><?php echo nl2br(e(mb_substr($m['text'], 0, 280))); ?><?php echo mb_strlen($m['text'])>280?'...':''; ?></div>
-            </div>
-          </a>
-        <?php endforeach; ?>
-      </div>
-      <?php endif; ?>
-
-      <?php if (!empty($twMsgs)): ?>
-      <div class="tw-breaking feed-panel" data-feed-panel="twitter" data-latest-id="<?php echo (int)$twLatestId; ?>" data-page="1"<?php echo $activeFeed!=='twitter'?' hidden':''; ?>>
-        <?php foreach ($twMsgs as $m): ?>
-          <a href="<?php echo e($m['post_url']); ?>" target="_blank" rel="noopener" class="tw-card" data-tw-id="<?php echo (int)$m['id']; ?>">
-            <?php if (!empty($m['image_url'])): ?>
-              <div class="tw-img"><img src="<?php echo e($m['image_url']); ?>" alt="<?php echo e($m['text'] ?? ''); ?>" loading="lazy" decoding="async"></div>
-            <?php endif; ?>
-            <div class="tw-body">
-              <div class="tw-source">
-                <span class="tw-badge">🐦 X</span>
-                <strong>@<?php echo e($m['username']); ?></strong>
-                <span class="tw-time"><?php echo timeAgo($m['posted_at']); ?></span>
-              </div>
-              <div class="tw-text"><?php echo nl2br(e(mb_substr($m['text'] ?? '', 0, 280))); ?><?php echo mb_strlen($m['text'] ?? '')>280?'...':''; ?></div>
-            </div>
-          </a>
-        <?php endforeach; ?>
-      </div>
-      <?php endif; ?>
-
-      <?php if (!empty($ytMsgs)): ?>
-      <div class="yt-breaking feed-panel" data-feed-panel="youtube" data-latest-id="<?php echo (int)$ytLatestId; ?>" data-page="1"<?php echo $activeFeed!=='youtube'?' hidden':''; ?>>
-        <?php foreach ($ytMsgs as $v): ?>
-          <a href="<?php echo e($v['post_url']); ?>" target="_blank" rel="noopener" class="yt-card" data-yt-id="<?php echo (int)$v['id']; ?>">
-            <?php if (!empty($v['thumbnail_url'])): ?>
-              <div class="yt-img">
-                <img src="<?php echo e($v['thumbnail_url']); ?>" alt="<?php echo e($v['title']); ?>" loading="lazy" decoding="async">
-                <span class="yt-play" aria-hidden="true">▶</span>
-              </div>
-            <?php endif; ?>
-            <div class="yt-body">
-              <div class="yt-source">
-                <span class="yt-badge">▶ يوتيوب</span>
-                <strong><?php echo e($v['display_name']); ?></strong>
-                <span class="yt-time"><?php echo timeAgo($v['posted_at']); ?></span>
-              </div>
-              <div class="yt-title"><?php echo e(mb_substr($v['title'], 0, 160)); ?><?php echo mb_strlen($v['title']) > 160 ? '...' : ''; ?></div>
-            </div>
-          </a>
-        <?php endforeach; ?>
-      </div>
-      <?php endif; ?>
-    </div>
-    <?php endif; ?>
+    <?php
+    // Newspaper Editorial render — replaces the old tabbed dark box.
+    // Reads $tgMsgs / $twMsgs / $ytMsgs that were fetched above and
+    // surfaces the active platform's lead story + two secondaries +
+    // the latest tg_summary as an editor's brief. The dedicated
+    // /platforms.php page handles deep browsing & live updates.
+    require __DIR__ . '/includes/components/social_newspaper.php';
+    ?>
 
     <!-- Topical category rails (سياسة/اقتصاد/رياضة/فنون/تقارير) were
          retired here. They've been replaced by the six purpose-built
