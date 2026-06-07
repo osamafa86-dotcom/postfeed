@@ -211,7 +211,8 @@ include __DIR__ . '/includes/components/site_header.php';
   <p class="pf-sub">أحدث ما يُنشر على تلغرام ومنصة X ويوتيوب — مع ملخص يومي ذكي، إحصاءات حيّة، وإخفاء الأخبار المكرّرة.</p>
 
   <div class="pf-tabs" id="pfTabs">
-    <button class="pf-tab active" data-p="telegram">✈️ تلغرام</button>
+    <button class="pf-tab active" data-p="all">🗞️ الكل</button>
+    <button class="pf-tab" data-p="telegram">✈️ تلغرام</button>
     <button class="pf-tab" data-p="twitter">𝕏 منصة X</button>
     <button class="pf-tab" data-p="youtube">▶️ يوتيوب</button>
   </div>
@@ -242,8 +243,8 @@ include __DIR__ . '/includes/components/site_header.php';
 (function(){
   'use strict';
   var API = '/api/v1/media/';
-  var ACCENT = { telegram:'#0ea5e9', twitter:'#1f2937', youtube:'#dc2626' };
-  var state = { platform:'telegram', range:'24h', dedup:true, seen:null };
+  var ACCENT = { all:'#0ea5e9', telegram:'#0ea5e9', twitter:'#1f2937', youtube:'#dc2626' };
+  var state = { platform:'all', range:'24h', dedup:true, seen:null };
 
   var elTabs    = document.getElementById('pfTabs');
   var elSummary = document.getElementById('pfSummary');
@@ -344,6 +345,10 @@ include __DIR__ . '/includes/components/site_header.php';
   // ---------- Stats ----------
   var statsOpen = false;
   function loadStats(){
+    if(state.platform === 'all'){
+      elStatsCard.innerHTML = '<div class="pf-empty"><span class="ic">📊</span>اختر منصة محدّدة (تلغرام / X / يوتيوب) لعرض إحصاءاتها.</div>';
+      return;
+    }
     elStatsCard.innerHTML = '<div class="pf-loading"><div class="pf-spinner"></div>جارٍ تحميل الإحصاءات…</div>';
     var p = state.platform, r = state.range;
     api('stats?platform='+p+'&range='+r).then(function(res){
@@ -415,7 +420,11 @@ include __DIR__ . '/includes/components/site_header.php';
 
   // ---------- Feed ----------
   function feedQuery(p, limit){ return p + '?limit=' + (limit||40) + ((state.dedup && p!=='youtube') ? '&dedup=1' : ''); }
-  function cardFor(p, m){ return p==='youtube' ? videoCard(m) : msgCard(m); }
+  // Render/identify an item by its OWN platform (set on merged «all» items) or the active one.
+  function cardOf(m){ return ((m._pf || state.platform) === 'youtube') ? videoCard(m) : msgCard(m); }
+  function keyOf(m){ return (m._pf || state.platform) + ':' + m.id; }
+  function tagPf(res, pf){ return (res && res.ok && res.data) ? res.data.map(function(m){ m._pf = pf; return m; }) : []; }
+  function emptyFeedHTML(){ return '<div class="pf-empty"><span class="ic">📭</span><span class="ti">لا توجد منشورات بعد</span>سيظهر هنا أحدث ما يُنشر فور وصوله.</div>'; }
 
   var STREAMS = { telegram:'telegram_stream.php', twitter:'twitter_stream.php', youtube:'youtube_stream.php' };
   var es = null;
@@ -424,43 +433,77 @@ include __DIR__ . '/includes/components/site_header.php';
     elFeed.innerHTML = '<div class="pf-loading"><div class="pf-spinner"></div>جارٍ التحميل…</div>';
     stopLive();
     state.seen = null;                       // hold live updates until the base list is in
+    if(state.platform === 'all'){ loadAllFeed(); return; }
     var p = state.platform;
     api(feedQuery(p, 40)).then(function(res){
       if(state.platform!==p) return;
       if(!res || !res.ok || !res.data || !res.data.length){
-        elFeed.innerHTML = '<div class="pf-empty"><span class="ic">📭</span><span class="ti">لا توجد منشورات بعد</span>سيظهر هنا أحدث ما يُنشر على المنصة فور وصوله.</div>';
+        elFeed.innerHTML = emptyFeedHTML();
         state.seen = {};
         startLive();
         return;
       }
-      elFeed.innerHTML = res.data.map(function(m){ return cardFor(p, m); }).join('');
+      elFeed.innerHTML = res.data.map(cardOf).join('');
       state.seen = {};
-      res.data.forEach(function(m){ state.seen[m.id] = 1; });
+      res.data.forEach(function(m){ state.seen[keyOf(m)] = 1; });
       startLive();
     });
   }
 
-  // ---------- Live updates (instant, same SSE transport as the Telegram/home sections) ----------
-  function maxSeenId(){ var mx = 0; if(state.seen){ for(var k in state.seen){ var n = parseInt(k,10); if(n>mx) mx = n; } } return mx; }
+  // Unified «all» tab — merge the three feeds by recency.
+  function fetchAll(){
+    return Promise.all([
+      api(feedQuery('telegram', 15)).then(function(r){ return tagPf(r, 'telegram'); }),
+      api(feedQuery('twitter', 15)).then(function(r){ return tagPf(r, 'twitter'); }),
+      api(feedQuery('youtube', 15)).then(function(r){ return tagPf(r, 'youtube'); })
+    ]).then(function(lists){
+      var merged = [];
+      lists.forEach(function(a){ merged = merged.concat(a); });
+      merged.sort(function(a, b){ return String(b.posted_at||'').localeCompare(String(a.posted_at||'')); });
+      return merged;
+    });
+  }
 
-  // Map a flat *_stream.php message to the feed-card shape.
+  function loadAllFeed(){
+    var token = (state.allToken = (state.allToken || 0) + 1);
+    fetchAll().then(function(merged){
+      if(state.platform !== 'all' || token !== state.allToken) return;
+      if(!merged.length){ elFeed.innerHTML = emptyFeedHTML(); state.seen = {}; return; }
+      elFeed.innerHTML = merged.map(cardOf).join('');
+      state.seen = {};
+      merged.forEach(function(m){ state.seen[keyOf(m)] = 1; });
+    });
+  }
+
+  function pollAll(){
+    if(document.hidden || state.platform !== 'all' || !state.seen) return;
+    fetchAll().then(function(merged){
+      if(state.platform !== 'all' || !state.seen) return;
+      prependItems(merged);
+    });
+  }
+
+  // ---------- Live updates (instant SSE for a single platform) ----------
+  function maxSeenId(){ var mx = 0; if(state.seen){ for(var k in state.seen){ var n = parseInt((''+k).split(':').pop(), 10); if(n>mx) mx = n; } } return mx; }
+
+  // Map a flat *_stream.php message to the feed-card shape (tagged with its platform).
   function adaptStream(p, m){
     if(p === 'youtube'){
-      return { id:m.id, video_url:m.url, thumbnail_url:m.thumbnail_url, title:(m.title||m.text||''), posted_at:(m.posted_at||''),
+      return { id:m.id, _pf:'youtube', video_url:m.url, thumbnail_url:m.thumbnail_url, title:(m.title||m.text||''), posted_at:(m.posted_at||''),
                source:{ display_name:(m.name||m.channel_name||(m.channel_handle?'@'+m.channel_handle:'')), username:(m.channel_handle||m.username||'') } };
     }
-    return { id:m.id, post_url:m.url, text:(m.text||''), image_url:(m.image_url||''), posted_at:(m.posted_at||''),
+    return { id:m.id, _pf:p, post_url:m.url, text:(m.text||''), image_url:(m.image_url||''), posted_at:(m.posted_at||''),
              source:{ display_name:(m.name||m.username||''), username:(m.username||''), avatar_url:m.avatar_url } };
   }
 
-  // Prepend brand-new items (already in feed-card shape), newest on top, with a highlight.
-  function prependItems(p, items){
+  // Prepend brand-new items (feed-card shape), newest on top, with a highlight.
+  function prependItems(items){
     if(!state.seen || !items || !items.length) return;
-    var fresh = items.filter(function(m){ return m && !state.seen[m.id]; });
+    var fresh = items.filter(function(m){ return m && !state.seen[keyOf(m)]; });
     if(!fresh.length) return;
-    fresh.forEach(function(m){ state.seen[m.id] = 1; });
+    fresh.forEach(function(m){ state.seen[keyOf(m)] = 1; });
     var emptyEl = elFeed.querySelector('.pf-empty'); if(emptyEl) elFeed.innerHTML = '';
-    elFeed.insertAdjacentHTML('afterbegin', fresh.map(function(m){ return cardFor(p, m); }).join(''));
+    elFeed.insertAdjacentHTML('afterbegin', fresh.map(cardOf).join(''));
     for(var k=0; k<fresh.length; k++){ var n = elFeed.children[k]; if(n && n.classList) n.classList.add('pf-new'); }
   }
 
@@ -468,6 +511,7 @@ include __DIR__ . '/includes/components/site_header.php';
   function startLive(){
     stopLive();
     if(typeof window.EventSource !== 'function' || document.hidden || !state.seen) return;
+    if(state.platform === 'all') return;                 // «all» uses merged polling
     var p = state.platform;
     var url = STREAMS[p] + '?since_id=' + encodeURIComponent(maxSeenId()) + '&_=' + Date.now();
     try { es = new EventSource(url); } catch(e){ es = null; return; }
@@ -475,19 +519,19 @@ include __DIR__ . '/includes/components/site_header.php';
       if(state.platform !== p) return;
       var data; try { data = JSON.parse(ev.data); } catch(e){ return; }
       var list = (data && data.messages) || [];
-      prependItems(p, list.map(function(m){ return adaptStream(p, m); }));
+      prependItems(list.map(function(m){ return adaptStream(p, m); }));
     });
     es.addEventListener('bye', function(){ stopLive(); if(!document.hidden && state.platform===p) startLive(); });
   }
 
-  // Polling fallback — only used when the browser has no EventSource.
+  // Polling fallback for a single platform when EventSource is unavailable.
   function pollFeed(){
-    if(document.hidden || !state.seen) return;
+    if(document.hidden || !state.seen || state.platform === 'all') return;
     var p = state.platform;
     api(feedQuery(p, 20)).then(function(res){
       if(state.platform!==p || !state.seen) return;
       if(!res || !res.ok || !res.data || !res.data.length) return;
-      prependItems(p, res.data);
+      prependItems(tagPf(res, p));
     });
   }
 
@@ -554,6 +598,7 @@ include __DIR__ . '/includes/components/site_header.php';
   if(typeof window.EventSource !== 'function'){
     setInterval(pollFeed, 20000);   // fallback only when SSE is unavailable
   }
+  setInterval(pollAll, 25000);      // merged near-real-time refresh for the «الكل» tab
   setAccent();
   loadSummary();
   loadFeed();

@@ -37,10 +37,11 @@ $maxTokens  = 6500;
 
 $force = !empty($_GET['force']) || (PHP_SAPI === 'cli' && in_array('--force', $argv ?? [], true));
 
-// Which platforms to run: ?platform=twitter|youtube, or a CLI arg, else both.
+// Which to run: ?platform=twitter|youtube|all, or a CLI arg. Empty = twitter
+// + youtube + the unified "all" brief.
 $only = strtolower(trim((string)($_GET['platform'] ?? ($argv[1] ?? ''))));
-$only = in_array($only, ['twitter', 'youtube'], true) ? $only : '';
-$platforms = $only ? [$only] : ['twitter', 'youtube'];
+$only = in_array($only, ['twitter', 'youtube', 'all'], true) ? $only : '';
+$platforms = $only === '' ? ['twitter', 'youtube'] : ($only === 'all' ? [] : [$only]);
 
 foreach ($platforms as $platform) {
     // Cadence guard (~2.5h floor for clock drift), unless &force=1.
@@ -82,4 +83,44 @@ foreach ($platforms as $platform) {
     social_summary_prune($platform, 60);
     echo "{$platform}: ok — saved #{$id} | " . count($messages) . " posts | {$elapsed}s\n";
     echo "  headline: " . ($ai['headline'] ?? '') . "\n";
+}
+
+// ── Unified cross-platform brief (Telegram + X + YouTube, de-duplicated) ──
+if ($only === '' || $only === 'all') {
+    $skip = false;
+    if (!$force) {
+        $latest = social_summary_get_latest('all');
+        if ($latest && !empty($latest['generated_at'])) {
+            $ageSecs = time() - strtotime($latest['generated_at']);
+            if ($ageSecs < 9000) {
+                $hrs = round($ageSecs / 3600, 1);
+                echo "all: skip — latest is only {$hrs}h old (id={$latest['id']})\n";
+                $skip = true;
+            }
+        }
+    }
+    if (!$skip) {
+        $messages = social_summary_collect_all($windowMins, $maxMsgs);
+        if (count($messages) < 5) {
+            echo "all: skip — only " . count($messages) . " posts in last 24h\n";
+        } else {
+            $start   = microtime(true);
+            $ai      = ai_summarize_social_daily('all', $messages, $maxTokens);
+            $elapsed = round(microtime(true) - $start, 2);
+            if (empty($ai['ok'])) {
+                $err = $ai['error'] ?? 'unknown';
+                echo "all: fail — {$err} ({$elapsed}s)\n";
+                error_log("[cron_social_summary] all generation failed: {$err}");
+            } else {
+                $id = social_summary_save('all', $ai, count($messages), $windowMins);
+                if (!$id) {
+                    echo "all: fail — could not save to DB\n";
+                } else {
+                    social_summary_prune('all', 60);
+                    echo "all: ok — saved #{$id} | " . count($messages) . " posts | {$elapsed}s\n";
+                    echo "  headline: " . ($ai['headline'] ?? '') . "\n";
+                }
+            }
+        }
+    }
 }
