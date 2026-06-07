@@ -126,6 +126,12 @@ try {
     error_log('twitter api: ' . $e->getMessage());
 }
 
+// Optional near-duplicate collapsing (?dedup=1).
+if (!empty($_GET['dedup'])) {
+    require_once __DIR__ . '/../../../includes/dedup.php';
+    $messages = nf_dedup_messages($messages);
+}
+
 $meta = [
     'count' => count($messages),
     'latest_id' => $messages[0]['id'] ?? $sinceId,

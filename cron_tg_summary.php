@@ -1,16 +1,16 @@
 <?php
 /**
- * Telegram news briefing generator — DAILY (Palestinian-focus).
+ * Telegram news briefing generator — every 3h (Palestinian-focus).
  *
- * Generates ONE comprehensive summary per day, intended to run at
- * 22:00 (10 PM) Jerusalem time. Pulls every Telegram message from
- * the last 24 hours, dedupes across channels, prioritizes Palestinian
- * coverage (80% of sections), and produces a publication-ready
- * report with subheadline, sections, key_numbers, regions, and
- * topics — same structure as the morning briefing.
+ * Generates a comprehensive, de-duplicated briefing every 3 hours.
+ * Pulls every Telegram message from the last 24 hours, dedupes across
+ * channels, prioritizes Palestinian coverage (80% of sections), and
+ * produces a publication-ready report with subheadline, sections,
+ * key_numbers, regions, and topics. The 24h window keeps each refresh
+ * comprehensive; the 3-hour cadence keeps it current.
  *
- * Cron schedule (cPanel — server runs UTC, 22:00 Jerusalem = 19:00 UTC):
- *   0 19 * * * curl -fsS "https://feedsnews.net/cron_tg_summary.php?key=YOUR_CRON_KEY" > /dev/null
+ * Cron schedule (cPanel) — every 3 hours:
+ *   0 0,3,6,9,12,15,18,21 * * * curl -fsS "https://feedsnews.net/cron_tg_summary.php?key=YOUR_CRON_KEY" > /dev/null
  *
  * Manual / CLI:
  *   php cron_tg_summary.php
@@ -38,21 +38,22 @@ if (PHP_SAPI !== 'cli') {
 
 @set_time_limit(300);
 
-// Daily report — full 24h window, room for 800 messages.
+// Comprehensive 24h window, refreshed every 3h. Generous caps so the
+// briefing is not artificially limited to a few hundred posts.
 $windowMins = 1440;
-$maxMsgs    = 800;
-$maxTokens  = 6000;
+$maxMsgs    = 1500;
+$maxTokens  = 7000;
 
 $force = !empty($_GET['force']) || (PHP_SAPI === 'cli' && in_array('--force', $argv ?? [], true));
 
-// One-per-day guard: skip if we already generated a report within the
-// last 20 hours, unless &force=1 is passed. The 20h floor (vs. exactly
-// 24h) gives a 4-hour cushion for clock drift / schedule changes.
+// Cadence guard: skip if we already generated a report within the last
+// ~2.5 hours, unless &force=1 is passed. The 2.5h floor (vs. exactly 3h)
+// gives a cushion for clock drift / schedule changes.
 if (!$force) {
     $latest = tg_summary_get_latest();
     if ($latest) {
         $ageSecs = time() - strtotime($latest['generated_at']);
-        if ($ageSecs < 20 * 3600) {
+        if ($ageSecs < 9000) {
             $hrs = round($ageSecs / 3600, 1);
             echo "skip: latest report is only {$hrs}h old (id={$latest['id']}). Use ?force=1 to regenerate.\n";
             exit;

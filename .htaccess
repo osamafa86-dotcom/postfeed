@@ -103,6 +103,7 @@ FileETag None
     RewriteRule ^weekly/(\d{4}-\d{1,2})/?$ weekly.php?week=$1 [L,QSA]
     RewriteRule ^weekly/?$ weekly.php [L,QSA]
     RewriteRule ^map/?$ map.php [L,QSA]
+    RewriteRule ^platforms/?$ platforms.php [L,QSA]
     RewriteRule ^podcast/archive/?$ podcast.php?date=archive [L,QSA]
     RewriteRule ^podcast/(\d{4}-\d{2}-\d{2})/?$ podcast.php?date=$1 [L,QSA]
     RewriteRule ^podcast/?$ podcast.php [L,QSA]

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/api/api_exception.dart';
 
 class TelegramMessage {
   const TelegramMessage({
@@ -14,6 +15,8 @@ class TelegramMessage {
     required this.sourceName,
     this.sourceUsername,
     this.sourceAvatar,
+    this.duplicateCount = 0,
+    this.alsoReportedBy = const [],
   });
 
   final int id;
@@ -24,6 +27,18 @@ class TelegramMessage {
   final String sourceName;
   final String? sourceUsername;
   final String? sourceAvatar;
+
+  /// How many other sources reported the same story (set when the feed
+  /// is requested with dedup=1). Zero means "shown as-is / unique".
+  final int duplicateCount;
+
+  /// Display names of those other sources.
+  final List<String> alsoReportedBy;
+
+  static int _dupCount(Map<String, dynamic> j) =>
+      (j['duplicate_count'] as num?)?.toInt() ?? 0;
+  static List<String> _alsoReported(Map<String, dynamic> j) =>
+      (j['also_reported_by'] as List? ?? []).map((e) => e.toString()).toList();
 
   factory TelegramMessage.fromJson(Map<String, dynamic> j) {
     final s = (j['source'] as Map?)?.cast<String, dynamic>() ?? {};
@@ -38,6 +53,8 @@ class TelegramMessage {
       sourceName: (s['display_name'] as String?) ?? '',
       sourceUsername: s['username'] as String?,
       sourceAvatar: s['avatar_url'] as String?,
+      duplicateCount: _dupCount(j),
+      alsoReportedBy: _alsoReported(j),
     );
   }
 }
@@ -52,6 +69,8 @@ class TwitterMessage extends TelegramMessage {
     required super.sourceName,
     super.sourceUsername,
     super.sourceAvatar,
+    super.duplicateCount,
+    super.alsoReportedBy,
   });
 
   factory TwitterMessage.fromJson(Map<String, dynamic> j) {
@@ -65,6 +84,8 @@ class TwitterMessage extends TelegramMessage {
       sourceName: base.sourceName,
       sourceUsername: base.sourceUsername,
       sourceAvatar: base.sourceAvatar,
+      duplicateCount: base.duplicateCount,
+      alsoReportedBy: base.alsoReportedBy,
     );
   }
 }
@@ -206,17 +227,143 @@ class MapPoint {
   }
 }
 
+/// One section of a rich platform summary (a deep-dive on a topic).
+class PlatformSummarySection {
+  const PlatformSummarySection({
+    required this.title,
+    this.icon = '',
+    this.items = const [],
+    this.whyMatters = '',
+  });
+
+  final String title;
+  final String icon;
+  final List<String> items;
+  final String whyMatters;
+
+  factory PlatformSummarySection.fromJson(Map<String, dynamic> j) =>
+      PlatformSummarySection(
+        title: (j['title'] as String?) ?? '',
+        icon: (j['icon'] as String?) ?? '',
+        items: (j['items'] as List? ?? []).map((e) => e.toString()).toList(),
+        whyMatters: (j['why_matters'] as String?) ?? '',
+      );
+}
+
+/// Rich, de-duplicated daily AI summary for a social platform.
+/// Mirrors /api/v1/media/social-summary (telegram/twitter/youtube).
+class PlatformSummary {
+  const PlatformSummary({
+    this.summary = '',
+    this.headline = '',
+    this.subheadline = '',
+    this.sections = const [],
+    this.keyNumbers = const [],
+    this.regions = const [],
+    this.topics = const [],
+    this.messageCount = 0,
+    this.generatedAt,
+  });
+
+  final String summary;
+  final String headline;
+  final String subheadline;
+  final List<PlatformSummarySection> sections;
+  final List<({String value, String context})> keyNumbers;
+  final List<String> regions;
+  final List<String> topics;
+  final int messageCount;
+  final DateTime? generatedAt;
+
+  bool get isEmpty => summary.isEmpty && sections.isEmpty;
+
+  factory PlatformSummary.fromJson(Map<String, dynamic> j) => PlatformSummary(
+        summary: (j['summary'] as String?) ?? '',
+        headline: (j['headline'] as String?) ?? '',
+        subheadline: (j['subheadline'] as String?) ?? '',
+        sections: (j['sections'] as List? ?? [])
+            .whereType<Map>()
+            .map((m) => PlatformSummarySection.fromJson(m.cast<String, dynamic>()))
+            .toList(),
+        keyNumbers: (j['key_numbers'] as List? ?? [])
+            .whereType<Map>()
+            .map((m) => (
+                  value: (m['value'] ?? '').toString(),
+                  context: (m['context'] ?? '').toString(),
+                ))
+            .where((e) => e.value.isNotEmpty)
+            .toList(),
+        regions: (j['regions'] as List? ?? []).map((e) => e.toString()).toList(),
+        topics: (j['topics'] as List? ?? []).map((e) => e.toString()).toList(),
+        messageCount: (j['message_count'] as num?)?.toInt() ?? 0,
+        generatedAt: j['generated_at'] != null
+            ? DateTime.tryParse(j['generated_at'].toString())
+            : null,
+      );
+}
+
+/// Analytics for one platform over a time range (24h/7d/30d).
+class PlatformStats {
+  const PlatformStats({
+    this.total = 0,
+    this.activeSources = 0,
+    this.palestineShare = 0,
+    this.timeline = const [],
+    this.topSources = const [],
+    this.topTopics = const [],
+    this.peak,
+  });
+
+  final int total;
+  final int activeSources;
+  final double palestineShare; // 0..1
+  final List<({String label, int count})> timeline;
+  final List<({String name, int count})> topSources;
+  final List<({String tag, int count})> topTopics;
+  final String? peak;
+
+  factory PlatformStats.fromJson(Map<String, dynamic> j) => PlatformStats(
+        total: (j['total'] as num?)?.toInt() ?? 0,
+        activeSources: (j['active_sources'] as num?)?.toInt() ?? 0,
+        palestineShare: (j['palestine_share'] as num?)?.toDouble() ?? 0,
+        timeline: (j['timeline'] as List? ?? [])
+            .whereType<Map>()
+            .map((m) => (
+                  label: (m['label'] ?? '').toString(),
+                  count: (m['count'] as num?)?.toInt() ?? 0,
+                ))
+            .toList(),
+        topSources: (j['top_sources'] as List? ?? [])
+            .whereType<Map>()
+            .map((m) => (
+                  name: (m['name'] ?? '').toString(),
+                  count: (m['count'] as num?)?.toInt() ?? 0,
+                ))
+            .toList(),
+        topTopics: (j['top_topics'] as List? ?? [])
+            .whereType<Map>()
+            .map((m) => (
+                  tag: (m['tag'] ?? '').toString(),
+                  count: (m['count'] as num?)?.toInt() ?? 0,
+                ))
+            .toList(),
+        peak: j['peak']?.toString(),
+      );
+}
+
 class MediaRepository {
   MediaRepository(this._api);
   final ApiClient _api;
 
-  Future<List<TelegramMessage>> telegram({int? sinceId, int? beforeId, int limit = 30}) async {
+  Future<List<TelegramMessage>> telegram(
+      {int? sinceId, int? beforeId, int limit = 30, bool dedup = false}) async {
     final res = await _api.get<List<TelegramMessage>>(
       '/media/telegram',
       query: {
         'limit': limit,
         if (sinceId != null) 'since_id': sinceId,
         if (beforeId != null) 'before_id': beforeId,
+        if (dedup) 'dedup': 1,
       },
       decode: (d) => (d as List)
           .whereType<Map>()
@@ -226,7 +373,8 @@ class MediaRepository {
     return res.data ?? const [];
   }
 
-  Future<List<TwitterMessage>> twitter({int? sinceId, int? beforeId, int limit = 30, bool sync = false}) async {
+  Future<List<TwitterMessage>> twitter(
+      {int? sinceId, int? beforeId, int limit = 30, bool sync = false, bool dedup = false}) async {
     final res = await _api.get<List<TwitterMessage>>(
       '/media/twitter',
       query: {
@@ -236,6 +384,7 @@ class MediaRepository {
         // Opt-in scrape trigger — server only actually scrapes if its
         // newest tweet is >30s old AND the cross-process cooldown allows.
         if (sync) 'sync': 1,
+        if (dedup) 'dedup': 1,
       },
       decode: (d) => (d as List)
           .whereType<Map>()
@@ -305,6 +454,7 @@ class MediaRepository {
   }
 
   /// AI summary of latest social media posts (telegram/twitter).
+  /// Kept for the flat-string consumers (home screen teaser).
   Future<String> socialSummary(String platform) async {
     final res = await _api.get<Map<String, dynamic>>(
       '/media/social-summary',
@@ -312,6 +462,34 @@ class MediaRepository {
       decode: (d) => (d as Map).cast<String, dynamic>(),
     );
     return res.data?['summary']?.toString() ?? '';
+  }
+
+  /// Rich, de-duplicated daily summary for a platform
+  /// (telegram/twitter/youtube). Returns an empty summary (not an error)
+  /// when none has been generated yet, so the UI can simply hide the card.
+  Future<PlatformSummary> platformSummary(String platform) async {
+    try {
+      final res = await _api.get<PlatformSummary>(
+        '/media/social-summary',
+        query: {'platform': platform},
+        decode: (d) => PlatformSummary.fromJson((d as Map).cast<String, dynamic>()),
+      );
+      return res.data ?? const PlatformSummary();
+    } on ApiException catch (e) {
+      // 404 = "no summary generated yet" — treat as empty, not an error.
+      if (e.code == 'not_found' || e.status == 404) return const PlatformSummary();
+      rethrow;
+    }
+  }
+
+  /// Live analytics for a platform over a range (24h/7d/30d).
+  Future<PlatformStats> platformStats(String platform, {String range = '24h'}) async {
+    final res = await _api.get<PlatformStats>(
+      '/media/stats',
+      query: {'platform': platform, 'range': range},
+      decode: (d) => PlatformStats.fromJson((d as Map).cast<String, dynamic>()),
+    );
+    return res.data ?? const PlatformStats();
   }
 
   Future<({String? audioUrl, int duration, bool cached})> ttsForArticle(int articleId) async {
@@ -331,14 +509,21 @@ class MediaRepository {
 final mediaRepositoryProvider =
     Provider<MediaRepository>((ref) => MediaRepository(ref.watch(apiClientProvider)));
 
-/// Auto-refreshing social feed providers — poll every 60 seconds.
-/// Polling only starts when the provider has active listeners (i.e. the UI is visible).
+/// Whether the social feeds collapse near-duplicate posts. Toggling it
+/// invalidates the feed providers (they watch it), so the list rebuilds
+/// with/without de-duplication. On by default.
+final hideDuplicatesProvider = StateProvider<bool>((ref) => true);
+
+/// Auto-refreshing social feed providers — near-real-time polling (every
+/// 20-30s) so new posts surface without a manual pull-to-refresh. Polling
+/// only runs while the provider has active listeners (i.e. the UI is visible).
 final telegramFeedProvider = FutureProvider<List<TelegramMessage>>((ref) {
-  final timer = Timer.periodic(const Duration(seconds: 60), (_) {
+  final dedup = ref.watch(hideDuplicatesProvider);
+  final timer = Timer.periodic(const Duration(seconds: 20), (_) {
     ref.invalidateSelf();
   });
   ref.onDispose(timer.cancel);
-  return ref.watch(mediaRepositoryProvider).telegram();
+  return ref.watch(mediaRepositoryProvider).telegram(dedup: dedup);
 });
 
 // Twitter polls more aggressively than the other social feeds because
@@ -346,15 +531,16 @@ final telegramFeedProvider = FutureProvider<List<TelegramMessage>>((ref) {
 // Each poll passes sync:true so the API kicks a real scrape behind its
 // shared lock — the lock prevents stampedes across mobile + web users.
 final twitterFeedProvider = FutureProvider<List<TwitterMessage>>((ref) {
-  final timer = Timer.periodic(const Duration(seconds: 30), (_) {
+  final dedup = ref.watch(hideDuplicatesProvider);
+  final timer = Timer.periodic(const Duration(seconds: 25), (_) {
     ref.invalidateSelf();
   });
   ref.onDispose(timer.cancel);
-  return ref.watch(mediaRepositoryProvider).twitter(sync: true);
+  return ref.watch(mediaRepositoryProvider).twitter(sync: true, dedup: dedup);
 });
 
 final youtubeFeedProvider = FutureProvider<List<YoutubeVideo>>((ref) {
-  final timer = Timer.periodic(const Duration(seconds: 60), (_) {
+  final timer = Timer.periodic(const Duration(seconds: 30), (_) {
     ref.invalidateSelf();
   });
   ref.onDispose(timer.cancel);
@@ -375,3 +561,16 @@ final telegramSummaryProvider = FutureProvider<String>(
 
 final twitterSummaryProvider = FutureProvider<String>(
     (ref) => ref.watch(mediaRepositoryProvider).socialSummary('twitter'));
+
+/// Rich per-platform summary providers (telegram/twitter/youtube),
+/// consumed by the collapsible summary card atop each platform tab.
+final platformSummaryProvider =
+    FutureProvider.family<PlatformSummary, String>((ref, platform) {
+  return ref.watch(mediaRepositoryProvider).platformSummary(platform);
+});
+
+/// Platform analytics, keyed by (platform, range).
+final platformStatsProvider = FutureProvider.family<PlatformStats,
+    ({String platform, String range})>((ref, key) {
+  return ref.watch(mediaRepositoryProvider).platformStats(key.platform, range: key.range);
+});

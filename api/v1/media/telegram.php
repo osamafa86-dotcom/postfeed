@@ -67,6 +67,13 @@ try {
     error_log('telegram api: ' . $e->getMessage());
 }
 
+// Optional near-duplicate collapsing (?dedup=1). Done before computing
+// count so the meta reflects what the client actually receives.
+if (!empty($_GET['dedup'])) {
+    require_once __DIR__ . '/../../../includes/dedup.php';
+    $messages = nf_dedup_messages($messages);
+}
+
 api_ok($messages, [
     'count' => count($messages),
     'latest_id' => $messages[0]['id'] ?? $sinceId,

@@ -8,6 +8,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/safe_launch.dart';
 import '../../../core/widgets/loading_state.dart';
 import '../data/media_repository.dart';
+import 'platform_stats_sheet.dart';
 
 class PlatformsScreen extends ConsumerStatefulWidget {
   const PlatformsScreen({super.key});
@@ -37,6 +38,39 @@ class _PlatformsScreenState extends ConsumerState<PlatformsScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('المنصات'),
+        actions: [
+          // De-duplication toggle — collapses the same story reported by
+          // many channels into one card. On by default.
+          Builder(builder: (context) {
+            final hideDup = ref.watch(hideDuplicatesProvider);
+            return IconButton(
+              tooltip: hideDup ? 'إظهار كل المنشورات' : 'إخفاء المكرر',
+              icon: Icon(hideDup ? Icons.filter_alt : Icons.filter_alt_off_outlined),
+              onPressed: () {
+                ref.read(hideDuplicatesProvider.notifier).state = !hideDup;
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  duration: const Duration(seconds: 2),
+                  content: Text(!hideDup ? 'تم إخفاء الأخبار المكررة' : 'يتم عرض كل المنشورات'),
+                ));
+              },
+            );
+          }),
+          IconButton(
+            tooltip: 'إحصاءات',
+            icon: const Icon(Icons.bar_chart_rounded),
+            onPressed: () {
+              const meta = [
+                ('telegram', Color(0xFF0EA5E9), 'تلغرام'),
+                ('twitter', Color(0xFF1F2937), 'منصة X'),
+                ('youtube', Colors.red, 'يوتيوب'),
+              ];
+              // 3-tab controller, so index is always 0..2.
+              final m = meta[_tabCtl.index];
+              PlatformStatsSheet.show(context,
+                  platform: m.$1, accent: m.$2, title: m.$3);
+            },
+          ),
+        ],
         bottom: TabBar(
           controller: _tabCtl,
           indicatorColor: AppColors.primary,
@@ -181,11 +215,16 @@ class _TelegramFeedState extends ConsumerState<_TelegramFeed>
               ? const EmptyView(message: 'لا توجد منشورات')
               : ListView.separated(
                   padding: const EdgeInsets.all(16),
-                  itemCount: all.length + 1,
+                  itemCount: all.length + 2,
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (_, i) {
-                    if (i < all.length) {
-                      return _MessageCard(msg: all[i], platformColor: const Color(0xFF0EA5E9), platformName: 'تلغرام');
+                    if (i == 0) {
+                      return const _PlatformSummaryCard(
+                          platform: 'telegram', accent: Color(0xFF0EA5E9));
+                    }
+                    final idx = i - 1;
+                    if (idx < all.length) {
+                      return _MessageCard(msg: all[idx], platformColor: const Color(0xFF0EA5E9), platformName: 'تلغرام');
                     }
                     return _loadMoreButton(
                       loading: _loadingMore,
@@ -193,8 +232,8 @@ class _TelegramFeedState extends ConsumerState<_TelegramFeed>
                       hasContent: all.isNotEmpty,
                       onTap: () => doLoadMore(
                         beforeId: all.isNotEmpty ? all.last.id : null,
-                        fetch: (b) async =>
-                            ref.read(mediaRepositoryProvider).telegram(beforeId: b, limit: 30),
+                        fetch: (b) async => ref.read(mediaRepositoryProvider).telegram(
+                            beforeId: b, limit: 30, dedup: ref.read(hideDuplicatesProvider)),
                       ),
                     );
                   },
@@ -227,11 +266,16 @@ class _TwitterFeedState extends ConsumerState<_TwitterFeed>
               ? const EmptyView(message: 'لا توجد منشورات')
               : ListView.separated(
                   padding: const EdgeInsets.all(16),
-                  itemCount: all.length + 1,
+                  itemCount: all.length + 2,
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (_, i) {
-                    if (i < all.length) {
-                      return _MessageCard(msg: all[i], platformColor: const Color(0xFF1F2937), platformName: 'X');
+                    if (i == 0) {
+                      return const _PlatformSummaryCard(
+                          platform: 'twitter', accent: Color(0xFF1F2937));
+                    }
+                    final idx = i - 1;
+                    if (idx < all.length) {
+                      return _MessageCard(msg: all[idx], platformColor: const Color(0xFF1F2937), platformName: 'X');
                     }
                     return _loadMoreButton(
                       loading: _loadingMore,
@@ -239,8 +283,8 @@ class _TwitterFeedState extends ConsumerState<_TwitterFeed>
                       hasContent: all.isNotEmpty,
                       onTap: () => doLoadMore(
                         beforeId: all.isNotEmpty ? all.last.id : null,
-                        fetch: (b) async =>
-                            ref.read(mediaRepositoryProvider).twitter(beforeId: b, limit: 30),
+                        fetch: (b) async => ref.read(mediaRepositoryProvider).twitter(
+                            beforeId: b, limit: 30, dedup: ref.read(hideDuplicatesProvider)),
                       ),
                     );
                   },
@@ -273,11 +317,16 @@ class _YoutubeFeedState extends ConsumerState<_YoutubeFeed>
               ? const EmptyView(message: 'لا توجد فيديوهات')
               : ListView.separated(
                   padding: const EdgeInsets.all(16),
-                  itemCount: all.length + 1,
+                  itemCount: all.length + 2,
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (_, i) {
-                    if (i < all.length) {
-                      return _YoutubeCard(video: all[i]);
+                    if (i == 0) {
+                      return const _PlatformSummaryCard(
+                          platform: 'youtube', accent: Colors.red);
+                    }
+                    final idx = i - 1;
+                    if (idx < all.length) {
+                      return _YoutubeCard(video: all[idx]);
                     }
                     return _loadMoreButton(
                       loading: _loadingMore,
@@ -306,33 +355,36 @@ class _MessageCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final ink = AppColors.accentInk(platformColor, isDark);
     return Container(
       decoration: BoxDecoration(
         color: theme.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 12, offset: const Offset(0, 3))],
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.6)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.32 : 0.05), blurRadius: 16, offset: const Offset(0, 6))],
       ),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(15),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
             Container(
-              width: 36, height: 36,
-              decoration: BoxDecoration(color: platformColor.withOpacity(0.15), shape: BoxShape.circle),
+              width: 42, height: 42,
+              decoration: BoxDecoration(color: ink, shape: BoxShape.circle),
               alignment: Alignment.center,
-              child: Text(msg.sourceName.isNotEmpty ? msg.sourceName[0] : '?',
-                style: TextStyle(color: platformColor, fontWeight: FontWeight.w800, fontSize: 16)),
+              child: Text(msg.sourceName.isNotEmpty ? msg.sourceName[0] : '؟',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 17)),
             ),
             const SizedBox(width: 10),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(msg.sourceName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              Text(msg.sourceName, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5)),
               if (msg.sourceUsername != null)
                 Text('@${msg.sourceUsername}', style: theme.textTheme.bodySmall?.copyWith(fontSize: 11)),
             ])),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(color: platformColor, borderRadius: BorderRadius.circular(6)),
+              decoration: BoxDecoration(color: ink, borderRadius: BorderRadius.circular(7)),
               child: Text(platformName, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
             ),
             const SizedBox(width: 8),
@@ -340,16 +392,39 @@ class _MessageCard extends StatelessWidget {
               Text(timeago.format(msg.postedAt!, locale: 'ar'), style: theme.textTheme.bodySmall?.copyWith(fontSize: 11)),
           ]),
           if (msg.text.isNotEmpty)
-            Padding(padding: const EdgeInsets.only(top: 10),
-              child: Text(msg.text, style: const TextStyle(fontSize: 14, height: 1.6), maxLines: 6, overflow: TextOverflow.ellipsis)),
+            Padding(padding: const EdgeInsets.only(top: 11),
+              child: Text(msg.text, style: const TextStyle(fontSize: 15, height: 1.7), maxLines: 6, overflow: TextOverflow.ellipsis)),
+          if (msg.duplicateCount > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Tooltip(
+                message: msg.alsoReportedBy.isNotEmpty
+                    ? 'أيضاً: ${msg.alsoReportedBy.join('، ')}'
+                    : '',
+                triggerMode: TooltipTriggerMode.tap,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: ink.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.dynamic_feed, size: 14, color: ink),
+                    const SizedBox(width: 4),
+                    Text('ورد من ${msg.duplicateCount + 1} مصدر',
+                        style: TextStyle(color: ink, fontSize: 12, fontWeight: FontWeight.w700)),
+                  ]),
+                ),
+              ),
+            ),
           if (msg.postUrl != null)
-            Padding(padding: const EdgeInsets.only(top: 8),
+            Padding(padding: const EdgeInsets.only(top: 10),
               child: GestureDetector(
                 onTap: () => safeLaunch(context, msg.postUrl!),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.open_in_new, size: 14, color: platformColor),
+                  Icon(Icons.open_in_new, size: 14, color: ink),
                   const SizedBox(width: 4),
-                  Text('فتح المنشور', style: TextStyle(color: platformColor, fontSize: 13, fontWeight: FontWeight.w600)),
+                  Text('فتح المنشور', style: TextStyle(color: ink, fontSize: 13, fontWeight: FontWeight.w700)),
                 ]),
               )),
         ],
@@ -428,5 +503,202 @@ class _YoutubeCard extends StatelessWidget {
     final m = seconds ~/ 60;
     final s = seconds % 60;
     return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
+}
+
+/// Collapsible "ملخص اليوم" card shown at the top of each platform tab.
+/// Renders the rich, de-duplicated daily AI summary (headline, paragraph,
+/// key numbers, deep-dive sections, topics). Hides itself entirely while
+/// loading, on error, or when no summary has been generated yet.
+class _PlatformSummaryCard extends ConsumerStatefulWidget {
+  const _PlatformSummaryCard({required this.platform, required this.accent});
+  final String platform;
+  final Color accent;
+
+  @override
+  ConsumerState<_PlatformSummaryCard> createState() => _PlatformSummaryCardState();
+}
+
+class _PlatformSummaryCardState extends ConsumerState<_PlatformSummaryCard> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final asy = ref.watch(platformSummaryProvider(widget.platform));
+    return asy.maybeWhen(
+      orElse: () => const SizedBox.shrink(),
+      data: (s) {
+        if (s.isEmpty) return const SizedBox.shrink();
+        final theme = Theme.of(context);
+        final isDark = theme.brightness == Brightness.dark;
+        final ink = AppColors.accentInk(widget.accent, isDark);
+        return Container(
+          margin: const EdgeInsets.only(bottom: 4),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+              colors: [widget.accent.withOpacity(isDark ? 0.16 : 0.10), widget.accent.withOpacity(0.02)],
+            ),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: widget.accent.withOpacity(0.25)),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                height: 4, width: 54,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(color: widget.accent, borderRadius: BorderRadius.circular(4)),
+              ),
+              Row(children: [
+                const Text('🧠', style: TextStyle(fontSize: 18)),
+                const SizedBox(width: 6),
+                Text('ملخص اليوم',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: ink)),
+                const Spacer(),
+                if (s.generatedAt != null)
+                  Text(timeago.format(s.generatedAt!, locale: 'ar'),
+                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 11)),
+              ]),
+              if (s.headline.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(s.headline,
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, height: 1.4)),
+                ),
+              if (s.summary.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    s.summary,
+                    style: const TextStyle(fontSize: 13.5, height: 1.7),
+                    maxLines: _expanded ? null : 3,
+                    overflow: _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
+                  ),
+                ),
+              if (_expanded) ..._buildExpanded(context, s),
+              const SizedBox(height: 10),
+              Row(children: [
+                if (s.messageCount > 0)
+                  Expanded(
+                    child: Text('📡 جُمِّع من ${s.messageCount} منشور بلا تكرار',
+                        style: theme.textTheme.bodySmall?.copyWith(fontSize: 11)),
+                  )
+                else
+                  const Spacer(),
+                TextButton.icon(
+                  onPressed: () => setState(() => _expanded = !_expanded),
+                  icon: Icon(_expanded ? Icons.expand_less : Icons.expand_more,
+                      size: 18, color: Colors.white),
+                  label: Text(_expanded ? 'طيّ الملخص' : 'الملخص الكامل',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
+                  style: TextButton.styleFrom(
+                    backgroundColor: ink,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    minimumSize: const Size(0, 36),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ]),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  List<Widget> _buildExpanded(BuildContext context, PlatformSummary s) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final ink = AppColors.accentInk(widget.accent, isDark);
+    return [
+      // Key numbers row.
+      if (s.keyNumbers.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: s.keyNumbers
+                .map((n) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: ink.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(n.value,
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: ink)),
+                          Text(n.context,
+                              style: theme.textTheme.bodySmall?.copyWith(fontSize: 10.5)),
+                        ],
+                      ),
+                    ))
+                .toList(),
+          ),
+        ),
+      // Deep-dive sections.
+      for (final sec in s.sections)
+        Padding(
+          padding: const EdgeInsets.only(top: 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                if (sec.icon.isNotEmpty) Text(sec.icon, style: const TextStyle(fontSize: 16)),
+                if (sec.icon.isNotEmpty) const SizedBox(width: 6),
+                Expanded(
+                  child: Text(sec.title,
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                ),
+              ]),
+              for (final item in sec.items)
+                Padding(
+                  padding: const EdgeInsets.only(top: 5, right: 4),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('• ', style: TextStyle(color: ink, fontWeight: FontWeight.w900)),
+                    Expanded(
+                      child: Text(item, style: const TextStyle(fontSize: 13, height: 1.6)),
+                    ),
+                  ]),
+                ),
+              if (sec.whyMatters.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text('لماذا يهم؟ ${sec.whyMatters}',
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(fontStyle: FontStyle.italic, fontSize: 11.5)),
+                ),
+            ],
+          ),
+        ),
+      // Topics.
+      if (s.topics.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(top: 14),
+          child: Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: s.topics
+                .map((t) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: theme.cardColor,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: ink.withOpacity(0.35)),
+                      ),
+                      child: Text('#$t',
+                          style: TextStyle(fontSize: 11.5, color: ink, fontWeight: FontWeight.w700)),
+                    ))
+                .toList(),
+          ),
+        ),
+    ];
   }
 }
