@@ -1,69 +1,64 @@
 <?php
 /**
- * Social Platforms — Newspaper Editorial render.
+ * Social Platforms — Newspaper Editorial render (split layout).
  *
  * Replaces the old tabbed dark-gradient "_PlatformsBox" on the home
- * page (index.php). Renders the same Telegram / X / YouTube data in
- * the print-newspaper layout from the Figma spec:
+ * page with a 50/50 newspaper-feel split:
  *
- *   ┌─────────────────────────────────────────────┐
- *   │ MASTHEAD STRIPE (date + LIVE pulse)         │
- *   ├─────────────────────────────────────────────┤
- *   │           منصات السوشال                       │
- *   │     منشورات حصرية من ٤٧ مصدراً                 │
- *   │ ═════════════════════════════════════════   │
- *   │ تلغرام · ٨٢   منصة X · ٤١   يوتيوب · ٢٤      │
- *   │ ─────────────────────────────────────────   │
- *   │ 🔥 الخبر الرائج                              │
- *   │ <BIG headline of active platform's top post> │
- *   │ بقلم/ القناة · قبل ٤ د · ١٢.٤ك               │
- *   │ A <big drop cap> + lead paragraph            │
- *   │                                              │
- *   │ في الصفحات الداخلية ─────────────  ص.٢       │
- *   │ KICKER     │  KICKER                         │
- *   │ secondary  │  secondary                      │
- *   │            │                                 │
- *   │ ✦ ملاحظة المحرر — الإيجاز الذكي               │
- *   │   (latest tg_summary if present)             │
- *   │                                              │
- *   │ INK FOOTER — الأرشيف الكامل · افتح الملحق    │
- *   └─────────────────────────────────────────────┘
+ *   ┌───────────────────────────────────────────────────────┐
+ *   │ MASTHEAD STRIPE (date + LIVE pulse)                   │
+ *   ├───────────────────────────────────────────────────────┤
+ *   │                  منصات السوشال                          │
+ *   │           منشورات حصرية من ٤٧ مصدراً                    │
+ *   │ ═══════════════════════════════════════════════════   │
+ *   │ تلغرام · ٨٢   منصة X · ٤١   يوتيوب · ٢٤                │
+ *   │ ───────────────────────────────────────────────────   │
+ *   ├──────────────────────┬────────────────────────────────┤
+ *   │  RIGHT (live feed)   │   LEFT (sidebar stats)         │
+ *   │  Telegram/X/YT cards │   ▸ إجمالي الأخبار    ١٤٧      │
+ *   │  in the active tab,  │   ▸ القضية الأبرز     <hd>     │
+ *   │  same compact-card   │   ▸ المنصة الأكثر نشراً  تلغرام  │
+ *   │  list as before.     │   ▸ ✨ موجز الساعة             │
+ *   ├──────────────────────┴────────────────────────────────┤
+ *   │ INK FOOTER — الأرشيف الكامل · افتح الملحق              │
+ *   └───────────────────────────────────────────────────────┘
  *
  * Variables consumed (set by index.php right before include):
- *   $tgMsgs, $twMsgs, $ytMsgs (arrays of posts, oldest→newest)
+ *   $tgMsgs, $twMsgs, $ytMsgs (arrays of posts, newest → oldest)
  *
- * The three platform tabs are GET-driven (?social=telegram|twitter|youtube)
- * so the lead headline + drop cap belong to whichever feed the reader
- * picked. No JavaScript is required for the basic switch — the page
- * just re-renders. The live-update polling stays untouched on the
- * dedicated /platforms page where it actually matters.
+ * Active platform is GET-driven (?social=telegram|twitter|youtube)
+ * — picking a kicker just re-renders the right-hand feed. The
+ * live-update polling stays untouched on the dedicated /platforms
+ * page where it actually matters.
  */
 
 if (!function_exists('e')) return;
 if (empty($tgMsgs) && empty($twMsgs) && empty($ytMsgs)) return;
 
-// Active platform (from query string, defaulting to whichever feed has data)
+// Platform metadata — labels, color accents, source keys, archive URLs.
 $__platforms = [
     'telegram' => ['label' => 'تلغرام',  'count' => count($tgMsgs ?? []), 'msgs' => $tgMsgs ?? [],
                    'msgKey' => 'text',  'urlKey' => 'post_url', 'imgKey' => 'image_url',
-                   'icon'  => '📨',
                    'svg'   => '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 7.24l-1.66 7.81c-.12.56-.45.7-.91.44L11.55 15.4l-1.79 1.73c-.2.2-.37.37-.76.37l.27-3.84 6.97-6.3c.3-.27-.07-.42-.47-.16L7.14 12.43l-3.71-1.16c-.8-.25-.82-.8.17-1.19l14.49-5.59c.67-.25 1.26.16 1.04 1.19z"/></svg>',
+                   'badge' => '📨 تلغرام',
+                   'color' => '#0EA5E9',
                    'archive' => 'telegram.php'],
     'twitter'  => ['label' => 'منصة X',  'count' => count($twMsgs ?? []), 'msgs' => $twMsgs ?? [],
                    'msgKey' => 'text',  'urlKey' => 'post_url', 'imgKey' => 'image_url',
-                   'icon'  => '𝕏',
                    'svg'   => '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.451-6.231zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/></svg>',
+                   'badge' => '𝕏 منصة X',
+                   'color' => '#374151',
                    'archive' => 'twitter_feed.php'],
     'youtube'  => ['label' => 'يوتيوب', 'count' => count($ytMsgs ?? []), 'msgs' => $ytMsgs ?? [],
                    'msgKey' => 'title', 'urlKey' => 'post_url', 'imgKey' => 'thumbnail_url',
-                   'icon'  => '▶',
                    'svg'   => '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>',
+                   'badge' => '▶ يوتيوب',
+                   'color' => '#DC2626',
                    'archive' => 'youtube_feed.php'],
 ];
 
 $__activeSocial = $_GET['social'] ?? null;
 if (!isset($__platforms[$__activeSocial]) || empty($__platforms[$__activeSocial]['msgs'])) {
-    // Fall back to the freshest non-empty platform.
     $__activeSocial = !empty($tgMsgs) ? 'telegram'
                     : (!empty($twMsgs) ? 'twitter'
                     : (!empty($ytMsgs) ? 'youtube' : null));
@@ -75,56 +70,57 @@ $__totalCount = ($__platforms['telegram']['count'] ?? 0)
               + ($__platforms['twitter']['count']  ?? 0)
               + ($__platforms['youtube']['count']  ?? 0);
 
-// Pretty Arabic-Indic numerals for the newspaper feel.
+// Arabic-Indic numerals — newspaper feel.
 $__toArabicNum = function ($n) {
     return strtr((string)$n,
         ['0'=>'٠','1'=>'١','2'=>'٢','3'=>'٣','4'=>'٤','5'=>'٥','6'=>'٦','7'=>'٧','8'=>'٨','9'=>'٩']);
 };
 
-// Lead post = the active feed's most recent item; secondaries are 2 + 3.
-$__lead = $__active['msgs'][0] ?? null;
-$__sec1 = $__active['msgs'][1] ?? null;
-$__sec2 = $__active['msgs'][2] ?? null;
+// Telegram channels often pre-encode entities and lead with bullet emoji,
+// so decode once before e() and strip leading non-letter chars.
+$__decode = fn($s) => html_entity_decode((string)$s, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+$__stripLead = fn($s) => preg_replace('/^[^\p{L}\p{N}]+/u', '', $s);
 
-// Editor's brief (pulled from telegram_summaries, generated by cron_tg_summary.php).
+// Editor's brief / hour summary (latest tg_summary).
 $__editorBrief = null;
 if (function_exists('tg_summary_get_latest')) {
     try { $__editorBrief = tg_summary_get_latest(); } catch (Throwable $e) {}
 }
 
-// Active-tab URL helper that preserves the rest of the query string.
+// Which platform leads the day's volume — drives the "الأكثر نشراً" stat.
+$__topPlatform = null; $__topPlatformCount = 0;
+foreach ($__platforms as $key => $p) {
+    if (($p['count'] ?? 0) > $__topPlatformCount) {
+        $__topPlatformCount = $p['count'];
+        $__topPlatform      = $key;
+    }
+}
+
+// Headline of the day — prefers AI-curated brief, falls back to active
+// platform's freshest post.
+$__topStory = '';
+if ($__editorBrief && !empty($__editorBrief['headline'])) {
+    $__topStory = $__decode($__editorBrief['headline']);
+} elseif (!empty($__active['msgs'][0])) {
+    $__topStory = $__stripLead($__decode($__active['msgs'][0][$__active['msgKey']] ?? ''));
+}
+
+// Active-tab URL helper.
 $__tabUrl = function ($p) {
     $q = $_GET; $q['social'] = $p;
     return strtok($_SERVER['REQUEST_URI'] ?? '/', '?') . '?' . http_build_query($q) . '#social-rail';
 };
 
-// Text helpers.
-// Telegram channels often pre-encode quotes/ampersands (&quot; &amp;) and
-// prefix posts with emoji/bullets. Decode the entities (so e() doesn't
-// double-escape them) then strip leading non-letter chars so the drop
-// cap lands on an actual Arabic/Latin letter — not a 🔵 rendered at
-// 54px.
-$__decode = fn($s) => html_entity_decode((string)$s, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-$__stripLead = fn($s) => preg_replace('/^[^\p{L}\p{N}]+/u', '', $s);
-
-$__leadTitle = $__lead ? trim($__decode($__lead[$__active['msgKey']] ?? '')) : '';
-$__leadBody  = $__leadTitle !== '' ? $__stripLead($__leadTitle) : '';
-$__leadFirstChar = $__leadBody !== '' ? mb_substr($__leadBody, 0, 1) : 'أ';
-$__leadRest      = $__leadBody !== '' ? mb_substr($__leadBody, 1) : '';
-// Excerpt for the lead paragraph
-$__leadExcerpt = $__leadRest !== '' ? mb_substr($__leadRest, 0, 220) : '';
-if (mb_strlen($__leadRest) > 220) $__leadExcerpt .= '…';
-
-$__leadChannel = $__lead['display_name'] ?? ($__lead['username'] ?? '');
-$__leadHandle  = $__lead['username'] ?? ($__lead['handle'] ?? '');
-$__leadDate    = $__lead['posted_at'] ?? null;
-
-// Today's date in Arabic for the masthead stripe.
+// Today in Arabic for the masthead stripe.
 $__monthsAr = [1=>'يناير',2=>'فبراير',3=>'مارس',4=>'أبريل',5=>'مايو',6=>'يونيو',7=>'يوليو',8=>'أغسطس',9=>'سبتمبر',10=>'أكتوبر',11=>'نوفمبر',12=>'ديسمبر'];
 $__daysAr   = ['Saturday'=>'السبت','Sunday'=>'الأحد','Monday'=>'الإثنين','Tuesday'=>'الثلاثاء','Wednesday'=>'الأربعاء','Thursday'=>'الخميس','Friday'=>'الجمعة'];
 $__today    = $__daysAr[date('l')] . ' ' . $__toArabicNum(date('j')) . ' ' . $__monthsAr[(int)date('n')] . ' ' . $__toArabicNum(date('Y'));
+
+// How many feed cards to show in the right column. Six lines up nicely
+// against the four stat cards on the left.
+$__feedLimit = 6;
 ?>
-<!-- ═════ SOCIAL NEWSPAPER — مَلْحَق منصات السوشال ═════ -->
+<!-- ═════ SOCIAL NEWSPAPER — split layout ═════ -->
 <div id="social-rail" class="snp" data-active="<?php echo e($__activeSocial); ?>">
   <!-- Top stripe -->
   <div class="snp-stripe">
@@ -148,14 +144,14 @@ $__today    = $__daysAr[date('l')] . ' ' . $__toArabicNum(date('j')) . ' ' . $__
     <div class="snp-rule-thin"></div>
   </div>
 
-  <!-- Platform kickers (act as tabs) -->
+  <!-- Platform kickers (drive the right-column tab) -->
   <nav class="snp-kickers" role="tablist" aria-label="منصات">
     <?php foreach ($__platforms as $key => $p): if (empty($p['msgs'])) continue; ?>
       <a class="snp-kicker<?php echo $key === $__activeSocial ? ' is-active' : ''; ?>"
          href="<?php echo e($__tabUrl($key)); ?>"
          role="tab"
          aria-selected="<?php echo $key === $__activeSocial ? 'true' : 'false'; ?>">
-        <span class="snp-kicker-svg" aria-hidden="true"><?php echo $p['svg']; /* trusted inline SVG */ ?></span>
+        <span class="snp-kicker-svg" aria-hidden="true"><?php echo $p['svg']; ?></span>
         <span class="snp-kicker-label"><?php echo e($p['label']); ?></span>
         <span class="snp-kicker-sep">·</span>
         <span class="snp-kicker-count"><?php echo e($__toArabicNum($p['count'])); ?> منشوراً</span>
@@ -166,87 +162,120 @@ $__today    = $__daysAr[date('l')] . ' ' . $__toArabicNum(date('j')) . ' ' . $__
   <!-- Thin rule under kickers -->
   <div class="snp-rule snp-rule-mid"><div class="snp-rule-thin"></div></div>
 
-  <!-- LEAD STORY -->
-  <?php if ($__lead): ?>
-    <article class="snp-lead">
-      <div class="snp-lead-kicker">🔥 الخبر الرائج</div>
-      <h3 class="snp-lead-title"><?php echo e($__leadBody !== '' ? $__leadBody : $__leadTitle); ?></h3>
-      <div class="snp-byline">
-        <?php if ($__leadChannel): ?>
-          <span>بقلم/<b><?php echo e($__leadChannel); ?></b></span>
-          <span class="snp-byline-sep">·</span>
-        <?php endif; ?>
-        <?php if ($__leadDate): ?>
-          <span><?php echo timeAgo($__leadDate); ?></span>
-        <?php endif; ?>
-        <?php if ($__leadHandle): ?>
-          <span class="snp-byline-sep">·</span>
-          <span>@<?php echo e($__leadHandle); ?></span>
-        <?php endif; ?>
-      </div>
-      <?php if ($__leadExcerpt !== ''): ?>
-        <div class="snp-lead-para">
-          <span class="snp-dropcap" aria-hidden="true"><?php echo e($__leadFirstChar); ?></span>
-          <p><?php echo e($__leadFirstChar . $__leadExcerpt); ?></p>
+  <!-- ═════ SPLIT: feed (right) + stats (left) ═════ -->
+  <div class="snp-split">
+
+    <!-- RIGHT COLUMN: Live feed cards (compact, like before) -->
+    <section class="snp-feed-col">
+      <div class="snp-col-head">
+        <div class="snp-col-head-l">
+          <span class="snp-col-head-dot" aria-hidden="true"></span>
+          <span>أخبار <?php echo e($__active['label']); ?> الآن</span>
         </div>
-      <?php endif; ?>
-      <a class="snp-lead-more" href="<?php echo e($__lead[$__active['urlKey']] ?? '#'); ?>" target="_blank" rel="noopener">
-        تابع القراءة على <?php echo e($__active['label']); ?>
-        <span class="snp-arrow">←</span>
+        <a class="snp-col-head-more" href="<?php echo e($__active['archive']); ?>">عرض الكل ›</a>
+      </div>
+
+      <div class="snp-feed">
+        <?php foreach (array_slice($__active['msgs'], 0, $__feedLimit) as $__m):
+          $__txt = trim($__stripLead($__decode($__m[$__active['msgKey']] ?? '')));
+          $__img = $__m[$__active['imgKey']] ?? '';
+          $__channel = $__m['display_name'] ?? ($__m['username'] ?? '');
+          $__handle  = $__m['username'] ?? ($__m['handle'] ?? '');
+        ?>
+          <a class="snp-feed-card"
+             href="<?php echo e($__m[$__active['urlKey']] ?? '#'); ?>"
+             target="_blank" rel="noopener">
+            <?php if ($__img): ?>
+              <div class="snp-feed-img">
+                <img src="<?php echo e($__img); ?>" alt="" loading="lazy" decoding="async">
+                <?php if ($__activeSocial === 'youtube'): ?>
+                  <span class="snp-feed-play" aria-hidden="true">▶</span>
+                <?php endif; ?>
+              </div>
+            <?php endif; ?>
+            <div class="snp-feed-body">
+              <div class="snp-feed-meta">
+                <span class="snp-feed-badge" style="background:<?php echo e($__active['color']); ?>"><?php echo e($__active['badge']); ?></span>
+                <?php if ($__channel): ?><b><?php echo e($__channel); ?></b><?php endif; ?>
+                <?php if ($__handle): ?><span class="snp-feed-dim">@<?php echo e($__handle); ?></span><?php endif; ?>
+                <span class="snp-feed-dim">·</span>
+                <span class="snp-feed-dim"><?php echo timeAgo($__m['posted_at']); ?></span>
+              </div>
+              <div class="snp-feed-text"><?php echo e(mb_substr($__txt, 0, 220)); ?><?php echo mb_strlen($__txt) > 220 ? '…' : ''; ?></div>
+            </div>
+          </a>
+        <?php endforeach; ?>
+      </div>
+    </section>
+
+    <!-- LEFT COLUMN: Sidebar stats -->
+    <aside class="snp-side">
+      <!-- Stat 1: total posts today -->
+      <div class="snp-stat snp-stat-big">
+        <div class="snp-stat-kicker">إجمالي الأخبار اليوم</div>
+        <div class="snp-stat-num"><?php echo e($__toArabicNum($__totalCount)); ?></div>
+        <div class="snp-stat-foot">
+          منشور · <?php echo e($__toArabicNum(count($__platforms))); ?> منصات
+        </div>
+      </div>
+
+      <!-- Stat 2: top story / featured headline -->
+      <a class="snp-stat snp-stat-link" href="<?php echo $__editorBrief ? 'telegram_summary.php?id=' . (int)$__editorBrief['id'] : ($__active['msgs'][0][$__active['urlKey']] ?? '#'); ?>"
+         <?php echo $__editorBrief ? '' : 'target="_blank" rel="noopener"'; ?>>
+        <div class="snp-stat-kicker">🔥 القضية الأبرز</div>
+        <div class="snp-stat-headline"><?php echo e(mb_substr($__topStory, 0, 110)); ?><?php echo mb_strlen($__topStory) > 110 ? '…' : ''; ?></div>
+        <div class="snp-stat-foot">
+          <?php if ($__editorBrief && !empty($__editorBrief['message_count'])): ?>
+            مستخرَجة من <?php echo e($__toArabicNum($__editorBrief['message_count'])); ?> منشور
+          <?php else: ?>
+            افتح الخبر ←
+          <?php endif; ?>
+        </div>
       </a>
-    </article>
-  <?php endif; ?>
 
-  <!-- Mid rule -->
-  <div class="snp-rule snp-rule-mid"><div class="snp-rule-thin"></div></div>
-
-  <!-- Section header (newspaper "ص.٢" feel) -->
-  <div class="snp-sec-head">
-    <span class="snp-sec-name">في الصفحات الداخلية</span>
-    <span class="snp-sec-page">ص. ٢</span>
-  </div>
-
-  <!-- Two-column secondary -->
-  <?php if ($__sec1 || $__sec2): ?>
-    <div class="snp-cols">
-      <?php foreach ([$__sec1, $__sec2] as $__i => $__sec): if (!$__sec) continue;
-        $__secBody = trim($__stripLead($__decode($__sec[$__active['msgKey']] ?? '')));
-      ?>
-        <a class="snp-col" href="<?php echo e($__sec[$__active['urlKey']] ?? '#'); ?>" target="_blank" rel="noopener">
-          <div class="snp-col-kicker"><?php echo $__i === 0 ? 'متابعة' : 'تحديث'; ?></div>
-          <div class="snp-col-title">
-            <?php echo e(mb_substr($__secBody, 0, 110)); ?>
+      <!-- Stat 3: most active platform -->
+      <?php if ($__topPlatform): ?>
+        <a class="snp-stat snp-stat-link" href="<?php echo e($__tabUrl($__topPlatform)); ?>">
+          <div class="snp-stat-kicker">📊 المنصة الأكثر نشراً</div>
+          <div class="snp-stat-plat">
+            <span class="snp-stat-plat-svg" style="color:<?php echo e($__platforms[$__topPlatform]['color']); ?>">
+              <?php echo $__platforms[$__topPlatform]['svg']; ?>
+            </span>
+            <span class="snp-stat-plat-name"><?php echo e($__platforms[$__topPlatform]['label']); ?></span>
+            <span class="snp-stat-plat-count"><?php echo e($__toArabicNum($__topPlatformCount)); ?> منشوراً</span>
           </div>
-          <div class="snp-col-meta">
-            <?php if (!empty($__sec['display_name'])): ?>
-              <b><?php echo e($__sec['display_name']); ?></b>
-              <span>·</span>
-            <?php endif; ?>
-            <?php if (!empty($__sec['posted_at'])): ?>
-              <span><?php echo timeAgo($__sec['posted_at']); ?></span>
-            <?php endif; ?>
+          <div class="snp-stat-bars">
+            <?php
+              $__max = max(1, $__topPlatformCount);
+              foreach ($__platforms as $k => $p):
+                if (empty($p['msgs'])) continue;
+                $__pct = ($p['count'] / $__max) * 100;
+            ?>
+              <div class="snp-stat-bar-row">
+                <span class="snp-stat-bar-label"><?php echo e($p['label']); ?></span>
+                <span class="snp-stat-bar-track">
+                  <span class="snp-stat-bar-fill" style="width:<?php echo (float)$__pct; ?>%; background:<?php echo e($p['color']); ?>"></span>
+                </span>
+                <span class="snp-stat-bar-num"><?php echo e($__toArabicNum($p['count'])); ?></span>
+              </div>
+            <?php endforeach; ?>
           </div>
         </a>
-        <?php if ($__i === 0 && $__sec2): ?>
-          <div class="snp-col-rule" aria-hidden="true"></div>
-        <?php endif; ?>
-      <?php endforeach; ?>
-    </div>
-  <?php endif; ?>
+      <?php endif; ?>
 
-  <!-- Editor's brief (Smart Summary) -->
-  <?php if ($__editorBrief && !empty($__editorBrief['summary'])): ?>
-    <a class="snp-brief" href="telegram_summary.php?id=<?php echo (int)$__editorBrief['id']; ?>">
-      <div class="snp-brief-head">
-        <span class="snp-brief-star" aria-hidden="true">✦</span>
-        <span class="snp-brief-label">ملاحظة المحرّر — الإيجاز الذكي</span>
-      </div>
-      <?php $__briefBody = $__decode($__editorBrief['summary']); ?>
-      <p class="snp-brief-body">
-        <?php echo e(mb_substr($__briefBody, 0, 240)); ?><?php echo mb_strlen($__briefBody) > 240 ? '…' : ''; ?>
-      </p>
-    </a>
-  <?php endif; ?>
+      <!-- Stat 4: AI brief — موجز الساعة -->
+      <?php if ($__editorBrief && !empty($__editorBrief['summary'])): ?>
+        <?php $__briefBody = $__decode($__editorBrief['summary']); ?>
+        <a class="snp-stat snp-stat-brief" href="telegram_summary.php?id=<?php echo (int)$__editorBrief['id']; ?>">
+          <div class="snp-stat-kicker"><span class="snp-stat-spark">✨</span> موجز الساعة</div>
+          <div class="snp-stat-brief-body">
+            <?php echo e(mb_substr($__briefBody, 0, 200)); ?><?php echo mb_strlen($__briefBody) > 200 ? '…' : ''; ?>
+          </div>
+          <div class="snp-stat-foot">افتح الإيجاز الكامل ←</div>
+        </a>
+      <?php endif; ?>
+    </aside>
+  </div>
 
   <!-- Ink footer -->
   <div class="snp-foot">
@@ -274,7 +303,7 @@ $__today    = $__daysAr[date('l')] . ' ' . $__toArabicNum(date('j')) . ' ' . $__
   overflow: hidden;
   position: relative;
 }
-/* Top stripe — black band with date + LIVE pulse */
+/* Top stripe */
 .snp-stripe {
   background: #14120E;
   color: #FAF0E5;
@@ -287,7 +316,7 @@ $__today    = $__daysAr[date('l')] . ' ' . $__toArabicNum(date('j')) . ' ' . $__
   letter-spacing: 0.5px;
 }
 .snp-stripe-date { color: rgba(255, 250, 240, 0.85); }
-.snp-stripe-live { display: inline-flex; align-items: center; gap: 6px; color: #FFB4B4; font-weight: 800; letter-spacing: 0.5px; }
+.snp-stripe-live { display: inline-flex; align-items: center; gap: 6px; color: #FFB4B4; font-weight: 800; }
 .snp-stripe-dot {
   width: 6px; height: 6px; border-radius: 50%; background: #FF6470;
   box-shadow: 0 0 0 0 rgba(255, 100, 110, 0.5);
@@ -300,299 +329,204 @@ $__today    = $__daysAr[date('l')] . ' ' . $__toArabicNum(date('j')) . ' ' . $__
 }
 
 /* Masthead */
-.snp-mast {
-  text-align: center;
-  padding: 24px 28px 14px;
-}
-.snp-mast-pre {
-  color: #877A64;
-  font-weight: 500;
-  font-size: 12px;
-  letter-spacing: 1.2px;
-  margin-bottom: 4px;
-}
-.snp-mast-title {
-  font-size: 36px;
-  font-weight: 900;
-  line-height: 1.15;
-  letter-spacing: -0.5px;
-  color: #14120E;
-  margin: 0 0 6px;
-}
-.snp-mast-sub {
-  color: #504637;
-  font-size: 13px;
-  font-weight: 500;
-}
+.snp-mast { text-align: center; padding: 24px 28px 14px; }
+.snp-mast-pre { color: #877A64; font-weight: 500; font-size: 12px; letter-spacing: 1.2px; margin-bottom: 4px; }
+.snp-mast-title { font-size: 36px; font-weight: 900; line-height: 1.15; letter-spacing: -0.5px; color: #14120E; margin: 0 0 6px; }
+.snp-mast-sub { color: #504637; font-size: 13px; font-weight: 500; }
 .snp-mast-sub b { color: #14120E; font-weight: 800; }
 
 /* Double rule */
-.snp-rule {
-  padding: 0 28px;
-  margin: 4px 0;
-}
-.snp-rule-thick {
-  height: 3px;
-  background: #14120E;
-  margin-bottom: 2px;
-}
-.snp-rule-thin {
-  height: 1px;
-  background: #14120E;
-}
-.snp-rule-mid {
-  margin: 4px 0;
-}
-.snp-rule-mid .snp-rule-thin {
-  background: #877A64;
-  opacity: 0.5;
-}
+.snp-rule { padding: 0 28px; margin: 4px 0; }
+.snp-rule-thick { height: 3px; background: #14120E; margin-bottom: 2px; }
+.snp-rule-thin { height: 1px; background: #14120E; }
+.snp-rule-mid { margin: 4px 0; }
+.snp-rule-mid .snp-rule-thin { background: #877A64; opacity: 0.5; }
 
 /* Platform kickers */
-.snp-kickers {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 18px;
-  justify-content: center;
-  padding: 12px 28px;
-}
-.snp-kicker {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  text-decoration: none;
-  color: #14120E;
-  font-weight: 700;
-  font-size: 12px;
-  padding-bottom: 4px;
-  border-bottom: 2px solid transparent;
-  transition: color 0.15s ease, border-color 0.15s ease;
-}
-.snp-kicker-svg {
-  width: 13px; height: 13px;
-  color: #877A64;
-  display: inline-flex; align-self: center;
-}
+.snp-kickers { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; padding: 12px 28px; }
+.snp-kicker { display: inline-flex; align-items: baseline; gap: 6px; text-decoration: none; color: #14120E; font-weight: 700; font-size: 12px; padding-bottom: 4px; border-bottom: 2px solid transparent; transition: color 0.15s ease, border-color 0.15s ease; }
+.snp-kicker-svg { width: 13px; height: 13px; color: #877A64; display: inline-flex; align-self: center; }
 .snp-kicker-svg svg { width: 100%; height: 100%; }
 .snp-kicker-label { font-weight: 800; }
 .snp-kicker-sep { color: #877A64; padding: 0 1px; }
 .snp-kicker-count { color: #877A64; font-weight: 700; }
 .snp-kicker:hover { color: #B4192E; }
 .snp-kicker:hover .snp-kicker-svg { color: #B4192E; }
-.snp-kicker.is-active {
-  color: #B4192E;
-  border-bottom-color: #B4192E;
-  font-size: 13px;
-}
+.snp-kicker.is-active { color: #B4192E; border-bottom-color: #B4192E; font-size: 13px; }
 .snp-kicker.is-active .snp-kicker-label { font-weight: 900; }
 .snp-kicker.is-active .snp-kicker-svg { color: #B4192E; }
 
-/* Lead story */
-.snp-lead {
-  padding: 16px 28px 14px;
-}
-.snp-lead-kicker {
-  color: #B4192E;
-  font-weight: 900;
-  font-size: 11px;
-  letter-spacing: 1.6px;
-  margin-bottom: 8px;
-}
-.snp-lead-title {
-  font-size: 22px;
-  font-weight: 900;
-  line-height: 1.4;
-  color: #14120E;
-  margin: 0 0 10px;
-}
-.snp-byline {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  font-size: 11.5px;
-  color: #504637;
-  font-weight: 600;
-  margin-bottom: 14px;
-}
-.snp-byline b { color: #14120E; font-weight: 800; }
-.snp-byline-sep { color: #877A64; }
-.snp-lead-para {
-  position: relative;
-  padding-right: 0;
-}
-.snp-dropcap {
-  float: right;
-  font-size: 54px;
-  font-weight: 900;
-  color: #14120E;
-  line-height: 0.95;
-  margin: 4px 0 0 8px;
-  padding: 0;
-}
-.snp-lead-para p {
-  font-size: 13.5px;
-  line-height: 1.85;
-  color: #504637;
-  margin: 0;
-  text-align: justify;
-}
-.snp-lead-para p::first-letter { visibility: hidden; margin-right: -1ch; }
-.snp-lead-more {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 10px;
-  color: #B4192E;
-  font-weight: 900;
-  font-size: 11.5px;
-  text-decoration: none;
-  letter-spacing: 0.4px;
-}
-.snp-lead-more:hover { text-decoration: underline; }
-.snp-arrow { display: inline-block; }
-
-/* Section header */
-.snp-sec-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  padding: 4px 28px 8px;
-}
-.snp-sec-name {
-  color: #14120E;
-  font-weight: 900;
-  font-size: 12px;
-  letter-spacing: 0.5px;
-}
-.snp-sec-page {
-  color: #877A64;
-  font-weight: 700;
-  font-size: 11px;
-  letter-spacing: 0.5px;
-}
-
-/* Two-column secondary */
-.snp-cols {
+/* ═════ SPLIT LAYOUT ═════ */
+.snp-split {
   display: grid;
-  grid-template-columns: 1fr 1px 1fr;
-  gap: 14px;
-  padding: 0 28px 16px;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  padding: 8px 28px 18px;
+  position: relative;
 }
-.snp-col {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  text-decoration: none;
-  color: inherit;
-}
-.snp-col:hover .snp-col-title { color: #B4192E; }
-.snp-col-kicker {
-  color: #B4192E;
-  font-weight: 900;
-  font-size: 9.5px;
-  letter-spacing: 1.4px;
-}
-.snp-col-title {
-  font-size: 14px;
-  font-weight: 900;
-  line-height: 1.45;
-  color: #14120E;
-  transition: color 0.15s ease;
-}
-.snp-col-meta {
-  display: inline-flex;
-  gap: 5px;
-  font-size: 10.5px;
-  color: #877A64;
-  font-weight: 600;
-}
-.snp-col-meta b { color: #504637; font-weight: 800; }
-.snp-col-rule {
-  background: #877A64;
-  opacity: 0.4;
+.snp-split::before {
+  /* Vertical dividing rule between the two columns. */
+  content: '';
+  position: absolute;
+  top: 14px; bottom: 14px;
+  left: 50%;
   width: 1px;
+  background: #BAA582;
+  opacity: 0.6;
 }
 
-/* Editor's brief */
-.snp-brief {
-  display: block;
-  margin: 0 28px 14px;
-  padding: 12px 14px;
-  background: #EEE8DB;
-  border: 1px solid #BAA582;
+/* RIGHT (live feed) — first child but visually right in RTL */
+.snp-feed-col { padding-left: 22px; }
+.snp-col-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.snp-col-head-l { display: inline-flex; align-items: center; gap: 7px; font-weight: 900; font-size: 13.5px; color: #14120E; }
+.snp-col-head-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #B4192E;
+  box-shadow: 0 0 6px rgba(180,25,46,0.5);
+  animation: snpPulse 2s infinite;
+}
+.snp-col-head-more { color: #B4192E; font-weight: 800; font-size: 11.5px; text-decoration: none; }
+.snp-col-head-more:hover { text-decoration: underline; }
+
+/* Feed cards */
+.snp-feed { display: flex; flex-direction: column; gap: 10px; }
+.snp-feed-card {
+  display: flex; gap: 10px;
+  padding: 10px;
+  background: rgba(255,255,255,0.55);
+  border: 1px solid rgba(186,165,130,0.5);
+  border-radius: 6px;
   text-decoration: none;
   color: inherit;
-  transition: background 0.15s ease;
+  transition: background 0.15s, border-color 0.15s;
 }
-.snp-brief:hover { background: #E8E0CC; }
-.snp-brief-head {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
+.snp-feed-card:hover { background: #FFFFFF; border-color: #BAA582; }
+.snp-feed-img {
+  flex: 0 0 70px; width: 70px; height: 70px;
+  border-radius: 4px; overflow: hidden;
+  position: relative; background: #EEE8DB;
 }
-.snp-brief-star { color: #A67C1B; font-weight: 900; font-size: 13px; }
-.snp-brief-label {
-  color: #6B4F0B;
+.snp-feed-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.snp-feed-play {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: #FFFFFF; font-size: 22px;
+  background: rgba(0,0,0,0.32);
+}
+.snp-feed-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.snp-feed-meta { display: inline-flex; flex-wrap: wrap; gap: 5px; font-size: 10.5px; color: #504637; font-weight: 700; align-items: center; }
+.snp-feed-meta b { color: #14120E; font-weight: 900; }
+.snp-feed-dim { color: #877A64; font-weight: 600; }
+.snp-feed-badge {
+  display: inline-flex; align-items: center;
+  padding: 2px 7px; border-radius: 3px;
+  font-size: 9.5px; font-weight: 900;
+  color: #FFFFFF;
+  letter-spacing: 0.3px;
+}
+.snp-feed-text {
+  font-size: 12.5px; line-height: 1.7; color: #14120E; font-weight: 500;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+/* LEFT (stats) */
+.snp-side {
+  padding-right: 22px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.snp-stat {
+  display: block;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.55);
+  border: 1px solid rgba(186,165,130,0.5);
+  border-radius: 6px;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.15s, border-color 0.15s;
+}
+.snp-stat-link:hover, .snp-stat-brief:hover { background: #FFFFFF; border-color: #BAA582; }
+.snp-stat-kicker {
+  color: #B4192E;
   font-weight: 900;
-  font-size: 11px;
-  letter-spacing: 0.5px;
+  font-size: 10.5px;
+  letter-spacing: 0.8px;
+  margin-bottom: 6px;
+  display: inline-flex; align-items: center; gap: 4px;
 }
-.snp-brief-body {
-  font-size: 11.5px;
-  line-height: 1.7;
-  color: #504637;
-  font-weight: 500;
-  margin: 0;
+
+/* Stat 1: big number */
+.snp-stat-big { text-align: center; padding: 14px; background: #14120E; color: #FAF0E5; border-color: #14120E; }
+.snp-stat-big .snp-stat-kicker { color: #FFD79C; }
+.snp-stat-num {
+  font-size: 42px; font-weight: 900; line-height: 1; color: #FAF0E5;
+  letter-spacing: -1px;
+  margin: 2px 0 4px;
 }
+.snp-stat-foot { font-size: 10.5px; color: #877A64; font-weight: 700; margin-top: 4px; }
+.snp-stat-big .snp-stat-foot { color: rgba(250,240,229,0.65); }
+
+/* Stat 2: headline */
+.snp-stat-headline {
+  font-size: 14.5px; font-weight: 800; line-height: 1.5; color: #14120E;
+}
+
+/* Stat 3: top platform */
+.snp-stat-plat { display: flex; align-items: center; gap: 8px; }
+.snp-stat-plat-svg { width: 22px; height: 22px; display: inline-flex; }
+.snp-stat-plat-svg svg { width: 100%; height: 100%; }
+.snp-stat-plat-name { font-size: 14px; font-weight: 900; color: #14120E; }
+.snp-stat-plat-count { margin-right: auto; font-size: 11px; color: #504637; font-weight: 700; }
+.snp-stat-bars { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; }
+.snp-stat-bar-row { display: flex; align-items: center; gap: 6px; font-size: 10px; }
+.snp-stat-bar-label { width: 36px; color: #504637; font-weight: 700; }
+.snp-stat-bar-track { flex: 1; height: 5px; background: rgba(20,18,14,0.08); border-radius: 999px; overflow: hidden; }
+.snp-stat-bar-fill { display: block; height: 100%; border-radius: 999px; }
+.snp-stat-bar-num { color: #877A64; font-weight: 800; width: 22px; text-align: left; }
+
+/* Stat 4: AI brief */
+.snp-stat-brief { background: #EEE8DB; border-color: #BAA582; }
+.snp-stat-brief .snp-stat-kicker { color: #6B4F0B; }
+.snp-stat-spark { color: #A67C1B; font-size: 12px; }
+.snp-stat-brief-body { font-size: 11.5px; line-height: 1.7; color: #504637; font-weight: 500; }
 
 /* Footer ink band */
 .snp-foot {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #14120E;
-  color: #FAF0E5;
+  display: flex; justify-content: space-between; align-items: center;
+  background: #14120E; color: #FAF0E5;
   padding: 14px 28px;
 }
-.snp-foot-h {
-  font-weight: 900;
-  font-size: 12.5px;
-  color: #FAF0E5;
-}
-.snp-foot-s {
-  font-weight: 500;
-  font-size: 10.5px;
-  color: rgba(255, 250, 240, 0.6);
-  margin-top: 1px;
-}
+.snp-foot-h { font-weight: 900; font-size: 12.5px; color: #FAF0E5; }
+.snp-foot-s { font-weight: 500; font-size: 10.5px; color: rgba(255, 250, 240, 0.6); margin-top: 1px; }
 .snp-foot-cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  display: inline-flex; align-items: center; gap: 6px;
   padding: 8px 14px;
-  background: #B4192E;
-  color: #FFFFFF;
-  font-weight: 900;
-  font-size: 12px;
+  background: #B4192E; color: #FFFFFF;
+  font-weight: 900; font-size: 12px;
   text-decoration: none;
   transition: background 0.15s ease;
 }
 .snp-foot-cta:hover { background: #951424; }
+.snp-arrow { display: inline-block; }
 
-/* Mobile */
-@media (max-width: 640px) {
+/* Mobile — stack the split vertically (stats first, then feed). */
+@media (max-width: 820px) {
   .snp-mast-title { font-size: 28px; }
   .snp-mast { padding: 18px 18px 12px; }
-  .snp-lead { padding: 12px 18px 12px; }
-  .snp-lead-title { font-size: 18px; }
-  .snp-dropcap { font-size: 44px; }
-  .snp-rule, .snp-kickers, .snp-sec-head, .snp-cols, .snp-foot { padding-left: 18px; padding-right: 18px; }
-  .snp-brief { margin-left: 18px; margin-right: 18px; }
-  .snp-cols { grid-template-columns: 1fr; gap: 12px; }
-  .snp-col-rule { display: none; }
+  .snp-rule, .snp-kickers, .snp-foot { padding-left: 18px; padding-right: 18px; }
   .snp-kickers { gap: 14px; }
+  .snp-split {
+    grid-template-columns: 1fr;
+    padding: 8px 18px 18px;
+    gap: 12px;
+  }
+  .snp-split::before { display: none; }
+  .snp-feed-col { padding-left: 0; order: 2; }
+  .snp-side { padding-right: 0; order: 1; }
   .snp-foot { flex-direction: column; align-items: stretch; gap: 10px; }
   .snp-foot-l { text-align: right; }
+  .snp-stat-num { font-size: 36px; }
 }
 </style>
