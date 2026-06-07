@@ -417,37 +417,77 @@ include __DIR__ . '/includes/components/site_header.php';
   function feedQuery(p, limit){ return p + '?limit=' + (limit||40) + ((state.dedup && p!=='youtube') ? '&dedup=1' : ''); }
   function cardFor(p, m){ return p==='youtube' ? videoCard(m) : msgCard(m); }
 
+  var STREAMS = { telegram:'telegram_stream.php', twitter:'twitter_stream.php', youtube:'youtube_stream.php' };
+  var es = null;
+
   function loadFeed(){
     elFeed.innerHTML = '<div class="pf-loading"><div class="pf-spinner"></div>جارٍ التحميل…</div>';
-    state.seen = null;                       // pause live polling until the base list is in
+    stopLive();
+    state.seen = null;                       // hold live updates until the base list is in
     var p = state.platform;
     api(feedQuery(p, 40)).then(function(res){
       if(state.platform!==p) return;
       if(!res || !res.ok || !res.data || !res.data.length){
         elFeed.innerHTML = '<div class="pf-empty"><span class="ic">📭</span><span class="ti">لا توجد منشورات بعد</span>سيظهر هنا أحدث ما يُنشر على المنصة فور وصوله.</div>';
         state.seen = {};
+        startLive();
         return;
       }
       elFeed.innerHTML = res.data.map(function(m){ return cardFor(p, m); }).join('');
       state.seen = {};
       res.data.forEach(function(m){ state.seen[m.id] = 1; });
+      startLive();
     });
   }
 
-  // ---------- Live updates: prepend newer posts without a manual refresh ----------
+  // ---------- Live updates (instant, same SSE transport as the Telegram/home sections) ----------
+  function maxSeenId(){ var mx = 0; if(state.seen){ for(var k in state.seen){ var n = parseInt(k,10); if(n>mx) mx = n; } } return mx; }
+
+  // Map a flat *_stream.php message to the feed-card shape.
+  function adaptStream(p, m){
+    if(p === 'youtube'){
+      return { id:m.id, video_url:m.url, thumbnail_url:m.thumbnail_url, title:(m.title||m.text||''), posted_at:(m.posted_at||''),
+               source:{ display_name:(m.name||m.channel_name||(m.channel_handle?'@'+m.channel_handle:'')), username:(m.channel_handle||m.username||'') } };
+    }
+    return { id:m.id, post_url:m.url, text:(m.text||''), image_url:(m.image_url||''), posted_at:(m.posted_at||''),
+             source:{ display_name:(m.name||m.username||''), username:(m.username||''), avatar_url:m.avatar_url } };
+  }
+
+  // Prepend brand-new items (already in feed-card shape), newest on top, with a highlight.
+  function prependItems(p, items){
+    if(!state.seen || !items || !items.length) return;
+    var fresh = items.filter(function(m){ return m && !state.seen[m.id]; });
+    if(!fresh.length) return;
+    fresh.forEach(function(m){ state.seen[m.id] = 1; });
+    var emptyEl = elFeed.querySelector('.pf-empty'); if(emptyEl) elFeed.innerHTML = '';
+    elFeed.insertAdjacentHTML('afterbegin', fresh.map(function(m){ return cardFor(p, m); }).join(''));
+    for(var k=0; k<fresh.length; k++){ var n = elFeed.children[k]; if(n && n.classList) n.classList.add('pf-new'); }
+  }
+
+  function stopLive(){ if(es){ try{ es.close(); }catch(e){} es = null; } }
+  function startLive(){
+    stopLive();
+    if(typeof window.EventSource !== 'function' || document.hidden || !state.seen) return;
+    var p = state.platform;
+    var url = STREAMS[p] + '?since_id=' + encodeURIComponent(maxSeenId()) + '&_=' + Date.now();
+    try { es = new EventSource(url); } catch(e){ es = null; return; }
+    es.addEventListener('messages', function(ev){
+      if(state.platform !== p) return;
+      var data; try { data = JSON.parse(ev.data); } catch(e){ return; }
+      var list = (data && data.messages) || [];
+      prependItems(p, list.map(function(m){ return adaptStream(p, m); }));
+    });
+    es.addEventListener('bye', function(){ stopLive(); if(!document.hidden && state.platform===p) startLive(); });
+  }
+
+  // Polling fallback — only used when the browser has no EventSource.
   function pollFeed(){
-    if(document.hidden || !state.seen) return;            // skip when tab hidden or list not ready
+    if(document.hidden || !state.seen) return;
     var p = state.platform;
     api(feedQuery(p, 20)).then(function(res){
-      if(state.platform!==p || !state.seen) return;        // platform switched mid-flight
+      if(state.platform!==p || !state.seen) return;
       if(!res || !res.ok || !res.data || !res.data.length) return;
-      var fresh = res.data.filter(function(m){ return !state.seen[m.id]; });
-      if(!fresh.length) return;
-      fresh.forEach(function(m){ state.seen[m.id] = 1; });
-      var emptyEl = elFeed.querySelector('.pf-empty');
-      if(emptyEl) elFeed.innerHTML = '';
-      elFeed.insertAdjacentHTML('afterbegin', fresh.map(function(m){ return cardFor(p, m); }).join(''));
-      for(var k=0; k<fresh.length; k++){ var n = elFeed.children[k]; if(n && n.classList) n.classList.add('pf-new'); }
+      prependItems(p, res.data);
     });
   }
 
@@ -507,11 +547,17 @@ include __DIR__ . '/includes/components/site_header.php';
   else if(mqDesktop.addListener) mqDesktop.addListener(syncStatsLayout);
 
   // ---------- Init ----------
+  document.addEventListener('visibilitychange', function(){
+    if(document.hidden) stopLive();
+    else startLive();               // resume the instant stream + catch up on return
+  });
+  if(typeof window.EventSource !== 'function'){
+    setInterval(pollFeed, 20000);   // fallback only when SSE is unavailable
+  }
   setAccent();
   loadSummary();
   loadFeed();
   syncStatsLayout();
-  setInterval(pollFeed, 20000);   // near-real-time feed (every 20s, paused when tab hidden)
 })();
 </script>
 
