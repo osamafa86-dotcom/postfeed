@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/loading_state.dart';
 import '../data/media_repository.dart';
 
@@ -72,7 +73,9 @@ class _PlatformStatsSheetState extends ConsumerState<PlatformStatsSheet> {
                         height: 38,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: selected ? widget.accent : Theme.of(context).cardColor,
+                          color: selected
+                              ? AppColors.accentInk(widget.accent, Theme.of(context).brightness == Brightness.dark)
+                              : Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(color: widget.accent.withOpacity(0.4)),
                         ),
@@ -110,6 +113,7 @@ class _PlatformStatsSheetState extends ConsumerState<PlatformStatsSheet> {
     if (s.total == 0) {
       return const EmptyView(message: 'لا توجد بيانات كافية في هذه الفترة');
     }
+    final ink = AppColors.accentInk(widget.accent, Theme.of(context).brightness == Brightness.dark);
     return ListView(
       controller: ctl,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -141,7 +145,7 @@ class _PlatformStatsSheetState extends ConsumerState<PlatformStatsSheet> {
           const _SectionTitle('أكثر المصادر نشاطاً'),
           const SizedBox(height: 8),
           ...s.topSources.map((src) => _sourceRow(src.name, src.count,
-              s.topSources.first.count)),
+              s.topSources.first.count, ink)),
           const SizedBox(height: 20),
         ],
 
@@ -156,12 +160,12 @@ class _PlatformStatsSheetState extends ConsumerState<PlatformStatsSheet> {
                 .map((t) => Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                       decoration: BoxDecoration(
-                        color: widget.accent.withOpacity(0.10),
+                        color: ink.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text('#${t.tag} · ${t.count}',
                           style: TextStyle(
-                              fontSize: 12.5, color: widget.accent, fontWeight: FontWeight.w600)),
+                              fontSize: 12.5, color: ink, fontWeight: FontWeight.w700)),
                     ))
                 .toList(),
           ),
@@ -193,25 +197,25 @@ class _PlatformStatsSheetState extends ConsumerState<PlatformStatsSheet> {
     );
   }
 
-  Widget _sourceRow(String name, int count, int maxCount) {
+  Widget _sourceRow(String name, int count, int maxCount, Color ink) {
     final frac = maxCount > 0 ? (count / maxCount).clamp(0.05, 1.0) : 0.0;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 11),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
             Expanded(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
-            Text('$count', style: TextStyle(fontWeight: FontWeight.w800, color: widget.accent)),
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13))),
+            Text('$count', style: TextStyle(fontWeight: FontWeight.w800, color: ink)),
           ]),
-          const SizedBox(height: 5),
+          const SizedBox(height: 6),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: frac,
-              minHeight: 7,
-              backgroundColor: widget.accent.withOpacity(0.10),
+              minHeight: 8,
+              backgroundColor: widget.accent.withOpacity(0.12),
               valueColor: AlwaysStoppedAnimation(widget.accent),
             ),
           ),

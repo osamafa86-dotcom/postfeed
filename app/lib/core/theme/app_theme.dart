@@ -62,6 +62,16 @@ class AppColors {
     'cat-media':     Color(0xFFB8860B),
     'cat-reports':   Color(0xFF5A8F8F),
   };
+
+  /// Accessible variant of a platform accent for use as TEXT, or as a solid
+  /// background under white text. Darkens on light themes (so accent text
+  /// clears WCAG AA on light cards) and lightens on dark themes (so it stays
+  /// legible against dark surfaces).
+  static Color accentInk(Color accent, bool isDark) {
+    final hsl = HSLColor.fromColor(accent);
+    final l = isDark ? hsl.lightness + 0.18 : hsl.lightness - 0.16;
+    return hsl.withLightness(l.clamp(0.0, 1.0)).toColor();
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════

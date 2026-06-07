@@ -174,6 +174,23 @@ $metaDesc  = 'تابع أحدث ما يُنشر على تلغرام ومنصة X
   .pf-empty .ti { display:block; font-size:16px; font-weight:800; color:var(--pf-text); margin-bottom:4px; }
   .pf-spinner { width:28px; height:28px; border:3px solid var(--pf-border); border-top-color:var(--pf-accent); border-radius:50%; animation:pfspin .8s linear infinite; margin:0 auto 12px; }
   @keyframes pfspin { to { transform:rotate(360deg); } }
+
+  /* ===== Desktop: two-column layout (matches the desktop redesign) ===== */
+  .pf-aside-title { display:none; }
+  @media (min-width:1024px){
+    .pf-wrap { max-width:1180px; }
+    .pf-grid {
+      display:grid;
+      grid-template-columns:minmax(0,1fr) 360px;
+      grid-template-areas:"summary stats" "feed stats";
+      column-gap:22px; align-items:start;
+    }
+    #pfSummary { grid-area:summary; }
+    .pf-aside { grid-area:stats; position:sticky; top:16px; }
+    .pf-feedwrap { grid-area:feed; }
+    #pfStatsToggle { display:none; }          /* stats are always shown in the sidebar */
+    .pf-aside-title { display:flex; align-items:center; gap:7px; font-size:17px; font-weight:900; margin:2px 0 12px; color:var(--pf-text); }
+  }
 </style>
 </head>
 <body>
@@ -194,19 +211,26 @@ include __DIR__ . '/includes/components/site_header.php';
     <button class="pf-tab" data-p="youtube">▶️ يوتيوب</button>
   </div>
 
-  <!-- Daily AI summary -->
-  <div class="pf-card" id="pfSummary"><div class="pf-loading"><div class="pf-spinner"></div>جارٍ تحميل الملخص…</div></div>
+  <div class="pf-grid">
+    <!-- Daily AI summary -->
+    <div class="pf-card" id="pfSummary"><div class="pf-loading"><div class="pf-spinner"></div>جارٍ تحميل الملخص…</div></div>
 
-  <!-- Stats (lazy) -->
-  <div class="pf-stats-toggle" id="pfStatsToggle">📊 <span>عرض الإحصاءات</span></div>
-  <div class="pf-card pf-collapsed" id="pfStatsCard"></div>
+    <!-- Stats: collapsible on mobile, a persistent sidebar on desktop -->
+    <aside class="pf-aside">
+      <h2 class="pf-aside-title">📊 إحصاءات اليوم</h2>
+      <div class="pf-stats-toggle" id="pfStatsToggle">📊 <span>عرض الإحصاءات</span></div>
+      <div class="pf-card pf-collapsed" id="pfStatsCard"></div>
+    </aside>
 
-  <!-- Feed -->
-  <div class="pf-feed-bar">
-    <span class="lbl">أحدث المنشورات</span>
-    <label class="pf-switch"><input type="checkbox" id="pfDedup" checked> إخفاء المكرر</label>
+    <!-- Feed -->
+    <div class="pf-feedwrap">
+      <div class="pf-feed-bar">
+        <span class="lbl">أحدث المنشورات</span>
+        <label class="pf-switch"><input type="checkbox" id="pfDedup" checked> إخفاء المكرر</label>
+      </div>
+      <div id="pfFeed"><div class="pf-loading"><div class="pf-spinner"></div>جارٍ التحميل…</div></div>
+    </div>
   </div>
-  <div id="pfFeed"><div class="pf-loading"><div class="pf-spinner"></div>جارٍ التحميل…</div></div>
 </main>
 
 <script>
@@ -443,10 +467,22 @@ include __DIR__ . '/includes/components/site_header.php';
 
   elDedup.addEventListener('change', function(){ state.dedup = elDedup.checked; loadFeed(); });
 
+  // ---------- Responsive: stats become a persistent sidebar on desktop ----------
+  var mqDesktop = window.matchMedia('(min-width:1024px)');
+  function syncStatsLayout(){
+    if(mqDesktop.matches){
+      elStatsCard.classList.remove('pf-collapsed');
+      if(!statsOpen){ statsOpen = true; loadStats(); }
+    }
+  }
+  if(mqDesktop.addEventListener) mqDesktop.addEventListener('change', syncStatsLayout);
+  else if(mqDesktop.addListener) mqDesktop.addListener(syncStatsLayout);
+
   // ---------- Init ----------
   setAccent();
   loadSummary();
   loadFeed();
+  syncStatsLayout();
 })();
 </script>
 

@@ -355,33 +355,36 @@ class _MessageCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final ink = AppColors.accentInk(platformColor, isDark);
     return Container(
       decoration: BoxDecoration(
         color: theme.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 12, offset: const Offset(0, 3))],
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.6)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.32 : 0.05), blurRadius: 16, offset: const Offset(0, 6))],
       ),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(15),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
             Container(
-              width: 36, height: 36,
-              decoration: BoxDecoration(color: platformColor.withOpacity(0.15), shape: BoxShape.circle),
+              width: 42, height: 42,
+              decoration: BoxDecoration(color: ink, shape: BoxShape.circle),
               alignment: Alignment.center,
-              child: Text(msg.sourceName.isNotEmpty ? msg.sourceName[0] : '?',
-                style: TextStyle(color: platformColor, fontWeight: FontWeight.w800, fontSize: 16)),
+              child: Text(msg.sourceName.isNotEmpty ? msg.sourceName[0] : '؟',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 17)),
             ),
             const SizedBox(width: 10),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(msg.sourceName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              Text(msg.sourceName, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5)),
               if (msg.sourceUsername != null)
                 Text('@${msg.sourceUsername}', style: theme.textTheme.bodySmall?.copyWith(fontSize: 11)),
             ])),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(color: platformColor, borderRadius: BorderRadius.circular(6)),
+              decoration: BoxDecoration(color: ink, borderRadius: BorderRadius.circular(7)),
               child: Text(platformName, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
             ),
             const SizedBox(width: 8),
@@ -389,39 +392,39 @@ class _MessageCard extends StatelessWidget {
               Text(timeago.format(msg.postedAt!, locale: 'ar'), style: theme.textTheme.bodySmall?.copyWith(fontSize: 11)),
           ]),
           if (msg.text.isNotEmpty)
-            Padding(padding: const EdgeInsets.only(top: 10),
-              child: Text(msg.text, style: const TextStyle(fontSize: 14, height: 1.6), maxLines: 6, overflow: TextOverflow.ellipsis)),
+            Padding(padding: const EdgeInsets.only(top: 11),
+              child: Text(msg.text, style: const TextStyle(fontSize: 15, height: 1.7), maxLines: 6, overflow: TextOverflow.ellipsis)),
           if (msg.duplicateCount > 0)
             Padding(
-              padding: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.only(top: 10),
               child: Tooltip(
                 message: msg.alsoReportedBy.isNotEmpty
                     ? 'أيضاً: ${msg.alsoReportedBy.join('، ')}'
                     : '',
                 triggerMode: TooltipTriggerMode.tap,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                   decoration: BoxDecoration(
-                    color: platformColor.withOpacity(0.10),
-                    borderRadius: BorderRadius.circular(8),
+                    color: ink.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(9),
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.dynamic_feed, size: 14, color: platformColor),
+                    Icon(Icons.dynamic_feed, size: 14, color: ink),
                     const SizedBox(width: 4),
                     Text('ورد من ${msg.duplicateCount + 1} مصدر',
-                        style: TextStyle(color: platformColor, fontSize: 12, fontWeight: FontWeight.w600)),
+                        style: TextStyle(color: ink, fontSize: 12, fontWeight: FontWeight.w700)),
                   ]),
                 ),
               ),
             ),
           if (msg.postUrl != null)
-            Padding(padding: const EdgeInsets.only(top: 8),
+            Padding(padding: const EdgeInsets.only(top: 10),
               child: GestureDetector(
                 onTap: () => safeLaunch(context, msg.postUrl!),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.open_in_new, size: 14, color: platformColor),
+                  Icon(Icons.open_in_new, size: 14, color: ink),
                   const SizedBox(width: 4),
-                  Text('فتح المنشور', style: TextStyle(color: platformColor, fontSize: 13, fontWeight: FontWeight.w600)),
+                  Text('فتح المنشور', style: TextStyle(color: ink, fontSize: 13, fontWeight: FontWeight.w700)),
                 ]),
               )),
         ],
@@ -527,26 +530,33 @@ class _PlatformSummaryCardState extends ConsumerState<_PlatformSummaryCard> {
       data: (s) {
         if (s.isEmpty) return const SizedBox.shrink();
         final theme = Theme.of(context);
+        final isDark = theme.brightness == Brightness.dark;
+        final ink = AppColors.accentInk(widget.accent, isDark);
         return Container(
           margin: const EdgeInsets.only(bottom: 4),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topRight,
               end: Alignment.bottomLeft,
-              colors: [widget.accent.withOpacity(0.10), widget.accent.withOpacity(0.02)],
+              colors: [widget.accent.withOpacity(isDark ? 0.16 : 0.10), widget.accent.withOpacity(0.02)],
             ),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(color: widget.accent.withOpacity(0.25)),
           ),
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Container(
+                height: 4, width: 54,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(color: widget.accent, borderRadius: BorderRadius.circular(4)),
+              ),
               Row(children: [
-                Text('🧠', style: TextStyle(fontSize: 18, color: widget.accent)),
+                const Text('🧠', style: TextStyle(fontSize: 18)),
                 const SizedBox(width: 6),
                 Text('ملخص اليوم',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: widget.accent)),
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: ink)),
                 const Spacer(),
                 if (s.generatedAt != null)
                   Text(timeago.format(s.generatedAt!, locale: 'ar'),
@@ -569,22 +579,28 @@ class _PlatformSummaryCardState extends ConsumerState<_PlatformSummaryCard> {
                   ),
                 ),
               if (_expanded) ..._buildExpanded(context, s),
-              const SizedBox(height: 6),
+              const SizedBox(height: 10),
               Row(children: [
                 if (s.messageCount > 0)
-                  Text('📡 جُمِّع من ${s.messageCount} منشور بلا تكرار',
-                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 11)),
-                const Spacer(),
+                  Expanded(
+                    child: Text('📡 جُمِّع من ${s.messageCount} منشور بلا تكرار',
+                        style: theme.textTheme.bodySmall?.copyWith(fontSize: 11)),
+                  )
+                else
+                  const Spacer(),
                 TextButton.icon(
                   onPressed: () => setState(() => _expanded = !_expanded),
                   icon: Icon(_expanded ? Icons.expand_less : Icons.expand_more,
-                      size: 20, color: widget.accent),
-                  label: Text(_expanded ? 'طيّ' : 'الملخص الكامل',
-                      style: TextStyle(color: widget.accent, fontWeight: FontWeight.w700, fontSize: 13)),
+                      size: 18, color: Colors.white),
+                  label: Text(_expanded ? 'طيّ الملخص' : 'الملخص الكامل',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    minimumSize: const Size(0, 32),
+                    backgroundColor: ink,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    minimumSize: const Size(0, 36),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
               ]),
@@ -597,6 +613,8 @@ class _PlatformSummaryCardState extends ConsumerState<_PlatformSummaryCard> {
 
   List<Widget> _buildExpanded(BuildContext context, PlatformSummary s) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final ink = AppColors.accentInk(widget.accent, isDark);
     return [
       // Key numbers row.
       if (s.keyNumbers.isNotEmpty)
@@ -607,16 +625,16 @@ class _PlatformSummaryCardState extends ConsumerState<_PlatformSummaryCard> {
             runSpacing: 8,
             children: s.keyNumbers
                 .map((n) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
                       decoration: BoxDecoration(
-                        color: widget.accent.withOpacity(0.10),
-                        borderRadius: BorderRadius.circular(10),
+                        color: ink.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(n.value,
-                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: widget.accent)),
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: ink)),
                           Text(n.context,
                               style: theme.textTheme.bodySmall?.copyWith(fontSize: 10.5)),
                         ],
@@ -644,7 +662,7 @@ class _PlatformSummaryCardState extends ConsumerState<_PlatformSummaryCard> {
                 Padding(
                   padding: const EdgeInsets.only(top: 5, right: 4),
                   child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('• ', style: TextStyle(color: widget.accent, fontWeight: FontWeight.w900)),
+                    Text('• ', style: TextStyle(color: ink, fontWeight: FontWeight.w900)),
                     Expanded(
                       child: Text(item, style: const TextStyle(fontSize: 13, height: 1.6)),
                     ),
@@ -669,14 +687,14 @@ class _PlatformSummaryCardState extends ConsumerState<_PlatformSummaryCard> {
             runSpacing: 6,
             children: s.topics
                 .map((t) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
                       decoration: BoxDecoration(
                         color: theme.cardColor,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: widget.accent.withOpacity(0.3)),
+                        border: Border.all(color: ink.withOpacity(0.35)),
                       ),
                       child: Text('#$t',
-                          style: TextStyle(fontSize: 11.5, color: widget.accent, fontWeight: FontWeight.w600)),
+                          style: TextStyle(fontSize: 11.5, color: ink, fontWeight: FontWeight.w700)),
                     ))
                 .toList(),
           ),
