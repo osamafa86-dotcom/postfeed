@@ -172,6 +172,15 @@ if ($page === 1 && !empty($posts)) {
 $toArNum = fn($n) => strtr((string)$n,
     ['0'=>'٠','1'=>'١','2'=>'٢','3'=>'٣','4'=>'٤','5'=>'٥','6'=>'٦','7'=>'٧','8'=>'٨','9'=>'٩']);
 
+// Telegram channels and our older RSS ingest sometimes store text with
+// HTML entities already applied (&quot; &amp;). Decode once before
+// e() re-escapes, otherwise the reader sees literal &quot; in headlines.
+$decode = fn($s) => html_entity_decode((string)$s, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+// Strip leading emoji / bullets / pipes so the first visible char is a
+// real letter — the channel's "🔵 خبر عاجل: …" gets the leading marker
+// removed for clean cards.
+$stripLead = fn($s) => preg_replace('/^[^\p{L}\p{N}]+/u', '', $s);
+
 // Active-tab URL helper (preserves search + filter).
 $tabUrl = function ($p) {
     $q = $_GET; $q['p'] = $p; unset($q['page']);
@@ -697,7 +706,7 @@ include __DIR__ . '/includes/components/site_header.php';
     <?php if ($hero): ?>
       <?php
         $heroChannel = $hero['source_name'] ?? '—';
-        $heroBody    = trim((string)($hero['body'] ?? ''));
+        $heroBody    = trim($stripLead($decode($hero['body'] ?? '')));
         $heroInit    = mb_substr($heroChannel, 0, 1) ?: '?';
         $heroPlat    = $hero['plat'];
       ?>
@@ -835,10 +844,10 @@ include __DIR__ . '/includes/components/site_header.php';
                      : ($plat === 'twitter'  ? '𝕏'
                      : '▶');
         $channelInit = mb_substr($p['source_name'] ?? '?', 0, 1);
-        $body        = trim((string)($p['body'] ?? ''));
+        $body        = trim($stripLead($decode($p['body'] ?? '')));
         $titleTxt    = mb_substr($body, 0, 160);
-        $hasMore     = mb_strlen($body) > 160;
-        $summary     = $hasMore ? mb_substr($body, 160, 130) . '…' : '';
+        $bodyHasMore = mb_strlen($body) > 160;
+        $summary     = $bodyHasMore ? mb_substr($body, 160, 130) . '…' : '';
       ?>
         <a class="bp-card" href="<?php echo e($p['post_url'] ?? '#'); ?>" target="_blank" rel="noopener">
           <div class="bp-card-top">
@@ -864,7 +873,7 @@ include __DIR__ . '/includes/components/site_header.php';
               </div>
             <?php endif; ?>
             <div class="bp-card-body">
-              <div class="bp-card-title"><?php echo e($titleTxt); ?><?php echo $hasMore && !$summary ? '…' : ''; ?></div>
+              <div class="bp-card-title"><?php echo e($titleTxt); ?><?php echo $bodyHasMore && !$summary ? '…' : ''; ?></div>
               <?php if ($summary !== ''): ?>
                 <div class="bp-card-summary"><?php echo e($summary); ?></div>
               <?php endif; ?>

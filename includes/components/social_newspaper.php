@@ -99,9 +99,18 @@ $__tabUrl = function ($p) {
 };
 
 // Text helpers.
-$__leadTitle = $__lead ? trim((string)($__lead[$__active['msgKey']] ?? '')) : '';
-$__leadFirstChar = $__leadTitle !== '' ? mb_substr($__leadTitle, 0, 1) : 'أ';
-$__leadRest      = $__leadTitle !== '' ? mb_substr($__leadTitle, 1) : '';
+// Telegram channels often pre-encode quotes/ampersands (&quot; &amp;) and
+// prefix posts with emoji/bullets. Decode the entities (so e() doesn't
+// double-escape them) then strip leading non-letter chars so the drop
+// cap lands on an actual Arabic/Latin letter — not a 🔵 rendered at
+// 54px.
+$__decode = fn($s) => html_entity_decode((string)$s, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+$__stripLead = fn($s) => preg_replace('/^[^\p{L}\p{N}]+/u', '', $s);
+
+$__leadTitle = $__lead ? trim($__decode($__lead[$__active['msgKey']] ?? '')) : '';
+$__leadBody  = $__leadTitle !== '' ? $__stripLead($__leadTitle) : '';
+$__leadFirstChar = $__leadBody !== '' ? mb_substr($__leadBody, 0, 1) : 'أ';
+$__leadRest      = $__leadBody !== '' ? mb_substr($__leadBody, 1) : '';
 // Excerpt for the lead paragraph
 $__leadExcerpt = $__leadRest !== '' ? mb_substr($__leadRest, 0, 220) : '';
 if (mb_strlen($__leadRest) > 220) $__leadExcerpt .= '…';
@@ -161,7 +170,7 @@ $__today    = $__daysAr[date('l')] . ' ' . $__toArabicNum(date('j')) . ' ' . $__
   <?php if ($__lead): ?>
     <article class="snp-lead">
       <div class="snp-lead-kicker">🔥 الخبر الرائج</div>
-      <h3 class="snp-lead-title"><?php echo e($__leadTitle); ?></h3>
+      <h3 class="snp-lead-title"><?php echo e($__leadBody !== '' ? $__leadBody : $__leadTitle); ?></h3>
       <div class="snp-byline">
         <?php if ($__leadChannel): ?>
           <span>بقلم/<b><?php echo e($__leadChannel); ?></b></span>
@@ -200,11 +209,13 @@ $__today    = $__daysAr[date('l')] . ' ' . $__toArabicNum(date('j')) . ' ' . $__
   <!-- Two-column secondary -->
   <?php if ($__sec1 || $__sec2): ?>
     <div class="snp-cols">
-      <?php foreach ([$__sec1, $__sec2] as $__i => $__sec): if (!$__sec) continue; ?>
+      <?php foreach ([$__sec1, $__sec2] as $__i => $__sec): if (!$__sec) continue;
+        $__secBody = trim($__stripLead($__decode($__sec[$__active['msgKey']] ?? '')));
+      ?>
         <a class="snp-col" href="<?php echo e($__sec[$__active['urlKey']] ?? '#'); ?>" target="_blank" rel="noopener">
           <div class="snp-col-kicker"><?php echo $__i === 0 ? 'متابعة' : 'تحديث'; ?></div>
           <div class="snp-col-title">
-            <?php echo e(mb_substr(trim((string)($__sec[$__active['msgKey']] ?? '')), 0, 110)); ?>
+            <?php echo e(mb_substr($__secBody, 0, 110)); ?>
           </div>
           <div class="snp-col-meta">
             <?php if (!empty($__sec['display_name'])): ?>
@@ -230,8 +241,9 @@ $__today    = $__daysAr[date('l')] . ' ' . $__toArabicNum(date('j')) . ' ' . $__
         <span class="snp-brief-star" aria-hidden="true">✦</span>
         <span class="snp-brief-label">ملاحظة المحرّر — الإيجاز الذكي</span>
       </div>
+      <?php $__briefBody = $__decode($__editorBrief['summary']); ?>
       <p class="snp-brief-body">
-        <?php echo e(mb_substr($__editorBrief['summary'], 0, 240)); ?><?php echo mb_strlen($__editorBrief['summary']) > 240 ? '…' : ''; ?>
+        <?php echo e(mb_substr($__briefBody, 0, 240)); ?><?php echo mb_strlen($__briefBody) > 240 ? '…' : ''; ?>
       </p>
     </a>
   <?php endif; ?>
