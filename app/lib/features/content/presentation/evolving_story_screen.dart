@@ -451,7 +451,7 @@ class _ArticlesTimeline extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Group by day. Articles without a date fall under "بدون تاريخ".
-    final groups = <String, List>{};
+    final groups = <String, List<Article>>{};
     final order = <String>[];
     for (final a in articles) {
       final dt = a.publishedAt as DateTime?;
