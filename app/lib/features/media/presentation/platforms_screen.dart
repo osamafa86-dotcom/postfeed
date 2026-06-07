@@ -8,6 +8,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/safe_launch.dart';
 import '../../../core/widgets/loading_state.dart';
 import '../data/media_repository.dart';
+import 'platform_stats_sheet.dart';
 
 class PlatformsScreen extends ConsumerStatefulWidget {
   const PlatformsScreen({super.key});
@@ -37,6 +38,22 @@ class _PlatformsScreenState extends ConsumerState<PlatformsScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('المنصات'),
+        actions: [
+          IconButton(
+            tooltip: 'إحصاءات',
+            icon: const Icon(Icons.bar_chart_rounded),
+            onPressed: () {
+              const meta = [
+                ('telegram', Color(0xFF0EA5E9), 'تلغرام'),
+                ('twitter', Color(0xFF1F2937), 'منصة X'),
+                ('youtube', Colors.red, 'يوتيوب'),
+              ];
+              final m = meta[_tabCtl.index.clamp(0, 2)];
+              PlatformStatsSheet.show(context,
+                  platform: m.$1, accent: m.$2, title: m.$3);
+            },
+          ),
+        ],
         bottom: TabBar(
           controller: _tabCtl,
           indicatorColor: AppColors.primary,

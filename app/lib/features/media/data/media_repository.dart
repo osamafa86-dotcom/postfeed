@@ -282,6 +282,55 @@ class PlatformSummary {
       );
 }
 
+/// Analytics for one platform over a time range (24h/7d/30d).
+class PlatformStats {
+  const PlatformStats({
+    this.total = 0,
+    this.activeSources = 0,
+    this.palestineShare = 0,
+    this.timeline = const [],
+    this.topSources = const [],
+    this.topTopics = const [],
+    this.peak,
+  });
+
+  final int total;
+  final int activeSources;
+  final double palestineShare; // 0..1
+  final List<({String label, int count})> timeline;
+  final List<({String name, int count})> topSources;
+  final List<({String tag, int count})> topTopics;
+  final String? peak;
+
+  factory PlatformStats.fromJson(Map<String, dynamic> j) => PlatformStats(
+        total: (j['total'] as num?)?.toInt() ?? 0,
+        activeSources: (j['active_sources'] as num?)?.toInt() ?? 0,
+        palestineShare: (j['palestine_share'] as num?)?.toDouble() ?? 0,
+        timeline: (j['timeline'] as List? ?? [])
+            .whereType<Map>()
+            .map((m) => (
+                  label: (m['label'] ?? '').toString(),
+                  count: (m['count'] as num?)?.toInt() ?? 0,
+                ))
+            .toList(),
+        topSources: (j['top_sources'] as List? ?? [])
+            .whereType<Map>()
+            .map((m) => (
+                  name: (m['name'] ?? '').toString(),
+                  count: (m['count'] as num?)?.toInt() ?? 0,
+                ))
+            .toList(),
+        topTopics: (j['top_topics'] as List? ?? [])
+            .whereType<Map>()
+            .map((m) => (
+                  tag: (m['tag'] ?? '').toString(),
+                  count: (m['count'] as num?)?.toInt() ?? 0,
+                ))
+            .toList(),
+        peak: j['peak']?.toString(),
+      );
+}
+
 class MediaRepository {
   MediaRepository(this._api);
   final ApiClient _api;
@@ -409,6 +458,16 @@ class MediaRepository {
     }
   }
 
+  /// Live analytics for a platform over a range (24h/7d/30d).
+  Future<PlatformStats> platformStats(String platform, {String range = '24h'}) async {
+    final res = await _api.get<PlatformStats>(
+      '/media/stats',
+      query: {'platform': platform, 'range': range},
+      decode: (d) => PlatformStats.fromJson((d as Map).cast<String, dynamic>()),
+    );
+    return res.data ?? const PlatformStats();
+  }
+
   Future<({String? audioUrl, int duration, bool cached})> ttsForArticle(int articleId) async {
     final res = await _api.post<Map<String, dynamic>>(
       '/media/tts',
@@ -476,4 +535,10 @@ final twitterSummaryProvider = FutureProvider<String>(
 final platformSummaryProvider =
     FutureProvider.family<PlatformSummary, String>((ref, platform) {
   return ref.watch(mediaRepositoryProvider).platformSummary(platform);
+});
+
+/// Platform analytics, keyed by (platform, range).
+final platformStatsProvider = FutureProvider.family<PlatformStats,
+    ({String platform, String range})>((ref, key) {
+  return ref.watch(mediaRepositoryProvider).platformStats(key.platform, range: key.range);
 });
