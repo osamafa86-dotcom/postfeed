@@ -2,13 +2,16 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timeago/timeago.dart' as timeago;
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/safe_launch.dart';
 import '../../../core/widgets/loading_state.dart';
 import '../data/media_repository.dart';
-import 'platform_stats_sheet.dart';
+
+// Per-platform brand accents (match the web /platforms redesign).
+const _telegramAccent = Color(0xFF0EA5E9);
+const _twitterAccent = Color(0xFF1F2937);
+const _youtubeAccent = Color(0xFFDC2626);
 
 class PlatformsScreen extends ConsumerStatefulWidget {
   const PlatformsScreen({super.key});
@@ -25,6 +28,10 @@ class _PlatformsScreenState extends ConsumerState<PlatformsScreen>
   void initState() {
     super.initState();
     _tabCtl = TabController(length: 3, vsync: this);
+    // Keep the segmented control in sync with swipes / programmatic moves.
+    _tabCtl.addListener(() {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
@@ -38,67 +45,11 @@ class _PlatformsScreenState extends ConsumerState<PlatformsScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('المنصات'),
-        actions: [
-          // De-duplication toggle — collapses the same story reported by
-          // many channels into one card. On by default.
-          Builder(builder: (context) {
-            final hideDup = ref.watch(hideDuplicatesProvider);
-            return IconButton(
-              tooltip: hideDup ? 'إظهار كل المنشورات' : 'إخفاء المكرر',
-              icon: Icon(hideDup ? Icons.filter_alt : Icons.filter_alt_off_outlined),
-              onPressed: () {
-                ref.read(hideDuplicatesProvider.notifier).state = !hideDup;
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  duration: const Duration(seconds: 2),
-                  content: Text(!hideDup ? 'تم إخفاء الأخبار المكررة' : 'يتم عرض كل المنشورات'),
-                ));
-              },
-            );
-          }),
-          IconButton(
-            tooltip: 'إحصاءات',
-            icon: const Icon(Icons.bar_chart_rounded),
-            onPressed: () {
-              const meta = [
-                ('telegram', Color(0xFF0EA5E9), 'تلغرام'),
-                ('twitter', Color(0xFF1F2937), 'منصة X'),
-                ('youtube', Colors.red, 'يوتيوب'),
-              ];
-              // 3-tab controller, so index is always 0..2.
-              final m = meta[_tabCtl.index];
-              PlatformStatsSheet.show(context,
-                  platform: m.$1, accent: m.$2, title: m.$3);
-            },
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabCtl,
-          indicatorColor: AppColors.primary,
-          indicatorWeight: 3,
-          labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
-          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
-          tabs: const [
-            Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Text('✈️', style: TextStyle(fontSize: 16)),
-              SizedBox(width: 6),
-              Text('تلغرام'),
-            ])),
-            Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Text('𝕏', style: TextStyle(fontSize: 16)),
-              SizedBox(width: 6),
-              Text('منصة X'),
-            ])),
-            Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Text('▶️', style: TextStyle(fontSize: 16)),
-              SizedBox(width: 6),
-              Text('يوتيوب'),
-            ])),
-          ],
-        ),
+        bottom: _segTabs(context),
       ),
       body: TabBarView(
         controller: _tabCtl,
-        children: [
+        children: const [
           _TelegramFeed(),
           _TwitterFeed(),
           _YoutubeFeed(),
@@ -106,12 +57,56 @@ class _PlatformsScreenState extends ConsumerState<PlatformsScreen>
       ),
     );
   }
+
+  // Segmented pill tabs (replaces the Material TabBar) — matches Figma.
+  PreferredSizeWidget _segTabs(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    const labels = [('✈️', 'تلغرام'), ('𝕏', 'منصة X'), ('▶️', 'يوتيوب')];
+    const accents = [_telegramAccent, _twitterAccent, _youtubeAccent];
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(62),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+        child: Row(
+          children: List.generate(3, (i) {
+            final active = _tabCtl.index == i;
+            final ink = AppColors.accentInk(accents[i], isDark);
+            return Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: GestureDetector(
+                  onTap: () => _tabCtl.animateTo(i),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    height: 44,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: active ? ink : theme.cardColor,
+                      borderRadius: BorderRadius.circular(14),
+                      border: active ? null : Border.all(color: theme.dividerColor),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Text(labels[i].$1, style: const TextStyle(fontSize: 15)),
+                      const SizedBox(width: 6),
+                      Text(labels[i].$2,
+                          style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13.5,
+                              color: active ? Colors.white : theme.textTheme.bodyLarge?.color)),
+                    ]),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ),
+      ),
+    );
+  }
 }
 
 /// Reusable "load older" pagination wrapper for the three social feeds.
-/// The auto-refreshing provider gives us the freshest N items; this
-/// state lets the user pull older items in batches by passing the
-/// smallest currently-shown id as `before_id` to the repo method.
 mixin _SocialPaging<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   final List<dynamic> _extra = []; // older items beyond the provider's initial batch
   bool _loadingMore = false;
@@ -137,8 +132,6 @@ mixin _SocialPaging<T extends ConsumerStatefulWidget> on ConsumerState<T> {
           _hasMore = false;
         } else {
           _extra.addAll(more);
-          // No "hasMore" flag on the social endpoints — assume there's
-          // more until we get back a short batch.
           if (more.length < 30) _hasMore = false;
         }
         _loadingMore = false;
@@ -165,10 +158,7 @@ Widget _loadMoreButton({
         ? Center(
             child: Text(
               'وصلت لنهاية القائمة',
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.grey.shade500,
-              ),
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
             ),
           )
         : SizedBox(
@@ -192,7 +182,33 @@ Widget _loadMoreButton({
   );
 }
 
+/// "أحدث المنشورات" header with an inline de-duplication toggle (matches Figma).
+Widget _feedBar(BuildContext context, WidgetRef ref,
+    {required bool showToggle, required bool hideDup, required String label}) {
+  final theme = Theme.of(context);
+  return Padding(
+    padding: const EdgeInsets.only(top: 2, bottom: 2),
+    child: Row(children: [
+      Text(label,
+          style: TextStyle(
+              fontWeight: FontWeight.w900,
+              fontSize: 16,
+              color: theme.textTheme.titleLarge?.color)),
+      const Spacer(),
+      if (showToggle) ...[
+        Text('إخفاء المكرر', style: theme.textTheme.bodySmall?.copyWith(fontSize: 12)),
+        const SizedBox(width: 4),
+        Switch.adaptive(
+          value: hideDup,
+          onChanged: (v) => ref.read(hideDuplicatesProvider.notifier).state = v,
+        ),
+      ],
+    ]),
+  );
+}
+
 class _TelegramFeed extends ConsumerStatefulWidget {
+  const _TelegramFeed();
   @override
   ConsumerState<_TelegramFeed> createState() => _TelegramFeedState();
 }
@@ -202,7 +218,7 @@ class _TelegramFeedState extends ConsumerState<_TelegramFeed>
   @override
   Widget build(BuildContext context) {
     final asy = ref.watch(telegramFeedProvider);
-    // Refresh resets the "load more" cursor.
+    final hideDup = ref.watch(hideDuplicatesProvider);
     ref.listen(telegramFeedProvider, (_, __) => setState(resetExtras));
     return asy.when(
       loading: () => const LoadingShimmerList(),
@@ -211,33 +227,31 @@ class _TelegramFeedState extends ConsumerState<_TelegramFeed>
         final all = [...initial, ..._extra.cast<TelegramMessage>()];
         return RefreshIndicator(
           onRefresh: () async => ref.invalidate(telegramFeedProvider),
-          child: all.isEmpty
-              ? const EmptyView(message: 'لا توجد منشورات')
-              : ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: all.length + 2,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (_, i) {
-                    if (i == 0) {
-                      return const _PlatformSummaryCard(
-                          platform: 'telegram', accent: Color(0xFF0EA5E9));
-                    }
-                    final idx = i - 1;
-                    if (idx < all.length) {
-                      return _MessageCard(msg: all[idx], platformColor: const Color(0xFF0EA5E9), platformName: 'تلغرام');
-                    }
-                    return _loadMoreButton(
-                      loading: _loadingMore,
-                      hasMore: _hasMore,
-                      hasContent: all.isNotEmpty,
-                      onTap: () => doLoadMore(
-                        beforeId: all.isNotEmpty ? all.last.id : null,
-                        fetch: (b) async => ref.read(mediaRepositoryProvider).telegram(
-                            beforeId: b, limit: 30, dedup: ref.read(hideDuplicatesProvider)),
-                      ),
-                    );
-                  },
+          child: ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: all.length + 4,
+            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            itemBuilder: (_, i) {
+              if (i == 0) return const _PlatformSummaryCard(platform: 'telegram', accent: _telegramAccent);
+              if (i == 1) return const _PlatformStatsCard(platform: 'telegram', accent: _telegramAccent);
+              if (i == 2) return _feedBar(context, ref, showToggle: true, hideDup: hideDup, label: 'أحدث المنشورات');
+              final idx = i - 3;
+              if (idx < all.length) {
+                return _MessageCard(msg: all[idx], platformColor: _telegramAccent, platformName: 'تلغرام');
+              }
+              if (all.isEmpty) return const SizedBox.shrink();
+              return _loadMoreButton(
+                loading: _loadingMore,
+                hasMore: _hasMore,
+                hasContent: all.isNotEmpty,
+                onTap: () => doLoadMore(
+                  beforeId: all.isNotEmpty ? all.last.id : null,
+                  fetch: (b) async => ref.read(mediaRepositoryProvider).telegram(
+                      beforeId: b, limit: 30, dedup: ref.read(hideDuplicatesProvider)),
                 ),
+              );
+            },
+          ),
         );
       },
     );
@@ -245,6 +259,7 @@ class _TelegramFeedState extends ConsumerState<_TelegramFeed>
 }
 
 class _TwitterFeed extends ConsumerStatefulWidget {
+  const _TwitterFeed();
   @override
   ConsumerState<_TwitterFeed> createState() => _TwitterFeedState();
 }
@@ -254,6 +269,7 @@ class _TwitterFeedState extends ConsumerState<_TwitterFeed>
   @override
   Widget build(BuildContext context) {
     final asy = ref.watch(twitterFeedProvider);
+    final hideDup = ref.watch(hideDuplicatesProvider);
     ref.listen(twitterFeedProvider, (_, __) => setState(resetExtras));
     return asy.when(
       loading: () => const LoadingShimmerList(),
@@ -262,33 +278,31 @@ class _TwitterFeedState extends ConsumerState<_TwitterFeed>
         final all = [...initial, ..._extra.cast<TwitterMessage>()];
         return RefreshIndicator(
           onRefresh: () async => ref.invalidate(twitterFeedProvider),
-          child: all.isEmpty
-              ? const EmptyView(message: 'لا توجد منشورات')
-              : ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: all.length + 2,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (_, i) {
-                    if (i == 0) {
-                      return const _PlatformSummaryCard(
-                          platform: 'twitter', accent: Color(0xFF1F2937));
-                    }
-                    final idx = i - 1;
-                    if (idx < all.length) {
-                      return _MessageCard(msg: all[idx], platformColor: const Color(0xFF1F2937), platformName: 'X');
-                    }
-                    return _loadMoreButton(
-                      loading: _loadingMore,
-                      hasMore: _hasMore,
-                      hasContent: all.isNotEmpty,
-                      onTap: () => doLoadMore(
-                        beforeId: all.isNotEmpty ? all.last.id : null,
-                        fetch: (b) async => ref.read(mediaRepositoryProvider).twitter(
-                            beforeId: b, limit: 30, dedup: ref.read(hideDuplicatesProvider)),
-                      ),
-                    );
-                  },
+          child: ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: all.length + 4,
+            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            itemBuilder: (_, i) {
+              if (i == 0) return const _PlatformSummaryCard(platform: 'twitter', accent: _twitterAccent);
+              if (i == 1) return const _PlatformStatsCard(platform: 'twitter', accent: _twitterAccent);
+              if (i == 2) return _feedBar(context, ref, showToggle: true, hideDup: hideDup, label: 'أحدث المنشورات');
+              final idx = i - 3;
+              if (idx < all.length) {
+                return _MessageCard(msg: all[idx], platformColor: _twitterAccent, platformName: 'X');
+              }
+              if (all.isEmpty) return const SizedBox.shrink();
+              return _loadMoreButton(
+                loading: _loadingMore,
+                hasMore: _hasMore,
+                hasContent: all.isNotEmpty,
+                onTap: () => doLoadMore(
+                  beforeId: all.isNotEmpty ? all.last.id : null,
+                  fetch: (b) async => ref.read(mediaRepositoryProvider).twitter(
+                      beforeId: b, limit: 30, dedup: ref.read(hideDuplicatesProvider)),
                 ),
+              );
+            },
+          ),
         );
       },
     );
@@ -296,6 +310,7 @@ class _TwitterFeedState extends ConsumerState<_TwitterFeed>
 }
 
 class _YoutubeFeed extends ConsumerStatefulWidget {
+  const _YoutubeFeed();
   @override
   ConsumerState<_YoutubeFeed> createState() => _YoutubeFeedState();
 }
@@ -313,33 +328,31 @@ class _YoutubeFeedState extends ConsumerState<_YoutubeFeed>
         final all = [...initial, ..._extra.cast<YoutubeVideo>()];
         return RefreshIndicator(
           onRefresh: () async => ref.invalidate(youtubeFeedProvider),
-          child: all.isEmpty
-              ? const EmptyView(message: 'لا توجد فيديوهات')
-              : ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: all.length + 2,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (_, i) {
-                    if (i == 0) {
-                      return const _PlatformSummaryCard(
-                          platform: 'youtube', accent: Colors.red);
-                    }
-                    final idx = i - 1;
-                    if (idx < all.length) {
-                      return _YoutubeCard(video: all[idx]);
-                    }
-                    return _loadMoreButton(
-                      loading: _loadingMore,
-                      hasMore: _hasMore,
-                      hasContent: all.isNotEmpty,
-                      onTap: () => doLoadMore(
-                        beforeId: all.isNotEmpty ? all.last.id : null,
-                        fetch: (b) async =>
-                            ref.read(mediaRepositoryProvider).youtube(beforeId: b, limit: 30),
-                      ),
-                    );
-                  },
+          child: ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: all.length + 4,
+            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            itemBuilder: (_, i) {
+              if (i == 0) return const _PlatformSummaryCard(platform: 'youtube', accent: _youtubeAccent);
+              if (i == 1) return const _PlatformStatsCard(platform: 'youtube', accent: _youtubeAccent);
+              if (i == 2) return _feedBar(context, ref, showToggle: false, hideDup: false, label: 'أحدث الفيديوهات');
+              final idx = i - 3;
+              if (idx < all.length) {
+                return _YoutubeCard(video: all[idx]);
+              }
+              if (all.isEmpty) return const SizedBox.shrink();
+              return _loadMoreButton(
+                loading: _loadingMore,
+                hasMore: _hasMore,
+                hasContent: all.isNotEmpty,
+                onTap: () => doLoadMore(
+                  beforeId: all.isNotEmpty ? all.last.id : null,
+                  fetch: (b) async =>
+                      ref.read(mediaRepositoryProvider).youtube(beforeId: b, limit: 30),
                 ),
+              );
+            },
+          ),
         );
       },
     );
@@ -482,7 +495,7 @@ class _YoutubeCard extends StatelessWidget {
                 Row(children: [
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                    decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(4)),
+                    decoration: BoxDecoration(color: _youtubeAccent, borderRadius: BorderRadius.circular(4)),
                     child: const Text('يوتيوب', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
                   ),
                   const SizedBox(width: 6),
@@ -506,10 +519,9 @@ class _YoutubeCard extends StatelessWidget {
   }
 }
 
-/// Collapsible "ملخص اليوم" card shown at the top of each platform tab.
-/// Renders the rich, de-duplicated daily AI summary (headline, paragraph,
-/// key numbers, deep-dive sections, topics). Hides itself entirely while
-/// loading, on error, or when no summary has been generated yet.
+/// "ملخص اليوم" — white card with an accent strip; key numbers and topics are
+/// always visible, deep-dive sections expand on demand. Hidden while loading,
+/// on error, or when no summary exists yet.
 class _PlatformSummaryCard extends ConsumerStatefulWidget {
   const _PlatformSummaryCard({required this.platform, required this.accent});
   final String platform;
@@ -533,25 +545,23 @@ class _PlatformSummaryCardState extends ConsumerState<_PlatformSummaryCard> {
         final isDark = theme.brightness == Brightness.dark;
         final ink = AppColors.accentInk(widget.accent, isDark);
         return Container(
-          margin: const EdgeInsets.only(bottom: 4),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topRight,
-              end: Alignment.bottomLeft,
-              colors: [widget.accent.withOpacity(isDark ? 0.16 : 0.10), widget.accent.withOpacity(0.02)],
-            ),
+            color: theme.cardColor,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: widget.accent.withOpacity(0.25)),
+            border: Border.all(color: theme.dividerColor.withOpacity(0.6)),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.32 : 0.05), blurRadius: 16, offset: const Offset(0, 6))],
           ),
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Accent strip
               Container(
                 height: 4, width: 54,
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(color: widget.accent, borderRadius: BorderRadius.circular(4)),
               ),
+              // Head
               Row(children: [
                 const Text('🧠', style: TextStyle(fontSize: 18)),
                 const SizedBox(width: 6),
@@ -566,43 +576,93 @@ class _PlatformSummaryCardState extends ConsumerState<_PlatformSummaryCard> {
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(s.headline,
-                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, height: 1.4)),
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17, height: 1.45)),
                 ),
               if (s.summary.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
                     s.summary,
-                    style: const TextStyle(fontSize: 13.5, height: 1.7),
-                    maxLines: _expanded ? null : 3,
+                    style: TextStyle(fontSize: 14, height: 1.85, color: theme.textTheme.bodyMedium?.color),
+                    maxLines: _expanded ? null : 5,
                     overflow: _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
                   ),
                 ),
-              if (_expanded) ..._buildExpanded(context, s),
-              const SizedBox(height: 10),
+              // Key numbers (always visible)
+              if (s.keyNumbers.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 14),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: s.keyNumbers
+                        .map((n) => Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                              decoration: BoxDecoration(
+                                color: ink.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(n.value,
+                                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: ink)),
+                                  Text(n.context,
+                                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 10.5)),
+                                ],
+                              ),
+                            ))
+                        .toList(),
+                  ),
+                ),
+              // Deep-dive sections (expand)
+              if (_expanded) ..._buildSections(context, s, ink, theme),
+              // Topics (always visible)
+              if (s.topics.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 14),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: s.topics
+                        .map((t) => Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: ink.withOpacity(0.4)),
+                              ),
+                              child: Text('#$t',
+                                  style: TextStyle(fontSize: 12, color: ink, fontWeight: FontWeight.w700)),
+                            ))
+                        .toList(),
+                  ),
+                ),
+              // Foot
+              const SizedBox(height: 14),
               Row(children: [
                 if (s.messageCount > 0)
                   Expanded(
                     child: Text('📡 جُمِّع من ${s.messageCount} منشور بلا تكرار',
-                        style: theme.textTheme.bodySmall?.copyWith(fontSize: 11)),
+                        style: theme.textTheme.bodySmall?.copyWith(fontSize: 11.5)),
                   )
                 else
                   const Spacer(),
-                TextButton.icon(
-                  onPressed: () => setState(() => _expanded = !_expanded),
-                  icon: Icon(_expanded ? Icons.expand_less : Icons.expand_more,
-                      size: 18, color: Colors.white),
-                  label: Text(_expanded ? 'طيّ الملخص' : 'الملخص الكامل',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
-                  style: TextButton.styleFrom(
-                    backgroundColor: ink,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    minimumSize: const Size(0, 36),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                if (s.sections.isNotEmpty)
+                  TextButton.icon(
+                    onPressed: () => setState(() => _expanded = !_expanded),
+                    icon: Icon(_expanded ? Icons.expand_less : Icons.expand_more,
+                        size: 18, color: Colors.white),
+                    label: Text(_expanded ? 'طيّ الملخص' : 'الملخص الكامل',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
+                    style: TextButton.styleFrom(
+                      backgroundColor: ink,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      minimumSize: const Size(0, 36),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
                   ),
-                ),
               ]),
             ],
           ),
@@ -611,39 +671,8 @@ class _PlatformSummaryCardState extends ConsumerState<_PlatformSummaryCard> {
     );
   }
 
-  List<Widget> _buildExpanded(BuildContext context, PlatformSummary s) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final ink = AppColors.accentInk(widget.accent, isDark);
+  List<Widget> _buildSections(BuildContext context, PlatformSummary s, Color ink, ThemeData theme) {
     return [
-      // Key numbers row.
-      if (s.keyNumbers.isNotEmpty)
-        Padding(
-          padding: const EdgeInsets.only(top: 12),
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: s.keyNumbers
-                .map((n) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: ink.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(n.value,
-                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: ink)),
-                          Text(n.context,
-                              style: theme.textTheme.bodySmall?.copyWith(fontSize: 10.5)),
-                        ],
-                      ),
-                    ))
-                .toList(),
-          ),
-        ),
-      // Deep-dive sections.
       for (final sec in s.sections)
         Padding(
           padding: const EdgeInsets.only(top: 14),
@@ -663,42 +692,230 @@ class _PlatformSummaryCardState extends ConsumerState<_PlatformSummaryCard> {
                   padding: const EdgeInsets.only(top: 5, right: 4),
                   child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text('• ', style: TextStyle(color: ink, fontWeight: FontWeight.w900)),
-                    Expanded(
-                      child: Text(item, style: const TextStyle(fontSize: 13, height: 1.6)),
-                    ),
+                    Expanded(child: Text(item, style: const TextStyle(fontSize: 13, height: 1.6))),
                   ]),
                 ),
               if (sec.whyMatters.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text('لماذا يهم؟ ${sec.whyMatters}',
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(fontStyle: FontStyle.italic, fontSize: 11.5)),
+                      style: theme.textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic, fontSize: 11.5)),
                 ),
             ],
           ),
         ),
-      // Topics.
-      if (s.topics.isNotEmpty)
-        Padding(
-          padding: const EdgeInsets.only(top: 14),
-          child: Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: s.topics
-                .map((t) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: theme.cardColor,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: ink.withOpacity(0.35)),
-                      ),
-                      child: Text('#$t',
-                          style: TextStyle(fontSize: 11.5, color: ink, fontWeight: FontWeight.w700)),
-                    ))
-                .toList(),
-          ),
-        ),
     ];
+  }
+}
+
+/// Inline analytics card (KPIs + activity bars + top sources). Replaces the
+/// old bottom-sheet so stats live in the page flow, matching Figma.
+class _PlatformStatsCard extends ConsumerStatefulWidget {
+  const _PlatformStatsCard({required this.platform, required this.accent});
+  final String platform;
+  final Color accent;
+
+  @override
+  ConsumerState<_PlatformStatsCard> createState() => _PlatformStatsCardState();
+}
+
+class _PlatformStatsCardState extends ConsumerState<_PlatformStatsCard> {
+  String _range = '24h';
+  static const _rangeLabels = {'24h': '٢٤ ساعة', '7d': '٧ أيام', '30d': '٣٠ يوم'};
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final ink = AppColors.accentInk(widget.accent, isDark);
+    final asy = ref.watch(platformStatsProvider((platform: widget.platform, range: _range)));
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.6)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(isDark ? 0.32 : 0.05), blurRadius: 16, offset: const Offset(0, 6))],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Head: ranges + title
+          Row(children: [
+            ..._rangeLabels.entries.map((e) {
+              final sel = e.key == _range;
+              return Padding(
+                padding: const EdgeInsets.only(left: 6),
+                child: GestureDetector(
+                  onTap: () => setState(() => _range = e.key),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: sel ? ink : theme.scaffoldBackgroundColor,
+                      borderRadius: BorderRadius.circular(9),
+                      border: sel ? null : Border.all(color: theme.dividerColor),
+                    ),
+                    child: Text(e.value,
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: sel ? Colors.white : theme.textTheme.bodyMedium?.color)),
+                  ),
+                ),
+              );
+            }),
+            const Spacer(),
+            Text('إحصاءات اليوم',
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: ink)),
+            const SizedBox(width: 6),
+            const Text('📊', style: TextStyle(fontSize: 15)),
+          ]),
+          const SizedBox(height: 14),
+          asy.when(
+            loading: () => const SizedBox(
+                height: 120, child: Center(child: CircularProgressIndicator(strokeWidth: 2))),
+            error: (e, _) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Text('تعذّر تحميل الإحصاءات',
+                  style: theme.textTheme.bodySmall, textAlign: TextAlign.center),
+            ),
+            data: (st) {
+              if (st.total == 0) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Text('لا توجد بيانات في هذه الفترة',
+                      style: theme.textTheme.bodySmall, textAlign: TextAlign.center),
+                );
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    _kpi(theme, '${st.total}', 'إجمالي المنشورات'),
+                    const SizedBox(width: 10),
+                    _kpi(theme, '${st.activeSources}', 'مصادر نشطة'),
+                  ]),
+                  const SizedBox(height: 10),
+                  Row(children: [
+                    _kpi(theme, '${(st.palestineShare * 100).round()}٪', 'محتوى فلسطيني'),
+                    const SizedBox(width: 10),
+                    _kpi(theme, st.peak ?? '—', 'ذروة النشاط'),
+                  ]),
+                  if (st.timeline.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text('النشاط خلال الفترة',
+                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: theme.textTheme.titleLarge?.color)),
+                    const SizedBox(height: 10),
+                    _bars(st.timeline),
+                  ],
+                  if (st.topSources.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text('أكثر المصادر نشاطاً',
+                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: theme.textTheme.titleLarge?.color)),
+                    const SizedBox(height: 10),
+                    ...st.topSources.map((s) => _srcRow(theme, ink, s.name, s.count, st.topSources.first.count)),
+                  ],
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _kpi(ThemeData theme, String value, String label) {
+    final isDark = theme.brightness == Brightness.dark;
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(13),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withOpacity(0.04) : Colors.black.withOpacity(0.025),
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(color: theme.dividerColor.withOpacity(0.6)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(value, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 21)),
+            const SizedBox(height: 2),
+            Text(label, style: theme.textTheme.bodySmall?.copyWith(fontSize: 11.5)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _bars(List<({String label, int count})> buckets) {
+    final maxCount = buckets.fold<int>(1, (m, b) => b.count > m ? b.count : m);
+    final step = (buckets.length / 8).ceil().clamp(1, 999);
+    return SizedBox(
+      height: 120,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: List.generate(buckets.length, (i) {
+          final b = buckets[i];
+          final frac = (b.count / maxCount).clamp(0.0, 1.0);
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 1.5),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Container(
+                    height: (88 * frac) + (b.count > 0 ? 3 : 0),
+                    decoration: BoxDecoration(
+                      color: widget.accent.withOpacity(b.count > 0 ? 0.85 : 0.15),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  SizedBox(
+                    height: 20,
+                    child: i % step == 0
+                        ? Text(b.label,
+                            style: const TextStyle(fontSize: 8),
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.clip)
+                        : const SizedBox.shrink(),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _srcRow(ThemeData theme, Color ink, String name, int count, int maxCount) {
+    final frac = maxCount > 0 ? (count / maxCount).clamp(0.05, 1.0) : 0.0;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 11),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Expanded(
+                child: Text(name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13))),
+            Text('$count', style: TextStyle(fontWeight: FontWeight.w800, color: ink)),
+          ]),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: frac,
+              minHeight: 8,
+              backgroundColor: widget.accent.withOpacity(0.12),
+              valueColor: AlwaysStoppedAnimation(widget.accent),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
