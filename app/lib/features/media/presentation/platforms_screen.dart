@@ -64,7 +64,8 @@ class _PlatformsScreenState extends ConsumerState<PlatformsScreen>
                 ('twitter', Color(0xFF1F2937), 'منصة X'),
                 ('youtube', Colors.red, 'يوتيوب'),
               ];
-              final m = meta[_tabCtl.index.clamp(0, 2)];
+              // 3-tab controller, so index is always 0..2.
+              final m = meta[_tabCtl.index];
               PlatformStatsSheet.show(context,
                   platform: m.$1, accent: m.$2, title: m.$3);
             },
