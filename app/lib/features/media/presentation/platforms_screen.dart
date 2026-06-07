@@ -39,6 +39,22 @@ class _PlatformsScreenState extends ConsumerState<PlatformsScreen>
       appBar: AppBar(
         title: const Text('المنصات'),
         actions: [
+          // De-duplication toggle — collapses the same story reported by
+          // many channels into one card. On by default.
+          Builder(builder: (context) {
+            final hideDup = ref.watch(hideDuplicatesProvider);
+            return IconButton(
+              tooltip: hideDup ? 'إظهار كل المنشورات' : 'إخفاء المكرر',
+              icon: Icon(hideDup ? Icons.filter_alt : Icons.filter_alt_off_outlined),
+              onPressed: () {
+                ref.read(hideDuplicatesProvider.notifier).state = !hideDup;
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  duration: const Duration(seconds: 2),
+                  content: Text(!hideDup ? 'تم إخفاء الأخبار المكررة' : 'يتم عرض كل المنشورات'),
+                ));
+              },
+            );
+          }),
           IconButton(
             tooltip: 'إحصاءات',
             icon: const Icon(Icons.bar_chart_rounded),
@@ -215,8 +231,8 @@ class _TelegramFeedState extends ConsumerState<_TelegramFeed>
                       hasContent: all.isNotEmpty,
                       onTap: () => doLoadMore(
                         beforeId: all.isNotEmpty ? all.last.id : null,
-                        fetch: (b) async =>
-                            ref.read(mediaRepositoryProvider).telegram(beforeId: b, limit: 30),
+                        fetch: (b) async => ref.read(mediaRepositoryProvider).telegram(
+                            beforeId: b, limit: 30, dedup: ref.read(hideDuplicatesProvider)),
                       ),
                     );
                   },
@@ -266,8 +282,8 @@ class _TwitterFeedState extends ConsumerState<_TwitterFeed>
                       hasContent: all.isNotEmpty,
                       onTap: () => doLoadMore(
                         beforeId: all.isNotEmpty ? all.last.id : null,
-                        fetch: (b) async =>
-                            ref.read(mediaRepositoryProvider).twitter(beforeId: b, limit: 30),
+                        fetch: (b) async => ref.read(mediaRepositoryProvider).twitter(
+                            beforeId: b, limit: 30, dedup: ref.read(hideDuplicatesProvider)),
                       ),
                     );
                   },
@@ -374,6 +390,29 @@ class _MessageCard extends StatelessWidget {
           if (msg.text.isNotEmpty)
             Padding(padding: const EdgeInsets.only(top: 10),
               child: Text(msg.text, style: const TextStyle(fontSize: 14, height: 1.6), maxLines: 6, overflow: TextOverflow.ellipsis)),
+          if (msg.duplicateCount > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Tooltip(
+                message: msg.alsoReportedBy.isNotEmpty
+                    ? 'أيضاً: ${msg.alsoReportedBy.join('، ')}'
+                    : '',
+                triggerMode: TooltipTriggerMode.tap,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: platformColor.withOpacity(0.10),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.dynamic_feed, size: 14, color: platformColor),
+                    const SizedBox(width: 4),
+                    Text('ورد من ${msg.duplicateCount + 1} مصدر',
+                        style: TextStyle(color: platformColor, fontSize: 12, fontWeight: FontWeight.w600)),
+                  ]),
+                ),
+              ),
+            ),
           if (msg.postUrl != null)
             Padding(padding: const EdgeInsets.only(top: 8),
               child: GestureDetector(

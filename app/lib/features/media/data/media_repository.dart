@@ -15,6 +15,8 @@ class TelegramMessage {
     required this.sourceName,
     this.sourceUsername,
     this.sourceAvatar,
+    this.duplicateCount = 0,
+    this.alsoReportedBy = const [],
   });
 
   final int id;
@@ -25,6 +27,18 @@ class TelegramMessage {
   final String sourceName;
   final String? sourceUsername;
   final String? sourceAvatar;
+
+  /// How many other sources reported the same story (set when the feed
+  /// is requested with dedup=1). Zero means "shown as-is / unique".
+  final int duplicateCount;
+
+  /// Display names of those other sources.
+  final List<String> alsoReportedBy;
+
+  static int _dupCount(Map<String, dynamic> j) =>
+      (j['duplicate_count'] as num?)?.toInt() ?? 0;
+  static List<String> _alsoReported(Map<String, dynamic> j) =>
+      (j['also_reported_by'] as List? ?? []).map((e) => e.toString()).toList();
 
   factory TelegramMessage.fromJson(Map<String, dynamic> j) {
     final s = (j['source'] as Map?)?.cast<String, dynamic>() ?? {};
@@ -39,6 +53,8 @@ class TelegramMessage {
       sourceName: (s['display_name'] as String?) ?? '',
       sourceUsername: s['username'] as String?,
       sourceAvatar: s['avatar_url'] as String?,
+      duplicateCount: _dupCount(j),
+      alsoReportedBy: _alsoReported(j),
     );
   }
 }
@@ -53,6 +69,8 @@ class TwitterMessage extends TelegramMessage {
     required super.sourceName,
     super.sourceUsername,
     super.sourceAvatar,
+    super.duplicateCount,
+    super.alsoReportedBy,
   });
 
   factory TwitterMessage.fromJson(Map<String, dynamic> j) {
@@ -66,6 +84,8 @@ class TwitterMessage extends TelegramMessage {
       sourceName: base.sourceName,
       sourceUsername: base.sourceUsername,
       sourceAvatar: base.sourceAvatar,
+      duplicateCount: base.duplicateCount,
+      alsoReportedBy: base.alsoReportedBy,
     );
   }
 }
@@ -335,13 +355,15 @@ class MediaRepository {
   MediaRepository(this._api);
   final ApiClient _api;
 
-  Future<List<TelegramMessage>> telegram({int? sinceId, int? beforeId, int limit = 30}) async {
+  Future<List<TelegramMessage>> telegram(
+      {int? sinceId, int? beforeId, int limit = 30, bool dedup = false}) async {
     final res = await _api.get<List<TelegramMessage>>(
       '/media/telegram',
       query: {
         'limit': limit,
         if (sinceId != null) 'since_id': sinceId,
         if (beforeId != null) 'before_id': beforeId,
+        if (dedup) 'dedup': 1,
       },
       decode: (d) => (d as List)
           .whereType<Map>()
@@ -351,7 +373,8 @@ class MediaRepository {
     return res.data ?? const [];
   }
 
-  Future<List<TwitterMessage>> twitter({int? sinceId, int? beforeId, int limit = 30, bool sync = false}) async {
+  Future<List<TwitterMessage>> twitter(
+      {int? sinceId, int? beforeId, int limit = 30, bool sync = false, bool dedup = false}) async {
     final res = await _api.get<List<TwitterMessage>>(
       '/media/twitter',
       query: {
@@ -361,6 +384,7 @@ class MediaRepository {
         // Opt-in scrape trigger — server only actually scrapes if its
         // newest tweet is >30s old AND the cross-process cooldown allows.
         if (sync) 'sync': 1,
+        if (dedup) 'dedup': 1,
       },
       decode: (d) => (d as List)
           .whereType<Map>()
@@ -485,14 +509,20 @@ class MediaRepository {
 final mediaRepositoryProvider =
     Provider<MediaRepository>((ref) => MediaRepository(ref.watch(apiClientProvider)));
 
+/// Whether the social feeds collapse near-duplicate posts. Toggling it
+/// invalidates the feed providers (they watch it), so the list rebuilds
+/// with/without de-duplication. On by default.
+final hideDuplicatesProvider = StateProvider<bool>((ref) => true);
+
 /// Auto-refreshing social feed providers — poll every 60 seconds.
 /// Polling only starts when the provider has active listeners (i.e. the UI is visible).
 final telegramFeedProvider = FutureProvider<List<TelegramMessage>>((ref) {
+  final dedup = ref.watch(hideDuplicatesProvider);
   final timer = Timer.periodic(const Duration(seconds: 60), (_) {
     ref.invalidateSelf();
   });
   ref.onDispose(timer.cancel);
-  return ref.watch(mediaRepositoryProvider).telegram();
+  return ref.watch(mediaRepositoryProvider).telegram(dedup: dedup);
 });
 
 // Twitter polls more aggressively than the other social feeds because
@@ -500,11 +530,12 @@ final telegramFeedProvider = FutureProvider<List<TelegramMessage>>((ref) {
 // Each poll passes sync:true so the API kicks a real scrape behind its
 // shared lock — the lock prevents stampedes across mobile + web users.
 final twitterFeedProvider = FutureProvider<List<TwitterMessage>>((ref) {
+  final dedup = ref.watch(hideDuplicatesProvider);
   final timer = Timer.periodic(const Duration(seconds: 30), (_) {
     ref.invalidateSelf();
   });
   ref.onDispose(timer.cancel);
-  return ref.watch(mediaRepositoryProvider).twitter(sync: true);
+  return ref.watch(mediaRepositoryProvider).twitter(sync: true, dedup: dedup);
 });
 
 final youtubeFeedProvider = FutureProvider<List<YoutubeVideo>>((ref) {
