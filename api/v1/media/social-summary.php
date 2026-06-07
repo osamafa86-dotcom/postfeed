@@ -1,7 +1,10 @@
 <?php
 /**
- * GET /api/v1/media/social-summary?platform=telegram|twitter
- * Returns the latest AI-generated summary for a social platform.
+ * GET /api/v1/media/social-summary?platform=telegram|twitter|youtube
+ * Returns the latest AI-generated rich daily summary for a platform:
+ * headline, subheadline, summary, sections[], key_numbers[], regions[],
+ * topics[]. Telegram comes from the dedicated telegram_summaries table;
+ * twitter/youtube from the generic social_summaries table.
  */
 require_once __DIR__ . '/../_bootstrap.php';
 require_once __DIR__ . '/../../../includes/ai_helper.php';
@@ -11,62 +14,28 @@ api_rate_limit('media:social-summary', 120, 60);
 
 $platform = strtolower(trim((string)($_GET['platform'] ?? '')));
 
-if (!in_array($platform, ['telegram', 'twitter'], true)) {
-    api_err('invalid_platform', 'يرجى تحديد المنصة: telegram أو twitter', 400);
+if (!in_array($platform, ['telegram', 'twitter', 'youtube'], true)) {
+    api_err('invalid_platform', 'يرجى تحديد المنصة: telegram أو twitter أو youtube', 400);
 }
 
-// ── Telegram summary ──
-if ($platform === 'telegram') {
-    $latest = tg_summary_get_latest();
-    if (!$latest) {
-        api_err('not_found', 'لا يوجد ملخص تلغرام متاح حالياً', 404);
-    }
-    api_ok([
-        'platform'   => 'telegram',
-        'summary'    => $latest['summary'] ?? '',
-        'headline'   => $latest['headline'] ?? '',
-        'sections'   => $latest['sections'] ?? [],
-        'topics'     => $latest['topics'] ?? [],
-        'generated_at' => $latest['generated_at'] ?? null,
-    ]);
+// Telegram keeps its dedicated store; the others use the generic one.
+$latest = $platform === 'telegram'
+    ? tg_summary_get_latest()
+    : social_summary_get_latest($platform);
+
+if (!$latest || empty($latest['summary'])) {
+    api_err('not_found', 'لا يوجد ملخص متاح حالياً لهذه المنصة', 404);
 }
 
-// ── Twitter summary ──
-if ($platform === 'twitter') {
-    $summary = null;
-    try {
-        $db = getDB();
-        // Optional precomputed table if ops adds one later.
-        $hasTbl = $db->query("SHOW TABLES LIKE 'twitter_summaries'")->fetch();
-        if ($hasTbl) {
-            $row = $db->query("SELECT * FROM twitter_summaries ORDER BY created_at DESC LIMIT 1")
-                      ->fetch(PDO::FETCH_ASSOC);
-            if ($row) {
-                $summary = $row['summary'] ?? ($row['body'] ?? '');
-            }
-        }
-
-        // Fallback: build a digest from the actual twitter_messages
-        // table (the old code queried a non-existent `tweets` table).
-        if (!$summary) {
-            $tweets = $db->query("SELECT text FROM twitter_messages
-                                  WHERE is_active = 1
-                                  ORDER BY posted_at DESC LIMIT 20")
-                         ->fetchAll(PDO::FETCH_COLUMN);
-            if (!empty($tweets)) {
-                $summary = 'أبرز ما نُشر على تويتر: ' . implode(' | ', array_slice($tweets, 0, 5));
-            }
-        }
-    } catch (Throwable $e) {
-        error_log('social-summary twitter: ' . $e->getMessage());
-    }
-
-    if (!$summary) {
-        api_err('not_found', 'لا يوجد ملخص تويتر متاح حالياً', 404);
-    }
-
-    api_ok([
-        'platform' => 'twitter',
-        'summary'  => $summary,
-    ]);
-}
+api_ok([
+    'platform'     => $platform,
+    'headline'     => $latest['headline']     ?? '',
+    'subheadline'  => $latest['subheadline']  ?? '',
+    'summary'      => $latest['summary']      ?? '',
+    'sections'     => $latest['sections']     ?? [],
+    'key_numbers'  => $latest['key_numbers']  ?? [],
+    'regions'      => $latest['regions']      ?? [],
+    'topics'       => $latest['topics']       ?? [],
+    'message_count'=> $latest['message_count']?? 0,
+    'generated_at' => $latest['generated_at'] ?? null,
+]);

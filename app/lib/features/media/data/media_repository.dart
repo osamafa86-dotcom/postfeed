@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/api/api_exception.dart';
 
 class TelegramMessage {
   const TelegramMessage({
@@ -206,6 +207,81 @@ class MapPoint {
   }
 }
 
+/// One section of a rich platform summary (a deep-dive on a topic).
+class PlatformSummarySection {
+  const PlatformSummarySection({
+    required this.title,
+    this.icon = '',
+    this.items = const [],
+    this.whyMatters = '',
+  });
+
+  final String title;
+  final String icon;
+  final List<String> items;
+  final String whyMatters;
+
+  factory PlatformSummarySection.fromJson(Map<String, dynamic> j) =>
+      PlatformSummarySection(
+        title: (j['title'] as String?) ?? '',
+        icon: (j['icon'] as String?) ?? '',
+        items: (j['items'] as List? ?? []).map((e) => e.toString()).toList(),
+        whyMatters: (j['why_matters'] as String?) ?? '',
+      );
+}
+
+/// Rich, de-duplicated daily AI summary for a social platform.
+/// Mirrors /api/v1/media/social-summary (telegram/twitter/youtube).
+class PlatformSummary {
+  const PlatformSummary({
+    this.summary = '',
+    this.headline = '',
+    this.subheadline = '',
+    this.sections = const [],
+    this.keyNumbers = const [],
+    this.regions = const [],
+    this.topics = const [],
+    this.messageCount = 0,
+    this.generatedAt,
+  });
+
+  final String summary;
+  final String headline;
+  final String subheadline;
+  final List<PlatformSummarySection> sections;
+  final List<({String value, String context})> keyNumbers;
+  final List<String> regions;
+  final List<String> topics;
+  final int messageCount;
+  final DateTime? generatedAt;
+
+  bool get isEmpty => summary.isEmpty && sections.isEmpty;
+
+  factory PlatformSummary.fromJson(Map<String, dynamic> j) => PlatformSummary(
+        summary: (j['summary'] as String?) ?? '',
+        headline: (j['headline'] as String?) ?? '',
+        subheadline: (j['subheadline'] as String?) ?? '',
+        sections: (j['sections'] as List? ?? [])
+            .whereType<Map>()
+            .map((m) => PlatformSummarySection.fromJson(m.cast<String, dynamic>()))
+            .toList(),
+        keyNumbers: (j['key_numbers'] as List? ?? [])
+            .whereType<Map>()
+            .map((m) => (
+                  value: (m['value'] ?? '').toString(),
+                  context: (m['context'] ?? '').toString(),
+                ))
+            .where((e) => e.value.isNotEmpty)
+            .toList(),
+        regions: (j['regions'] as List? ?? []).map((e) => e.toString()).toList(),
+        topics: (j['topics'] as List? ?? []).map((e) => e.toString()).toList(),
+        messageCount: (j['message_count'] as num?)?.toInt() ?? 0,
+        generatedAt: j['generated_at'] != null
+            ? DateTime.tryParse(j['generated_at'].toString())
+            : null,
+      );
+}
+
 class MediaRepository {
   MediaRepository(this._api);
   final ApiClient _api;
@@ -305,6 +381,7 @@ class MediaRepository {
   }
 
   /// AI summary of latest social media posts (telegram/twitter).
+  /// Kept for the flat-string consumers (home screen teaser).
   Future<String> socialSummary(String platform) async {
     final res = await _api.get<Map<String, dynamic>>(
       '/media/social-summary',
@@ -312,6 +389,24 @@ class MediaRepository {
       decode: (d) => (d as Map).cast<String, dynamic>(),
     );
     return res.data?['summary']?.toString() ?? '';
+  }
+
+  /// Rich, de-duplicated daily summary for a platform
+  /// (telegram/twitter/youtube). Returns an empty summary (not an error)
+  /// when none has been generated yet, so the UI can simply hide the card.
+  Future<PlatformSummary> platformSummary(String platform) async {
+    try {
+      final res = await _api.get<PlatformSummary>(
+        '/media/social-summary',
+        query: {'platform': platform},
+        decode: (d) => PlatformSummary.fromJson((d as Map).cast<String, dynamic>()),
+      );
+      return res.data ?? const PlatformSummary();
+    } on ApiException catch (e) {
+      // 404 = "no summary generated yet" — treat as empty, not an error.
+      if (e.code == 'not_found' || e.status == 404) return const PlatformSummary();
+      rethrow;
+    }
   }
 
   Future<({String? audioUrl, int duration, bool cached})> ttsForArticle(int articleId) async {
@@ -375,3 +470,10 @@ final telegramSummaryProvider = FutureProvider<String>(
 
 final twitterSummaryProvider = FutureProvider<String>(
     (ref) => ref.watch(mediaRepositoryProvider).socialSummary('twitter'));
+
+/// Rich per-platform summary providers (telegram/twitter/youtube),
+/// consumed by the collapsible summary card atop each platform tab.
+final platformSummaryProvider =
+    FutureProvider.family<PlatformSummary, String>((ref, platform) {
+  return ref.watch(mediaRepositoryProvider).platformSummary(platform);
+});

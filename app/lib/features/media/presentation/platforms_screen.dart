@@ -181,11 +181,16 @@ class _TelegramFeedState extends ConsumerState<_TelegramFeed>
               ? const EmptyView(message: 'لا توجد منشورات')
               : ListView.separated(
                   padding: const EdgeInsets.all(16),
-                  itemCount: all.length + 1,
+                  itemCount: all.length + 2,
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (_, i) {
-                    if (i < all.length) {
-                      return _MessageCard(msg: all[i], platformColor: const Color(0xFF0EA5E9), platformName: 'تلغرام');
+                    if (i == 0) {
+                      return const _PlatformSummaryCard(
+                          platform: 'telegram', accent: Color(0xFF0EA5E9));
+                    }
+                    final idx = i - 1;
+                    if (idx < all.length) {
+                      return _MessageCard(msg: all[idx], platformColor: const Color(0xFF0EA5E9), platformName: 'تلغرام');
                     }
                     return _loadMoreButton(
                       loading: _loadingMore,
@@ -227,11 +232,16 @@ class _TwitterFeedState extends ConsumerState<_TwitterFeed>
               ? const EmptyView(message: 'لا توجد منشورات')
               : ListView.separated(
                   padding: const EdgeInsets.all(16),
-                  itemCount: all.length + 1,
+                  itemCount: all.length + 2,
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (_, i) {
-                    if (i < all.length) {
-                      return _MessageCard(msg: all[i], platformColor: const Color(0xFF1F2937), platformName: 'X');
+                    if (i == 0) {
+                      return const _PlatformSummaryCard(
+                          platform: 'twitter', accent: Color(0xFF1F2937));
+                    }
+                    final idx = i - 1;
+                    if (idx < all.length) {
+                      return _MessageCard(msg: all[idx], platformColor: const Color(0xFF1F2937), platformName: 'X');
                     }
                     return _loadMoreButton(
                       loading: _loadingMore,
@@ -273,11 +283,16 @@ class _YoutubeFeedState extends ConsumerState<_YoutubeFeed>
               ? const EmptyView(message: 'لا توجد فيديوهات')
               : ListView.separated(
                   padding: const EdgeInsets.all(16),
-                  itemCount: all.length + 1,
+                  itemCount: all.length + 2,
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (_, i) {
-                    if (i < all.length) {
-                      return _YoutubeCard(video: all[i]);
+                    if (i == 0) {
+                      return const _PlatformSummaryCard(
+                          platform: 'youtube', accent: Colors.red);
+                    }
+                    final idx = i - 1;
+                    if (idx < all.length) {
+                      return _YoutubeCard(video: all[idx]);
                     }
                     return _loadMoreButton(
                       loading: _loadingMore,
@@ -428,5 +443,187 @@ class _YoutubeCard extends StatelessWidget {
     final m = seconds ~/ 60;
     final s = seconds % 60;
     return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
+}
+
+/// Collapsible "ملخص اليوم" card shown at the top of each platform tab.
+/// Renders the rich, de-duplicated daily AI summary (headline, paragraph,
+/// key numbers, deep-dive sections, topics). Hides itself entirely while
+/// loading, on error, or when no summary has been generated yet.
+class _PlatformSummaryCard extends ConsumerStatefulWidget {
+  const _PlatformSummaryCard({required this.platform, required this.accent});
+  final String platform;
+  final Color accent;
+
+  @override
+  ConsumerState<_PlatformSummaryCard> createState() => _PlatformSummaryCardState();
+}
+
+class _PlatformSummaryCardState extends ConsumerState<_PlatformSummaryCard> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final asy = ref.watch(platformSummaryProvider(widget.platform));
+    return asy.maybeWhen(
+      orElse: () => const SizedBox.shrink(),
+      data: (s) {
+        if (s.isEmpty) return const SizedBox.shrink();
+        final theme = Theme.of(context);
+        return Container(
+          margin: const EdgeInsets.only(bottom: 4),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+              colors: [widget.accent.withOpacity(0.10), widget.accent.withOpacity(0.02)],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: widget.accent.withOpacity(0.25)),
+          ),
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Text('🧠', style: TextStyle(fontSize: 18, color: widget.accent)),
+                const SizedBox(width: 6),
+                Text('ملخص اليوم',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: widget.accent)),
+                const Spacer(),
+                if (s.generatedAt != null)
+                  Text(timeago.format(s.generatedAt!, locale: 'ar'),
+                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 11)),
+              ]),
+              if (s.headline.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(s.headline,
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, height: 1.4)),
+                ),
+              if (s.summary.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    s.summary,
+                    style: const TextStyle(fontSize: 13.5, height: 1.7),
+                    maxLines: _expanded ? null : 3,
+                    overflow: _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
+                  ),
+                ),
+              if (_expanded) ..._buildExpanded(context, s),
+              const SizedBox(height: 6),
+              Row(children: [
+                if (s.messageCount > 0)
+                  Text('📡 جُمِّع من ${s.messageCount} منشور بلا تكرار',
+                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 11)),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: () => setState(() => _expanded = !_expanded),
+                  icon: Icon(_expanded ? Icons.expand_less : Icons.expand_more,
+                      size: 20, color: widget.accent),
+                  label: Text(_expanded ? 'طيّ' : 'الملخص الكامل',
+                      style: TextStyle(color: widget.accent, fontWeight: FontWeight.w700, fontSize: 13)),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: const Size(0, 32),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ]),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  List<Widget> _buildExpanded(BuildContext context, PlatformSummary s) {
+    final theme = Theme.of(context);
+    return [
+      // Key numbers row.
+      if (s.keyNumbers.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: s.keyNumbers
+                .map((n) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: widget.accent.withOpacity(0.10),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(n.value,
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: widget.accent)),
+                          Text(n.context,
+                              style: theme.textTheme.bodySmall?.copyWith(fontSize: 10.5)),
+                        ],
+                      ),
+                    ))
+                .toList(),
+          ),
+        ),
+      // Deep-dive sections.
+      for (final sec in s.sections)
+        Padding(
+          padding: const EdgeInsets.only(top: 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                if (sec.icon.isNotEmpty) Text(sec.icon, style: const TextStyle(fontSize: 16)),
+                if (sec.icon.isNotEmpty) const SizedBox(width: 6),
+                Expanded(
+                  child: Text(sec.title,
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                ),
+              ]),
+              for (final item in sec.items)
+                Padding(
+                  padding: const EdgeInsets.only(top: 5, right: 4),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('• ', style: TextStyle(color: widget.accent, fontWeight: FontWeight.w900)),
+                    Expanded(
+                      child: Text(item, style: const TextStyle(fontSize: 13, height: 1.6)),
+                    ),
+                  ]),
+                ),
+              if (sec.whyMatters.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text('لماذا يهم؟ ${sec.whyMatters}',
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(fontStyle: FontStyle.italic, fontSize: 11.5)),
+                ),
+            ],
+          ),
+        ),
+      // Topics.
+      if (s.topics.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(top: 14),
+          child: Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: s.topics
+                .map((t) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: theme.cardColor,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: widget.accent.withOpacity(0.3)),
+                      ),
+                      child: Text('#$t',
+                          style: TextStyle(fontSize: 11.5, color: widget.accent, fontWeight: FontWeight.w600)),
+                    ))
+                .toList(),
+          ),
+        ),
+    ];
   }
 }

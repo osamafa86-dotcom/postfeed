@@ -639,6 +639,336 @@ function tg_summary_collect_messages(int $windowMins = 60, int $maxMsgs = 250): 
     return $messages;
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// Generic social-platform briefings (Twitter/X, YouTube).
+//
+// Telegram keeps its own dedicated `telegram_summaries` table + the
+// tg_summary_* helpers above (battle-tested, the app already reads it).
+// Twitter and YouTube reuse this single generic `social_summaries`
+// table keyed by `platform`, so adding a new platform later is just a
+// new collect() branch — no new table, no new helper family.
+// ═══════════════════════════════════════════════════════════════════
+
+/** Palestinian-focus regex, shared by the social briefings. */
+function nf_palestine_regex(): string {
+    return '/فلسطين|غزة|الضفة|القدس|الأقصى|قبة الصخرة|'
+         . 'الأسرى|الأسير|الأسيرات|أسير|معتقل|اعتقال|نادي الأسير|'
+         . 'مستوطن|مستوطنين|الاستيطان|استيطان|بؤرة استيطانية|'
+         . 'الاحتلال|الجيش الإسرائيلي|إسرائيل|نتنياهو|'
+         . 'رفح|خان يونس|جباليا|الشجاعية|دير البلح|النصيرات|المغازي|البريج|شمال غزة|جنوب غزة|معبر رفح|'
+         . 'نابلس|جنين|رام الله|الخليل|طولكرم|قلقيلية|بيت لحم|أريحا|سلفيت|طوباس|بيتا|حوارة|'
+         . 'حزب الله|جنوب لبنان|الحوثي|اليمن|'
+         . 'حماس|الجهاد الإسلامي|الفصائل|كتائب القسام|سرايا القدس|'
+         . 'شهيد|شهداء|استشهاد|عدوان|قصف|اقتحام|مجزرة|إبادة/u';
+}
+
+/** The structured-output tool schema shared by all social briefings. */
+function nf_social_briefing_tool(): array {
+    $sectionItem = [
+        'type' => 'object',
+        'properties' => [
+            'title'       => ['type' => 'string'],
+            'icon'        => ['type' => 'string', 'description' => 'emoji واحد'],
+            'items'       => [
+                'type' => 'array',
+                'description' => '4-7 تفاصيل إخبارية مجموعة من منشورات متعددة بدون تكرار',
+                'items' => ['type' => 'string'],
+            ],
+            'why_matters' => ['type' => 'string'],
+        ],
+        'required' => ['title', 'items'],
+    ];
+    return [
+        'name'        => 'submit_social_briefing',
+        'description' => 'Submit a comprehensive, de-duplicated daily summary of social-platform posts.',
+        'input_schema' => [
+            'type'       => 'object',
+            'properties' => [
+                'headline'    => ['type' => 'string', 'description' => 'عنوان 60-90 حرفاً.'],
+                'subheadline' => ['type' => 'string', 'description' => 'عنوان فرعي 80-130 حرفاً.'],
+                'summary'     => ['type' => 'string', 'description' => 'فقرة افتتاحية 6-8 جمل (120-200 كلمة).'],
+                'sections'    => ['type' => 'array', 'description' => '5-7 محاور.', 'items' => $sectionItem],
+                'key_numbers' => [
+                    'type' => 'array', 'description' => '4-7 أرقام بارزة.',
+                    'items' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'value'   => ['type' => 'string'],
+                            'context' => ['type' => 'string'],
+                        ],
+                        'required' => ['value', 'context'],
+                    ],
+                ],
+                'regions' => ['type' => 'array', 'description' => '3-5 مناطق.', 'items' => ['type' => 'string']],
+                'topics'  => ['type' => 'array', 'description' => '5-8 وسوم قصيرة بدون #.', 'items' => ['type' => 'string']],
+            ],
+            'required' => ['headline', 'summary', 'sections', 'topics'],
+        ],
+    ];
+}
+
+/**
+ * Build a comprehensive, de-duplicated daily briefing for a social
+ * platform ('twitter' or 'youtube'). Same rich structure as the
+ * Telegram daily briefing (headline/sections/key_numbers/topics), with
+ * an explicit "merge duplicates" rule so the same story reported by
+ * many accounts collapses into a single section item.
+ */
+function ai_summarize_social_daily(string $platform, array $messages, int $maxTokens = 5000): array {
+    if (!$messages) {
+        return ['ok' => false, 'error' => 'لا توجد منشورات للتلخيص'];
+    }
+    $platform   = strtolower($platform);
+    $platformAr = $platform === 'youtube' ? 'يوتيوب' : 'منصة X (تويتر)';
+    $unit       = $platform === 'youtube' ? 'فيديو' : 'منشور';
+    $paleRegex  = nf_palestine_regex();
+
+    // Two-pass corpus build: Palestinian-relevant first so the 60K budget
+    // never truncates them.
+    $paleLines = [];
+    $otherLines = [];
+    foreach ($messages as $m) {
+        $text = trim((string)($m['text'] ?? ''));
+        if ($text === '') continue;
+        $text = preg_replace('/\s+/u', ' ', $text);
+        if (mb_strlen($text) > 400) $text = mb_substr($text, 0, 400) . '…';
+        $handle = '@' . ($m['username'] ?? ($m['display_name'] ?? $platform));
+        $when   = !empty($m['posted_at']) ? date('H:i', strtotime($m['posted_at'])) : '';
+        $isPale = (bool)preg_match($paleRegex, $text);
+        $marker = $isPale ? '🇵🇸 ' : '';
+        $line   = '- ' . $marker . '[' . $handle . ' ' . $when . '] ' . $text;
+        if ($isPale) $paleLines[] = $line; else $otherLines[] = $line;
+    }
+
+    $totalBudget = 60000;
+    $paleBudget  = (int)($totalBudget * 0.80);
+    $packed = [];
+    $used = 0;
+    foreach ($paleLines as $l) {
+        $len = mb_strlen($l) + 1;
+        if ($used + $len > $paleBudget) break;
+        $packed[] = $l; $used += $len;
+    }
+    foreach ($otherLines as $l) {
+        $len = mb_strlen($l) + 1;
+        if ($used + $len > $totalBudget) break;
+        $packed[] = $l; $used += $len;
+    }
+    if (!$packed) {
+        return ['ok' => false, 'error' => 'لا توجد منشورات نصية كافية للتلخيص'];
+    }
+
+    $corpus = implode("\n", $packed);
+    $count  = count($packed);
+    $paleCount = count(array_filter($packed, fn($l) => strpos($l, '🇵🇸') !== false));
+
+    $prompt = "أنت رئيس تحرير في غرفة أخبار عربية متخصصة بالشأن الفلسطيني والعربي.\n\n"
+            . "لديك {$count} {$unit} من حسابات {$platformAr} الإخبارية خلال آخر 24 ساعة، "
+            . "منها **{$paleCount} فلسطينية** (معلّمة بـ 🇵🇸). مهمتك: إعداد ملخص يومي شامل ودقيق.\n\n"
+            . "**قاعدة عدم التكرار (الأهم)**:\n"
+            . "- نفس الخبر يصل من حسابات متعددة بصياغات متشابهة. **اجمعها كلها في عنصر واحد** واستخدم الرواية الأشمل.\n"
+            . "- لو خبر متطوّر خلال اليوم، اعرضه كخط زمني في عنصر واحد.\n\n"
+            . "**التركيز التحريري**: 80% على الأقل فلسطيني (غزة، الضفة، القدس، الأسرى، الاستيطان، الشهداء).\n\n"
+            . "قواعد: عربية فصحى راقية، تجاهل الإعلانات وروابط الاشتراك، لا تخترع معلومات، "
+            . "استخدم \"الشهداء\" لا \"القتلى\" و\"الاحتلال\" لا \"إسرائيل\" إلا رسمياً.\n\n"
+            . "البنية: headline (60-90 حرف)، subheadline (80-130)، summary (6-8 جمل)، "
+            . "sections (5-7 محاور، كل محور title+icon+items مجموعة بدون تكرار+why_matters)، "
+            . "key_numbers (4-7 تشمل أرقاماً فلسطينية)، regions (3-5)، topics (5-8 بدون #).\n\n"
+            . "المنشورات (🇵🇸 لها أولوية قصوى):\n" . $corpus;
+
+    $call = ai_provider_tool_call($prompt, nf_social_briefing_tool(), $maxTokens);
+    if (empty($call['ok'])) {
+        return ['ok' => false, 'error' => (string)($call['error'] ?? 'تعذّر توليد الملخص.')];
+    }
+    $parsed = $call['input'];
+    if (!is_array($parsed) || empty($parsed['summary'])) {
+        return ['ok' => false, 'error' => 'تعذّر توليد الملخص.'];
+    }
+
+    $sections = [];
+    foreach ((array)($parsed['sections'] ?? []) as $sec) {
+        if (!is_array($sec)) continue;
+        $items = array_values(array_filter(array_map(
+            fn($v) => trim((string)$v), (array)($sec['items'] ?? [])
+        )));
+        if (!$items) continue;
+        $sections[] = [
+            'title'       => trim((string)($sec['title'] ?? '')),
+            'icon'        => trim((string)($sec['icon']  ?? '')),
+            'items'       => $items,
+            'why_matters' => trim((string)($sec['why_matters'] ?? '')),
+        ];
+    }
+    $keyNumbers = [];
+    foreach ((array)($parsed['key_numbers'] ?? []) as $n) {
+        if (!is_array($n)) continue;
+        $v = trim((string)($n['value'] ?? ''));
+        $c = trim((string)($n['context'] ?? ''));
+        if ($v === '' || $c === '') continue;
+        $keyNumbers[] = ['value' => $v, 'context' => $c];
+        if (count($keyNumbers) >= 7) break;
+    }
+    $regions = [];
+    foreach ((array)($parsed['regions'] ?? []) as $r) {
+        $r = trim((string)$r);
+        if ($r !== '' && !in_array($r, $regions, true)) $regions[] = $r;
+        if (count($regions) >= 5) break;
+    }
+
+    return [
+        'ok'          => true,
+        'headline'    => (string)($parsed['headline'] ?? ''),
+        'subheadline' => (string)($parsed['subheadline'] ?? ''),
+        'summary'     => (string)$parsed['summary'],
+        'sections'    => $sections,
+        'key_numbers' => $keyNumbers,
+        'regions'     => $regions,
+        'topics'      => array_values(array_filter(array_map('strval', (array)($parsed['topics'] ?? [])))),
+    ];
+}
+
+/** Idempotent: create the generic per-platform summaries table. */
+function social_summary_ensure_table(): void {
+    static $ensured = false;
+    if ($ensured) return;
+    try {
+        $db = getDB();
+        $db->exec("CREATE TABLE IF NOT EXISTS social_summaries (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            platform VARCHAR(16) NOT NULL,
+            headline VARCHAR(300) NOT NULL DEFAULT '',
+            subheadline VARCHAR(400) NOT NULL DEFAULT '',
+            summary TEXT NOT NULL,
+            sections LONGTEXT,
+            topics TEXT,
+            key_numbers TEXT,
+            regions TEXT,
+            window_mins SMALLINT UNSIGNED NOT NULL DEFAULT 1440,
+            message_count SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+            generated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_platform_generated (platform, generated_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $ensured = true;
+    } catch (Throwable $e) {}
+}
+
+/** Insert a generated platform briefing; return the new row id. */
+function social_summary_save(string $platform, array $ai, int $messageCount, int $windowMins = 1440): ?int {
+    if (empty($ai['ok'])) return null;
+    social_summary_ensure_table();
+    $db = getDB();
+    $stmt = $db->prepare("INSERT INTO social_summaries
+        (platform, headline, subheadline, summary, sections, topics, key_numbers, regions, window_mins, message_count)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $ok = $stmt->execute([
+        strtolower($platform),
+        (string)($ai['headline']    ?? ''),
+        (string)($ai['subheadline'] ?? ''),
+        (string)($ai['summary']     ?? ''),
+        json_encode($ai['sections']    ?? [], JSON_UNESCAPED_UNICODE),
+        json_encode($ai['topics']      ?? [], JSON_UNESCAPED_UNICODE),
+        json_encode($ai['key_numbers'] ?? [], JSON_UNESCAPED_UNICODE),
+        json_encode($ai['regions']     ?? [], JSON_UNESCAPED_UNICODE),
+        $windowMins,
+        $messageCount,
+    ]);
+    return $ok ? (int)$db->lastInsertId() : null;
+}
+
+/** Decode a stored social_summaries row into the API shape. */
+function social_summary_hydrate(array $row): array {
+    $sections   = json_decode((string)($row['sections']    ?? '[]'), true);
+    $topics     = json_decode((string)($row['topics']      ?? '[]'), true);
+    $keyNumbers = json_decode((string)($row['key_numbers'] ?? '[]'), true);
+    $regions    = json_decode((string)($row['regions']     ?? '[]'), true);
+    $tsSource = $row['generated_at_unix'] ?? $row['generated_at'] ?? null;
+    return [
+        'id'            => (int)$row['id'],
+        'platform'      => (string)$row['platform'],
+        'headline'      => (string)$row['headline'],
+        'subheadline'   => (string)($row['subheadline'] ?? ''),
+        'summary'       => (string)$row['summary'],
+        'sections'      => is_array($sections)   ? $sections   : [],
+        'topics'        => is_array($topics)     ? $topics     : [],
+        'key_numbers'   => is_array($keyNumbers) ? $keyNumbers : [],
+        'regions'       => is_array($regions)    ? $regions    : [],
+        'window_mins'   => (int)$row['window_mins'],
+        'message_count' => (int)$row['message_count'],
+        'generated_at'  => tg_summary_format_ts($tsSource),
+    ];
+}
+
+/** Most recent briefing for a platform, or null. */
+function social_summary_get_latest(string $platform): ?array {
+    social_summary_ensure_table();
+    try {
+        $db = getDB();
+        $stmt = $db->prepare("SELECT *, UNIX_TIMESTAMP(generated_at) AS generated_at_unix
+                                FROM social_summaries WHERE platform = ?
+                               ORDER BY generated_at DESC, id DESC LIMIT 1");
+        $stmt->execute([strtolower($platform)]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? social_summary_hydrate($row) : null;
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
+/** Keep the most recent N briefings per platform. */
+function social_summary_prune(string $platform, int $keep = 60): void {
+    social_summary_ensure_table();
+    $keep = max(1, min(500, $keep));
+    try {
+        $db = getDB();
+        $stmt = $db->prepare("DELETE FROM social_summaries
+            WHERE platform = ? AND id NOT IN (
+                SELECT id FROM (
+                    SELECT id FROM social_summaries WHERE platform = ?
+                    ORDER BY generated_at DESC, id DESC LIMIT {$keep}
+                ) keep_rows
+            )");
+        $stmt->execute([strtolower($platform), strtolower($platform)]);
+    } catch (Throwable $e) {}
+}
+
+/**
+ * Pull the posts that feed one social briefing. Twitter reads
+ * twitter_messages; YouTube concatenates title + description from
+ * youtube_videos so the AI has something textual to work with.
+ */
+function social_summary_collect(string $platform, int $windowMins = 1440, int $maxMsgs = 400): array {
+    $db = getDB();
+    $platform = strtolower($platform);
+    try {
+        if ($platform === 'twitter') {
+            $stmt = $db->prepare("SELECT m.text, m.posted_at, s.username, s.display_name
+                                  FROM twitter_messages m
+                                  JOIN twitter_sources s ON m.source_id = s.id
+                                  WHERE m.is_active=1 AND s.is_active=1
+                                    AND m.text IS NOT NULL AND m.text <> ''
+                                    AND m.posted_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
+                                  ORDER BY m.posted_at DESC LIMIT " . (int)$maxMsgs);
+            $stmt->execute([$windowMins]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        }
+        if ($platform === 'youtube') {
+            $stmt = $db->prepare("SELECT CONCAT_WS('. ', v.title, v.description) AS text,
+                                         v.posted_at, s.display_name, s.display_name AS username
+                                  FROM youtube_videos v
+                                  JOIN youtube_sources s ON v.source_id = s.id
+                                  WHERE v.is_active=1 AND s.is_active=1
+                                    AND v.title IS NOT NULL AND v.title <> ''
+                                    AND v.posted_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
+                                  ORDER BY v.posted_at DESC LIMIT " . (int)$maxMsgs);
+            $stmt->execute([$windowMins]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        }
+    } catch (Throwable $e) {
+        error_log('social_summary_collect: ' . $e->getMessage());
+    }
+    return [];
+}
+
 function ai_save_summary($articleId, $result) {
     if (!$result['ok']) return false;
     $db = getDB();
