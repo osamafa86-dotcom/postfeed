@@ -514,11 +514,12 @@ final mediaRepositoryProvider =
 /// with/without de-duplication. On by default.
 final hideDuplicatesProvider = StateProvider<bool>((ref) => true);
 
-/// Auto-refreshing social feed providers — poll every 60 seconds.
-/// Polling only starts when the provider has active listeners (i.e. the UI is visible).
+/// Auto-refreshing social feed providers — near-real-time polling (every
+/// 20-30s) so new posts surface without a manual pull-to-refresh. Polling
+/// only runs while the provider has active listeners (i.e. the UI is visible).
 final telegramFeedProvider = FutureProvider<List<TelegramMessage>>((ref) {
   final dedup = ref.watch(hideDuplicatesProvider);
-  final timer = Timer.periodic(const Duration(seconds: 60), (_) {
+  final timer = Timer.periodic(const Duration(seconds: 20), (_) {
     ref.invalidateSelf();
   });
   ref.onDispose(timer.cancel);
@@ -531,7 +532,7 @@ final telegramFeedProvider = FutureProvider<List<TelegramMessage>>((ref) {
 // shared lock — the lock prevents stampedes across mobile + web users.
 final twitterFeedProvider = FutureProvider<List<TwitterMessage>>((ref) {
   final dedup = ref.watch(hideDuplicatesProvider);
-  final timer = Timer.periodic(const Duration(seconds: 30), (_) {
+  final timer = Timer.periodic(const Duration(seconds: 25), (_) {
     ref.invalidateSelf();
   });
   ref.onDispose(timer.cancel);
@@ -539,7 +540,7 @@ final twitterFeedProvider = FutureProvider<List<TwitterMessage>>((ref) {
 });
 
 final youtubeFeedProvider = FutureProvider<List<YoutubeVideo>>((ref) {
-  final timer = Timer.periodic(const Duration(seconds: 60), (_) {
+  final timer = Timer.periodic(const Duration(seconds: 30), (_) {
     ref.invalidateSelf();
   });
   ref.onDispose(timer.cancel);

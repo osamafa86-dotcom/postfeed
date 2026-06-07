@@ -242,7 +242,7 @@ function ai_summarize_telegram_daily(array $messages, int $maxTokens = 5000): ar
     }
 
     // Pack: 80% of budget reserved for Palestinian content.
-    $totalBudget = 60000;
+    $totalBudget = 120000;
     $paleBudget  = (int)($totalBudget * 0.80);
     $otherBudget = $totalBudget - $paleBudget;
 
@@ -271,7 +271,7 @@ function ai_summarize_telegram_daily(array $messages, int $maxTokens = 5000): ar
 
     $prompt = "أنت رئيس تحرير كبير في غرفة أخبار عربية متخصصة بالشأن الفلسطيني والعربي.\n\n"
             . "لديك {$count} رسالة من قنوات تيليغرام إخبارية خلال آخر 24 ساعة، منها **{$paleCount} رسالة فلسطينية** "
-            . "(معلّمة بـ 🇵🇸). مهمتك: إعداد التقرير اليومي الختامي يُبث الساعة 10 مساءً بتوقيت القدس.\n\n"
+            . "(معلّمة بـ 🇵🇸). مهمتك: إعداد تقرير إخباري شامل ومحدّث يغطّي أبرز التطورات (يُحدَّث كل ٣ ساعات).\n\n"
             . "**التركيز التحريري** (مهم جداً):\n"
             . "- **80% على الأقل من المحتوى فلسطيني**: غزة، الضفة، القدس، الأقصى، الأسرى، الاستيطان، الاعتداءات، شهداء، اعتقالات.\n"
             . "- 4-5 محاور فلسطينية من أصل 5-7 محاور.\n"
@@ -607,7 +607,7 @@ function tg_summary_list(int $limit = 24): array {
  * Pull the Telegram messages that will feed one briefing.
  * Shared between the cron and the one-time seed path.
  */
-function tg_summary_collect_messages(int $windowMins = 60, int $maxMsgs = 250): array {
+function tg_summary_collect_messages(int $windowMins = 60, int $maxMsgs = 1500): array {
     $db = getDB();
     $stmt = $db->prepare("SELECT m.id, m.text, m.posted_at, s.username, s.display_name
                           FROM telegram_messages m
@@ -740,7 +740,7 @@ function ai_summarize_social_daily(string $platform, array $messages, int $maxTo
         if ($isPale) $paleLines[] = $line; else $otherLines[] = $line;
     }
 
-    $totalBudget = 60000;
+    $totalBudget = 120000;
     $paleBudget  = (int)($totalBudget * 0.80);
     $packed = [];
     $used = 0;
@@ -764,7 +764,7 @@ function ai_summarize_social_daily(string $platform, array $messages, int $maxTo
 
     $prompt = "أنت رئيس تحرير في غرفة أخبار عربية متخصصة بالشأن الفلسطيني والعربي.\n\n"
             . "لديك {$count} {$unit} من حسابات {$platformAr} الإخبارية خلال آخر 24 ساعة، "
-            . "منها **{$paleCount} فلسطينية** (معلّمة بـ 🇵🇸). مهمتك: إعداد ملخص يومي شامل ودقيق.\n\n"
+            . "منها **{$paleCount} فلسطينية** (معلّمة بـ 🇵🇸). مهمتك: إعداد ملخص شامل ودقيق ومحدّث.\n\n"
             . "**قاعدة عدم التكرار (الأهم)**:\n"
             . "- نفس الخبر يصل من حسابات متعددة بصياغات متشابهة. **اجمعها كلها في عنصر واحد** واستخدم الرواية الأشمل.\n"
             . "- لو خبر متطوّر خلال اليوم، اعرضه كخط زمني في عنصر واحد.\n\n"

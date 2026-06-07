@@ -1,14 +1,14 @@
 <?php
 /**
- * Social briefings generator — DAILY (Twitter/X + YouTube).
+ * Social briefings generator — every 3h (Twitter/X + YouTube).
  *
  * Mirrors cron_tg_summary.php but for the other two platforms. Produces
- * ONE comprehensive, de-duplicated summary per platform per day, stored
- * in the generic `social_summaries` table and served by
+ * a comprehensive, de-duplicated summary per platform every 3 hours,
+ * stored in the generic `social_summaries` table and served by
  * /api/v1/media/social-summary.php.
  *
- * Cron schedule (server runs UTC, 22:00 Jerusalem = 19:00 UTC):
- *   5 19 * * * curl -fsS "https://feedsnews.net/cron_social_summary.php?key=YOUR_CRON_KEY" > /dev/null
+ * Cron schedule (cPanel) — every 3 hours:
+ *   10 0,3,6,9,12,15,18,21 * * * curl -fsS "https://feedsnews.net/cron_social_summary.php?key=YOUR_CRON_KEY" > /dev/null
  *
  * Manual / CLI:
  *   php cron_social_summary.php                 # both platforms
@@ -31,9 +31,9 @@ if (PHP_SAPI !== 'cli') {
 
 @set_time_limit(300);
 
-$windowMins = 1440;   // full 24h window
-$maxMsgs    = 400;
-$maxTokens  = 5000;
+$windowMins = 1440;   // comprehensive 24h window, refreshed every 3h
+$maxMsgs    = 1200;
+$maxTokens  = 6500;
 
 $force = !empty($_GET['force']) || (PHP_SAPI === 'cli' && in_array('--force', $argv ?? [], true));
 
@@ -43,12 +43,12 @@ $only = in_array($only, ['twitter', 'youtube'], true) ? $only : '';
 $platforms = $only ? [$only] : ['twitter', 'youtube'];
 
 foreach ($platforms as $platform) {
-    // One-per-day guard (20h floor for clock drift), unless &force=1.
+    // Cadence guard (~2.5h floor for clock drift), unless &force=1.
     if (!$force) {
         $latest = social_summary_get_latest($platform);
         if ($latest && !empty($latest['generated_at'])) {
             $ageSecs = time() - strtotime($latest['generated_at']);
-            if ($ageSecs < 20 * 3600) {
+            if ($ageSecs < 9000) {
                 $hrs = round($ageSecs / 3600, 1);
                 echo "{$platform}: skip — latest is only {$hrs}h old (id={$latest['id']})\n";
                 continue;

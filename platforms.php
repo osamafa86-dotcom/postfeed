@@ -147,6 +147,11 @@ $metaDesc  = 'تابع أحدث ما يُنشر على تلغرام ومنصة X
   /* Feed */
   .pf-feed-bar { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
   .pf-feed-bar .lbl { font-weight:900; font-size:16px; color:var(--pf-text); }
+  .pf-live { display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:800; color:#16a34a; background:rgba(22,163,74,.12); padding:2px 9px; border-radius:20px; margin-inline-start:7px; vertical-align:middle; }
+  .pf-live::before { content:''; width:7px; height:7px; border-radius:50%; background:#16a34a; animation:pfpulse 1.4s infinite; }
+  @keyframes pfpulse { 0%{ box-shadow:0 0 0 0 rgba(22,163,74,.55); } 70%{ box-shadow:0 0 0 6px rgba(22,163,74,0); } 100%{ box-shadow:0 0 0 0 rgba(22,163,74,0); } }
+  .pf-msg.pf-new { animation:pfflash 2.2s ease; }
+  @keyframes pfflash { 0%{ background:var(--pf-tint); } 55%{ background:var(--pf-tint); } 100%{ background:var(--pf-card); } }
   .pf-switch { margin-inline-start:auto; display:flex; align-items:center; gap:8px; font-size:13px; color:var(--pf-muted); cursor:pointer; user-select:none; }
   .pf-switch input { appearance:none; -webkit-appearance:none; width:40px; height:22px; border-radius:11px; background:var(--pf-border); position:relative; cursor:pointer; transition:background .15s; flex:0 0 auto; }
   .pf-switch input:checked { background:var(--pf-accent-btn); }
@@ -225,7 +230,7 @@ include __DIR__ . '/includes/components/site_header.php';
     <!-- Feed -->
     <div class="pf-feedwrap">
       <div class="pf-feed-bar">
-        <span class="lbl">أحدث المنشورات</span>
+        <span class="lbl">أحدث المنشورات <span class="pf-live" title="يتحدّث تلقائياً">مباشر</span></span>
         <label class="pf-switch"><input type="checkbox" id="pfDedup" checked> إخفاء المكرر</label>
       </div>
       <div id="pfFeed"><div class="pf-loading"><div class="pf-spinner"></div>جارٍ التحميل…</div></div>
@@ -238,7 +243,7 @@ include __DIR__ . '/includes/components/site_header.php';
   'use strict';
   var API = '/api/v1/media/';
   var ACCENT = { telegram:'#0ea5e9', twitter:'#1f2937', youtube:'#dc2626' };
-  var state = { platform:'telegram', range:'24h', dedup:true };
+  var state = { platform:'telegram', range:'24h', dedup:true, seen:null };
 
   var elTabs    = document.getElementById('pfTabs');
   var elSummary = document.getElementById('pfSummary');
@@ -409,17 +414,40 @@ include __DIR__ . '/includes/components/site_header.php';
   });
 
   // ---------- Feed ----------
+  function feedQuery(p, limit){ return p + '?limit=' + (limit||40) + ((state.dedup && p!=='youtube') ? '&dedup=1' : ''); }
+  function cardFor(p, m){ return p==='youtube' ? videoCard(m) : msgCard(m); }
+
   function loadFeed(){
     elFeed.innerHTML = '<div class="pf-loading"><div class="pf-spinner"></div>جارٍ التحميل…</div>';
+    state.seen = null;                       // pause live polling until the base list is in
     var p = state.platform;
-    var q = p + '?limit=40' + ((state.dedup && p!=='youtube') ? '&dedup=1' : '');
-    api(q).then(function(res){
+    api(feedQuery(p, 40)).then(function(res){
       if(state.platform!==p) return;
       if(!res || !res.ok || !res.data || !res.data.length){
-        elFeed.innerHTML = '<div class="pf-empty">لا توجد منشورات.</div>';
+        elFeed.innerHTML = '<div class="pf-empty"><span class="ic">📭</span><span class="ti">لا توجد منشورات بعد</span>سيظهر هنا أحدث ما يُنشر على المنصة فور وصوله.</div>';
+        state.seen = {};
         return;
       }
-      elFeed.innerHTML = res.data.map(function(m){ return p==='youtube' ? videoCard(m) : msgCard(m); }).join('');
+      elFeed.innerHTML = res.data.map(function(m){ return cardFor(p, m); }).join('');
+      state.seen = {};
+      res.data.forEach(function(m){ state.seen[m.id] = 1; });
+    });
+  }
+
+  // ---------- Live updates: prepend newer posts without a manual refresh ----------
+  function pollFeed(){
+    if(document.hidden || !state.seen) return;            // skip when tab hidden or list not ready
+    var p = state.platform;
+    api(feedQuery(p, 20)).then(function(res){
+      if(state.platform!==p || !state.seen) return;        // platform switched mid-flight
+      if(!res || !res.ok || !res.data || !res.data.length) return;
+      var fresh = res.data.filter(function(m){ return !state.seen[m.id]; });
+      if(!fresh.length) return;
+      fresh.forEach(function(m){ state.seen[m.id] = 1; });
+      var emptyEl = elFeed.querySelector('.pf-empty');
+      if(emptyEl) elFeed.innerHTML = '';
+      elFeed.insertAdjacentHTML('afterbegin', fresh.map(function(m){ return cardFor(p, m); }).join(''));
+      for(var k=0; k<fresh.length; k++){ var n = elFeed.children[k]; if(n && n.classList) n.classList.add('pf-new'); }
     });
   }
 
@@ -483,6 +511,7 @@ include __DIR__ . '/includes/components/site_header.php';
   loadSummary();
   loadFeed();
   syncStatsLayout();
+  setInterval(pollFeed, 20000);   // near-real-time feed (every 20s, paused when tab hidden)
 })();
 </script>
 
