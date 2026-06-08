@@ -359,11 +359,11 @@ $trendsCount = is_array($trends) ? count($trends) : 0;
 ?>
 <div class="stats-strip">
   <div class="stats-strip-inner">
-    <span class="stat-chip stat-chip-blue"><span class="stat-chip-ico">🛡️</span><b><?php echo number_format($totalSources); ?></b><em>مصدراً موثوقاً</em></span>
-    <span class="stat-chip stat-chip-teal"><span class="stat-chip-ico">📅</span><b><?php echo number_format($todayCount); ?></b><em>خبراً اليوم</em></span>
-    <span class="stat-chip stat-chip-purple"><span class="stat-chip-ico">📰</span><b>كل 5 دقائق</b><em>تحديث مباشر</em></span>
+    <span class="stat-chip stat-chip-blue"><span class="stat-chip-ico">📑</span><b><?php echo number_format($todayCount); ?></b><em>خبراً اليوم</em></span>
+    <span class="stat-chip stat-chip-teal"><span class="stat-chip-ico">🗂</span><b><?php echo number_format($totalSources); ?></b><em>مصدراً موثوقاً</em></span>
+    <span class="stat-chip stat-chip-purple"><span class="stat-chip-ico">⏱</span><b>كل 5 دقائق</b><em>تحديث مباشر</em></span>
     <?php if ($trendsCount > 0): ?>
-    <span class="stat-chip stat-chip-orange"><span class="stat-chip-ico">🔥</span><b><?php echo $trendsCount; ?></b><em>مواضيع رائجة</em></span>
+    <span class="stat-chip stat-chip-orange"><span class="stat-chip-ico">📈</span><b><?php echo $trendsCount; ?></b><em>مواضيع رائجة</em></span>
     <?php endif; ?>
   </div>
 </div>
@@ -534,6 +534,7 @@ $trendsCount = is_array($trends) ? count($trends) : 0;
 // cards before the main feature. Remainder spills into the main grid below.
 $__featMain  = $latestArticles[0] ?? null;
 $__featSide  = array_slice($latestArticles, 1, 2);
+$__featGrid  = array_slice($latestArticles, 3, 6);
 ?>
 <?php if ($__featMain): ?>
 <div class="nf-feature-container">
@@ -593,6 +594,21 @@ $__featSide  = array_slice($latestArticles, 1, 2);
 </div>
 <?php endif; ?>
 
+<?php if (!empty($__featGrid)): ?>
+<!-- آخر الأخبار 3×2 grid (matches Figma) -->
+<section class="nf-latest-section">
+  <div class="section-header">
+    <div class="section-title blue"><div class="line"></div>⏱ آخر الأخبار</div>
+    <a class="see-all" href="category.php?type=latest">عرض الكل ›</a>
+  </div>
+  <div class="nf-latest-grid">
+    <?php foreach ($__featGrid as $article): ?>
+      <?php include __DIR__ . '/includes/components/home_latest_card.php'; ?>
+    <?php endforeach; ?>
+  </div>
+</section>
+<?php endif; ?>
+
 <?php
 // Reusable content-type section: anchor id, title, accent color, icon,
 // articles array, and the "see all" target. Each section reuses the
@@ -626,61 +642,35 @@ $__renderCtSection('health',         'صحة',           '#3b8a6e', '🏥', $hea
 <div class="main-layout">
   <div class="main-col">
 
-    <!-- PALESTINE NEWS -->
+    <!-- PALESTINE NEWS (Figma: 2 horizontal cards, image on the right) -->
     <div id="palestine" class="section-header">
       <div class="section-title"><div class="line" style="background:#1B7A3D"></div>🇵🇸 أحدث الأخبار الفلسطينية</div>
+      <a class="see-all" href="category.php?type=palestine">عرض الكل ›</a>
     </div>
     <?php if (!empty($palestineNews)): ?>
-      <?php $psFirst = $palestineNews[0]; ?>
-      <div class="ps-hero">
-        <a class="ps-hero-link" href="<?php echo articleUrl($psFirst); ?>">
-          <div class="ps-hero-text">
-            <?php echo renderClusterBadge($psFirst); if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($psFirst); ?>
-            <h3><?php echo e($psFirst['title']); ?></h3>
-            <div class="ps-hero-excerpt"><?php echo e(mb_substr(strip_tags($psFirst['content'] ?? $psFirst['excerpt'] ?? ''), 0, 200)); ?></div>
-            <div class="ps-hero-meta">
-              <span class="source-icon"><?php echo e(mb_substr($psFirst['source_name'], 0, 1)); ?></span>
-              <div class="meta-text">
-                <span><?php echo e($psFirst['source_name']); ?></span>
-                <span class="meta-dot"></span>
-                <span><?php echo timeAgo($psFirst['published_at']); ?></span>
+      <div class="nf-ps-grid">
+        <?php foreach (array_slice($palestineNews, 0, 2) as $article): ?>
+          <a class="nf-ps-card" href="<?php echo articleUrl($article); ?>">
+            <div class="nf-ps-card-body">
+              <?php if (!empty($article['cat_name'])): ?>
+                <span class="nf-ps-card-cat"><?php echo e($article['cat_name']); ?></span>
+              <?php endif; ?>
+              <h3 class="nf-ps-card-title"><?php echo e($article['title']); ?></h3>
+              <div class="nf-ps-card-foot">
+                <?php if (!empty($article['source_name'])): ?>
+                  <span class="nf-ps-card-source">
+                    <span class="src-dot" style="background:<?php echo e($article['logo_color'] ?? '#1B7A3D'); ?>"></span>
+                    <?php echo e($article['source_name']); ?>
+                  </span>
+                <?php endif; ?>
+                <span class="nf-ps-card-time"><?php echo timeAgo($article['published_at']); ?></span>
               </div>
             </div>
-          </div>
-          <div class="ps-hero-img">
-            <?php echo responsiveImg(
-              $psFirst['image_url'] ?? placeholderImage(800, 500),
-              $psFirst['title'] ?? '',
-              '(max-width:768px) 100vw, 480px',
-              [320, 480, 800],
-              '',
-              'lazy'
-            ); ?>
-          </div>
-        </a>
-        <?php $article = $psFirst; include __DIR__ . '/includes/components/action_bar.php'; ?>
-      </div>
-
-      <div class="palestine-grid">
-        <?php for ($pIdx = 1; $pIdx < count($palestineNews); $pIdx++): $article = $palestineNews[$pIdx]; ?>
-          <div class="ps-card">
-            <a class="ps-card-link" href="<?php echo articleUrl($article); ?>">
-              <div class="img-wrap">
-                <img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async">
-                <div class="img-date"><?php echo timeAgo($article['published_at']); ?></div>
-              </div>
-              <div class="ps-card-body">
-                <?php echo renderClusterBadge($article); if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($article); ?>
-                <h3><?php echo e($article['title']); ?></h3>
-                <div class="ps-card-footer">
-                  <span class="source-dot"><?php echo e(mb_substr($article['source_name'], 0, 1)); ?></span>
-                  <span><?php echo e($article['source_name']); ?></span>
-                </div>
-              </div>
-            </a>
-            <?php include __DIR__ . '/includes/components/action_bar.php'; ?>
-          </div>
-        <?php endfor; ?>
+            <div class="nf-ps-card-img">
+              <img src="<?php echo e($article['image_url'] ?? placeholderImage(400, 300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async">
+            </div>
+          </a>
+        <?php endforeach; ?>
       </div>
     <?php endif; ?>
 

@@ -109,6 +109,7 @@ $__nfVer = app_version();
     <div class="site-nav-inner">
       <a href="category.php?type=breaking" class="<?php echo $nf_nav_link_class('breaking'); ?>"><span class="nav-dot"></span>عاجل</a>
       <a href="index.php" class="<?php echo $nf_nav_link_class('home'); ?>">الرئيسية</a>
+      <a href="category.php?type=palestine" class="nav-link nav-palestine">فلسطين</a>
       <a href="category.php?type=latest" class="<?php echo $nf_nav_link_class('latest'); ?>">آخر الأخبار</a>
       <a href="/weekly" class="<?php echo $nf_nav_link_class('weekly'); ?>">📅 مراجعة الأسبوع</a>
       <a href="/map" class="<?php echo $nf_nav_link_class('map'); ?>">🗺 الخريطة</a>
@@ -118,7 +119,8 @@ $__nfVer = app_version();
       <a href="category/political" class="<?php echo $nf_nav_link_class('category', 'political'); ?>">سياسة</a>
       <a href="category/economy" class="<?php echo $nf_nav_link_class('category', 'economy'); ?>">اقتصاد</a>
       <a href="category/sports" class="<?php echo $nf_nav_link_class('category', 'sports'); ?>">رياضة</a>
-      <a href="category/arts" class="<?php echo $nf_nav_link_class('category', 'arts'); ?>">فنون</a>
+      <a href="category/tech" class="<?php echo $nf_nav_link_class('category', 'tech'); ?> nav-tech">تكنولوجيا</a>
+      <a href="category/arts" class="<?php echo $nf_nav_link_class('category', 'arts'); ?>">ثقافة</a>
       <a href="category/media" class="<?php echo $nf_nav_link_class('category', 'media'); ?>">ميديا</a>
       <a href="category/reports" class="<?php echo $nf_nav_link_class('category', 'reports'); ?>">تقارير</a>
       <a href="telegram.php" class="<?php echo $nf_nav_link_class('telegram'); ?>">📢 تلغرام</a>
