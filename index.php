@@ -1179,8 +1179,29 @@ $__renderCtSection('health',         'صحة',           '#3b8a6e', '🏥', $hea
       <div class="nfr-w-head"><span class="nfr-bar" style="background:#5B7F3B"></span><h3>مصادر مميّزة</h3></div>
       <div class="nfr-w-body">
         <?php foreach (array_slice($sources, 0, 5) as $__si => $src): ?>
+        <?php
+          // Prefer the real favicon (Google S2 → real PNG for the
+          // host). If the source has no URL on file we fall back to
+          // the letter placeholder that ships in the DB. The favicon
+          // is routed through our image proxy so we get caching +
+          // sane image headers, and the <img>'s onerror flips back
+          // to the letter so a 404 doesn't leave a broken icon.
+          $__favicon = sourceFaviconUrl($src, 64);
+          $__bg      = $src['logo_bg'] ?? $src['logo_color'] ?? '#3D5A28';
+          $__letter  = $src['logo_letter'] ?? mb_substr((string)($src['name'] ?? '؟'), 0, 1);
+        ?>
         <a class="nfr-src" href="source/<?php echo (int)($src['id'] ?? 0); ?>" data-source-id="<?php echo (int)($src['id'] ?? 0); ?>">
-          <span class="nfr-src-logo" style="background:<?php echo e($src['logo_bg'] ?? $src['logo_color'] ?? '#3D5A28'); ?>"><?php echo e($src['logo_letter'] ?? mb_substr((string)($src['name'] ?? '؟'), 0, 1)); ?></span>
+          <span class="nfr-src-logo" style="background:<?php echo e($__bg); ?>">
+            <?php if ($__favicon): ?>
+              <img src="/api/img.php?url=<?php echo rawurlencode($__favicon); ?>&amp;w=64"
+                   alt="<?php echo e($src['name'] ?? ''); ?>"
+                   loading="lazy" decoding="async"
+                   onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+              <span class="nfr-src-letter" style="display:none"><?php echo e($__letter); ?></span>
+            <?php else: ?>
+              <span class="nfr-src-letter"><?php echo e($__letter); ?></span>
+            <?php endif; ?>
+          </span>
           <span class="nfr-src-name"><?php echo e($src['name'] ?? ''); ?></span>
           <span class="nfr-toggle" role="switch" aria-label="متابعة <?php echo e($src['name'] ?? ''); ?>"><span class="nfr-knob"></span></span>
         </a>

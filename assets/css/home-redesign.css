@@ -344,7 +344,9 @@ html[data-theme="light"] body.nf-redesign {
 /* sources */
 .nf-redesign .nfr-src { display:flex; align-items:center; gap:11px; padding:10px 4px; border-bottom:1px solid var(--bg-3); text-decoration:none; }
 .nf-redesign .nfr-src:last-child { border-bottom:0; }
-.nf-redesign .nfr-src-logo { width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:15px; flex-shrink:0; }
+.nf-redesign .nfr-src-logo { width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:15px; flex-shrink:0; overflow:hidden; position:relative; }
+.nf-redesign .nfr-src-logo img { width:100%; height:100%; object-fit:cover; display:block; }
+.nf-redesign .nfr-src-logo .nfr-src-letter { display:flex; align-items:center; justify-content:center; width:100%; height:100%; }
 .nf-redesign .nfr-src-name { flex:1; font-size:14px; font-weight:700; color:var(--text); min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .nf-redesign .nfr-toggle { width:40px; height:22px; border-radius:999px; background:#D9CFBD; position:relative; flex-shrink:0; transition:background .2s; }
 .nf-redesign .nfr-toggle.on { background:var(--accent); }
