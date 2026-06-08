@@ -1126,61 +1126,66 @@ $__renderCtSection('health',         'صحة',           '#3b8a6e', '🏥', $hea
     <?php endif; ?>
 
     <?php
-    // Build a real, never-empty trends list.
+    // Build a *real* trends list from live data.
     //
-    // Strategy:
-    //   1) Start from the admin-curated $trends table, but drop any
-    //      row whose title is empty/whitespace (those were the bare
-    //      "#" pills the user reported).
-    //   2) If we still have fewer than 3 usable trends, top up with
-    //      *live* trends derived from the homepage data we already
-    //      loaded: distinct category names from the breaking +
-    //      latest buckets, then any cluster headlines that appear
-    //      in more than one source ("X مصادر" → strong signal).
+    // 1) Distinct categories that have view momentum right now
+    //    (uses $trendingNow, which is view-event–based).
+    // 2) Cluster headlines from source-velocity trending — stories
+    //    multiple outlets are publishing simultaneously in the last
+    //    6 hours. These are the actual "موجة" topics.
+    // 3) Final fallback: distinct cats from the homepage pools we
+    //    already loaded, so the widget is never empty.
+    //
+    // The legacy $trends table is ignored entirely now — the user
+    // reported it carries dead editorial slots (e.g. "قمة مجلس
+    // التعاون") that no longer have any matching coverage.
     $cleanTrends = [];
-    foreach ((is_array($trends) ? $trends : []) as $tr) {
-        $title = isset($tr['title']) ? trim((string)$tr['title']) : '';
-        if ($title !== '') $cleanTrends[] = ['title' => $title];
+    $__seen = [];
+    foreach (is_array($trendingNow ?? null) ? $trendingNow : [] as $__a) {
+        $cat = isset($__a['cat_name']) ? trim((string)$__a['cat_name']) : '';
+        if ($cat === '' || isset($__seen[$cat])) continue;
+        $cleanTrends[] = ['title' => $cat, 'href' => 'search.php?q=' . urlencode($cat)];
+        $__seen[$cat] = true;
+        if (count($cleanTrends) >= 6) break;
+    }
+    if (count($cleanTrends) < 6 && function_exists('trending_by_source_velocity')) {
+        try {
+            $__vel = trending_by_source_velocity(8);
+            foreach ($__vel as $__cluster) {
+                $__art = $__cluster['article'] ?? null;
+                if (!$__art) continue;
+                $__title = isset($__art['title']) ? trim((string)$__art['title']) : '';
+                if ($__title === '') continue;
+                // Compact "topic" — first 3-4 words of the headline.
+                $__words = preg_split('/\s+/u', $__title);
+                $__topic = implode(' ', array_slice($__words, 0, 4));
+                if (mb_strlen($__topic) > 32) $__topic = mb_substr($__topic, 0, 32) . '…';
+                if (isset($__seen[$__topic])) continue;
+                $__ck = (string)($__cluster['cluster_key'] ?? '');
+                $__href = $__ck !== '' ? '/cluster/' . $__ck : 'search.php?q=' . urlencode($__topic);
+                $cleanTrends[] = ['title' => $__topic, 'href' => $__href];
+                $__seen[$__topic] = true;
+                if (count($cleanTrends) >= 6) break;
+            }
+        } catch (Throwable $__e) { /* widget keeps whatever it has */ }
     }
     if (count($cleanTrends) < 3) {
-        $seenTitles = [];
-        foreach ($cleanTrends as $tr) $seenTitles[$tr['title']] = true;
-        $pool = array_merge(
+        $__pool = array_merge(
             is_array($breakingNews ?? null) ? $breakingNews : [],
             is_array($latestArticles ?? null) ? $latestArticles : []
         );
-        $catCounts = [];
-        foreach ($pool as $a) {
-            $c = isset($a['cat_name']) ? trim((string)$a['cat_name']) : '';
-            if ($c === '') continue;
-            $catCounts[$c] = (isset($catCounts[$c]) ? $catCounts[$c] : 0) + 1;
+        $__catCounts = [];
+        foreach ($__pool as $__a) {
+            $cat = isset($__a['cat_name']) ? trim((string)$__a['cat_name']) : '';
+            if ($cat === '') continue;
+            $__catCounts[$cat] = (isset($__catCounts[$cat]) ? $__catCounts[$cat] : 0) + 1;
         }
-        arsort($catCounts);
-        foreach (array_keys($catCounts) as $cat) {
+        arsort($__catCounts);
+        foreach (array_keys($__catCounts) as $cat) {
+            if (isset($__seen[$cat])) continue;
+            $cleanTrends[] = ['title' => $cat, 'href' => 'search.php?q=' . urlencode($cat)];
+            $__seen[$cat] = true;
             if (count($cleanTrends) >= 6) break;
-            if (isset($seenTitles[$cat])) continue;
-            $cleanTrends[] = ['title' => $cat];
-            $seenTitles[$cat] = true;
-        }
-        if (count($cleanTrends) < 6 && !empty($GLOBALS['__nf_cluster_counts'])) {
-            $clusterTitles = [];
-            foreach ($pool as $a) {
-                $k = isset($a['cluster_key']) ? (string)$a['cluster_key'] : '';
-                if ($k === '' || $k === '-') continue;
-                $cnt = isset($GLOBALS['__nf_cluster_counts'][$k]) ? (int)$GLOBALS['__nf_cluster_counts'][$k] : 0;
-                if ($cnt < 2) continue;
-                $title = isset($a['title']) ? trim((string)$a['title']) : '';
-                if ($title === '' || isset($seenTitles[$title])) continue;
-                $short = mb_substr($title, 0, 35);
-                if (mb_strlen($title) > 35) $short .= '…';
-                $clusterTitles[$short] = $cnt;
-            }
-            arsort($clusterTitles);
-            foreach (array_keys($clusterTitles) as $t) {
-                if (count($cleanTrends) >= 6) break;
-                $cleanTrends[] = ['title' => $t];
-                $seenTitles[$t] = true;
-            }
         }
     }
     ?>
@@ -1189,7 +1194,7 @@ $__renderCtSection('health',         'صحة',           '#3b8a6e', '🏥', $hea
       <div class="nfr-w-head"><span class="nfr-bar" style="background:#B8860B"></span><h3>ترند الآن</h3><span class="nfr-w-tag live"><span class="d"></span>مباشر</span></div>
       <div class="nfr-w-body nfr-tags">
         <?php foreach ($cleanTrends as $__ti => $tr): ?>
-          <a class="nfr-tag <?php echo $__ti < 3 ? 'hot' : ''; ?>" href="search.php?q=<?php echo urlencode((string)$tr['title']); ?>">#<?php echo e($tr['title']); ?></a>
+          <a class="nfr-tag <?php echo $__ti < 3 ? 'hot' : ''; ?>" href="<?php echo e($tr['href']); ?>">#<?php echo e($tr['title']); ?></a>
         <?php endforeach; ?>
       </div>
     </div>
