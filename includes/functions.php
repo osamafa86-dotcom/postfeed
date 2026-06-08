@@ -429,6 +429,26 @@ function placeholderImage(int $w = 800, int $h = 500): string {
     return $cache[$key] = 'data:image/svg+xml;utf8,' . rawurlencode($svg);
 }
 
+/**
+ * Best-effort favicon/logo URL for a source row.
+ *
+ * Looks up the source's website host and asks Google's S2 favicon
+ * service for a sized PNG. That service handles redirects, caches
+ * per-domain, and serves a real PNG (not an .ico) so the result
+ * composites cleanly into our rounded-square frame.
+ *
+ * Returns '' when the source has no usable URL; callers should
+ * fall back to the letter placeholder in that case.
+ */
+function sourceFaviconUrl(array $src, int $size = 64): string {
+    $url = trim((string)($src['url'] ?? ''));
+    if ($url === '') return '';
+    $host = parse_url($url, PHP_URL_HOST);
+    if (!$host) return '';
+    $host = preg_replace('/^www\./i', '', $host);
+    return 'https://www.google.com/s2/favicons?domain=' . rawurlencode($host) . '&sz=' . (int)$size;
+}
+
 function articleUrl($article) {
     $id = (int)($article['id'] ?? 0);
     $slug = $article['slug'] ?? '';
