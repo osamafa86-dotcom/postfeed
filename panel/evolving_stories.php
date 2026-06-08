@@ -32,6 +32,26 @@ $success = '';
 $story   = null;
 
 // ------------------------------------------------------------------
+// Rematch — wipe + rebuild article links for all stories (or one
+// story if ?id= is also set) using the latest matching rules.
+// ------------------------------------------------------------------
+if ($action === 'rematch') {
+    @set_time_limit(180);
+    $scopeId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+    $days    = isset($_GET['days']) ? max(1, min(365, (int)$_GET['days'])) : 90;
+    ob_start();
+    $argv = [$_SERVER['SCRIPT_NAME'] ?? 'rematch'];
+    if ($scopeId > 0) $argv[] = '--story=' . $scopeId;
+    $argv[] = '--days=' . $days;
+    $_SERVER['argv'] = $argv;
+    $_SERVER['argc'] = count($argv);
+    require __DIR__ . '/../cron_evolving_rematch.php';
+    $log = ob_get_clean();
+    $success = 'تم إعادة فحص الأخبار:<br><pre style="font-size:11px;direction:ltr;text-align:left;background:#f8f9fa;padding:8px;border-radius:6px;max-height:240px;overflow:auto;">' . e($log) . '</pre>';
+    $action = 'list';
+}
+
+// ------------------------------------------------------------------
 // Delete
 // ------------------------------------------------------------------
 if ($action === 'delete' && isset($_GET['id'])) {
@@ -427,6 +447,7 @@ include __DIR__ . '/includes/panel_layout_head.php';
                 <p>مواضيع دائمة يُغذّيها النظام تلقائياً من الأخبار الواردة.</p>
             </div>
             <div class="page-actions">
+                <a href="evolving_stories.php?action=rematch" class="action-btn" onclick="return confirm('سيتم إعادة فحص جميع الأخبار خلال آخر 90 يوم وإعادة بنائها بالمنطق الجديد. قد يستغرق ذلك دقيقة. متابعة؟')" title="حذف كل روابط الأخبار وإعادة فحصها بقواعد التطابق المحدّثة (word boundaries + sیاق ذكي)">🔄 إعادة فحص الكل</a>
                 <a href="evolving_stories.php?action=add" class="btn-primary">+ إضافة قصة</a>
             </div>
         </div>
@@ -478,6 +499,7 @@ include __DIR__ . '/includes/panel_layout_head.php';
                                 <td>
                                     <a href="evolving_stories.php?action=edit&id=<?php echo (int)$st['id']; ?>" class="action-btn">تعديل</a>
                                     <a href="/evolving-story/<?php echo e($st['slug']); ?>" target="_blank" class="action-btn">معاينة</a>
+                                    <a href="evolving_stories.php?action=rematch&id=<?php echo (int)$st['id']; ?>" class="action-btn" onclick="return confirm('سيتم حذف كل الأخبار المرتبطة بهذه القصة وإعادة فحصها بالمنطق الجديد. متأكد؟')" title="حذف الروابط القديمة وإعادة بناء قائمة الأخبار حسب المنطق المحدّث">إعادة فحص</a>
                                     <a href="evolving_stories.php?action=delete&id=<?php echo (int)$st['id']; ?>" class="btn-danger" onclick="return confirm('هل تريد حذف هذه القصة مع كل الروابط؟')">حذف</a>
                                 </td>
                             </tr>

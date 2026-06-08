@@ -153,12 +153,84 @@ function evolving_story_get_by_id(int $id): ?array {
 
 /**
  * Lowercase + normalize a haystack once so the per-keyword lookups
- * are fast and case-insensitive. Strip extra whitespace.
+ * are fast and case-insensitive. Strip extra whitespace, tashkeel
+ * marks, and tatweel — so a phrase still matches its spelling
+ * variants ("القدس" vs "القدسـ", "يهاجمون" vs "يُهاجمون").
  */
 function evolving_story_normalize_text(string $text): string {
     $text = strip_tags($text);
+    // Drop Arabic tashkeel (combining marks) + tatweel + ZWNJ/ZWJ.
+    $text = preg_replace('/[\x{064B}-\x{065F}\x{0670}\x{0640}\x{200C}\x{200D}]/u', '', $text);
     $text = preg_replace('/\s+/u', ' ', $text);
     return mb_strtolower(trim($text));
+}
+
+/**
+ * Keyword → regex with word boundaries.
+ *
+ * A naïve mb_strpos('القدس', $haystack) matches inside "مؤشر القدس"
+ * (bourse index), "صحيفة القدس" (newspaper), "بنك القدس" (bank),
+ * "جامعة القدس" (university) — exactly the false positives the user
+ * reported. We anchor each keyword to a word boundary so the match
+ * has to be the actual word, not a substring inside a compound.
+ *
+ * Arabic letters aren't in \b's default set, so we build the
+ * boundary manually: the keyword has to be preceded and followed
+ * by either start/end of string or a non-letter character (space,
+ * punctuation, digit). Works for English and Arabic alike.
+ *
+ * Returns the pre-compiled regex pattern (caller caches it).
+ */
+function evolving_story_keyword_pattern(string $kw): string {
+    $kw = trim($kw);
+    if ($kw === '') return '';
+    // (?<![\p{L}\p{N}]) and (?![\p{L}\p{N}]) — keyword can't be
+    // adjacent to another letter/digit. preg_quote escapes any
+    // regex metachars the user might have typed.
+    return '/(?<![\p{L}\p{N}])' . preg_quote($kw, '/') . '(?![\p{L}\p{N}])/u';
+}
+
+/**
+ * Ambiguous-context filter for single-word keywords that double as
+ * brand/entity names in Arabic news. The check is "does the keyword
+ * appear ONLY as part of these non-topical compounds?" If yes, the
+ * story should not consider it a match. We default-apply this to
+ * the well-known cases (the user reported "مؤشر القدس" matching
+ * "أخبار القدس"); story configs can add their own via exclude_keywords.
+ *
+ * Returns true when *every* occurrence of $kw in $haystack is
+ * preceded by one of the disqualifier words.
+ */
+function evolving_story_keyword_is_only_in_excluded_context(string $kw, string $haystack): bool {
+    static $disqualifiers = [
+        // Bourse index, newspaper, bank, company, club, hospital,
+        // university, academy, school, mosque, church, station,
+        // hotel, restaurant, market, foundation, society. All
+        // common Arabic compounds that pin "X" to an entity name
+        // rather than the geographic/topical sense of X.
+        'مؤشر', 'صحيفة', 'جريدة', 'بنك', 'شركة', 'مؤسسة', 'نادي',
+        'مستشفى', 'جامعة', 'كلية', 'أكاديمية', 'مدرسة', 'مسجد',
+        'كنيسة', 'محطة', 'فندق', 'مطعم', 'سوق', 'جمعية', 'مكتبة',
+        'متحف', 'مسرح', 'سينما', 'استاد', 'ملعب',
+    ];
+    $pattern = evolving_story_keyword_pattern($kw);
+    if ($pattern === '') return false;
+    if (!preg_match_all($pattern, $haystack, $m, PREG_OFFSET_CAPTURE)) return false;
+
+    $occurrences = $m[0]; // each item: [matched_text, byte_offset]
+    foreach ($occurrences as $occ) {
+        $offset = (int)$occ[1];
+        // Grab up to ~25 bytes of context immediately before the
+        // hit and lowercase-compare against the disqualifier list.
+        $start = max(0, $offset - 30);
+        $before = mb_substr(substr($haystack, $start, $offset - $start), -8); // last ~8 chars
+        $isBad = false;
+        foreach ($disqualifiers as $bad) {
+            if (mb_strpos($before, $bad) !== false) { $isBad = true; break; }
+        }
+        if (!$isBad) return false; // at least one clean occurrence
+    }
+    return true; // every hit was inside an entity compound
 }
 
 /**
@@ -192,21 +264,56 @@ function evolving_story_match_article(int $articleId, string $title, string $exc
         $touched = [];
         foreach ($stories as $story) {
             // Negative filter: any exclude keyword present → skip.
+            // Uses word-boundary regex too so "غزة" in the exclude
+            // list doesn't accidentally match inside another word.
             $skip = false;
             foreach ($story['exclude_keywords'] as $ex) {
                 $ex = mb_strtolower(trim((string)$ex));
-                if ($ex !== '' && mb_strpos($haystack, $ex) !== false) { $skip = true; break; }
+                if ($ex === '') continue;
+                $p = evolving_story_keyword_pattern($ex);
+                if ($p !== '' && preg_match($p, $haystack)) { $skip = true; break; }
             }
             if ($skip) continue;
 
-            // Positive score: count distinct keyword hits.
+            // Positive score: count distinct keyword hits, but with:
+            //   * word-boundary matching so "القدس" doesn't fire
+            //     inside "مؤشر القدس" / "صحيفة القدس" / etc.,
+            //   * ambiguous-context dampening so single-word
+            //     keywords whose every occurrence is part of an
+            //     entity compound (مؤشر/صحيفة/بنك/جامعة/...) are
+            //     dropped entirely from this article's score, and
+            //   * a bonus for multi-word phrases so a story config
+            //     can lean on tight phrases like "مدينة القدس",
+            //     "القدس المحتلة", "شرق القدس" to override the
+            //     bare "القدس" word and lift the precision.
             $score = 0;
+            $hadPhraseHit = false;
             foreach ($story['keywords'] as $kw) {
                 $kw = mb_strtolower(trim((string)$kw));
                 if ($kw === '') continue;
-                if (mb_strpos($haystack, $kw) !== false) $score++;
+                $p = evolving_story_keyword_pattern($kw);
+                if ($p === '' || !preg_match($p, $haystack)) continue;
+                // For single-word keywords, sanity-check the context.
+                $isMultiWord = (mb_strpos($kw, ' ') !== false);
+                if (!$isMultiWord) {
+                    if (evolving_story_keyword_is_only_in_excluded_context($kw, $haystack)) {
+                        continue; // every hit was inside a brand/entity → not a real match
+                    }
+                    $score++;
+                } else {
+                    // Multi-word phrase matches are stronger signals.
+                    $score += 2;
+                    $hadPhraseHit = true;
+                }
             }
-            if ($score < max(1, $story['min_match_score'])) continue;
+            // Tighten the bar a touch: bare single-word matches need
+            // at least 2 distinct hits OR a phrase hit. Stories with
+            // an explicit min_match_score ≥ 2 already enforce this;
+            // the default of 1 is what lets noise through, so we lift
+            // the floor for single-word-only matches here.
+            $threshold = max(1, (int)$story['min_match_score']);
+            if (!$hadPhraseHit && $score === 1 && $threshold === 1) continue;
+            if ($score < $threshold) continue;
 
             $ins->execute([$story['id'], $articleId, min(255, $score)]);
             if ($ins->rowCount() > 0) {
