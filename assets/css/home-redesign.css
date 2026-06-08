@@ -226,10 +226,17 @@ html[data-theme="light"] body.nf-redesign {
 .nf-redesign #reels,
 .nf-redesign .mr2-section,
 .nf-redesign .ct-section { display:none !important; }
-/* Sections nav: keep only the 5 primary pills (Home, Digest,
-   Platforms, Latest, Palestine). The .sec-pill-secondary marker
-   on the rest lets us hide them without losing the markup. */
-.nf-redesign .sections-nav .sec-pill-secondary { display:none !important; }
+/* Section pills bar was merged into the main site-nav so the page
+   has a single navigation strip (was two stacked rows). Hide the
+   homepage's .sections-nav entirely; the new Home / Digest /
+   Platforms / Latest / Palestine entries now live as nav-summary,
+   nav-platforms, nav-latest, nav-palestine inside site-nav. */
+.nf-redesign .sections-nav { display:none !important; }
+/* Make sure the merged items are visible (some are hidden by the
+   "trim nav to 8" rule below). */
+.nf-redesign .site-nav .nav-summary,
+.nf-redesign .site-nav .nav-platforms,
+.nf-redesign .site-nav .nav-latest { display:inline-flex !important; }
 
 /* Main column: turn into a flex column so we can reorder sections
    without touching the HTML. Figma asks for the Platforms feed to
@@ -503,7 +510,6 @@ html[data-theme="light"] body.nf-redesign {
    ثقافة، قصص متطوّرة.
    ============================================================ */
 .nf-redesign .site-nav .nav-link.breaking,
-.nf-redesign .site-nav a[href="category.php?type=latest"],
 .nf-redesign .site-nav a[href="/weekly"],
 .nf-redesign .site-nav a[href="/map"],
 .nf-redesign .site-nav a[href="/podcast"],
@@ -511,7 +517,6 @@ html[data-theme="light"] body.nf-redesign {
 .nf-redesign .site-nav a[href="category/media"],
 .nf-redesign .site-nav a[href="category/reports"],
 .nf-redesign .site-nav a[href="telegram.php"],
-.nf-redesign .site-nav a[href="/platforms"],
 .nf-redesign .site-nav a[href="reels.php"] { display:none !important; }
 /* Make sure Palestine + Tech are visible (newly added links). */
 .nf-redesign .site-nav .nav-palestine,
