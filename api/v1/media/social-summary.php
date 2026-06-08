@@ -14,8 +14,8 @@ api_rate_limit('media:social-summary', 120, 60);
 
 $platform = strtolower(trim((string)($_GET['platform'] ?? '')));
 
-if (!in_array($platform, ['telegram', 'twitter', 'youtube'], true)) {
-    api_err('invalid_platform', 'يرجى تحديد المنصة: telegram أو twitter أو youtube', 400);
+if (!in_array($platform, ['telegram', 'twitter', 'youtube', 'all'], true)) {
+    api_err('invalid_platform', 'يرجى تحديد المنصة: telegram أو twitter أو youtube أو all', 400);
 }
 
 // Telegram keeps its dedicated store; the others use the generic one.

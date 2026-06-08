@@ -719,7 +719,7 @@ function ai_summarize_social_daily(string $platform, array $messages, int $maxTo
         return ['ok' => false, 'error' => 'لا توجد منشورات للتلخيص'];
     }
     $platform   = strtolower($platform);
-    $platformAr = $platform === 'youtube' ? 'يوتيوب' : 'منصة X (تويتر)';
+    $platformAr = $platform === 'youtube' ? 'يوتيوب' : ($platform === 'all' ? 'تلغرام ومنصة X ويوتيوب' : 'منصة X (تويتر)');
     $unit       = $platform === 'youtube' ? 'فيديو' : 'منشور';
     $paleRegex  = nf_palestine_regex();
 
@@ -967,6 +967,47 @@ function social_summary_collect(string $platform, int $windowMins = 1440, int $m
         error_log('social_summary_collect: ' . $e->getMessage());
     }
     return [];
+}
+
+/**
+ * Collect recent messages across ALL platforms (Telegram + X + YouTube) for
+ * the unified cross-platform brief. Returns a recency-sorted, capped list in
+ * the same shape the per-platform collectors use (text/username/display_name/posted_at).
+ */
+function social_summary_collect_all(int $windowMins = 1440, int $maxMsgs = 1500): array {
+    $db = getDB();
+    $out = [];
+    $per = (int)$maxMsgs;
+    try {
+        $tg = $db->prepare("SELECT m.text, m.posted_at, s.username, s.display_name
+                            FROM telegram_messages m JOIN telegram_sources s ON m.source_id = s.id
+                            WHERE m.is_active=1 AND s.is_active=1 AND m.text IS NOT NULL AND m.text <> ''
+                              AND m.posted_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
+                            ORDER BY m.posted_at DESC LIMIT " . $per);
+        $tg->execute([$windowMins]);
+        foreach ($tg->fetchAll(PDO::FETCH_ASSOC) as $r) { $out[] = $r; }
+
+        $tw = $db->prepare("SELECT m.text, m.posted_at, s.username, s.display_name
+                            FROM twitter_messages m JOIN twitter_sources s ON m.source_id = s.id
+                            WHERE m.is_active=1 AND s.is_active=1 AND m.text IS NOT NULL AND m.text <> ''
+                              AND m.posted_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
+                            ORDER BY m.posted_at DESC LIMIT " . $per);
+        $tw->execute([$windowMins]);
+        foreach ($tw->fetchAll(PDO::FETCH_ASSOC) as $r) { $out[] = $r; }
+
+        $yt = $db->prepare("SELECT CONCAT_WS('. ', v.title, v.description) AS text,
+                                   v.posted_at, s.display_name, s.display_name AS username
+                            FROM youtube_videos v JOIN youtube_sources s ON v.source_id = s.id
+                            WHERE v.is_active=1 AND s.is_active=1 AND v.title IS NOT NULL AND v.title <> ''
+                              AND v.posted_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
+                            ORDER BY v.posted_at DESC LIMIT " . $per);
+        $yt->execute([$windowMins]);
+        foreach ($yt->fetchAll(PDO::FETCH_ASSOC) as $r) { $out[] = $r; }
+    } catch (Throwable $e) {
+        error_log('social_summary_collect_all: ' . $e->getMessage());
+    }
+    usort($out, fn($a, $b) => strcmp((string)($b['posted_at'] ?? ''), (string)($a['posted_at'] ?? '')));
+    return array_slice($out, 0, $maxMsgs);
 }
 
 function ai_save_summary($articleId, $result) {
