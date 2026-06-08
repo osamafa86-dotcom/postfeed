@@ -278,3 +278,26 @@ html[data-theme="light"] body.nf-redesign {
 .nf-redesign .nfr-news-form input { flex:1; min-width:0; border:0; border-radius:10px; padding:11px 13px; font-family:inherit; font-size:13px; background:rgba(255,255,255,.95); color:#2C2416; }
 .nf-redesign .nfr-news-form button { border:0; border-radius:10px; padding:11px 18px; font-family:inherit; font-weight:800; font-size:13px; color:#fff; cursor:pointer; background:linear-gradient(135deg,#B8860B,#C99A2E); white-space:nowrap; }
 .nf-redesign .nfr-news-msg { font-size:12px; margin-top:8px; min-height:14px; color:#E9D9A8; }
+
+/* ============================================================
+   8. TOP UTILITY BAR + STATS + FOOTER TIDY (final Figma parity)
+   ============================================================ */
+/* slim dark-olive utility bar above the sticky header */
+.nf-redesign .nfr-topbar { background:#1E1F18; color:#DCE7CF; }
+.nf-redesign .nfr-topbar-in { max-width:1500px; margin:0 auto; padding:8px 24px; display:flex; align-items:center; justify-content:space-between; font-size:12.5px; }
+.nf-redesign .nfr-tb-right { display:flex; align-items:center; gap:10px; }
+.nf-redesign .nfr-tb-live { display:inline-flex; align-items:center; gap:6px; font-weight:700; color:#CFE8C2; }
+.nf-redesign .nfr-tb-live .d { width:7px; height:7px; border-radius:50%; background:#7ED957; animation:nfrPulse 1.8s infinite; }
+@keyframes nfrPulse { 0%{box-shadow:0 0 0 0 rgba(126,217,87,.5);} 70%{box-shadow:0 0 0 6px rgba(126,217,87,0);} 100%{box-shadow:0 0 0 0 rgba(126,217,87,0);} }
+.nf-redesign .nfr-tb-dot { opacity:.4; }
+.nf-redesign .nfr-tb-date { color:#BFCBAE; font-variant-numeric:tabular-nums; }
+.nf-redesign .nfr-tb-left { display:flex; align-items:center; gap:18px; }
+.nf-redesign .nfr-tb-left a { color:#BFCBAE; font-weight:600; text-decoration:none; }
+.nf-redesign .nfr-tb-left a:hover { color:#fff; }
+@media (max-width:700px) { .nf-redesign .nfr-tb-left { display:none; } .nf-redesign .nfr-topbar-in { padding:7px 14px; } }
+
+/* stats strip → rounded pill chips */
+.nf-redesign .stat-chip { background:var(--surface); border:1px solid var(--border); border-radius:999px; box-shadow:var(--shadow-sm); }
+
+/* newsletter now lives in the sidebar — drop the duplicate footer band */
+.nf-redesign .newsletter-band { display:none !important; }

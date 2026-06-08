@@ -330,6 +330,12 @@ render_home_seo();
 </head>
 <body class="nf-redesign">
 
+<!-- TOP UTILITY BAR (redesign) -->
+<div class="nfr-topbar"><div class="nfr-topbar-in">
+  <div class="nfr-tb-right"><span class="nfr-tb-live"><span class="d"></span>تحديث مباشر</span><span class="nfr-tb-dot">·</span><span class="nfr-tb-date"><?php $__d=['Sunday'=>'الأحد','Monday'=>'الإثنين','Tuesday'=>'الثلاثاء','Wednesday'=>'الأربعاء','Thursday'=>'الخميس','Friday'=>'الجمعة','Saturday'=>'السبت']; echo e(($__d[date('l')] ?? '') . '، ' . date('Y/m/d')); ?></span></div>
+  <div class="nfr-tb-left"><a href="/weekly">مراجعة الأسبوع</a><a href="contact.php">تواصل معنا</a><a href="privacy.php">الخصوصية</a></div>
+</div></div>
+
 <?php
 // Shared site header (header + main nav + mobile nav + breaking ticker)
 $activeType = 'home';
