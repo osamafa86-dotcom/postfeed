@@ -13,8 +13,15 @@ require_once __DIR__ . '/includes/personalize.php';
 require_once __DIR__ . '/includes/story_timeline.php';
 require_once __DIR__ . '/includes/evolving_stories.php';
 require_once __DIR__ . '/includes/view_tracking.php';
+require_once __DIR__ . '/includes/auto_fetch.php';
 
 record_page_view('homepage');
+
+// Self-heal: if the cPanel cron has missed runs and the latest source
+// fetch is older than 30 minutes, kick cron_rss.php in the background
+// once the homepage finishes rendering. Single-flight locked so we
+// don't fan out per page view.
+auto_trigger_rss_fetch_if_stale(1800);
 
 // The homepage HTML must always reflect the latest deploy/content (data is
 // cached server-side via cache_remember). Without this, .htaccess sends a
