@@ -227,7 +227,7 @@ function user_source_ingest_due(int $limit = 15, int $minMinutes = 20): array {
 }
 
 /** The personal feed: items from the user's active sources, newest first. */
-function user_feed(int $uid, int $limit = 30, ?int $sourceId = null): array {
+function user_feed(int $uid, int $limit = 30, ?int $sourceId = null, ?string $type = null): array {
     user_source_articles_ensure();
     try {
         $db = getDB();
@@ -237,9 +237,25 @@ function user_feed(int $uid, int $limit = 30, ?int $sourceId = null): array {
                 WHERE a.user_id = ? AND s.is_active = 1";
         $params = [$uid];
         if ($sourceId) { $sql .= " AND a.user_source_id = ?"; $params[] = $sourceId; }
+        if ($type)     { $sql .= " AND s.type = ?";          $params[] = $type; }
         $sql .= " ORDER BY a.published_at DESC, a.id DESC LIMIT " . (int) $limit;
         $st = $db->prepare($sql);
         $st->execute($params);
         return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) { return []; }
+}
+
+/** Count of ingested items per platform type for the user (for filter chips). */
+function user_feed_type_counts(int $uid): array {
+    user_source_articles_ensure();
+    try {
+        $db = getDB();
+        $st = $db->prepare("SELECT s.type, COUNT(*) c
+            FROM user_source_articles a JOIN user_sources s ON a.user_source_id = s.id
+            WHERE a.user_id = ? AND s.is_active = 1 GROUP BY s.type");
+        $st->execute([$uid]);
+        $out = [];
+        foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $out[$r['type']] = (int)$r['c'];
+        return $out;
     } catch (Throwable $e) { return []; }
 }

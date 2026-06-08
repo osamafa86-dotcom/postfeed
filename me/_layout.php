@@ -16,7 +16,7 @@ $siteName = defined('SITE_NAME') ? SITE_NAME : 'نيوز فيد';
 $active = $pageSlug ?? '';
 $navItems = [
     ['slug' => 'overview',     'href' => 'index.php',         'ico' => '🏠', 'label' => 'الرئيسية'],
-    ['slug' => 'feed',         'href' => 'feed.php',          'ico' => '⚡', 'label' => 'خلاصتي'],
+    ['slug' => 'feed',         'href' => 'feed.php',          'ico' => '📰', 'label' => 'صحيفتي'],
     ['slug' => 'sources',      'href' => 'sources.php',       'ico' => '📡', 'label' => 'مصادري'],
     ['slug' => 'saved',        'href' => 'saved.php',         'ico' => '🔖', 'label' => 'المحفوظات'],
     ['slug' => 'following',    'href' => 'following.php',     'ico' => '🎯', 'label' => 'متابعاتي'],

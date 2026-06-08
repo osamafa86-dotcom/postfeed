@@ -108,7 +108,7 @@ function usrc_icon_svg(string $type): string {
       </div>
       <div class="usrc-ln"></div>
       <div class="usrc-ft">
-        <span class="usrc-status"><i></i><span class="usrc-status-txt"><?= $on ? 'نشط' : 'موقوف' ?></span></span>
+        <span class="usrc-status"><i></i><span class="usrc-status-txt"><?= $on ? 'نشط' : 'موقوف' ?></span><?php if ((int)($s['article_count'] ?? 0) > 0): ?> · <?= (int)$s['article_count'] ?> مقال<?php endif; ?></span>
         <div class="usrc-actions">
           <span class="usrc-platlabel"><?= e($m['label']) ?></span>
           <button type="button" class="usrc-del" title="حذف" onclick="usrcDelete(this)">🗑️</button>
