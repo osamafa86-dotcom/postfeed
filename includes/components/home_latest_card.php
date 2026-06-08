@@ -22,6 +22,10 @@ if (!empty($article['excerpt'])) {
       <div class="nf-latest-card-excerpt"><?php echo e($__excerpt); ?>.</div>
     <?php endif; ?>
     <h3 class="nf-latest-card-title"><?php echo e($article['title'] ?? ''); ?></h3>
+    <div class="nf-latest-card-badges">
+      <?php echo renderClusterBadge($article); ?>
+      <?php if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($article); ?>
+    </div>
     <div class="nf-latest-card-meta">
       <?php if (!empty($article['cat_name'])): ?>
         <span class="nf-latest-card-cat"><?php echo e($article['cat_name']); ?></span>

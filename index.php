@@ -663,6 +663,10 @@ $__renderCtSection('health',         'صحة',           '#3b8a6e', '🏥', $hea
                 <span class="nf-ps-card-cat"><?php echo e($article['cat_name']); ?></span>
               <?php endif; ?>
               <h3 class="nf-ps-card-title"><?php echo e($article['title']); ?></h3>
+              <div class="nf-ps-card-badges">
+                <?php echo renderClusterBadge($article); ?>
+                <?php if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($article); ?>
+              </div>
               <div class="nf-ps-card-foot">
                 <?php if (!empty($article['source_name'])): ?>
                   <span class="nf-ps-card-source">

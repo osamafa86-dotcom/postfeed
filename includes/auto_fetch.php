@@ -2,38 +2,41 @@
 /**
  * Self-healing RSS fetch trigger.
  *
- * The site relies on a cPanel cron to run cron_rss.php every few
- * minutes. When that cron misses runs (host downtime, paused job,
- * cPanel deactivating it after a server move), the homepage can sit
- * with stale content for hours.
+ * Spawns cron_rss.php as a DETACHED background process when the
+ * freshest sources.last_fetched_at is older than the threshold.
  *
- * This helper fires off cron_rss.php in the background from the
- * homepage when the freshest sources.last_fetched_at is older than
- * a threshold (default 30 minutes). It is gated by a filesystem lock
- * so concurrent page views never spawn more than one fetch, and the
- * trigger happens AFTER the response is flushed to the client so
- * the page load stays fast.
+ * Important: we don't run cron_rss inline (even from a shutdown
+ * handler) because cron_rss takes 30–120 seconds and holds the
+ * FPM worker hostage until it returns. On shared hosting with a
+ * small worker pool that quickly starves other visitors, who then
+ * get the offline page from the service worker.
+ *
+ * Instead we use `exec(... > /dev/null 2>&1 &)` to fork a fully
+ * detached PHP CLI process, so this function returns in <1ms and
+ * the FPM worker is freed immediately. If exec is disabled by
+ * disable_functions, the whole helper no-ops silently — the
+ * cPanel cron is still the primary trigger.
  */
 
-/**
- * Kick off cron_rss.php in the background if the last fetch is old.
- *
- * @param int $thresholdSeconds Trigger when last fetch is older than this.
- * @return void
- */
 function auto_trigger_rss_fetch_if_stale(int $thresholdSeconds = 1800): void {
-    // Cheap path: rely on a small file flag so we only hit the DB
-    // every $thresholdSeconds at most, not on every page view.
+    // exec() is required for the detached fork; on locked-down
+    // shared hosting it may be disabled. Bail silently if so.
+    if (!function_exists('exec')) return;
+
+    // Cheap path: only consult the DB once per 60 seconds so a
+    // burst of homepage visits doesn't add a SELECT to each one.
     $flagFile = sys_get_temp_dir() . '/postfeed_rss_freshcheck.flag';
     if (file_exists($flagFile) && (time() - filemtime($flagFile)) < 60) {
-        return; // checked recently
+        return;
     }
     @touch($flagFile);
 
-    // Single-flight lock so concurrent visitors don't fan out into N forks.
+    // Single-flight lock — held for 5 minutes — so the moment we
+    // spawn a fetch, the next ~5 minutes of visitors skip the
+    // check entirely.
     $lockFile = sys_get_temp_dir() . '/postfeed_rss_autotrigger.lock';
     if (file_exists($lockFile) && (time() - filemtime($lockFile)) < 300) {
-        return; // a fetch is already running (or recently ran)
+        return;
     }
 
     try {
@@ -48,26 +51,13 @@ function auto_trigger_rss_fetch_if_stale(int $thresholdSeconds = 1800): void {
 
     @touch($lockFile);
 
-    // Defer the actual fork to after the response is sent so the
-    // homepage paint isn't held up. fastcgi_finish_request() is the
-    // standard PHP-FPM hook; if it's not available we fall back to
-    // ignore_user_abort + a flush.
-    register_shutdown_function(function() use ($lockFile) {
-        @ignore_user_abort(true);
-        if (function_exists('fastcgi_finish_request')) {
-            @fastcgi_finish_request();
-        } else {
-            @ob_end_flush();
-            @flush();
-        }
-        // Run cron_rss inline in this shutdown handler. The lock file
-        // keeps subsequent visitors from re-triggering until it's done.
-        @set_time_limit(180);
-        try {
-            require __DIR__ . '/../cron_rss.php';
-        } catch (Throwable $e) {
-            @error_log('auto_trigger_rss: ' . $e->getMessage());
-        }
-        @unlink($lockFile);
-    });
+    // Detached fork — does NOT block the current FPM worker.
+    // The "> /dev/null 2>&1 &" suffix is what makes it non-blocking
+    // on POSIX shells. We deliberately ignore the exec return value
+    // because we don't want a single spawn failure to surface to the
+    // homepage user.
+    $phpBin = PHP_BINARY ?: 'php';
+    $script = __DIR__ . '/../cron_rss.php';
+    $cmd = escapeshellcmd($phpBin) . ' ' . escapeshellarg($script) . ' > /dev/null 2>&1 &';
+    @exec($cmd);
 }
