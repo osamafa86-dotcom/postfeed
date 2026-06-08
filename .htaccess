@@ -93,6 +93,8 @@ FileETag None
     RewriteRule ^trending/?$ trending.php [L,QSA]
     RewriteRule ^sabah/(\d{4}-\d{2}-\d{2})/?$ sabah.php?date=$1 [L,QSA]
     RewriteRule ^sabah/?$ sabah.php [L,QSA]
+    RewriteRule ^summaries/?$ summaries.php [L,QSA]
+    RewriteRule ^summary/(twitter|youtube)/(\d+)/?$ summary-view.php?platform=$1&id=$2 [L,QSA]
     RewriteRule ^tg-report/(\d+)/?$ tg-report.php?id=$1 [L,QSA]
     RewriteRule ^tg-report/?$ tg-report.php [L,QSA]
     RewriteRule ^gallery/(\d{4}-\d{2}-\d{2})/?$ gallery.php?date=$1 [L,QSA]
