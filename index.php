@@ -16,6 +16,15 @@ require_once __DIR__ . '/includes/view_tracking.php';
 
 record_page_view('homepage');
 
+// The homepage HTML must always reflect the latest deploy/content (data is
+// cached server-side via cache_remember). Without this, .htaccess sends a
+// 1-day Expires on the HTML, so browsers/CDN serve a stale page and new
+// deploys/articles don't show. Revalidate instead.
+if (!headers_sent()) {
+    header('Cache-Control: no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
+}
+
 // Viewer context for save buttons / theme / user menu
 $viewer = current_user();
 $viewerId = $viewer ? (int)$viewer['id'] : 0;
