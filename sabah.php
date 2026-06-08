@@ -366,6 +366,18 @@ include __DIR__ . '/includes/components/site_header.php';
       sabahHidePreview();
     }
   });
+  // When opened from /summaries with ?print=1, auto-fire the print
+  // dialog. The browser's "Save as PDF" target is the standard PDF
+  // download path on every modern browser, so the same handler
+  // serves preview / download / print actions from the hub.
+  (function(){
+    var qs = new URLSearchParams(window.location.search);
+    if (qs.get('print') === '1') {
+      window.addEventListener('load', function() {
+        setTimeout(function() { window.print(); }, 600);
+      });
+    }
+  })();
 </script>
 </body>
 </html>

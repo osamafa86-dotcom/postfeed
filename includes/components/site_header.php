@@ -109,7 +109,7 @@ $__nfVer = app_version();
     <div class="site-nav-inner">
       <a href="category.php?type=breaking" class="<?php echo $nf_nav_link_class('breaking'); ?>"><span class="nav-dot"></span>عاجل</a>
       <a href="index.php" class="<?php echo $nf_nav_link_class('home'); ?>">الرئيسية</a>
-      <a href="/sabah" class="nav-link nav-summary">☕ ملخصات</a>
+      <a href="/summaries" class="nav-link nav-summary">☕ ملخصات</a>
       <a href="/platforms" class="nav-link nav-platforms">📡 المنصات</a>
       <a href="category.php?type=latest" class="<?php echo $nf_nav_link_class('latest'); ?> nav-latest">⏱ آخر الأخبار</a>
       <a href="category.php?type=palestine" class="nav-link nav-palestine">🇵🇸 فلسطين</a>

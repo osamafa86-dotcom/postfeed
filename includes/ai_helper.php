@@ -914,6 +914,46 @@ function social_summary_get_latest(string $platform): ?array {
     }
 }
 
+/**
+ * List recent briefings for a platform. Used by the /summaries
+ * hub to render archive cards. Returns hydrated rows ready for
+ * the template (sections, topics, etc. already decoded).
+ */
+function social_summary_list(string $platform, int $limit = 12): array {
+    social_summary_ensure_table();
+    $limit = max(1, min(60, $limit));
+    try {
+        $db = getDB();
+        $stmt = $db->prepare("SELECT *, UNIX_TIMESTAMP(generated_at) AS generated_at_unix
+                                FROM social_summaries WHERE platform = ?
+                               ORDER BY generated_at DESC, id DESC LIMIT $limit");
+        $stmt->execute([strtolower($platform)]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        return array_map('social_summary_hydrate', $rows);
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
+/**
+ * Lookup a single social briefing by id (used by the print/PDF
+ * view to render a stable URL per briefing).
+ */
+function social_summary_get_by_id(int $id): ?array {
+    social_summary_ensure_table();
+    if ($id <= 0) return null;
+    try {
+        $db = getDB();
+        $stmt = $db->prepare("SELECT *, UNIX_TIMESTAMP(generated_at) AS generated_at_unix
+                                FROM social_summaries WHERE id = ? LIMIT 1");
+        $stmt->execute([$id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? social_summary_hydrate($row) : null;
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
 /** Keep the most recent N briefings per platform. */
 function social_summary_prune(string $platform, int $keep = 60): void {
     social_summary_ensure_table();

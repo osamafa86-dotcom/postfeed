@@ -392,6 +392,15 @@ include __DIR__ . '/includes/components/site_header.php';
       tgrHidePreview();
     }
   });
+  // Auto-print when opened from /summaries with ?print=1.
+  (function(){
+    var qs = new URLSearchParams(window.location.search);
+    if (qs.get('print') === '1') {
+      window.addEventListener('load', function() {
+        setTimeout(function() { window.print(); }, 600);
+      });
+    }
+  })();
 </script>
 </body>
 </html>
