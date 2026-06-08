@@ -351,6 +351,34 @@ $showTicker = true;
 include __DIR__ . '/includes/components/site_header.php';
 ?>
 
+<!-- SECTIONS NAV (homepage anchors) — Figma-trimmed set: Home, Daily
+     Digest, Platforms, Latest, Palestine. Older slots kept hidden so
+     the existing JS targets (foryou / arab-intl / etc.) keep working
+     for direct anchor links. Sits directly under the main site nav
+     (above the stats strip) so the section pills live in the same
+     visual band as the global header. -->
+<div class="sections-nav">
+  <div class="sections-nav-inner">
+    <button type="button" class="sec-pill active" data-sec="all" onclick="scrollToHomeSection(this,'all')"><span class="sec-pill-ico">📰</span>الرئيسية</button>
+    <a class="sec-pill" href="/sabah"><span class="sec-pill-ico">☕</span>ملخصات</a>
+    <a class="sec-pill" href="/platforms"><span class="sec-pill-ico">📡</span>المنصات</a>
+    <button type="button" class="sec-pill" data-sec="latest" onclick="scrollToHomeSection(this,'latest')"><span class="sec-pill-ico">⏱</span>آخر الأخبار</button>
+    <button type="button" class="sec-pill" data-sec="palestine" onclick="scrollToHomeSection(this,'palestine')"><span class="sec-pill-ico">🇵🇸</span>أخبار فلسطين</button>
+    <?php if ($viewerId && ($personalFeed || $personalShowOnboarding)): ?>
+    <button type="button" class="sec-pill sec-pill-foryou sec-pill-secondary" data-sec="foryou" onclick="scrollToHomeSection(this,'foryou')"><span class="sec-pill-ico">✨</span>خاص بك</button>
+    <?php endif; ?>
+    <a class="sec-pill sec-pill-ask sec-pill-secondary" href="ask.php"><span class="sec-pill-ico">🤖</span>اسأل الأخبار</a>
+    <button type="button" class="sec-pill sec-pill-secondary" data-sec="breaking" onclick="scrollToHomeSection(this,'breaking')"><span class="sec-pill-ico">🔴</span>عاجل</button>
+    <button type="button" class="sec-pill sec-pill-secondary" data-sec="arab-intl" onclick="scrollToHomeSection(this,'arab-intl')"><span class="sec-pill-ico">🌍</span>عربي ودولي</button>
+    <button type="button" class="sec-pill sec-pill-secondary" data-sec="reports" onclick="scrollToHomeSection(this,'reports')"><span class="sec-pill-ico">📑</span>تقارير</button>
+    <button type="button" class="sec-pill sec-pill-secondary" data-sec="articles" onclick="scrollToHomeSection(this,'articles')"><span class="sec-pill-ico">✍️</span>مقالات رأي</button>
+    <button type="button" class="sec-pill sec-pill-secondary" data-sec="variety" onclick="scrollToHomeSection(this,'variety')"><span class="sec-pill-ico">🎯</span>منوعات</button>
+    <button type="button" class="sec-pill sec-pill-secondary" data-sec="health" onclick="scrollToHomeSection(this,'health')"><span class="sec-pill-ico">🏥</span>صحة</button>
+    <button type="button" class="sec-pill sec-pill-secondary" data-sec="trending" onclick="scrollToHomeSection(this,'trending')"><span class="sec-pill-ico">🔥</span>الأكثر تداولاً</button>
+    <button type="button" class="sec-pill sec-pill-secondary" data-sec="reels" onclick="scrollToHomeSection(this,'reels')"><span class="sec-pill-ico">🎬</span>ريلز</button>
+  </div>
+</div>
+
 <!-- STATS STRIP (Figma 4-chip layout: sources / today / cadence / trends) -->
 <?php
 // Count today's articles for the "خبراً اليوم" chip. Cached lightly so
@@ -452,31 +480,6 @@ $trendsCount = is_array($trends) ? count($trends) : 0;
 </script>
 <?php endif; ?>
 
-<!-- SECTIONS NAV (homepage anchors) — Figma-trimmed set: Home, Daily
-     Digest, Platforms, Latest, Palestine. Older slots kept hidden so
-     the existing JS targets (foryou / arab-intl / etc.) keep working
-     for direct anchor links. -->
-<div class="sections-nav">
-  <div class="sections-nav-inner">
-    <button type="button" class="sec-pill active" data-sec="all" onclick="scrollToHomeSection(this,'all')"><span class="sec-pill-ico">📰</span>الرئيسية</button>
-    <a class="sec-pill" href="/sabah"><span class="sec-pill-ico">☕</span>ملخصات</a>
-    <a class="sec-pill" href="/platforms"><span class="sec-pill-ico">📡</span>المنصات</a>
-    <button type="button" class="sec-pill" data-sec="latest" onclick="scrollToHomeSection(this,'latest')"><span class="sec-pill-ico">⏱</span>آخر الأخبار</button>
-    <button type="button" class="sec-pill" data-sec="palestine" onclick="scrollToHomeSection(this,'palestine')"><span class="sec-pill-ico">🇵🇸</span>أخبار فلسطين</button>
-    <?php if ($viewerId && ($personalFeed || $personalShowOnboarding)): ?>
-    <button type="button" class="sec-pill sec-pill-foryou sec-pill-secondary" data-sec="foryou" onclick="scrollToHomeSection(this,'foryou')"><span class="sec-pill-ico">✨</span>خاص بك</button>
-    <?php endif; ?>
-    <a class="sec-pill sec-pill-ask sec-pill-secondary" href="ask.php"><span class="sec-pill-ico">🤖</span>اسأل الأخبار</a>
-    <button type="button" class="sec-pill sec-pill-secondary" data-sec="breaking" onclick="scrollToHomeSection(this,'breaking')"><span class="sec-pill-ico">🔴</span>عاجل</button>
-    <button type="button" class="sec-pill sec-pill-secondary" data-sec="arab-intl" onclick="scrollToHomeSection(this,'arab-intl')"><span class="sec-pill-ico">🌍</span>عربي ودولي</button>
-    <button type="button" class="sec-pill sec-pill-secondary" data-sec="reports" onclick="scrollToHomeSection(this,'reports')"><span class="sec-pill-ico">📑</span>تقارير</button>
-    <button type="button" class="sec-pill sec-pill-secondary" data-sec="articles" onclick="scrollToHomeSection(this,'articles')"><span class="sec-pill-ico">✍️</span>مقالات رأي</button>
-    <button type="button" class="sec-pill sec-pill-secondary" data-sec="variety" onclick="scrollToHomeSection(this,'variety')"><span class="sec-pill-ico">🎯</span>منوعات</button>
-    <button type="button" class="sec-pill sec-pill-secondary" data-sec="health" onclick="scrollToHomeSection(this,'health')"><span class="sec-pill-ico">🏥</span>صحة</button>
-    <button type="button" class="sec-pill sec-pill-secondary" data-sec="trending" onclick="scrollToHomeSection(this,'trending')"><span class="sec-pill-ico">🔥</span>الأكثر تداولاً</button>
-    <button type="button" class="sec-pill sec-pill-secondary" data-sec="reels" onclick="scrollToHomeSection(this,'reels')"><span class="sec-pill-ico">🎬</span>ريلز</button>
-  </div>
-</div>
 
 <?php if ($viewerId && $personalFeed): ?>
 <!-- ✨ FOR YOU (personalized rail) — logged-in users only -->
@@ -1123,13 +1126,63 @@ $__renderCtSection('health',         'صحة',           '#3b8a6e', '🏥', $hea
     <?php endif; ?>
 
     <?php
-    // Only keep trends with a non-empty title — the panel had a couple
-    // of editorial slots that ship with NULL/empty title and rendered as
-    // bare "#" pills. Drop them so the widget is always real-content.
-    $cleanTrends = array_values(array_filter(
-        is_array($trends) ? $trends : [],
-        fn($t) => !empty(trim((string)($t['title'] ?? '')))
-    ));
+    // Build a real, never-empty trends list.
+    //
+    // Strategy:
+    //   1) Start from the admin-curated $trends table, but drop any
+    //      row whose title is empty/whitespace (those were the bare
+    //      "#" pills the user reported).
+    //   2) If we still have fewer than 3 usable trends, top up with
+    //      *live* trends derived from the homepage data we already
+    //      loaded: distinct category names from the breaking +
+    //      latest buckets, then any cluster headlines that appear
+    //      in more than one source ("X مصادر" → strong signal).
+    $cleanTrends = [];
+    foreach ((is_array($trends) ? $trends : []) as $tr) {
+        $title = isset($tr['title']) ? trim((string)$tr['title']) : '';
+        if ($title !== '') $cleanTrends[] = ['title' => $title];
+    }
+    if (count($cleanTrends) < 3) {
+        $seenTitles = [];
+        foreach ($cleanTrends as $tr) $seenTitles[$tr['title']] = true;
+        $pool = array_merge(
+            is_array($breakingNews ?? null) ? $breakingNews : [],
+            is_array($latestArticles ?? null) ? $latestArticles : []
+        );
+        $catCounts = [];
+        foreach ($pool as $a) {
+            $c = isset($a['cat_name']) ? trim((string)$a['cat_name']) : '';
+            if ($c === '') continue;
+            $catCounts[$c] = (isset($catCounts[$c]) ? $catCounts[$c] : 0) + 1;
+        }
+        arsort($catCounts);
+        foreach (array_keys($catCounts) as $cat) {
+            if (count($cleanTrends) >= 6) break;
+            if (isset($seenTitles[$cat])) continue;
+            $cleanTrends[] = ['title' => $cat];
+            $seenTitles[$cat] = true;
+        }
+        if (count($cleanTrends) < 6 && !empty($GLOBALS['__nf_cluster_counts'])) {
+            $clusterTitles = [];
+            foreach ($pool as $a) {
+                $k = isset($a['cluster_key']) ? (string)$a['cluster_key'] : '';
+                if ($k === '' || $k === '-') continue;
+                $cnt = isset($GLOBALS['__nf_cluster_counts'][$k]) ? (int)$GLOBALS['__nf_cluster_counts'][$k] : 0;
+                if ($cnt < 2) continue;
+                $title = isset($a['title']) ? trim((string)$a['title']) : '';
+                if ($title === '' || isset($seenTitles[$title])) continue;
+                $short = mb_substr($title, 0, 35);
+                if (mb_strlen($title) > 35) $short .= '…';
+                $clusterTitles[$short] = $cnt;
+            }
+            arsort($clusterTitles);
+            foreach (array_keys($clusterTitles) as $t) {
+                if (count($cleanTrends) >= 6) break;
+                $cleanTrends[] = ['title' => $t];
+                $seenTitles[$t] = true;
+            }
+        }
+    }
     ?>
     <?php if (!empty($cleanTrends)): ?>
     <div class="nfr-w">
