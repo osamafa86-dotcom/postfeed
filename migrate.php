@@ -45,6 +45,22 @@ function add_idx($db, $table, $name, $cols, &$applied) {
     }
 }
 
+// ---------- user-owned sources (ابنِ صحيفتك) ----------
+$db->exec("CREATE TABLE IF NOT EXISTS user_sources (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  type VARCHAR(20) NOT NULL,
+  name VARCHAR(200) NOT NULL,
+  url VARCHAR(500) NOT NULL,
+  handle VARCHAR(150) DEFAULT NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  last_fetched_at TIMESTAMP NULL DEFAULT NULL,
+  article_count INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_user_url (user_id, url(191)),
+  KEY idx_user_active (user_id, is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
 // ---------- sources tracking ----------
 add_col($db, 'sources', 'last_fetched_at', 'last_fetched_at TIMESTAMP NULL DEFAULT NULL', $applied);
 add_col($db, 'sources', 'last_error',      'last_error VARCHAR(500) DEFAULT NULL', $applied);

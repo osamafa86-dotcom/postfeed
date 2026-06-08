@@ -17,6 +17,7 @@ $active = $pageSlug ?? '';
 $navItems = [
     ['slug' => 'overview',     'href' => 'index.php',         'ico' => '🏠', 'label' => 'الرئيسية'],
     ['slug' => 'feed',         'href' => 'feed.php',          'ico' => '⚡', 'label' => 'خلاصتي'],
+    ['slug' => 'sources',      'href' => 'sources.php',       'ico' => '📡', 'label' => 'مصادري'],
     ['slug' => 'saved',        'href' => 'saved.php',         'ico' => '🔖', 'label' => 'المحفوظات'],
     ['slug' => 'following',    'href' => 'following.php',     'ico' => '🎯', 'label' => 'متابعاتي'],
     ['slug' => 'history',      'href' => 'history.php',       'ico' => '🕒', 'label' => 'سجل القراءة'],
