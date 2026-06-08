@@ -40,7 +40,8 @@ html[data-theme="light"] body.nf-redesign {
 .nf-redesign .section-title .line { border-radius:3px; }
 
 /* ---- 3. Hero feature: re-tinted from navy to a deep olive that
-   matches the brand identity (kept the same structure) ---- */
+   matches the brand identity, and re-shaped to 1 main + 2 side
+   cards (1+2, matches Figma) instead of the original 1+6. ---- */
 .nf-redesign .nf-feature-main {
   background:#1f2a1c;
   border-radius:var(--radius-lg);
@@ -53,6 +54,24 @@ html[data-theme="light"] body.nf-redesign {
     rgba(24,33,20,.95) 100%);
 }
 .nf-redesign .nf-feature-main-meta { color:#cdd9c2; }
+/* 2-column grid: main on the visual-left, 2 stacked cards on the
+   visual-right (DOM order: side first → renders right in RTL). */
+@media (min-width:1025px) {
+  .nf-redesign .nf-feature-wrap {
+    grid-template-columns:minmax(0,1fr) minmax(0,2fr);
+    align-items:stretch;
+  }
+  .nf-redesign .nf-feature-side {
+    grid-template-rows:1fr 1fr;
+    grid-template-columns:none;
+  }
+}
+/* Side cards in the new 1+2 hero are taller, so the inner thumb
+   can breathe more than the cramped 110px square. */
+.nf-redesign .nf-feature-side .nf-side-card-img {
+  flex:0 0 140px; width:140px; height:140px; max-height:140px;
+}
+.nf-redesign .nf-feature-side .nf-side-card-title { font-size:16px; }
 
 /* ---- 4. Cards: a touch more rounding + softer lift (borders are
    already softened via the token above) ---- */
@@ -294,6 +313,8 @@ html[data-theme="light"] body.nf-redesign {
 .nf-redesign .nfr-tb-left { display:flex; align-items:center; gap:18px; }
 .nf-redesign .nfr-tb-left a { color:#BFCBAE; font-weight:600; text-decoration:none; }
 .nf-redesign .nfr-tb-left a:hover { color:#fff; }
+.nf-redesign .nfr-tb-weather { display:inline-flex; align-items:center; gap:5px; cursor:pointer; }
+.nf-redesign .nfr-tb-weather span { font-variant-numeric:tabular-nums; }
 @media (max-width:700px) { .nf-redesign .nfr-tb-left { display:none; } .nf-redesign .nfr-topbar-in { padding:7px 14px; } }
 
 /* stats strip → rounded pill chips */
@@ -301,3 +322,140 @@ html[data-theme="light"] body.nf-redesign {
 
 /* newsletter now lives in the sidebar — drop the duplicate footer band */
 .nf-redesign .newsletter-band { display:none !important; }
+
+/* ============================================================
+   9. PALESTINE NEWS — Figma calls for 2 cards under the hero
+   (instead of the dense grid we used before). The PHP still
+   pulls up to 4 so dedup has headroom; we just show 2.
+   ============================================================ */
+@media (min-width:1025px) {
+  .nf-redesign .palestine-grid {
+    grid-template-columns:repeat(2, 1fr) !important;
+  }
+  .nf-redesign .palestine-grid > .ps-card:nth-child(n+3) { display:none; }
+}
+
+/* ============================================================
+   10. STATS STRIP — Figma uses 4 chips with a refined palette
+   (sources count, today's stories, update cadence, trending
+   topics). Slightly larger pills with stronger contrast.
+   ============================================================ */
+.nf-redesign .stat-chip { padding:7px 14px; font-size:13px; }
+.nf-redesign .stat-chip b { font-weight:800; color:var(--text); }
+.nf-redesign .stat-chip em { color:var(--muted); font-style:normal; }
+
+/* ============================================================
+   11. آخر الأخبار — Figma 3×2 grid of vertical cards: large
+   image on top, gray excerpt, bold title, category pill, then
+   source dot + timestamp footer. Self-contained markup lives
+   in includes/components/home_latest_card.php.
+   ============================================================ */
+.nf-redesign .nf-latest-section { max-width:1400px; margin:36px auto 0; padding:0 20px; scroll-margin-top:90px; }
+.nf-redesign .nf-latest-section .section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid var(--border); }
+.nf-redesign .nf-latest-section .section-title { font-size:20px; font-weight:800; color:var(--text); display:flex; align-items:center; gap:10px; }
+.nf-redesign .nf-latest-section .section-title .line { width:4px; height:22px; border-radius:2px; background:var(--accent); }
+.nf-redesign .nf-latest-section .see-all { font-size:13px; color:var(--muted); text-decoration:none; font-weight:700; padding:6px 10px; border-radius:8px; }
+.nf-redesign .nf-latest-section .see-all:hover { background:var(--bg-3); color:var(--text); }
+
+.nf-redesign .nf-latest-grid {
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:20px;
+}
+@media (max-width:1100px) { .nf-redesign .nf-latest-grid { grid-template-columns:repeat(2, 1fr); } }
+@media (max-width:640px)  { .nf-redesign .nf-latest-grid { grid-template-columns:1fr; gap:14px; } }
+
+.nf-redesign .nf-latest-card {
+  display:flex; flex-direction:column;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  overflow:hidden;
+  text-decoration:none; color:inherit;
+  box-shadow:var(--shadow-sm);
+  transition:transform .2s ease, box-shadow .2s ease;
+}
+.nf-redesign .nf-latest-card:hover { transform:translateY(-2px); box-shadow:var(--shadow-md); }
+.nf-redesign .nf-latest-card-img { width:100%; aspect-ratio:16/10; overflow:hidden; background:var(--bg-3); }
+.nf-redesign .nf-latest-card-img img { width:100%; height:100%; object-fit:cover; display:block; transition:transform .4s ease; }
+.nf-redesign .nf-latest-card:hover .nf-latest-card-img img { transform:scale(1.03); }
+.nf-redesign .nf-latest-card-body { padding:16px 16px 14px; display:flex; flex-direction:column; gap:10px; flex:1; }
+.nf-redesign .nf-latest-card-excerpt { font-size:12.5px; color:var(--muted); line-height:1.55; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.nf-redesign .nf-latest-card-title { font-size:16px; font-weight:800; line-height:1.55; color:var(--text); margin:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.nf-redesign .nf-latest-card:hover .nf-latest-card-title { color:var(--accent-2); }
+.nf-redesign .nf-latest-card-meta { display:flex; }
+.nf-redesign .nf-latest-card-cat {
+  display:inline-block; font-size:12px; font-weight:700;
+  color:var(--accent-2); background:#E8EFDD;
+  padding:4px 12px; border-radius:999px;
+}
+[data-theme="dark"] .nf-redesign .nf-latest-card-cat { background:rgba(123,160,90,.15); color:#A6C098; }
+.nf-redesign .nf-latest-card-foot {
+  display:flex; align-items:center; justify-content:space-between;
+  padding-top:10px; border-top:1px solid var(--bg-3);
+  font-size:12px; color:var(--muted); margin-top:auto;
+}
+.nf-redesign .nf-latest-card-source { display:inline-flex; align-items:center; gap:6px; font-weight:700; color:var(--text-2); }
+.nf-redesign .nf-latest-card-source .src-dot { width:8px; height:8px; border-radius:50%; }
+.nf-redesign .nf-latest-card-time { font-variant-numeric:tabular-nums; }
+
+/* ============================================================
+   12. أحدث الأخبار الفلسطينية — Figma layout: 2 horizontal
+   cards in a single row, image on the right, content on the
+   left, category pill at the top. Replaces the old hero +
+   grid layout entirely. Old .ps-hero is hidden via CSS.
+   ============================================================ */
+.nf-redesign .ps-hero,
+.nf-redesign .palestine-grid { display:none !important; }
+
+.nf-redesign .nf-ps-grid {
+  display:grid; grid-template-columns:repeat(2, 1fr); gap:20px;
+  margin-bottom:28px;
+}
+@media (max-width:760px) { .nf-redesign .nf-ps-grid { grid-template-columns:1fr; gap:14px; } }
+.nf-redesign .nf-ps-card {
+  display:flex; flex-direction:row-reverse;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  overflow:hidden;
+  text-decoration:none; color:inherit;
+  box-shadow:var(--shadow-sm);
+  transition:transform .2s ease, box-shadow .2s ease;
+  min-height:130px;
+}
+.nf-redesign .nf-ps-card:hover { transform:translateY(-2px); box-shadow:var(--shadow-md); }
+.nf-redesign .nf-ps-card-img { flex:0 0 140px; width:140px; overflow:hidden; background:var(--bg-3); }
+.nf-redesign .nf-ps-card-img img { width:100%; height:100%; object-fit:cover; display:block; }
+.nf-redesign .nf-ps-card-body { flex:1; min-width:0; padding:14px 16px; display:flex; flex-direction:column; gap:8px; }
+.nf-redesign .nf-ps-card-cat { display:inline-block; font-size:12px; font-weight:800; color:var(--accent-3); align-self:flex-start; }
+.nf-redesign .nf-ps-card-title { font-size:15.5px; font-weight:800; line-height:1.55; color:var(--text); margin:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.nf-redesign .nf-ps-card:hover .nf-ps-card-title { color:var(--accent-2); }
+.nf-redesign .nf-ps-card-foot {
+  display:flex; align-items:center; gap:10px;
+  font-size:12px; color:var(--muted); margin-top:auto;
+}
+.nf-redesign .nf-ps-card-source { display:inline-flex; align-items:center; gap:6px; font-weight:700; color:var(--text-2); }
+.nf-redesign .nf-ps-card-source .src-dot { width:8px; height:8px; border-radius:50%; }
+.nf-redesign .nf-ps-card-time::before { content:"·"; margin-left:8px; opacity:.6; }
+
+/* ============================================================
+   13. MAIN NAV — Figma trims the nav to 8 essentials. Hide the
+   secondary links so the visual hierarchy matches the design.
+   Visible: الرئيسية، فلسطين، سياسة، اقتصاد، رياضة، تكنولوجيا،
+   ثقافة، قصص متطوّرة.
+   ============================================================ */
+.nf-redesign .site-nav .nav-link.breaking,
+.nf-redesign .site-nav a[href="category.php?type=latest"],
+.nf-redesign .site-nav a[href="/weekly"],
+.nf-redesign .site-nav a[href="/map"],
+.nf-redesign .site-nav a[href="/podcast"],
+.nf-redesign .site-nav a[href="timelines"],
+.nf-redesign .site-nav a[href="category/media"],
+.nf-redesign .site-nav a[href="category/reports"],
+.nf-redesign .site-nav a[href="telegram.php"],
+.nf-redesign .site-nav a[href="/platforms"],
+.nf-redesign .site-nav a[href="reels.php"] { display:none !important; }
+/* Make sure Palestine + Tech are visible (newly added links). */
+.nf-redesign .site-nav .nav-palestine,
+.nf-redesign .site-nav .nav-tech { display:inline-flex !important; }

@@ -330,10 +330,10 @@ render_home_seo();
 </head>
 <body class="nf-redesign">
 
-<!-- TOP UTILITY BAR (redesign) -->
+<!-- TOP UTILITY BAR (redesign — matches Figma top strip) -->
 <div class="nfr-topbar"><div class="nfr-topbar-in">
   <div class="nfr-tb-right"><span class="nfr-tb-live"><span class="d"></span>تحديث مباشر</span><span class="nfr-tb-dot">·</span><span class="nfr-tb-date"><?php $__d=['Sunday'=>'الأحد','Monday'=>'الإثنين','Tuesday'=>'الثلاثاء','Wednesday'=>'الأربعاء','Thursday'=>'الخميس','Friday'=>'الجمعة','Saturday'=>'السبت']; echo e(($__d[date('l')] ?? '') . '، ' . date('Y/m/d')); ?></span></div>
-  <div class="nfr-tb-left"><a href="/weekly">مراجعة الأسبوع</a><a href="contact.php">تواصل معنا</a><a href="privacy.php">الخصوصية</a></div>
+  <div class="nfr-tb-left"><a href="#newsletter-band" onclick="document.querySelector('.nfr-news input[type=email]')?.focus();return false;">✉ النشرة البريدية</a><a href="contact.php">تواصل معنا</a><a href="#weather" onclick="if(window.openWeatherModal)openWeatherModal();return false;" class="nfr-tb-weather">🌤 <span id="nfrTopWTemp">--</span>°</a></div>
 </div></div>
 
 <?php
@@ -344,14 +344,27 @@ $showTicker = true;
 include __DIR__ . '/includes/components/site_header.php';
 ?>
 
-<!-- STATS STRIP (compact) -->
+<!-- STATS STRIP (Figma 4-chip layout: sources / today / cadence / trends) -->
+<?php
+// Count today's articles for the "خبراً اليوم" chip. Cached lightly so
+// the homepage doesn't run an extra COUNT() per request.
+$todayCount = cache_remember('home_today_articles_count', 120, function() {
+    try {
+        $pdo = getDB();
+        $stmt = $pdo->query("SELECT COUNT(*) FROM articles WHERE DATE(published_at) = CURDATE()");
+        return (int)$stmt->fetchColumn();
+    } catch (Throwable $e) { return 0; }
+});
+$trendsCount = is_array($trends) ? count($trends) : 0;
+?>
 <div class="stats-strip">
   <div class="stats-strip-inner">
-    <span class="stat-chip stat-chip-blue"><span class="stat-chip-ico">📰</span><b><?php echo number_format($totalArticles); ?></b><em>خبر</em></span>
-    <span class="stat-chip stat-chip-teal"><span class="stat-chip-ico">🌐</span><b><?php echo $totalSources; ?></b><em>مصدر نشط</em></span>
-    <span class="stat-chip stat-chip-purple"><span class="stat-chip-ico">👁</span><b>3.2M</b><em>مشاهدة اليوم</em></span>
-    <span class="stat-chip stat-chip-orange"><span class="stat-chip-ico">🔥</span><b>سياسة</b><em>الأكثر تداولاً</em></span>
-    <span class="stat-chip stat-chip-red"><span class="stat-chip-ico">⏱</span><b>منذ 2 دق</b><em>آخر تحديث</em></span>
+    <span class="stat-chip stat-chip-blue"><span class="stat-chip-ico">📑</span><b><?php echo number_format($todayCount); ?></b><em>خبراً اليوم</em></span>
+    <span class="stat-chip stat-chip-teal"><span class="stat-chip-ico">🗂</span><b><?php echo number_format($totalSources); ?></b><em>مصدراً موثوقاً</em></span>
+    <span class="stat-chip stat-chip-purple"><span class="stat-chip-ico">⏱</span><b>كل 5 دقائق</b><em>تحديث مباشر</em></span>
+    <?php if ($trendsCount > 0): ?>
+    <span class="stat-chip stat-chip-orange"><span class="stat-chip-ico">📈</span><b><?php echo $trendsCount; ?></b><em>مواضيع رائجة</em></span>
+    <?php endif; ?>
   </div>
 </div>
 
@@ -514,30 +527,26 @@ include __DIR__ . '/includes/components/site_header.php';
 </div>
 <?php endif; ?>
 
-<!-- LATEST NEWS (Featured 3-column layout) — full-width above main-layout -->
+<!-- LATEST NEWS (Featured 1 main + 2 side layout) — full-width above main-layout -->
 <?php
-// Split: 1 center + 3 left + 3 right (7 items total), remainder spills into main news-grid
+// Figma layout: 1 hero (visual-left) + 2 stacked side cards (visual-right).
+// In RTL the DOM-first column renders on the right, so we list the side
+// cards before the main feature. Remainder spills into the main grid below.
 $__featMain  = $latestArticles[0] ?? null;
-$__featSide  = array_slice($latestArticles, 1, 6);
-$__featLeft  = array_slice($__featSide, 0, 3);
-$__featRight = array_slice($__featSide, 3, 3);
-$__featRest  = array_slice($latestArticles, 7);
+$__featSide  = array_slice($latestArticles, 1, 2);
+$__featGrid  = array_slice($latestArticles, 3, 6);
 ?>
 <?php if ($__featMain): ?>
 <div class="nf-feature-container">
-  <div id="latest" class="section-header">
-    <div class="section-title blue"><div class="line"></div>⏱ آخر الأخبار</div>
-    <a class="see-all" href="category.php?type=latest">عرض الكل ›</a>
-  </div>
   <div class="nf-feature-wrap">
-    <!-- Left column (side cards) -->
+    <!-- Side cards (2 stacked) — DOM-first → renders on the right in RTL -->
     <div class="nf-feature-side">
-      <?php foreach ($__featLeft as $article): ?>
+      <?php foreach ($__featSide as $article): ?>
         <?php include __DIR__ . '/includes/components/home_feature_side.php'; ?>
       <?php endforeach; ?>
     </div>
     <!-- Center featured -->
-    <div class="nf-feature-main">
+    <div id="latest" class="nf-feature-main">
       <a class="nf-feature-main-link" href="<?php echo articleUrl($__featMain); ?>">
         <?php /*
           Rendered as <img> (not a CSS background) so the browser's
@@ -581,14 +590,23 @@ $__featRest  = array_slice($latestArticles, 7);
       </a>
       <?php $article = $__featMain; include __DIR__ . '/includes/components/action_bar.php'; ?>
     </div>
-    <!-- Right column (side cards) -->
-    <div class="nf-feature-side">
-      <?php foreach ($__featRight as $article): ?>
-        <?php include __DIR__ . '/includes/components/home_feature_side.php'; ?>
-      <?php endforeach; ?>
-    </div>
   </div>
 </div>
+<?php endif; ?>
+
+<?php if (!empty($__featGrid)): ?>
+<!-- آخر الأخبار 3×2 grid (matches Figma) -->
+<section class="nf-latest-section">
+  <div class="section-header">
+    <div class="section-title blue"><div class="line"></div>⏱ آخر الأخبار</div>
+    <a class="see-all" href="category.php?type=latest">عرض الكل ›</a>
+  </div>
+  <div class="nf-latest-grid">
+    <?php foreach ($__featGrid as $article): ?>
+      <?php include __DIR__ . '/includes/components/home_latest_card.php'; ?>
+    <?php endforeach; ?>
+  </div>
+</section>
 <?php endif; ?>
 
 <?php
@@ -624,61 +642,35 @@ $__renderCtSection('health',         'صحة',           '#3b8a6e', '🏥', $hea
 <div class="main-layout">
   <div class="main-col">
 
-    <!-- PALESTINE NEWS -->
+    <!-- PALESTINE NEWS (Figma: 2 horizontal cards, image on the right) -->
     <div id="palestine" class="section-header">
       <div class="section-title"><div class="line" style="background:#1B7A3D"></div>🇵🇸 أحدث الأخبار الفلسطينية</div>
+      <a class="see-all" href="category.php?type=palestine">عرض الكل ›</a>
     </div>
     <?php if (!empty($palestineNews)): ?>
-      <?php $psFirst = $palestineNews[0]; ?>
-      <div class="ps-hero">
-        <a class="ps-hero-link" href="<?php echo articleUrl($psFirst); ?>">
-          <div class="ps-hero-text">
-            <?php echo renderClusterBadge($psFirst); if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($psFirst); ?>
-            <h3><?php echo e($psFirst['title']); ?></h3>
-            <div class="ps-hero-excerpt"><?php echo e(mb_substr(strip_tags($psFirst['content'] ?? $psFirst['excerpt'] ?? ''), 0, 200)); ?></div>
-            <div class="ps-hero-meta">
-              <span class="source-icon"><?php echo e(mb_substr($psFirst['source_name'], 0, 1)); ?></span>
-              <div class="meta-text">
-                <span><?php echo e($psFirst['source_name']); ?></span>
-                <span class="meta-dot"></span>
-                <span><?php echo timeAgo($psFirst['published_at']); ?></span>
+      <div class="nf-ps-grid">
+        <?php foreach (array_slice($palestineNews, 0, 2) as $article): ?>
+          <a class="nf-ps-card" href="<?php echo articleUrl($article); ?>">
+            <div class="nf-ps-card-body">
+              <?php if (!empty($article['cat_name'])): ?>
+                <span class="nf-ps-card-cat"><?php echo e($article['cat_name']); ?></span>
+              <?php endif; ?>
+              <h3 class="nf-ps-card-title"><?php echo e($article['title']); ?></h3>
+              <div class="nf-ps-card-foot">
+                <?php if (!empty($article['source_name'])): ?>
+                  <span class="nf-ps-card-source">
+                    <span class="src-dot" style="background:<?php echo e($article['logo_color'] ?? '#1B7A3D'); ?>"></span>
+                    <?php echo e($article['source_name']); ?>
+                  </span>
+                <?php endif; ?>
+                <span class="nf-ps-card-time"><?php echo timeAgo($article['published_at']); ?></span>
               </div>
             </div>
-          </div>
-          <div class="ps-hero-img">
-            <?php echo responsiveImg(
-              $psFirst['image_url'] ?? placeholderImage(800, 500),
-              $psFirst['title'] ?? '',
-              '(max-width:768px) 100vw, 480px',
-              [320, 480, 800],
-              '',
-              'lazy'
-            ); ?>
-          </div>
-        </a>
-        <?php $article = $psFirst; include __DIR__ . '/includes/components/action_bar.php'; ?>
-      </div>
-
-      <div class="palestine-grid">
-        <?php for ($pIdx = 1; $pIdx < count($palestineNews); $pIdx++): $article = $palestineNews[$pIdx]; ?>
-          <div class="ps-card">
-            <a class="ps-card-link" href="<?php echo articleUrl($article); ?>">
-              <div class="img-wrap">
-                <img src="<?php echo e($article['image_url'] ?? placeholderImage(400,300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async">
-                <div class="img-date"><?php echo timeAgo($article['published_at']); ?></div>
-              </div>
-              <div class="ps-card-body">
-                <?php echo renderClusterBadge($article); if (function_exists('renderTimelineBadge')) echo renderTimelineBadge($article); ?>
-                <h3><?php echo e($article['title']); ?></h3>
-                <div class="ps-card-footer">
-                  <span class="source-dot"><?php echo e(mb_substr($article['source_name'], 0, 1)); ?></span>
-                  <span><?php echo e($article['source_name']); ?></span>
-                </div>
-              </div>
-            </a>
-            <?php include __DIR__ . '/includes/components/action_bar.php'; ?>
-          </div>
-        <?php endfor; ?>
+            <div class="nf-ps-card-img">
+              <img src="<?php echo e($article['image_url'] ?? placeholderImage(400, 300)); ?>" alt="<?php echo e($article['title'] ?? ''); ?>" loading="lazy" decoding="async">
+            </div>
+          </a>
+        <?php endforeach; ?>
       </div>
     <?php endif; ?>
 
@@ -1129,7 +1121,7 @@ $__renderCtSection('health',         'صحة',           '#3b8a6e', '🏥', $hea
   </aside>
   <script>
   function nfrSubscribe(e){e.preventDefault();var f=document.getElementById('nfrNewsletter'),m=document.getElementById('nfrNewsMsg');if(!f)return false;var fd=new FormData(f);if(m)m.textContent='…جاري الاشتراك';fetch('api/newsletter_subscribe.php',{method:'POST',body:fd}).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){if(m)m.textContent=(d&&d.message)?d.message:'تم الاشتراك بنجاح ✓';if(!d||d.success!==false)f.reset();}).catch(function(){if(m)m.textContent='تعذّر الاشتراك، حاول لاحقاً';});return false;}
-  (function(){function sync(){var s=document.querySelector('#topWeather span'),d=document.getElementById('nfrWTemp');if(s&&d){var t=(s.textContent||'').replace(/[^0-9-]/g,'');if(t)d.textContent=t;}}sync();setTimeout(sync,1500);setTimeout(sync,4000);})();
+  (function(){function sync(){var s=document.querySelector('#topWeather span');if(!s)return;var t=(s.textContent||'').replace(/[^0-9-]/g,'');if(!t)return;var d=document.getElementById('nfrWTemp');if(d)d.textContent=t;var b=document.getElementById('nfrTopWTemp');if(b)b.textContent=t;}sync();setTimeout(sync,1500);setTimeout(sync,4000);})();
   </script>
 </div><!-- /main-layout -->
 
