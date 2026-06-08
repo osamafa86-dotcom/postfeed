@@ -200,6 +200,17 @@ html[data-theme="light"] body.nf-redesign {
 .nf-redesign .ev-links a:hover { color:var(--accent-2); }
 .nf-redesign .ev-links a:hover .t { text-decoration:underline; text-underline-offset:3px; }
 .nf-redesign .ev-links .b { width:6px; height:6px; border-radius:50%; margin-top:8px; flex-shrink:0; }
+/* "X مصادر" badge on accordion list items: signals the user that the
+   same story landed across multiple outlets, so they know this single
+   entry stands for the deduplicated cluster, not a one-off post. */
+.nf-redesign .ev-links .ev-sources {
+  display:inline-flex; align-items:center; gap:4px;
+  font-size:11px; font-weight:800; color:#6B4F0B;
+  background:linear-gradient(135deg,#F5EBCE,#E2C264);
+  border:1px solid #E2C264;
+  padding:2px 8px; border-radius:999px; margin-right:auto;
+  white-space:nowrap; flex-shrink:0;
+}
 .nf-redesign .ev-foot { margin-top:auto; display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
 .nf-redesign .ev-followbtn {
   background:linear-gradient(135deg,var(--accent),var(--accent-2));

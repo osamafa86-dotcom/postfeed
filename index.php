@@ -84,8 +84,12 @@ $trendingReaders  = trending_active_readers();
 // (أخبار الأقصى، غزة، الأسرى…). Only the single freshest story
 // is featured on the homepage; the rest live on /evolving-stories.
 // Cached 5 min; sorts by freshness inside evolving_stories_with_previews.
-$evolvingRail = cache_remember('home_evolving_accordion_v1', 300, function() {
-    $stories = evolving_stories_with_previews(6);
+// Bumped the per-story preview count to 12 (was 6 / display-3) so the
+// cluster-dedup step in the accordion template still has enough source
+// material to surface 3 *unique* headlines per file. Cache key bumped
+// so we don't serve the old 6-article payload from cache.
+$evolvingRail = cache_remember('home_evolving_accordion_v2', 300, function() {
+    $stories = evolving_stories_with_previews(12);
     return array_slice($stories, 0, 6);
 });
 
@@ -226,6 +230,15 @@ foreach ([$heroArticles, $personalFeed, $palestineNews, $breakingNews, $latestAr
           $healthArticles, $varietyArticles] as $__list) {
     foreach ($__list as $__a) {
         $__allIds[] = (int)($__a['id'] ?? 0);
+        $__ck = (string)($__a['cluster_key'] ?? '');
+        if ($__ck !== '' && $__ck !== '-') $__allClusterKeys[] = $__ck;
+    }
+}
+// Pull cluster keys from the evolving stories rail too, so the
+// "X مصادر" badge can render on the accordion items (the rail is
+// built separately, so its cluster keys aren't in the lists above).
+foreach (is_array($evolvingRail ?? null) ? $evolvingRail : [] as $__st) {
+    foreach (($__st['latest'] ?? []) as $__a) {
         $__ck = (string)($__a['cluster_key'] ?? '');
         if ($__ck !== '' && $__ck !== '-') $__allClusterKeys[] = $__ck;
     }
@@ -728,10 +741,61 @@ $__renderCtSection('health',         'صحة',           '#3b8a6e', '🏥', $hea
                 <div class="ev-content">
                   <div class="ev-readlabel">نقرأ في هذا الملف:</div>
                   <?php if (!empty($st['latest'])): ?>
+                  <?php
+                  // Two-layer dedupe so the same story doesn't appear
+                  // twice in a file:
+                  //
+                  //   1) By cluster_key — collapses articles the
+                  //      clustering pipeline already grouped.
+                  //   2) By a normalized title prefix — catches the
+                  //      "نفس الحدث برواية مختلفة" case where two
+                  //      outlets phrased the headline slightly
+                  //      differently and the clusterer didn't merge
+                  //      them (the screenshot the user sent — two
+                  //      "مستوطنون يهاجمون منازل" headlines from
+                  //      neighboring villages).
+                  //
+                  // First occurrence wins; the badge below tells the
+                  // user how many sources are folded into it.
+                  $__seenCluster = [];
+                  $__seenTitle   = [];
+                  $__evLinks = [];
+                  foreach ($st['latest'] as $__la) {
+                      $__ck = isset($__la['cluster_key']) ? (string)$__la['cluster_key'] : '';
+                      $__key = ($__ck !== '' && $__ck !== '-') ? 'c:' . $__ck : 'a:' . ($__la['id'] ?? '');
+                      if (isset($__seenCluster[$__key])) continue;
+                      // Normalized title prefix: strip punctuation +
+                      // diacritics, collapse whitespace, take first
+                      // 35 chars. Catches "يهاجمون" vs "يُهاجمون".
+                      $__norm = (string)($__la['title'] ?? '');
+                      $__norm = preg_replace('/[\x{064B}-\x{065F}\x{0670}]/u', '', $__norm); // tashkeel
+                      $__norm = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $__norm);
+                      $__norm = trim(preg_replace('/\s+/u', ' ', $__norm));
+                      $__titleKey = mb_substr($__norm, 0, 35);
+                      if ($__titleKey !== '' && isset($__seenTitle[$__titleKey])) continue;
+
+                      $__seenCluster[$__key] = true;
+                      if ($__titleKey !== '') $__seenTitle[$__titleKey] = true;
+                      $__evLinks[] = $__la;
+                      if (count($__evLinks) >= 3) break;
+                  }
+                  ?>
                   <ul class="ev-links">
-                    <?php foreach (array_slice($st['latest'], 0, 3) as $la):
-                      $__laUrl = !empty($la['id']) ? articleUrl($la) : $sUrl; ?>
-                      <li><a href="<?php echo e($__laUrl); ?>"><span class="b" style="background:<?php echo e($color); ?>"></span><span class="t"><?php echo e(mb_substr((string)$la['title'], 0, 90)); ?></span></a></li>
+                    <?php foreach ($__evLinks as $la):
+                      $__laUrl = !empty($la['id']) ? articleUrl($la) : $sUrl;
+                      $__laCK = isset($la['cluster_key']) ? (string)$la['cluster_key'] : '';
+                      $__laCnt = ($__laCK !== '' && isset($GLOBALS['__nf_cluster_counts'][$__laCK]))
+                                 ? (int)$GLOBALS['__nf_cluster_counts'][$__laCK] : 0;
+                      ?>
+                      <li>
+                        <a href="<?php echo e($__laUrl); ?>">
+                          <span class="b" style="background:<?php echo e($color); ?>"></span>
+                          <span class="t"><?php echo e(mb_substr((string)$la['title'], 0, 90)); ?></span>
+                          <?php if ($__laCnt >= 2): ?>
+                            <span class="ev-sources" title="هذا الخبر ورد في <?php echo (int)$__laCnt; ?> مصادر">📰 <?php echo (int)$__laCnt; ?> مصادر</span>
+                          <?php endif; ?>
+                        </a>
+                      </li>
                     <?php endforeach; ?>
                   </ul>
                   <?php endif; ?>
