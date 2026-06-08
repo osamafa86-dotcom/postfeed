@@ -40,7 +40,8 @@ html[data-theme="light"] body.nf-redesign {
 .nf-redesign .section-title .line { border-radius:3px; }
 
 /* ---- 3. Hero feature: re-tinted from navy to a deep olive that
-   matches the brand identity (kept the same structure) ---- */
+   matches the brand identity, and re-shaped to 1 main + 2 side
+   cards (1+2, matches Figma) instead of the original 1+6. ---- */
 .nf-redesign .nf-feature-main {
   background:#1f2a1c;
   border-radius:var(--radius-lg);
@@ -53,6 +54,24 @@ html[data-theme="light"] body.nf-redesign {
     rgba(24,33,20,.95) 100%);
 }
 .nf-redesign .nf-feature-main-meta { color:#cdd9c2; }
+/* 2-column grid: main on the visual-left, 2 stacked cards on the
+   visual-right (DOM order: side first → renders right in RTL). */
+@media (min-width:1025px) {
+  .nf-redesign .nf-feature-wrap {
+    grid-template-columns:minmax(0,1fr) minmax(0,2fr);
+    align-items:stretch;
+  }
+  .nf-redesign .nf-feature-side {
+    grid-template-rows:1fr 1fr;
+    grid-template-columns:none;
+  }
+}
+/* Side cards in the new 1+2 hero are taller, so the inner thumb
+   can breathe more than the cramped 110px square. */
+.nf-redesign .nf-feature-side .nf-side-card-img {
+  flex:0 0 140px; width:140px; height:140px; max-height:140px;
+}
+.nf-redesign .nf-feature-side .nf-side-card-title { font-size:16px; }
 
 /* ---- 4. Cards: a touch more rounding + softer lift (borders are
    already softened via the token above) ---- */
@@ -294,6 +313,8 @@ html[data-theme="light"] body.nf-redesign {
 .nf-redesign .nfr-tb-left { display:flex; align-items:center; gap:18px; }
 .nf-redesign .nfr-tb-left a { color:#BFCBAE; font-weight:600; text-decoration:none; }
 .nf-redesign .nfr-tb-left a:hover { color:#fff; }
+.nf-redesign .nfr-tb-weather { display:inline-flex; align-items:center; gap:5px; cursor:pointer; }
+.nf-redesign .nfr-tb-weather span { font-variant-numeric:tabular-nums; }
 @media (max-width:700px) { .nf-redesign .nfr-tb-left { display:none; } .nf-redesign .nfr-topbar-in { padding:7px 14px; } }
 
 /* stats strip → rounded pill chips */
@@ -301,3 +322,24 @@ html[data-theme="light"] body.nf-redesign {
 
 /* newsletter now lives in the sidebar — drop the duplicate footer band */
 .nf-redesign .newsletter-band { display:none !important; }
+
+/* ============================================================
+   9. PALESTINE NEWS — Figma calls for 2 cards under the hero
+   (instead of the dense grid we used before). The PHP still
+   pulls up to 4 so dedup has headroom; we just show 2.
+   ============================================================ */
+@media (min-width:1025px) {
+  .nf-redesign .palestine-grid {
+    grid-template-columns:repeat(2, 1fr) !important;
+  }
+  .nf-redesign .palestine-grid > .ps-card:nth-child(n+3) { display:none; }
+}
+
+/* ============================================================
+   10. STATS STRIP — Figma uses 4 chips with a refined palette
+   (sources count, today's stories, update cadence, trending
+   topics). Slightly larger pills with stronger contrast.
+   ============================================================ */
+.nf-redesign .stat-chip { padding:7px 14px; font-size:13px; }
+.nf-redesign .stat-chip b { font-weight:800; color:var(--text); }
+.nf-redesign .stat-chip em { color:var(--muted); font-style:normal; }
