@@ -61,6 +61,21 @@ $db->exec("CREATE TABLE IF NOT EXISTS user_sources (
   KEY idx_user_active (user_id, is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+$db->exec("CREATE TABLE IF NOT EXISTS user_source_articles (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_source_id INT NOT NULL,
+  user_id INT NOT NULL,
+  title VARCHAR(500) NOT NULL,
+  url VARCHAR(700) NOT NULL,
+  image_url VARCHAR(700) DEFAULT NULL,
+  excerpt TEXT DEFAULT NULL,
+  published_at TIMESTAMP NULL DEFAULT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_src_url (user_source_id, url(255)),
+  KEY idx_user_pub (user_id, published_at),
+  KEY idx_src (user_source_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
 // ---------- sources tracking ----------
 add_col($db, 'sources', 'last_fetched_at', 'last_fetched_at TIMESTAMP NULL DEFAULT NULL', $applied);
 add_col($db, 'sources', 'last_error',      'last_error VARCHAR(500) DEFAULT NULL', $applied);

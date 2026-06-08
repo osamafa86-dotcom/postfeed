@@ -4,7 +4,7 @@
  * POST, auth + CSRF required. Mirrors api/follow.php conventions.
  */
 require __DIR__ . '/_json.php';
-require_once __DIR__ . '/../includes/user_sources.php';
+require_once __DIR__ . '/../includes/user_source_ingest.php';
 
 require_post_json();
 $uid = require_user_json();
@@ -17,7 +17,19 @@ try {
     if ($action === 'add') {
         $r = user_source_add($uid, (string)($_POST['input'] ?? ''));
         if (empty($r['ok'])) json_out(['ok' => false, 'error' => $r['error'] ?? 'failed'], 400);
-        json_out(['ok' => true, 'source' => $r]);
+        // Best-effort first ingest so the user sees articles right away
+        // (RSS/website only, no slow feed-guessing on the add request).
+        $ingested = 0;
+        if (in_array($r['type'], ['rss', 'website'], true)) {
+            @set_time_limit(25);
+            try {
+                $ingested = user_source_ingest_one(
+                    ['id' => $r['id'], 'user_id' => $uid, 'type' => $r['type'], 'url' => $r['url']],
+                    25, false
+                );
+            } catch (Throwable $e) {}
+        }
+        json_out(['ok' => true, 'source' => $r, 'ingested' => $ingested]);
     } elseif ($action === 'toggle') {
         $id = (int)($_POST['id'] ?? 0);
         $on = (string)($_POST['on'] ?? '') === '1';

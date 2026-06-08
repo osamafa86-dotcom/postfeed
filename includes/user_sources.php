@@ -50,7 +50,7 @@ function user_source_detect(string $in): ?array {
                 'url' => 'https://x.com/' . $m[1], 'handle' => '@' . $m[1]];
     }
     // explicit RSS / Atom feed
-    if (preg_match('#\.(xml|rss|atom)(\?|#|$)#i', $in)
+    if (preg_match('~\.(xml|rss|atom)(\?|\#|$)~i', $in)
         || strpos($low, '/feed') !== false || strpos($low, '/rss') !== false) {
         $url  = preg_match('#^https?://#i', $in) ? $in : ('https://' . $in);
         $host = parse_url($url, PHP_URL_HOST) ?: $url;
