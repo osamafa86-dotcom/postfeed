@@ -68,9 +68,9 @@ $trendingReaders  = trending_active_readers();
 // (أخبار الأقصى، غزة، الأسرى…). Only the single freshest story
 // is featured on the homepage; the rest live on /evolving-stories.
 // Cached 5 min; sorts by freshness inside evolving_stories_with_previews.
-$evolvingRail = cache_remember('home_evolving_rail_v2', 300, function() {
-    $stories = evolving_stories_with_previews(5);
-    return array_slice($stories, 0, 1);
+$evolvingRail = cache_remember('home_evolving_accordion_v1', 300, function() {
+    $stories = evolving_stories_with_previews(6);
+    return array_slice($stories, 0, 6);
 });
 
 // Ticker pulls from the latest Palestine news stream so the "عاجل" strip
@@ -313,11 +313,13 @@ render_home_seo();
   <link rel="stylesheet" href="assets/css/home-index.min.css?v=m3">
   <link rel="stylesheet" href="assets/css/user.min.css?v=m2">
 </noscript>
+<link rel="stylesheet" href="assets/css/home-redesign.css?v=r1" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="assets/css/home-redesign.css?v=r1"></noscript>
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 <script src="/assets/js/audio-player.js?v=3" defer></script>
 <script src="/assets/js/audio-cards.js?v=2" defer></script>
 </head>
-<body>
+<body class="nf-redesign">
 
 <?php
 // Shared site header (header + main nav + mobile nav + breaking ticker)
@@ -671,126 +673,56 @@ $__renderCtSection('health',         'صحة',           '#3b8a6e', '🏥', $hea
         <div class="section-title"><div class="line" style="background:#B8860B"></div>📅 قصص متطوّرة — متابعة دائمة</div>
         <a class="see-all" href="/evolving-stories">عرض الكل ›</a>
       </div>
-      <div class="evrail-grid">
-        <?php foreach ($evolvingRail as $st):
+      <div class="ev-acc" data-ev-acc>
+        <?php foreach ($evolvingRail as $__i => $st):
           $sUrl   = evolving_story_url($st);
-          $sCover = !empty($st['cover_image']) ? $st['cover_image'] : placeholderImage(500, 280);
           $color  = $st['accent_color'] ?: '#3D5A28';
+          $sCover = !empty($st['cover_image']) ? $st['cover_image'] : placeholderImage(400, 260);
+          $__open = ($__i === 0);
+          $__live = (!empty($st['last_matched_at']) && strtotime($st['last_matched_at']) > (time() - 7200));
         ?>
-          <a class="evrail-card" href="<?php echo e($sUrl); ?>">
-            <div class="evrail-cover" style="background-image:url('<?php echo e($sCover); ?>');">
-              <span class="evrail-accent" style="background:<?php echo e($color); ?>;"></span>
-              <?php if (!empty($st['last_matched_at']) && strtotime($st['last_matched_at']) > (time() - 7200)): ?>
-                <span class="evrail-live"><span class="dot"></span>مباشر</span>
-              <?php endif; ?>
-              <div class="evrail-head">
-                <div class="evrail-icon"><?php echo e($st['icon'] ?: '📅'); ?></div>
-                <div class="evrail-name"><?php echo e($st['name']); ?></div>
+          <div class="ev-item<?php echo $__open ? ' open' : ''; ?>" data-ev-item>
+            <button type="button" class="ev-head" data-ev-toggle aria-expanded="<?php echo $__open ? 'true' : 'false'; ?>">
+              <span class="ev-head-right">
+                <span class="ev-diamond" style="background:<?php echo e($color); ?>"></span>
+                <span class="ev-name"><?php echo e($st['name']); ?></span>
+              </span>
+              <span class="ev-head-left">
+                <span class="ev-count"><span class="ev-cdot" style="background:<?php echo e($color); ?>"></span><b><?php echo number_format($st['article_count']); ?></b> تقرير</span>
+                <span class="ev-chev" aria-hidden="true">&#9662;</span>
+              </span>
+            </button>
+            <div class="ev-panel">
+              <div class="ev-panel-inner">
+                <div class="ev-thumb" style="background-image:url('<?php echo e($sCover); ?>');">
+                  <?php if ($__live): ?><span class="ev-live"><span class="dot"></span>مباشر</span><?php endif; ?>
+                  <span class="ev-thumb-name"><?php echo e($st['name']); ?></span>
+                </div>
+                <div class="ev-content">
+                  <div class="ev-readlabel">نقرأ في هذا الملف:</div>
+                  <?php if (!empty($st['latest'])): ?>
+                  <ul class="ev-links">
+                    <?php foreach (array_slice($st['latest'], 0, 3) as $la):
+                      $__laUrl = !empty($la['id']) ? articleUrl($la) : $sUrl; ?>
+                      <li><a href="<?php echo e($__laUrl); ?>"><span class="b" style="background:<?php echo e($color); ?>"></span><span class="t"><?php echo e(mb_substr((string)$la['title'], 0, 90)); ?></span></a></li>
+                    <?php endforeach; ?>
+                  </ul>
+                  <?php endif; ?>
+                  <div class="ev-foot">
+                    <a class="ev-followbtn" href="<?php echo e($sUrl); ?>">تابع هذا الملف &#8592;</a>
+                    <?php if (!empty($st['last_matched_at']) && $st['last_matched_at'] !== '0000-00-00 00:00:00'): ?>
+                      <span class="ev-updated">&#8635; آخر تحديث <?php echo e(timeAgo($st['last_matched_at'])); ?></span>
+                    <?php endif; ?>
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="evrail-body">
-              <?php if (!empty($st['latest'])): ?>
-                <ul class="evrail-latest">
-                  <?php foreach (array_slice($st['latest'], 0, 5) as $la): ?>
-                    <li>
-                      <span class="bullet" style="background:<?php echo e($color); ?>;"></span>
-                      <span class="txt"><?php echo e(mb_substr((string)$la['title'], 0, 75)); ?></span>
-                    </li>
-                  <?php endforeach; ?>
-                </ul>
-              <?php endif; ?>
-              <div class="evrail-foot">
-                <span>📰 <b><?php echo number_format($st['article_count']); ?></b> تقرير</span>
-                <?php if (!empty($st['last_matched_at']) && $st['last_matched_at'] !== '0000-00-00 00:00:00'): ?>
-                  <span>↻ <?php echo e(timeAgo($st['last_matched_at'])); ?></span>
-                <?php endif; ?>
-              </div>
-            </div>
-          </a>
+          </div>
         <?php endforeach; ?>
       </div>
-      <style>
-        /* Single featured card on the homepage: horizontal layout,
-           cover on one side, latest headlines on the other. The
-           /evolving-stories page still uses the grid version. */
-        .evrail-grid {
-          display:grid; grid-template-columns:1fr;
-          gap:16px; margin-bottom:32px;
-        }
-        .evrail-card {
-          background:#fff; border:1px solid #DDD5C7; border-radius:16px;
-          overflow:hidden; text-decoration:none; color:inherit;
-          display:grid; grid-template-columns:minmax(260px, 38%) 1fr;
-          transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease;
-          box-shadow:0 2px 8px -3px rgba(0,0,0,.06);
-        }
-        .evrail-card:hover {
-          transform:translateY(-3px);
-          box-shadow:0 14px 30px -16px rgba(61,90,40,.26);
-          border-color:rgba(217,119,6,.3);
-        }
-        .evrail-cover {
-          min-height:220px; background-size:cover; background-position:center;
-          position:relative; background-color:#DDD5C7;
-        }
-        .evrail-cover::after {
-          content:''; position:absolute; inset:0;
-          background:linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,.82) 100%);
-        }
-        .evrail-accent { position:absolute; top:0; left:0; right:0; height:4px; z-index:2; }
-        .evrail-live {
-          position:absolute; top:10px; right:10px; z-index:3;
-          background:#CE1126; color:#fff; padding:4px 10px; border-radius:999px;
-          font-size:10.5px; font-weight:800; display:flex; align-items:center; gap:5px;
-          box-shadow:0 2px 8px rgba(206,17,38,.4);
-        }
-        .evrail-live .dot {
-          width:6px; height:6px; border-radius:50%; background:#fff;
-          animation:evrail-pulse 2s infinite;
-        }
-        @keyframes evrail-pulse {
-          0% { box-shadow:0 0 0 0 rgba(255,255,255,.7); }
-          70% { box-shadow:0 0 0 8px rgba(255,255,255,0); }
-          100% { box-shadow:0 0 0 0 rgba(255,255,255,0); }
-        }
-        .evrail-head {
-          position:absolute; bottom:12px; right:12px; left:12px; z-index:2;
-          display:flex; align-items:center; gap:10px; color:#fff;
-        }
-        .evrail-icon {
-          width:38px; height:38px; border-radius:10px;
-          background:rgba(255,255,255,.96); color:#2C2416;
-          display:flex; align-items:center; justify-content:center;
-          font-size:20px; flex-shrink:0;
-          box-shadow:0 3px 10px rgba(0,0,0,.3);
-        }
-        .evrail-name {
-          font-size:16px; font-weight:900; line-height:1.3;
-          text-shadow:0 2px 5px rgba(0,0,0,.4);
-        }
-        .evrail-body { padding:14px 14px 12px; flex:1; display:flex; flex-direction:column; }
-        .evrail-latest { list-style:none; padding:0; margin:0 0 10px; flex:1; }
-        .evrail-latest li {
-          display:flex; gap:8px; align-items:flex-start;
-          padding:8px 0; border-bottom:1px dashed rgba(0,0,0,.07);
-          font-size:13px; line-height:1.55;
-        }
-        .evrail-latest li:last-child { border-bottom:none; }
-        .evrail-latest .bullet {
-          width:6px; height:6px; border-radius:50%; margin-top:7px; flex-shrink:0;
-        }
-        .evrail-latest .txt { flex:1; color:#2C2416; font-weight:600; }
-        .evrail-foot {
-          margin-top:auto; padding-top:10px; border-top:1px solid #DDD5C7;
-          display:flex; align-items:center; justify-content:space-between;
-          font-size:11.5px; color:#7A6E5D;
-        }
-        .evrail-foot b { color:#2C2416; font-weight:800; }
-        @media(max-width:640px) {
-          .evrail-card { grid-template-columns:1fr; }
-          .evrail-cover { min-height:160px; }
-        }
-      </style>
+      <script>
+      (function(){var acc=document.querySelector('[data-ev-acc]');if(!acc)return;acc.addEventListener('click',function(e){var btn=e.target.closest('[data-ev-toggle]');if(!btn)return;var item=btn.closest('[data-ev-item]');if(!item)return;var was=item.classList.contains('open');acc.querySelectorAll('[data-ev-item].open').forEach(function(x){if(x!==item){x.classList.remove('open');var b=x.querySelector('[data-ev-toggle]');if(b)b.setAttribute('aria-expanded','false');}});item.classList.toggle('open',!was);btn.setAttribute('aria-expanded',String(!was));});})();
+      </script>
     <?php endif; ?>
 
     <!-- BREAKING NEWS -->
@@ -828,15 +760,15 @@ $__renderCtSection('health',         'صحة',           '#3b8a6e', '🏥', $hea
     $ytMsgs = [];
     try {
         $socialDb = getDB();
-        $tgMsgs = $socialDb->query("SELECT m.*, s.display_name, s.username, s.avatar_url FROM telegram_messages m JOIN telegram_sources s ON m.source_id = s.id WHERE m.is_active=1 AND s.is_active=1 ORDER BY m.posted_at DESC LIMIT 8")->fetchAll(PDO::FETCH_ASSOC);
+        $tgMsgs = $socialDb->query("SELECT m.*, s.display_name, s.username, s.avatar_url FROM telegram_messages m JOIN telegram_sources s ON m.source_id = s.id WHERE m.is_active=1 AND s.is_active=1 ORDER BY m.posted_at DESC LIMIT 12")->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) { error_log('tg read: ' . $e->getMessage()); }
     try {
         $socialDb = $socialDb ?? getDB();
-        $twMsgs = $socialDb->query("SELECT m.*, s.display_name, s.username, s.avatar_url FROM twitter_messages m JOIN twitter_sources s ON m.source_id = s.id WHERE m.is_active=1 AND s.is_active=1 ORDER BY m.posted_at DESC LIMIT 10")->fetchAll(PDO::FETCH_ASSOC);
+        $twMsgs = $socialDb->query("SELECT m.*, s.display_name, s.username, s.avatar_url FROM twitter_messages m JOIN twitter_sources s ON m.source_id = s.id WHERE m.is_active=1 AND s.is_active=1 ORDER BY m.posted_at DESC LIMIT 12")->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) { error_log('tw read: ' . $e->getMessage()); }
     try {
         $socialDb = $socialDb ?? getDB();
-        $ytMsgs = $socialDb->query("SELECT v.*, s.display_name, s.handle, s.avatar_url FROM youtube_videos v JOIN youtube_sources s ON v.source_id = s.id WHERE v.is_active=1 AND s.is_active=1 ORDER BY v.posted_at DESC, v.id DESC LIMIT 10")->fetchAll(PDO::FETCH_ASSOC);
+        $ytMsgs = $socialDb->query("SELECT v.*, s.display_name, s.handle, s.avatar_url FROM youtube_videos v JOIN youtube_sources s ON v.source_id = s.id WHERE v.is_active=1 AND s.is_active=1 ORDER BY v.posted_at DESC, v.id DESC LIMIT 12")->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) { error_log('yt read: ' . $e->getMessage()); }
 
     $tgLatestId = 0;
