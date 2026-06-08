@@ -313,8 +313,8 @@ render_home_seo();
   <link rel="stylesheet" href="assets/css/home-index.min.css?v=m3">
   <link rel="stylesheet" href="assets/css/user.min.css?v=m2">
 </noscript>
-<link rel="stylesheet" href="assets/css/home-redesign.css?v=r1" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="assets/css/home-redesign.css?v=r1"></noscript>
+<link rel="stylesheet" href="assets/css/home-redesign.css?v=<?php echo @filemtime(__DIR__ . '/assets/css/home-redesign.css'); ?>" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="assets/css/home-redesign.css?v=<?php echo @filemtime(__DIR__ . '/assets/css/home-redesign.css'); ?>"></noscript>
 <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 <script src="/assets/js/audio-player.js?v=3" defer></script>
 <script src="/assets/js/audio-cards.js?v=2" defer></script>
