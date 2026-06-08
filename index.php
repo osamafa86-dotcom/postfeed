@@ -452,23 +452,29 @@ $trendsCount = is_array($trends) ? count($trends) : 0;
 </script>
 <?php endif; ?>
 
-<!-- SECTIONS NAV (homepage anchors) -->
+<!-- SECTIONS NAV (homepage anchors) — Figma-trimmed set: Home, Daily
+     Digest, Platforms, Latest, Palestine. Older slots kept hidden so
+     the existing JS targets (foryou / arab-intl / etc.) keep working
+     for direct anchor links. -->
 <div class="sections-nav">
   <div class="sections-nav-inner">
-    <button type="button" class="sec-pill active" data-sec="all" onclick="scrollToHomeSection(this,'all')"><span class="sec-pill-ico">📰</span>الكل</button>
+    <button type="button" class="sec-pill active" data-sec="all" onclick="scrollToHomeSection(this,'all')"><span class="sec-pill-ico">📰</span>الرئيسية</button>
+    <a class="sec-pill" href="/sabah"><span class="sec-pill-ico">☕</span>ملخصات</a>
+    <a class="sec-pill" href="/platforms"><span class="sec-pill-ico">📡</span>المنصات</a>
+    <button type="button" class="sec-pill" data-sec="latest" onclick="scrollToHomeSection(this,'latest')"><span class="sec-pill-ico">⏱</span>آخر الأخبار</button>
+    <button type="button" class="sec-pill" data-sec="palestine" onclick="scrollToHomeSection(this,'palestine')"><span class="sec-pill-ico">🇵🇸</span>أخبار فلسطين</button>
     <?php if ($viewerId && ($personalFeed || $personalShowOnboarding)): ?>
-    <button type="button" class="sec-pill sec-pill-foryou" data-sec="foryou" onclick="scrollToHomeSection(this,'foryou')"><span class="sec-pill-ico">✨</span>خاص بك</button>
+    <button type="button" class="sec-pill sec-pill-foryou sec-pill-secondary" data-sec="foryou" onclick="scrollToHomeSection(this,'foryou')"><span class="sec-pill-ico">✨</span>خاص بك</button>
     <?php endif; ?>
-    <a class="sec-pill sec-pill-ask" href="ask.php"><span class="sec-pill-ico">🤖</span>اسأل الأخبار</a>
-    <button type="button" class="sec-pill" data-sec="breaking" onclick="scrollToHomeSection(this,'breaking')"><span class="sec-pill-ico">🔴</span>عاجل</button>
-    <button type="button" class="sec-pill" data-sec="palestine-news" onclick="scrollToHomeSection(this,'palestine-news')"><span class="sec-pill-ico">🇵🇸</span>أخبار فلسطين</button>
-    <button type="button" class="sec-pill" data-sec="arab-intl" onclick="scrollToHomeSection(this,'arab-intl')"><span class="sec-pill-ico">🌍</span>عربي ودولي</button>
-    <button type="button" class="sec-pill" data-sec="reports" onclick="scrollToHomeSection(this,'reports')"><span class="sec-pill-ico">📑</span>تقارير</button>
-    <button type="button" class="sec-pill" data-sec="articles" onclick="scrollToHomeSection(this,'articles')"><span class="sec-pill-ico">✍️</span>مقالات رأي</button>
-    <button type="button" class="sec-pill" data-sec="variety" onclick="scrollToHomeSection(this,'variety')"><span class="sec-pill-ico">🎯</span>منوعات</button>
-    <button type="button" class="sec-pill" data-sec="health" onclick="scrollToHomeSection(this,'health')"><span class="sec-pill-ico">🏥</span>صحة</button>
-    <button type="button" class="sec-pill" data-sec="trending" onclick="scrollToHomeSection(this,'trending')"><span class="sec-pill-ico">🔥</span>الأكثر تداولاً</button>
-    <button type="button" class="sec-pill" data-sec="reels" onclick="scrollToHomeSection(this,'reels')"><span class="sec-pill-ico">🎬</span>ريلز</button>
+    <a class="sec-pill sec-pill-ask sec-pill-secondary" href="ask.php"><span class="sec-pill-ico">🤖</span>اسأل الأخبار</a>
+    <button type="button" class="sec-pill sec-pill-secondary" data-sec="breaking" onclick="scrollToHomeSection(this,'breaking')"><span class="sec-pill-ico">🔴</span>عاجل</button>
+    <button type="button" class="sec-pill sec-pill-secondary" data-sec="arab-intl" onclick="scrollToHomeSection(this,'arab-intl')"><span class="sec-pill-ico">🌍</span>عربي ودولي</button>
+    <button type="button" class="sec-pill sec-pill-secondary" data-sec="reports" onclick="scrollToHomeSection(this,'reports')"><span class="sec-pill-ico">📑</span>تقارير</button>
+    <button type="button" class="sec-pill sec-pill-secondary" data-sec="articles" onclick="scrollToHomeSection(this,'articles')"><span class="sec-pill-ico">✍️</span>مقالات رأي</button>
+    <button type="button" class="sec-pill sec-pill-secondary" data-sec="variety" onclick="scrollToHomeSection(this,'variety')"><span class="sec-pill-ico">🎯</span>منوعات</button>
+    <button type="button" class="sec-pill sec-pill-secondary" data-sec="health" onclick="scrollToHomeSection(this,'health')"><span class="sec-pill-ico">🏥</span>صحة</button>
+    <button type="button" class="sec-pill sec-pill-secondary" data-sec="trending" onclick="scrollToHomeSection(this,'trending')"><span class="sec-pill-ico">🔥</span>الأكثر تداولاً</button>
+    <button type="button" class="sec-pill sec-pill-secondary" data-sec="reels" onclick="scrollToHomeSection(this,'reels')"><span class="sec-pill-ico">🎬</span>ريلز</button>
   </div>
 </div>
 
@@ -745,8 +751,11 @@ $__renderCtSection('health',         'صحة',           '#3b8a6e', '🏥', $hea
 
     <!-- BREAKING NEWS -->
     <div id="breaking" class="section-header">
-      <div class="section-title"><div class="line" style="background:var(--red)"></div>🔴 أخبار عاجلة</div>
-      <a class="see-all" href="category.php?type=breaking">عرض الكل ›</a>
+      <div class="section-title"><div class="line" style="background:var(--red)"></div>🔴 أخبار عاجلة <span class="bn-updated" id="bnUpdated" aria-live="polite">منذ لحظات</span></div>
+      <div class="bn-actions">
+        <button type="button" class="bn-refresh" onclick="nfRefreshBreaking(this)" title="تحديث">🔄 تحديث</button>
+        <a class="see-all" href="category.php?type=breaking">عرض الكل ›</a>
+      </div>
     </div>
     <div class="bn-grid">
       <?php foreach ($breakingNews as $article): ?>
@@ -1085,11 +1094,17 @@ $__renderCtSection('health',         'صحة',           '#3b8a6e', '🏥', $hea
     </div>
     <?php endif; ?>
 
-    <div class="nfr-weather" id="nfrWeather" role="button" tabindex="0" onclick="if(window.openWeatherModal)openWeatherModal()">
+    <div class="nfr-weather" id="nfrWeather">
       <div class="nfr-weather-head"><span class="nfr-bar" style="background:#E9D9A8"></span><h3>الطقس</h3><span class="nfr-w-tag light">تحديث مباشر</span></div>
-      <div class="nfr-weather-cities"><span class="nfr-city active">القدس</span><span class="nfr-city">رام الله</span><span class="nfr-city">غزة</span><span class="nfr-city">عمّان</span></div>
-      <div class="nfr-weather-main"><div class="nfr-weather-temp"><span id="nfrWTemp">--</span>°</div><div class="nfr-weather-sun">☀️</div></div>
-      <div class="nfr-weather-desc">القدس · اضغط لعرض التفاصيل</div>
+      <div class="nfr-weather-cities" id="nfrWCities">
+        <button type="button" class="nfr-city active" data-city="Jerusalem" data-name="القدس">القدس</button>
+        <button type="button" class="nfr-city" data-city="Ramallah" data-name="رام الله">رام الله</button>
+        <button type="button" class="nfr-city" data-city="Gaza" data-name="غزة">غزة</button>
+        <button type="button" class="nfr-city" data-city="Hebron" data-name="الخليل">الخليل</button>
+      </div>
+      <div class="nfr-weather-main"><div class="nfr-weather-temp"><span id="nfrWTemp">--</span>°</div><div class="nfr-weather-sun" id="nfrWIcon">☀️</div></div>
+      <div class="nfr-weather-desc" id="nfrWDesc">القدس · يحدّث الآن…</div>
+      <a class="nfr-weather-more" href="#" onclick="if(window.openWeatherModal)openWeatherModal();return false;">عرض التفاصيل والتوقعات ›</a>
     </div>
 
     <?php if (!empty($sources)): ?>
@@ -1097,21 +1112,30 @@ $__renderCtSection('health',         'صحة',           '#3b8a6e', '🏥', $hea
       <div class="nfr-w-head"><span class="nfr-bar" style="background:#5B7F3B"></span><h3>مصادر مميّزة</h3></div>
       <div class="nfr-w-body">
         <?php foreach (array_slice($sources, 0, 5) as $__si => $src): ?>
-        <a class="nfr-src" href="source/<?php echo (int)($src['id'] ?? 0); ?>">
+        <a class="nfr-src" href="source/<?php echo (int)($src['id'] ?? 0); ?>" data-source-id="<?php echo (int)($src['id'] ?? 0); ?>">
           <span class="nfr-src-logo" style="background:<?php echo e($src['logo_bg'] ?? $src['logo_color'] ?? '#3D5A28'); ?>"><?php echo e($src['logo_letter'] ?? mb_substr((string)($src['name'] ?? '؟'), 0, 1)); ?></span>
           <span class="nfr-src-name"><?php echo e($src['name'] ?? ''); ?></span>
-          <span class="nfr-toggle <?php echo $__si < 4 ? 'on' : ''; ?>"><span class="nfr-knob"></span></span>
+          <span class="nfr-toggle" role="switch" aria-label="متابعة <?php echo e($src['name'] ?? ''); ?>"><span class="nfr-knob"></span></span>
         </a>
         <?php endforeach; ?>
       </div>
     </div>
     <?php endif; ?>
 
-    <?php if (!empty($trends)): ?>
+    <?php
+    // Only keep trends with a non-empty title — the panel had a couple
+    // of editorial slots that ship with NULL/empty title and rendered as
+    // bare "#" pills. Drop them so the widget is always real-content.
+    $cleanTrends = array_values(array_filter(
+        is_array($trends) ? $trends : [],
+        fn($t) => !empty(trim((string)($t['title'] ?? '')))
+    ));
+    ?>
+    <?php if (!empty($cleanTrends)): ?>
     <div class="nfr-w">
       <div class="nfr-w-head"><span class="nfr-bar" style="background:#B8860B"></span><h3>ترند الآن</h3><span class="nfr-w-tag live"><span class="d"></span>مباشر</span></div>
       <div class="nfr-w-body nfr-tags">
-        <?php foreach ($trends as $__ti => $tr): ?>
+        <?php foreach ($cleanTrends as $__ti => $tr): ?>
           <a class="nfr-tag <?php echo $__ti < 3 ? 'hot' : ''; ?>" href="search.php?q=<?php echo urlencode((string)$tr['title']); ?>">#<?php echo e($tr['title']); ?></a>
         <?php endforeach; ?>
       </div>
@@ -1132,7 +1156,88 @@ $__renderCtSection('health',         'صحة',           '#3b8a6e', '🏥', $hea
   </aside>
   <script>
   function nfrSubscribe(e){e.preventDefault();var f=document.getElementById('nfrNewsletter'),m=document.getElementById('nfrNewsMsg');if(!f)return false;var fd=new FormData(f);if(m)m.textContent='…جاري الاشتراك';fetch('api/newsletter_subscribe.php',{method:'POST',body:fd}).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){if(m)m.textContent=(d&&d.message)?d.message:'تم الاشتراك بنجاح ✓';if(!d||d.success!==false)f.reset();}).catch(function(){if(m)m.textContent='تعذّر الاشتراك، حاول لاحقاً';});return false;}
-  (function(){function sync(){var s=document.querySelector('#topWeather span');if(!s)return;var t=(s.textContent||'').replace(/[^0-9-]/g,'');if(!t)return;var d=document.getElementById('nfrWTemp');if(d)d.textContent=t;var b=document.getElementById('nfrTopWTemp');if(b)b.textContent=t;}sync();setTimeout(sync,1500);setTimeout(sync,4000);})();
+  /* Breaking news refresh: re-fetch the current page and swap just the
+     #breaking section + its grid in place. Keeps scroll position. */
+  function nfRefreshBreaking(btn){
+    if(btn){btn.disabled=true;btn.dataset.label=btn.textContent;btn.textContent='⏳ يحدّث…';}
+    fetch(window.location.pathname+'?_r='+Date.now(),{credentials:'same-origin'})
+      .then(function(r){return r.text();})
+      .then(function(html){
+        var tmp=document.createElement('div'); tmp.innerHTML=html;
+        var newGrid=tmp.querySelector('.bn-grid');
+        var curGrid=document.querySelector('.bn-grid');
+        if(newGrid&&curGrid){ curGrid.innerHTML=newGrid.innerHTML; }
+        var u=document.getElementById('bnUpdated'); if(u) u.textContent='حُدّث الآن';
+      })
+      .catch(function(){})
+      .finally(function(){ if(btn){btn.disabled=false; btn.textContent=btn.dataset.label||'🔄 تحديث';} });
+  }
+  /* Auto-refresh breaking news quietly every 90 seconds so the section
+     stays fresh without forcing a full page reload. Pauses when the
+     tab is hidden so we don't burn quota in background tabs. */
+  (function(){
+    var iv=null;
+    function start(){ if(iv) return; iv=setInterval(function(){ if(!document.hidden) nfRefreshBreaking(null); }, 90000); }
+    function stop(){ if(iv){clearInterval(iv); iv=null;} }
+    document.addEventListener('visibilitychange', function(){ document.hidden?stop():start(); });
+    start();
+  })();
+  (function(){function sync(){var s=document.querySelector('#topWeather span');if(!s)return;var t=(s.textContent||'').replace(/[^0-9-]/g,'');if(!t)return;var d=document.getElementById('nfrWTemp');if(d&&d.textContent==='--')d.textContent=t;var b=document.getElementById('nfrTopWTemp');if(b)b.textContent=t;}sync();setTimeout(sync,1500);setTimeout(sync,4000);})();
+  /* Aside weather: city tabs swap the temperature/icon/description in
+     place without opening the modal. Uses the open-meteo endpoint
+     directly so we don't need a backend round-trip. */
+  (function(){
+    var WCODES={0:['☀️','صافي'],1:['🌤','صافي غالباً'],2:['⛅','غائم جزئياً'],3:['☁️','غائم'],45:['🌫','ضبابي'],48:['🌫','ضبابي'],51:['🌦','رذاذ خفيف'],53:['🌦','رذاذ'],55:['🌧','رذاذ كثيف'],61:['🌧','مطر خفيف'],63:['🌧','مطر'],65:['🌧','مطر غزير'],71:['🌨','ثلوج خفيفة'],73:['🌨','ثلوج'],75:['❄️','ثلوج كثيفة'],80:['🌦','أمطار متفرقة'],81:['🌧','أمطار'],82:['⛈','أمطار غزيرة'],95:['⛈','عواصف رعدية'],96:['⛈','عواصف مع برد'],99:['⛈','عواصف شديدة']};
+    var COORDS={Jerusalem:[31.7683,35.2137],Ramallah:[31.9038,35.2034],Gaza:[31.5017,34.4668],Hebron:[31.5326,35.0998],Nablus:[32.2211,35.2544],Jenin:[32.4607,35.2953]};
+    function loadCity(city,name){
+      var c=COORDS[city]; if(!c) return;
+      var url='https://api.open-meteo.com/v1/forecast?latitude='+c[0]+'&longitude='+c[1]+'&current=temperature_2m,weather_code&timezone=Asia/Jerusalem';
+      fetch(url).then(function(r){return r.json();}).then(function(d){
+        if(!d||!d.current) return;
+        var t=Math.round(d.current.temperature_2m), code=d.current.weather_code, info=WCODES[code]||['🌤','—'];
+        var T=document.getElementById('nfrWTemp'); if(T) T.textContent=t;
+        var I=document.getElementById('nfrWIcon'); if(I) I.textContent=info[0];
+        var D=document.getElementById('nfrWDesc'); if(D) D.textContent=name+' · '+info[1];
+      }).catch(function(){});
+    }
+    var box=document.getElementById('nfrWCities');
+    if(box){
+      box.addEventListener('click',function(e){
+        var b=e.target.closest('.nfr-city'); if(!b) return;
+        box.querySelectorAll('.nfr-city').forEach(function(x){x.classList.remove('active');});
+        b.classList.add('active');
+        loadCity(b.dataset.city, b.dataset.name||b.textContent.trim());
+      });
+      loadCity('Jerusalem','القدس');
+    }
+  })();
+  /* Sources widget: real follow/unfollow via /follow_source.php (cookie-
+     backed). Reads the existing cookie on load so toggles render in the
+     correct state, then POSTs on each click. */
+  (function(){
+    var followed=(function(){
+      var m=document.cookie.match(/(?:^|; )followed_sources=([^;]*)/);
+      if(!m) return {};
+      var out={}, parts=decodeURIComponent(m[1]).split(',');
+      parts.forEach(function(id){ if(id) out[id]=1; });
+      return out;
+    })();
+    document.querySelectorAll('.nfr-src').forEach(function(a){
+      var id=a.getAttribute('data-source-id'); if(!id) return;
+      var tog=a.querySelector('.nfr-toggle');
+      if(tog) tog.classList.toggle('on', !!followed[id]);
+      a.addEventListener('click', function(e){
+        var hitToggle=e.target.closest('.nfr-toggle');
+        if(!hitToggle) return; // let logo/name click follow the link
+        e.preventDefault(); e.stopPropagation();
+        var on=tog.classList.toggle('on');
+        var action=on?'follow':'unfollow';
+        fetch('/follow_source.php?id='+encodeURIComponent(id)+'&action='+action,{credentials:'same-origin'}).catch(function(){
+          tog.classList.toggle('on'); // revert on failure
+        });
+      });
+    });
+  })();
   </script>
 </div><!-- /main-layout -->
 

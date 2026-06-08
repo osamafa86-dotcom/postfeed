@@ -222,11 +222,62 @@ html[data-theme="light"] body.nf-redesign {
    (reversible — delete a selector to bring one back) and turns
    the main area into content + sticky sidebar.
    ============================================================ */
-.nf-redesign .sections-nav,
 .nf-redesign .wr-banner,
 .nf-redesign #reels,
 .nf-redesign .mr2-section,
 .nf-redesign .ct-section { display:none !important; }
+/* Sections nav: keep only the 5 primary pills (Home, Digest,
+   Platforms, Latest, Palestine). The .sec-pill-secondary marker
+   on the rest lets us hide them without losing the markup. */
+.nf-redesign .sections-nav .sec-pill-secondary { display:none !important; }
+
+/* Main column: turn into a flex column so we can reorder sections
+   without touching the HTML. Figma asks for the Platforms feed to
+   sit right after آخر الأخبار, i.e. above palestine in the column. */
+.nf-redesign .main-col { display:flex; flex-direction:column; }
+.nf-redesign .main-col .feed-tabs-wrap { order:-2; }
+.nf-redesign .main-col #palestine,
+.nf-redesign .main-col #palestine + .nf-ps-grid { order:-1; }
+
+/* Weather widget: button-style city tabs (were <span>) + the new
+   "view forecast" link below the temperature. */
+.nf-redesign .nfr-weather-cities button.nfr-city {
+  background:rgba(255,255,255,.14); color:#fff;
+  border:0; font-family:inherit; cursor:pointer;
+  font-size:11.5px; font-weight:600; padding:5px 11px;
+  border-radius:999px;
+}
+.nf-redesign .nfr-weather-cities button.nfr-city.active {
+  background:#fff; color:#234017; font-weight:800;
+}
+.nf-redesign .nfr-weather-more {
+  display:block; margin-top:14px; padding-top:12px;
+  border-top:1px solid rgba(255,255,255,.18);
+  color:#fff; font-size:12px; font-weight:700;
+  text-decoration:none; opacity:.85;
+}
+.nf-redesign .nfr-weather-more:hover { opacity:1; }
+
+/* Sources toggle: make sure the toggle is keyboard- and pointer-
+   actionable inside the source row. */
+.nf-redesign .nfr-toggle { cursor:pointer; }
+
+/* Breaking news: small refresh button + "updated" pill. The pill
+   tells the user when the section last refreshed (filled in by JS
+   on each successful refresh). */
+.nf-redesign .bn-actions { display:flex; align-items:center; gap:10px; }
+.nf-redesign .bn-refresh {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:999px; padding:5px 12px; font-family:inherit;
+  font-size:12px; font-weight:700; color:var(--text-2); cursor:pointer;
+  transition:background .15s, color .15s, border-color .15s;
+}
+.nf-redesign .bn-refresh:hover { background:var(--red); color:#fff; border-color:var(--red); }
+.nf-redesign .bn-refresh:disabled { opacity:.55; cursor:wait; }
+.nf-redesign .bn-updated {
+  font-size:11.5px; font-weight:600; color:var(--muted);
+  margin-right:8px; font-variant-numeric:tabular-nums;
+}
 
 @media (min-width:1025px) {
   .nf-redesign .main-layout {
