@@ -90,17 +90,36 @@ $ctx = stream_context_create([
     'ssl' => ['verify_peer' => true, 'verify_peer_name' => true],
 ]);
 
+// SVG placeholder served when the upstream fetch fails or returns
+// an invalid image. Returning a real image (instead of 502) keeps the
+// browser from showing a broken-image icon and gives the page a
+// consistent fallback regardless of which source died.
+function imgproxy_serve_placeholder(int $w = 600, int $h = 400): void {
+    $w = max(120, min(1600, $w));
+    $h = max(80, min(1200, $h));
+    $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' . $w . ' ' . $h . '">'
+         . '<defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1">'
+         . '<stop offset="0" stop-color="#3D5A28"/><stop offset="1" stop-color="#1f2a1c"/>'
+         . '</linearGradient></defs>'
+         . '<rect width="100%" height="100%" fill="url(#g)"/>'
+         . '<text x="50%" y="50%" fill="#E9D9A8" font-family="Tajawal,sans-serif" font-size="' . (int)($w/16) . '" text-anchor="middle" dominant-baseline="middle">نيوز فيد</text>'
+         . '</svg>';
+    header('Content-Type: image/svg+xml');
+    header('Cache-Control: public, max-age=300');
+    header('X-Cache: PLACEHOLDER');
+    echo $svg;
+    exit;
+}
+
 $imgData = @file_get_contents($url, false, $ctx);
 if ($imgData === false || strlen($imgData) < 100) {
-    http_response_code(502);
-    exit('Failed to fetch image');
+    imgproxy_serve_placeholder($w ?: 600, (int)round(($w ?: 600) * 0.66));
 }
 
 // Create GD image
 $src = @imagecreatefromstring($imgData);
 if (!$src) {
-    http_response_code(502);
-    exit('Invalid image');
+    imgproxy_serve_placeholder($w ?: 600, (int)round(($w ?: 600) * 0.66));
 }
 
 $origW = imagesx($src);
