@@ -1043,6 +1043,79 @@ $__renderCtSection('health',         'صحة',           '#3b8a6e', '🏥', $hea
     <?php endif; ?>
 
   </div><!-- /main-col -->
+
+  <!-- SIDEBAR (redesign) -->
+  <aside class="nfr-aside" aria-label="الشريط الجانبي">
+    <?php if (!empty($mostRead)): ?>
+    <div class="nfr-w">
+      <div class="nfr-w-head"><span class="nfr-bar" style="background:#CE1126"></span><h3>الأكثر قراءة</h3><span class="nfr-w-tag">آخر ٢٤ ساعة</span></div>
+      <div class="nfr-w-body">
+        <?php foreach (array_slice($mostRead, 0, 5) as $__ri => $mr):
+          $__rank = $__ri + 1;
+          $__rurl = !empty($mr['article_id']) ? ('article/' . (int)$mr['article_id']) : 'search.php?q=' . urlencode((string)$mr['title']);
+          $__rcol = $__rank === 1 ? '#CE1126' : ($__rank === 2 ? '#B8860B' : ($__rank === 3 ? '#C99A2E' : '#C9BFAD'));
+        ?>
+        <a class="nfr-read" href="<?php echo e($__rurl); ?>">
+          <span class="nfr-read-rank" style="color:<?php echo $__rcol; ?>"><?php echo $__rank; ?></span>
+          <span class="nfr-read-body">
+            <span class="nfr-read-title"><?php echo e($mr['title']); ?></span>
+            <span class="nfr-read-meta"><?php echo number_format((int)($mr['view_count'] ?? 0)); ?> قراءة</span>
+          </span>
+        </a>
+        <?php endforeach; ?>
+      </div>
+    </div>
+    <?php endif; ?>
+
+    <div class="nfr-weather" id="nfrWeather" role="button" tabindex="0" onclick="if(window.openWeatherModal)openWeatherModal()">
+      <div class="nfr-weather-head"><span class="nfr-bar" style="background:#E9D9A8"></span><h3>الطقس</h3><span class="nfr-w-tag light">تحديث مباشر</span></div>
+      <div class="nfr-weather-cities"><span class="nfr-city active">القدس</span><span class="nfr-city">رام الله</span><span class="nfr-city">غزة</span><span class="nfr-city">عمّان</span></div>
+      <div class="nfr-weather-main"><div class="nfr-weather-temp"><span id="nfrWTemp">--</span>°</div><div class="nfr-weather-sun">☀️</div></div>
+      <div class="nfr-weather-desc">القدس · اضغط لعرض التفاصيل</div>
+    </div>
+
+    <?php if (!empty($sources)): ?>
+    <div class="nfr-w">
+      <div class="nfr-w-head"><span class="nfr-bar" style="background:#5B7F3B"></span><h3>مصادر مميّزة</h3></div>
+      <div class="nfr-w-body">
+        <?php foreach (array_slice($sources, 0, 5) as $__si => $src): ?>
+        <a class="nfr-src" href="source/<?php echo (int)($src['id'] ?? 0); ?>">
+          <span class="nfr-src-logo" style="background:<?php echo e($src['logo_bg'] ?? $src['logo_color'] ?? '#3D5A28'); ?>"><?php echo e($src['logo_letter'] ?? mb_substr((string)($src['name'] ?? '؟'), 0, 1)); ?></span>
+          <span class="nfr-src-name"><?php echo e($src['name'] ?? ''); ?></span>
+          <span class="nfr-toggle <?php echo $__si < 4 ? 'on' : ''; ?>"><span class="nfr-knob"></span></span>
+        </a>
+        <?php endforeach; ?>
+      </div>
+    </div>
+    <?php endif; ?>
+
+    <?php if (!empty($trends)): ?>
+    <div class="nfr-w">
+      <div class="nfr-w-head"><span class="nfr-bar" style="background:#B8860B"></span><h3>ترند الآن</h3><span class="nfr-w-tag live"><span class="d"></span>مباشر</span></div>
+      <div class="nfr-w-body nfr-tags">
+        <?php foreach ($trends as $__ti => $tr): ?>
+          <a class="nfr-tag <?php echo $__ti < 3 ? 'hot' : ''; ?>" href="search.php?q=<?php echo urlencode((string)$tr['title']); ?>">#<?php echo e($tr['title']); ?></a>
+        <?php endforeach; ?>
+      </div>
+    </div>
+    <?php endif; ?>
+
+    <div class="nfr-news">
+      <div class="nfr-news-eyebrow">✉ النشرة البريدية</div>
+      <h3 class="nfr-news-title">ابدأ صباحك بموجز ذكي لأهم الأخبار</h3>
+      <p class="nfr-news-desc">ملخّص يومي يصلك في السابعة صباحاً — أبرز ما عليك معرفته في دقيقتين.</p>
+      <form class="nfr-news-form" id="nfrNewsletter" onsubmit="return nfrSubscribe(event)">
+        <input type="email" name="email" id="nfrNewsEmail" placeholder="بريدك الإلكتروني" required dir="ltr">
+        <input type="hidden" name="_csrf" value="<?php echo csrf_token(); ?>">
+        <button type="submit">اشتراك</button>
+      </form>
+      <div class="nfr-news-msg" id="nfrNewsMsg" role="status" aria-live="polite"></div>
+    </div>
+  </aside>
+  <script>
+  function nfrSubscribe(e){e.preventDefault();var f=document.getElementById('nfrNewsletter'),m=document.getElementById('nfrNewsMsg');if(!f)return false;var fd=new FormData(f);if(m)m.textContent='…جاري الاشتراك';fetch('api/newsletter_subscribe.php',{method:'POST',body:fd}).then(function(r){return r.json().catch(function(){return{};});}).then(function(d){if(m)m.textContent=(d&&d.message)?d.message:'تم الاشتراك بنجاح ✓';if(!d||d.success!==false)f.reset();}).catch(function(){if(m)m.textContent='تعذّر الاشتراك، حاول لاحقاً';});return false;}
+  (function(){function sync(){var s=document.querySelector('#topWeather span'),d=document.getElementById('nfrWTemp');if(s&&d){var t=(s.textContent||'').replace(/[^0-9-]/g,'');if(t)d.textContent=t;}}sync();setTimeout(sync,1500);setTimeout(sync,4000);})();
+  </script>
 </div><!-- /main-layout -->
 
 <!-- FOOTER -->
