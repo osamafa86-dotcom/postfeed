@@ -195,7 +195,7 @@ $dedup = function(array $list, int $keep) use (&$usedIds, &$usedTitleTokens, $nf
 };
 // Order matters: palestine first so it keeps its featured stories; latest
 // then fills in around them without repeating palestine items.
-$palestineNews  = $dedup($palestineNews, 4);
+$palestineNews  = $dedup($palestineNews, 8);
 $breakingNews   = $dedup($breakingNews, 4);
 $latestArticles = $dedup($latestArticles, 12);
 $palestineNewsArticles = $dedup($palestineNewsArticles, 8);
@@ -649,7 +649,7 @@ $__renderCtSection('health',         'صحة',           '#3b8a6e', '🏥', $hea
     </div>
     <?php if (!empty($palestineNews)): ?>
       <div class="nf-ps-grid">
-        <?php foreach (array_slice($palestineNews, 0, 2) as $article): ?>
+        <?php foreach (array_slice($palestineNews, 0, 8) as $article): ?>
           <a class="nf-ps-card" href="<?php echo articleUrl($article); ?>">
             <div class="nf-ps-card-body">
               <?php if (!empty($article['cat_name'])): ?>

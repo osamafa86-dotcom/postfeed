@@ -459,3 +459,39 @@ html[data-theme="light"] body.nf-redesign {
 /* Make sure Palestine + Tech are visible (newly added links). */
 .nf-redesign .site-nav .nav-palestine,
 .nf-redesign .site-nav .nav-tech { display:inline-flex !important; }
+
+/* ============================================================
+   14. HEADER — Figma keeps the logo on the right and actions
+   on the left (the default RTL order), but trims the action
+   bar to the essentials by moving weather/currency/sources/
+   theme into the top utility bar. Cleaner header strip + more
+   room for the search box.
+   ============================================================ */
+.nf-redesign .site-header-inner .icon-btn-wide,
+.nf-redesign .site-header-inner .header-actions > .icon-btn[title="أسعار العملات"],
+.nf-redesign .site-header-inner .header-actions > .icon-btn[title="المصادر النشطة"],
+.nf-redesign .site-header-inner .header-actions > .icon-btn[title="تبديل الثيم"] {
+  display:none !important;
+}
+
+/* ============================================================
+   15. FOOTER — the redesign tokens remapped --header-bg to a
+   light cream, but the footer was authored against the old
+   dark token. Pin its colors to a dedicated olive-black so the
+   white text is readable again.
+   ============================================================ */
+.nf-redesign footer {
+  background:#1E1F18;
+  color:rgba(221,213,199,.78);
+}
+.nf-redesign footer .footer-inner { border-bottom-color:rgba(255,255,255,.08); }
+.nf-redesign footer .footer-logo,
+.nf-redesign footer .footer-col-title { color:#fff; }
+.nf-redesign footer .footer-desc,
+.nf-redesign footer .footer-col a,
+.nf-redesign footer .footer-copy { color:rgba(221,213,199,.78); }
+.nf-redesign footer .footer-col a:hover { color:#fff; }
+.nf-redesign footer .footer-social a {
+  background:rgba(255,255,255,.08); color:#fff;
+}
+.nf-redesign footer .footer-social a:hover { background:rgba(255,255,255,.18); }
