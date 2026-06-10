@@ -165,6 +165,17 @@ $pageDescription = 'أحدث ملخصات نيوز فيد في مكان واحد
 <meta name="description" content="<?php echo e($pageDescription); ?>">
 <link rel="stylesheet" href="/assets/css/home.min.css?v=<?php echo filemtime(__DIR__ . '/assets/css/home.min.css'); ?>">
 <link rel="stylesheet" href="/assets/css/home-redesign.css?v=<?php echo filemtime(__DIR__ . '/assets/css/home-redesign.css'); ?>">
+<?php /* Inline the same critical CSS the homepage uses so the site
+  header (logo, search box, nav pills, top bar) renders correctly
+  without waiting on the main bundle. Without this the header
+  paints as un-styled text — exactly the "مشوّه" look the user
+  reported on /summaries. */ ?>
+<style><?php
+  $__sh = __DIR__ . '/assets/css/site-header.min.css';
+  $__ch = __DIR__ . '/assets/css/critical-home.min.css';
+  if (file_exists($__sh)) readfile($__sh);
+  if (file_exists($__ch)) readfile($__ch);
+?></style>
 <style>
 .sum-hero{background:linear-gradient(135deg,#3D5A28,#1f3417);color:#fff;padding:40px 24px;margin-bottom:36px;}
 .sum-hero-inner{max-width:1100px;margin:0 auto;}
