@@ -14,6 +14,7 @@ require_once __DIR__ . '/includes/story_timeline.php';
 require_once __DIR__ . '/includes/evolving_stories.php';
 require_once __DIR__ . '/includes/view_tracking.php';
 require_once __DIR__ . '/includes/auto_fetch.php';
+require_once __DIR__ . '/includes/auto_summaries.php';
 
 record_page_view('homepage');
 
@@ -22,6 +23,13 @@ record_page_view('homepage');
 // once the homepage finishes rendering. Single-flight locked so we
 // don't fan out per page view.
 auto_trigger_rss_fetch_if_stale(1800);
+
+// Same idea for the briefing pipelines (sabah / tg / social /
+// weekly): if a surface hasn't generated a fresh row within its
+// own cadence, spawn its cron in the background. Detached + lock-
+// file gated, so this is a no-op when content is already fresh
+// and at most one fork per surface per 10 minutes when it isn't.
+auto_trigger_summaries_if_stale();
 
 // The homepage HTML must always reflect the latest deploy/content (data is
 // cached server-side via cache_remember). Without this, .htaccess sends a
