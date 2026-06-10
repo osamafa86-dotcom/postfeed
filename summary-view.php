@@ -56,8 +56,17 @@ $pageTitle = ($summary['headline'] ?? $platformMeta['label']) . ' | نيوز ف�
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?php echo e($pageTitle); ?></title>
 <meta name="description" content="<?php echo e(mb_substr(strip_tags($summary['summary'] ?? ''), 0, 160)); ?>">
-<link rel="stylesheet" href="assets/css/home.min.css?v=<?php echo filemtime(__DIR__ . '/assets/css/home.min.css'); ?>">
-<link rel="stylesheet" href="assets/css/home-redesign.css?v=<?php echo filemtime(__DIR__ . '/assets/css/home-redesign.css'); ?>">
+<link rel="stylesheet" href="/assets/css/home.min.css?v=<?php echo filemtime(__DIR__ . '/assets/css/home.min.css'); ?>">
+<link rel="stylesheet" href="/assets/css/home-redesign.css?v=<?php echo filemtime(__DIR__ . '/assets/css/home-redesign.css'); ?>">
+<style><?php
+  // Inline the same critical CSS the homepage uses so the header,
+  // top bar, nav pills, and search box render correctly without
+  // a flash of unstyled content.
+  $__sh = __DIR__ . '/assets/css/site-header.min.css';
+  $__ch = __DIR__ . '/assets/css/critical-home.min.css';
+  if (file_exists($__sh)) readfile($__sh);
+  if (file_exists($__ch)) readfile($__ch);
+?></style>
 <style>
 .sv-hero{background:linear-gradient(135deg,<?php echo e($platformMeta['color']); ?>,#1f3417);color:#fff;padding:32px 24px;margin-bottom:28px;border-radius:0 0 var(--radius-lg) var(--radius-lg);}
 .sv-hero-inner{max-width:880px;margin:0 auto;}
