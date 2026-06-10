@@ -73,15 +73,30 @@ if ($sabahLatest) {
     ];
 }
 
-// 2) Weekly Rewind — keyed by year-week.
+// 2) Weekly Rewind — schema differs from the other surfaces:
+//    cover_title / cover_subtitle / intro_text / published_at /
+//    start_date / end_date (not headline/summary/generated_at).
+//    Build a sensible card with fallback chains so we never render
+//    a blank "أسبوع X" tile when the rewind has actual content.
 if ($weeklyLatest) {
-    $yw = $weeklyLatest['year_week'] ?? '';
+    $yw         = $weeklyLatest['year_week'] ?? '';
+    $title      = trim((string)($weeklyLatest['cover_title'] ?? ''));
+    if ($title === '') $title = trim((string)($weeklyLatest['cover_subtitle'] ?? ''));
+    if ($title === '') {
+        $start = $weeklyLatest['start_date'] ?? '';
+        $end   = $weeklyLatest['end_date'] ?? '';
+        $title = ($start && $end)
+            ? ('مراجعة الأسبوع — ' . $start . ' إلى ' . $end)
+            : ('مراجعة أسبوع ' . $yw);
+    }
+    $snippet = mb_substr(strip_tags((string)($weeklyLatest['intro_text'] ?? $weeklyLatest['cover_subtitle'] ?? '')), 0, 180);
+    $when    = summaries_format_datetime($weeklyLatest['published_at'] ?? ($weeklyLatest['end_date'] ?? ''));
     $cards[] = [
         'label'    => '📅 مراجعة الأسبوع',
         'color'    => '#3D5A28',
-        'title'    => $weeklyLatest['headline'] ?? ('أسبوع ' . $yw),
-        'snippet'  => mb_substr(strip_tags((string)($weeklyLatest['summary'] ?? '')), 0, 180),
-        'when'     => summaries_format_datetime($weeklyLatest['generated_at'] ?? ''),
+        'title'    => $title,
+        'snippet'  => $snippet,
+        'when'     => $when,
         'url_read' => '/weekly/' . rawurlencode($yw),
         'url_print'=> '/weekly/' . rawurlencode($yw) . '?print=1',
         'archive'  => '/weekly/archive',
