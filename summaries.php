@@ -21,6 +21,14 @@ require_once __DIR__ . '/includes/seo.php';
 require_once __DIR__ . '/includes/sabah.php';
 require_once __DIR__ . '/includes/weekly_rewind.php';
 require_once __DIR__ . '/includes/ai_helper.php';
+require_once __DIR__ . '/includes/auto_summaries.php';
+
+// Self-heal: if any briefing pipeline (sabah / tg / social /
+// weekly) hasn't generated a fresh row within its expected
+// cadence, fire the matching cron in the background. The helper
+// is single-flight locked per surface so concurrent visitors
+// don't fan out multiple spawns.
+auto_trigger_summaries_if_stale();
 
 $pageTheme  = current_theme();
 $viewer     = current_user();
