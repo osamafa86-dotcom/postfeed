@@ -1,6 +1,6 @@
 <?php
 /**
- * Cron: ingest user-owned sources (RSS / website).
+ * Cron: ingest user-owned sources (RSS / website / telegram / x / youtube).
  * CLI: php cron_user_sources.php
  * HTTP: cron_user_sources.php?key=CRON_KEY[&limit=15]
  */

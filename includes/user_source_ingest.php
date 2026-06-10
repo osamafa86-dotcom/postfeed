@@ -167,48 +167,104 @@ function usrc_mark_fetched(int $sourceId): void {
 }
 
 /** Ingest one source row. Returns number of NEW items stored. */
-function user_source_ingest_one(array $src, int $maxItems = 25, bool $guess = true): int {
-    user_source_articles_ensure();
-    $type = $src['type'] ?? '';
-    $feed = null;
-    if ($type === 'rss') $feed = $src['url'];
-    elseif ($type === 'website') $feed = usrc_resolve_feed($src['url'], $guess);
-    else return 0; // telegram/x/youtube handled by platform pipelines later
-    if (!$feed) { usrc_mark_fetched((int) $src['id']); return 0; }
+/** Normalize a social post/message (no separate title) into a feed item. */
+function usrc_norm_msg(string $text, string $url, string $img, string $date): array {
+    $text  = trim($text);
+    $first = trim((string) strtok($text, "\n"));
+    $title = trim(mb_substr($first !== '' ? $first : $text, 0, 140));
+    if ($title === '') $title = '(منشور)';
+    $ts = ($date !== '' && strtotime($date)) ? strtotime($date) : time();
+    return [
+        'title'        => $title,
+        'url'          => trim($url),
+        'image'        => trim($img),
+        'excerpt'      => mb_substr($text, 0, 1000),
+        'published_at' => date('Y-m-d H:i:s', $ts),
+    ];
+}
 
-    $body = usrc_http_get($feed, 12);
-    if (!$body) { usrc_mark_fetched((int) $src['id']); return 0; }
-    $items = usrc_parse_feed($body);
-
-    $db = getDB();
+/** Insert normalized items for a source (dedup by url). Returns new count. */
+function usrc_store_items(int $sourceId, int $userId, array $items, int $maxItems = 25): int {
+    if (!$items) return 0;
+    $db  = getDB();
     $ins = $db->prepare("INSERT IGNORE INTO user_source_articles
         (user_source_id, user_id, title, url, image_url, excerpt, published_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)");
     $n = 0;
     foreach (array_slice($items, 0, $maxItems) as $it) {
+        if (empty($it['title']) || empty($it['url'])) continue;
         try {
             $ins->execute([
-                (int) $src['id'], (int) $src['user_id'],
-                mb_substr($it['title'], 0, 500), mb_substr($it['url'], 0, 700),
-                ($it['image'] ?? '') !== '' ? mb_substr($it['image'], 0, 700) : null,
-                ($it['excerpt'] ?? '') !== '' ? $it['excerpt'] : null,
+                $sourceId, $userId,
+                mb_substr((string) $it['title'], 0, 500), mb_substr((string) $it['url'], 0, 700),
+                ($it['image'] ?? '') !== '' ? mb_substr((string) $it['image'], 0, 700) : null,
+                ($it['excerpt'] ?? '') !== '' ? (string) $it['excerpt'] : null,
                 $it['published_at'] ?? date('Y-m-d H:i:s'),
             ]);
             if ($ins->rowCount() > 0) $n++;
         } catch (Throwable $e) {}
     }
+    return $n;
+}
+
+/** Ingest one source of ANY type (rss/website/telegram/x/youtube). Returns new count. */
+function user_source_ingest_one(array $src, int $maxItems = 25, bool $guess = true): int {
+    user_source_articles_ensure();
+    $type   = $src['type'] ?? '';
+    $handle = ltrim((string) ($src['handle'] ?? ''), '@');
+    $url    = (string) ($src['url'] ?? '');
+    $items  = [];
+    try {
+        if ($type === 'rss' || $type === 'website') {
+            $feed = $type === 'rss' ? $url : usrc_resolve_feed($url, $guess);
+            if ($feed) {
+                $body = usrc_http_get($feed, 12);
+                if ($body) $items = usrc_parse_feed($body);
+            }
+        } elseif ($type === 'telegram') {
+            if ($handle !== '') {
+                require_once __DIR__ . '/telegram_fetch.php';
+                foreach (tg_fetch_channel($handle, $maxItems) as $m) {
+                    $items[] = usrc_norm_msg($m['text'] ?? '', $m['url'] ?? '', $m['image_url'] ?? '', $m['posted_at'] ?? '');
+                }
+            }
+        } elseif ($type === 'x') {
+            if ($handle !== '') {
+                require_once __DIR__ . '/twitter_fetch.php';
+                foreach (tw_fetch_user_tweets($handle, $maxItems) as $t) {
+                    $items[] = usrc_norm_msg($t['text'] ?? '', $t['url'] ?? '', $t['image_url'] ?? '', $t['posted_at'] ?? '');
+                }
+            }
+        } elseif ($type === 'youtube') {
+            require_once __DIR__ . '/youtube_fetch.php';
+            $cid = yt_resolve_channel_id($url !== '' ? $url : $handle);
+            if ($cid) {
+                foreach (yt_fetch_channel_videos($cid, $maxItems) as $v) {
+                    $items[] = [
+                        'title'        => $v['title'] ?? '',
+                        'url'          => $v['url'] ?? '',
+                        'image'        => $v['thumbnail_url'] ?? '',
+                        'excerpt'      => $v['description'] ?? '',
+                        'published_at' => $v['posted_at'] ?? date('Y-m-d H:i:s'),
+                    ];
+                }
+            }
+        }
+    } catch (Throwable $e) { /* fetch failure → store nothing this round */ }
+
+    $n = usrc_store_items((int) $src['id'], (int) $src['user_id'], $items, $maxItems);
     usrc_mark_fetched((int) $src['id']);
     return $n;
 }
 
-/** Ingest active rss/website sources that are due (cron entry). */
+/** Ingest active sources of every type that are due (cron entry). */
 function user_source_ingest_due(int $limit = 15, int $minMinutes = 20): array {
     user_sources_ensure();
     user_source_articles_ensure();
     try {
         $db = getDB();
         $st = $db->prepare("SELECT * FROM user_sources
-            WHERE is_active = 1 AND type IN ('rss','website')
+            WHERE is_active = 1
               AND (last_fetched_at IS NULL OR last_fetched_at < (NOW() - INTERVAL ? MINUTE))
             ORDER BY (last_fetched_at IS NULL) DESC, last_fetched_at ASC
             LIMIT ?");

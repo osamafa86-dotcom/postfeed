@@ -17,18 +17,23 @@ try {
     if ($action === 'add') {
         $r = user_source_add($uid, (string)($_POST['input'] ?? ''));
         if (empty($r['ok'])) json_out(['ok' => false, 'error' => $r['error'] ?? 'failed'], 400);
-        // Best-effort first ingest so the user sees articles right away
-        // (RSS/website only, no slow feed-guessing on the add request).
+        // Best-effort first ingest so the user sees articles right away.
+        // Covers every type (rss/website/telegram/x/youtube); no slow
+        // feed-guessing on the add request (guess=false) to keep it snappy.
         $ingested = 0;
-        if (in_array($r['type'], ['rss', 'website'], true)) {
-            @set_time_limit(25);
-            try {
-                $ingested = user_source_ingest_one(
-                    ['id' => $r['id'], 'user_id' => $uid, 'type' => $r['type'], 'url' => $r['url']],
-                    25, false
-                );
-            } catch (Throwable $e) {}
-        }
+        @set_time_limit(25);
+        try {
+            $ingested = user_source_ingest_one(
+                [
+                    'id'      => $r['id'],
+                    'user_id' => $uid,
+                    'type'    => $r['type'],
+                    'url'     => $r['url'] ?? '',
+                    'handle'  => $r['handle'] ?? '',
+                ],
+                25, false
+            );
+        } catch (Throwable $e) {}
         json_out(['ok' => true, 'source' => $r, 'ingested' => $ingested]);
     } elseif ($action === 'toggle') {
         $id = (int)($_POST['id'] ?? 0);
