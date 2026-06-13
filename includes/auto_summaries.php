@@ -57,7 +57,7 @@ function auto_trigger_summaries_if_stale(): void {
                     $ts = $db->query("SELECT UNIX_TIMESTAMP(MAX(generated_at)) FROM sabah_briefings")->fetchColumn();
                     break;
                 case 'tg':
-                    $ts = $db->query("SELECT UNIX_TIMESTAMP(MAX(generated_at)) FROM tg_summaries")->fetchColumn();
+                    $ts = $db->query("SELECT UNIX_TIMESTAMP(MAX(generated_at)) FROM telegram_summaries")->fetchColumn();
                     break;
                 case 'social':
                     // Trigger if EITHER twitter OR youtube is stale.

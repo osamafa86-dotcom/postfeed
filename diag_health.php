@@ -102,7 +102,7 @@ echo "\n";
 /* ── 3) نضارة الملخصات ─────────────────────────────────────────────── */
 echo "3) نضارة الملخصات (آخر توليد)\n";
 $sab = h_maxts($db, "SELECT UNIX_TIMESTAMP(MAX(generated_at)) FROM sabah_briefings");
-$tgs = h_maxts($db, "SELECT UNIX_TIMESTAMP(MAX(generated_at)) FROM tg_summaries");
+$tgs = h_maxts($db, "SELECT UNIX_TIMESTAMP(MAX(generated_at)) FROM telegram_summaries");
 $tw  = h_maxts($db, "SELECT UNIX_TIMESTAMP(MAX(generated_at)) FROM social_summaries WHERE platform='twitter'");
 $yt  = h_maxts($db, "SELECT UNIX_TIMESTAMP(MAX(generated_at)) FROM social_summaries WHERE platform='youtube'");
 $wk  = h_maxts($db, "SELECT UNIX_TIMESTAMP(MAX(published_at)) FROM weekly_rewinds");
