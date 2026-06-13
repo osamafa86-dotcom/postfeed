@@ -15,23 +15,22 @@
  *   - weekly   every 7 days (only on Saturday onward, since the
  *              cron is supposed to run Saturday ~20:00 anyway)
  *
- * Spawned as DETACHED processes via exec(... > /dev/null 2>&1 &) so
- * the FPM worker is freed in <1 ms (same pattern that solved the
- * "offline page on article click" bug earlier this week).
+ * Dispatched via nf_trigger_cron(): a detached `curl` to each cron's
+ * HTTP key path — the same endpoint the cPanel cron hits. (The old
+ * exec(PHP_BINARY cron.php &) spawn was silently broken on this host:
+ * PHP_BINARY is /usr/local/bin/lsphp, the LiteSpeed SAPI binary, not
+ * CLI php, so the spawns generated nothing and summaries froze.)
  */
 
 function auto_trigger_summaries_if_stale(): void {
-    if (!function_exists('exec')) return;
     if (!function_exists('getDB')) return;
+    if (!function_exists('nf_trigger_cron')) return;
 
     // Cheap top-level guard so we only hit the DB at most every 5
     // minutes regardless of how many homepage/summaries hits we get.
     $tld = sys_get_temp_dir() . '/postfeed_summaries_topcheck.flag';
     if (file_exists($tld) && (time() - filemtime($tld)) < 300) return;
     @touch($tld);
-
-    $phpBin = PHP_BINARY ?: 'php';
-    $base   = dirname(__DIR__);
 
     // [staleness_seconds, cron_filename, lock_key]
     $surfaces = [
@@ -79,10 +78,7 @@ function auto_trigger_summaries_if_stale(): void {
         if ($age < $thresholdSec) continue; // still fresh
 
         @touch($lockFile);
-        $cmd = escapeshellcmd($phpBin) . ' '
-             . escapeshellarg($base . '/' . $cronFile)
-             . ' > /dev/null 2>&1 &';
-        @exec($cmd);
+        nf_trigger_cron($cronFile);
     }
 
     // Weekly rewind: only worth firing on/after Saturday, since the
@@ -99,10 +95,7 @@ function auto_trigger_summaries_if_stale(): void {
                 $age = $latest ? (time() - (int)$latest) : PHP_INT_MAX;
                 if ($age >= 6 * 86400) {
                     @touch($lockFile);
-                    $cmd = escapeshellcmd($phpBin) . ' '
-                         . escapeshellarg($base . '/cron_weekly_rewind.php')
-                         . ' > /dev/null 2>&1 &';
-                    @exec($cmd);
+                    nf_trigger_cron('cron_weekly_rewind.php');
                 }
             } catch (Throwable $e) { /* schema missing; ignore */ }
         }

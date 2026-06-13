@@ -599,3 +599,68 @@ function csrf_verify($token) {
     if (session_status() === PHP_SESSION_NONE) session_start();
     return !empty($_SESSION['_csrf']) && is_string($token) && hash_equals($_SESSION['_csrf'], $token);
 }
+
+// ============================================
+// Background work (host-aware: PHP-FPM *and* LiteSpeed)
+// ============================================
+
+/**
+ * Flush the HTTP response to the client and keep the script running in the
+ * background. PHP-FPM exposes fastcgi_finish_request(); LiteSpeed/lsphp
+ * exposes litespeed_finish_request() instead (this site runs LiteSpeed, so
+ * the FPM-only check silently failed and post-response work ran INLINE,
+ * blocking the page and getting killed mid-run). Try both.
+ *
+ * @return bool true if the response was detached, false if neither API exists.
+ */
+function nf_finish_request(): bool {
+    if (function_exists('fastcgi_finish_request'))   { @fastcgi_finish_request();   return true; }
+    if (function_exists('litespeed_finish_request')) { @litespeed_finish_request(); return true; }
+    return false;
+}
+
+/**
+ * Fire-and-forget trigger of a cron endpoint over its HTTP key path — the
+ * exact mechanism the cPanel cron uses. This replaces the old
+ * exec(PHP_BINARY cron.php &) spawn, which was broken on LiteSpeed because
+ * PHP_BINARY is /usr/local/bin/lsphp (the SAPI binary), not CLI php — those
+ * spawns just printed the lsphp usage banner and generated nothing.
+ *
+ * Preferred path: a detached `curl ... &` process (curl is always present and
+ * truly independent of this request, so it runs the cron to completion even
+ * after we return). Fallback: a very short-timeout loopback curl from PHP.
+ *
+ * @param string $cronFile   e.g. 'cron_sabah.php'
+ * @param int    $maxSeconds hard cap for the spawned curl
+ * @return bool   true if a trigger was dispatched
+ */
+function nf_trigger_cron(string $cronFile, int $maxSeconds = 300): bool {
+    $key = (string) getSetting('cron_key', '');
+    if ($key === '') return false; // can't authenticate the HTTP cron path
+    $base = defined('SITE_URL') ? rtrim(SITE_URL, '/') : 'https://feedsnews.net';
+    $url  = $base . '/' . ltrim($cronFile, '/') . '?key=' . rawurlencode($key);
+
+    // Truly detached background process — returns in ~1ms, runs to completion.
+    if (function_exists('exec')) {
+        $cmd = 'curl -ksS -m ' . (int) $maxSeconds . ' '
+             . escapeshellarg($url) . ' > /dev/null 2>&1 &';
+        @exec($cmd);
+        return true;
+    }
+
+    // Fallback: kick it with a short timeout and move on. The cron itself
+    // should ignore_user_abort so it survives our early disconnect.
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 2,
+            CURLOPT_NOSIGNAL       => true,
+            CURLOPT_SSL_VERIFYPEER => false,
+        ]);
+        @curl_exec($ch);
+        @curl_close($ch);
+        return true;
+    }
+    return false;
+}

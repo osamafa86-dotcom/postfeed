@@ -69,7 +69,9 @@ echo "   PHP_SAPI            : " . PHP_SAPI . "\n";
 echo "   PHP_VERSION         : " . PHP_VERSION . "\n";
 echo "   PHP_BINARY          : " . (PHP_BINARY ?: '?') . "\n";
 echo "   max_execution_time  : " . ini_get('max_execution_time') . "\n";
-echo "   fastcgi_finish_req. : " . (function_exists('fastcgi_finish_request') ? '✅ متاحة (الردّ يُفلَش ثم يكمل العمل بالخلفية)' : '❌ مفقودة (العمل بعد الردّ يُبطّئ الصفحة أو يُقتل)') . "\n";
+echo "   fastcgi_finish_req. : " . (function_exists('fastcgi_finish_request') ? '✅ متاحة' : '❌ مفقودة') . "\n";
+echo "   litespeed_finish_r. : " . (function_exists('litespeed_finish_request') ? '✅ متاحة (LiteSpeed)' : '❌ مفقودة') . "\n";
+echo "   nf_finish_request   : " . (function_exists('nf_finish_request') ? '✅ معرّفة (تدعم النظامين)' : '— غير منشورة بعد') . "\n";
 echo "   exec()              : " . h_fn('exec') . "\n";
 echo "   shell_exec()        : " . h_fn('shell_exec') . "\n";
 echo "   proc_open()         : " . h_fn('proc_open') . "\n";
@@ -80,6 +82,7 @@ echo "\n";
 
 /* ── 2) مفاتيح/مزوّد الذكاء الاصطناعي ───────────────────────────────── */
 echo "2) مزوّد الذكاء الاصطناعي (يولّد كل الملخصات)\n";
+require_once __DIR__ . '/includes/ai_provider.php';
 $prov = function_exists('ai_provider_active') ? ai_provider_active() : '?';
 echo "   المزوّد النشِط        : $prov\n";
 echo "   gemini_api_key مضبوط : " . (trim((string)getSetting('gemini_api_key','')) !== '' ? 'نعم' : 'لا') . "\n";
@@ -137,6 +140,16 @@ if ($run === 'tgsync') {
     $sec = round(microtime(true) - $t0, 1);
     echo "   run=tgsync           : " . ($err === '' ? "✅ تم — جديد=$new — المدّة={$sec}s" : "❌ خطأ: $err — المدّة={$sec}s") . "\n";
     echo "                          (إن كان جديد>0 الآن، فالمشكلة ليست في السحب بل في تكرار تشغيله — كرون/زيارات)\n";
+} elseif ($run === 'summaries') {
+    // Force-trigger the summary crons via the HTTP key path (same as the
+    // self-heal). Dispatches detached; regeneration finishes within ~1-2 min.
+    $fired = [];
+    foreach (['cron_sabah.php','cron_tg_summary.php','cron_social_summary.php','cron_weekly_rewind.php'] as $cf) {
+        $ok = function_exists('nf_trigger_cron') ? nf_trigger_cron($cf) : false;
+        $fired[] = $cf . '=' . ($ok ? 'dispatched' : 'FAILED');
+    }
+    echo "   run=summaries        : " . implode('  ', $fired) . "\n";
+    echo "                          (انتظر دقيقة-دقيقتين ثم حدّث هذه الصفحة — يجب أن تتحدّث أعمار القسم 3)\n";
 } elseif ($run === 'spawn') {
     if (!function_exists('exec')) { echo "   run=spawn            : ❌ exec غير متاحة\n"; }
     else {
@@ -147,7 +160,7 @@ if ($run === 'tgsync') {
         echo "                          (SPAWN_OK يعني أن آلية إصلاح الملخصات الذاتية تستطيع إطلاق الكرونات)\n";
     }
 } else {
-    echo "   (أضِف ?run=tgsync لاختبار سحب تلغرام الآن، أو ?run=spawn لاختبار exec)\n";
+    echo "   (?run=tgsync لسحب تلغرام • ?run=summaries لتوليد كل الملخصات • ?run=spawn لاختبار exec)\n";
 }
 echo "\n";
 echo "═══════════════════════════════════════════════════════════════\n";

@@ -1887,7 +1887,7 @@ function nfSubscribeNewsletter(e) {
 // page to the user first, then (behind the same 45s file-lock used by the
 // stream/feed) run a single scrape if the newest message is stale. Bounded,
 // best-effort, and never adds latency to the response.
-if (function_exists('fastcgi_finish_request')) { @fastcgi_finish_request(); }
+nf_finish_request(); // PHP-FPM *or* LiteSpeed — detach the response, then scrape
 try {
     if (!empty($tgMsgs)) {
         $__tgLock = sys_get_temp_dir() . '/nf_tg_sync.lock';

@@ -19,9 +19,9 @@
  */
 
 function auto_trigger_rss_fetch_if_stale(int $thresholdSeconds = 1800): void {
-    // exec() is required for the detached fork; on locked-down
-    // shared hosting it may be disabled. Bail silently if so.
-    if (!function_exists('exec')) return;
+    // We dispatch via nf_trigger_cron() (detached curl to the cron's
+    // HTTP key path). Bail silently if the helper isn't loaded.
+    if (!function_exists('nf_trigger_cron')) return;
 
     // Cheap path: only consult the DB once per 60 seconds so a
     // burst of homepage visits doesn't add a SELECT to each one.
@@ -52,12 +52,8 @@ function auto_trigger_rss_fetch_if_stale(int $thresholdSeconds = 1800): void {
     @touch($lockFile);
 
     // Detached fork — does NOT block the current FPM worker.
-    // The "> /dev/null 2>&1 &" suffix is what makes it non-blocking
-    // on POSIX shells. We deliberately ignore the exec return value
-    // because we don't want a single spawn failure to surface to the
-    // homepage user.
-    $phpBin = PHP_BINARY ?: 'php';
-    $script = __DIR__ . '/../cron_rss.php';
-    $cmd = escapeshellcmd($phpBin) . ' ' . escapeshellarg($script) . ' > /dev/null 2>&1 &';
-    @exec($cmd);
+    // Detached curl to cron_rss.php's HTTP path — see nf_trigger_cron().
+    // (The old exec(PHP_BINARY cron_rss.php &) spawn was broken on this
+    // LiteSpeed host: PHP_BINARY is lsphp, not CLI php, so it ran nothing.)
+    nf_trigger_cron('cron_rss.php');
 }
