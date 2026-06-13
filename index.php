@@ -1800,7 +1800,7 @@ $__renderCtSection('health',         'صحة',           '#3b8a6e', '🏥', $hea
 <div class="nf-toast" id="nfToast"></div>
 <script src="assets/js/home.min.js?v=m2" defer></script>
 <script src="assets/js/user.min.js?v=m1" defer></script>
-<script src="assets/js/telegram-live.min.js?v=m1" defer></script>
+<script src="assets/js/telegram-live.min.js?v=m4" defer></script>
 <script src="assets/js/twitter-live.min.js?v=m2" defer></script>
 <script src="assets/js/youtube-live.min.js?v=m1" defer></script>
 <script>

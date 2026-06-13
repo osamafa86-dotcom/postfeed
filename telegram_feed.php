@@ -46,8 +46,8 @@ try {
     tgf_json_exit(['ok' => false, 'error' => 'init: ' . $e->getMessage()]);
 }
 
-const SYNC_COOLDOWN_SECS   = 45;  // never real-sync more than once per this window
-const SYNC_IF_STALE_SECS   = 60;  // only sync when newest message is older than this
+const SYNC_COOLDOWN_SECS   = 30;  // never real-sync more than once per this window
+const SYNC_IF_STALE_SECS   = 30;  // only sync when newest message is older than this
 
 $sinceId = max(0, (int)($_GET['since_id'] ?? 0));
 $limit   = max(1, min(50, (int)($_GET['limit'] ?? 20)));

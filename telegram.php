@@ -679,7 +679,7 @@ include __DIR__ . '/includes/components/site_header.php';
   <div class="footer-copy">&copy; <?php echo date('Y'); ?> <?php echo e(getSetting('site_name', SITE_NAME)); ?></div>
 </footer>
 
-<script src="assets/js/telegram-live.min.js?v=m1" defer></script>
+<script src="assets/js/telegram-live.min.js?v=m4" defer></script>
 <script>
 /**
  * News briefing panel on /telegram.php.

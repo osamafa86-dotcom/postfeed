@@ -5,12 +5,16 @@
  *   1) The `/telegram.php` dedicated page (.tg-grid)
  *   2) The homepage's Telegram section (.tg-breaking)
  *
- * Primary transport: Server-Sent Events via /telegram_stream.php.
- *   The stream stays open; the server pushes new messages as soon as
- *   they're scraped, so the page updates live with ~seconds of latency.
+ * Primary transport: short-interval polling of /telegram_feed.php?sync=1.
+ *   Each poll drives the server-side scrape (behind a file lock) and returns
+ *   any messages newer than the client's latest id, so the feed updates with
+ *   ~15-45s latency on ANY host.
  *
- * Fallback: polling /telegram_feed.php every 20s if the browser is too
- * old for EventSource or the stream errors out repeatedly.
+ * Why not SSE? Server-Sent Events (/telegram_stream.php) hold an lsphp worker
+ *   open for the whole connection. On this LiteSpeed shared host the worker
+ *   pool is small, so long-lived streams get killed and the feed froze for
+ *   hours. Polling is stateless and reliable here. The SSE code is kept below
+ *   (unused) in case a future host can sustain it.
  *
  * Behavior:
  *   - New messages are prepended to the grid with a slide-in animation
@@ -24,7 +28,7 @@
   'use strict';
 
   var MAX_ON_PAGE_1    = 24;     // cap items on page 1 of /telegram.php
-  var POLL_FALLBACK_MS = 20000;  // fallback polling cadence (SSE not available)
+  var POLL_FALLBACK_MS = 12000;  // primary polling cadence (drives the scrape)
 
   var grid = document.getElementById('tgGrid') || document.querySelector('.tg-breaking');
   if (!grid) return;
@@ -263,17 +267,13 @@
       stopSSE();
       stopPolling();
     } else {
-      // Coming back into focus — reconnect fresh.
-      if (usingFallback) {
-        stopPolling();
-        pollTimer = setInterval(pollOnce, POLL_FALLBACK_MS);
-        pollOnce();
-      } else {
-        startSSE();
-      }
+      // Coming back into focus — resume polling fresh.
+      stopPolling();
+      pollTimer = setInterval(pollOnce, POLL_FALLBACK_MS);
+      pollOnce();
     }
   });
 
-  // Kick off: wait a beat for the rest of the page to settle.
-  setTimeout(startSSE, 500);
+  // Kick off polling (primary transport on this host — see header note).
+  setTimeout(startPolling, 500);
 })();
