@@ -81,7 +81,7 @@ function tgf_try_sync(): array {
         require_once __DIR__ . '/includes/telegram_fetch.php';
         // Staggered: only the few most-overdue channels (per-channel cooldown),
         // so traffic-driven polling never bursts all channels at t.me.
-        $added = tg_sync_due_sources(6, 75);
+        $added = tg_sync_due_sources(6, 60);
         @ftruncate($fp, 0);
         @fwrite($fp, (string)$now);
         @touch($lockFile, $now);
@@ -97,16 +97,11 @@ function tgf_try_sync(): array {
 try {
     $db = getDB();
 
-    // When the caller opts in, attempt a staggered sync. We no longer gate on
-    // "newest message age" — that let one busy channel suppress syncs for all
-    // the quiet ones. Pacing is handled by the global lock cooldown here and
-    // the per-channel cooldown inside tg_sync_due_sources().
-    $syncResult = null;
-    if ($syncReq) {
-        $syncResult = tgf_try_sync();
-    }
-
-    // Fetch newest messages (optionally only newer than since_id)
+    // 1) Read the latest messages from the DB FIRST. We respond immediately
+    //    and defer the actual t.me scrape to AFTER the response is flushed, so
+    //    the client poll NEVER blocks on t.me latency. (Blocking the poll on a
+    //    slow/partly-blocked scrape was the cause of the unstable live feed:
+    //    polls stretched out, pollInFlight stuck, and lsphp workers starved.)
     if ($sinceId > 0) {
         $stmt = $db->prepare("SELECT m.id, m.source_id, m.post_url, m.text, m.image_url, m.posted_at,
                                      s.display_name, s.username, s.avatar_url
@@ -151,14 +146,22 @@ try {
         ];
     }
 
-    tgf_json_exit([
+    // 2) Send the response NOW (fast, DB-only).
+    while (ob_get_level() > 0) { ob_end_clean(); }
+    echo json_encode([
         'ok'          => true,
         'count'       => count($messages),
         'latest_id'   => $latestId,
         'server_time' => date('c'),
-        'sync'        => $syncResult,
+        'sync'        => $syncReq ? 'deferred' : null,
         'messages'    => $messages,
-    ]);
+    ], JSON_UNESCAPED_UNICODE);
+
+    // 3) Flush to the client, then scrape in the background. New posts will be
+    //    delivered on the NEXT poll — the client cadence stays rock-solid.
+    if (function_exists('nf_finish_request')) nf_finish_request();
+    if ($syncReq) { try { tgf_try_sync(); } catch (Throwable $e) {} }
+    exit;
 
 } catch (Throwable $e) {
     tgf_json_exit(['ok' => false, 'error' => 'query: ' . $e->getMessage()]);

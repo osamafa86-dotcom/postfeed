@@ -232,11 +232,22 @@
     setPillState('updating');
     var sinceId = getLatestId();
     var url = 'telegram_feed.php?since_id=' + encodeURIComponent(sinceId) + '&limit=20&sync=1&_=' + Date.now();
-    fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+
+    // Watchdog: never let a stuck/hung request freeze polling forever. If the
+    // response hasn't arrived in 15s we release the in-flight guard (and abort
+    // if supported) so the next tick can poll again. This is what keeps the
+    // live feed self-healing even if a single request goes sideways.
+    var settled = false;
+    var ctrl = (typeof AbortController === 'function') ? new AbortController() : null;
+    function release(){ if (!settled) { settled = true; pollInFlight = false; } }
+    var watchdog = setTimeout(function(){ if (ctrl) { try { ctrl.abort(); } catch(e){} } release(); setPillState('idle'); }, 15000);
+
+    fetch(url, { credentials: 'same-origin', cache: 'no-store', signal: ctrl ? ctrl.signal : undefined })
       .then(function(r){ return r.json(); })
       .catch(function(){ return null; })
       .then(function(data){
-        pollInFlight = false;
+        clearTimeout(watchdog);
+        release();
         if (!data || !data.ok) { setPillState('idle'); return; }
         if (data.messages && data.messages.length) {
           handleIncoming(data.messages);

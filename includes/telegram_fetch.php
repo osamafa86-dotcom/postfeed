@@ -53,8 +53,8 @@ function tg_fetch_channel_ex($username, $limit = 20): array {
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_TIMEOUT        => 15,
-        CURLOPT_CONNECTTIMEOUT => 8,
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_CONNECTTIMEOUT => 6,
         CURLOPT_USERAGENT      => tg_user_agent(),
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_ENCODING       => '',

@@ -1800,7 +1800,7 @@ $__renderCtSection('health',         'صحة',           '#3b8a6e', '🏥', $hea
 <div class="nf-toast" id="nfToast"></div>
 <script src="assets/js/home.min.js?v=m2" defer></script>
 <script src="assets/js/user.min.js?v=m1" defer></script>
-<script src="assets/js/telegram-live.min.js?v=m4" defer></script>
+<script src="assets/js/telegram-live.min.js?v=m5" defer></script>
 <script src="assets/js/twitter-live.min.js?v=m2" defer></script>
 <script src="assets/js/youtube-live.min.js?v=m1" defer></script>
 <script>
@@ -1896,7 +1896,7 @@ try {
         if ($__tgFp && flock($__tgFp, LOCK_EX | LOCK_NB)) {
             try {
                 require_once __DIR__ . '/includes/telegram_fetch.php';
-                tg_sync_due_sources(6, 75);
+                tg_sync_due_sources(6, 60);
                 @ftruncate($__tgFp, 0); @fwrite($__tgFp, (string)$__tgNow); @touch($__tgLock, $__tgNow);
             } catch (Throwable $e) {}
             flock($__tgFp, LOCK_UN); fclose($__tgFp);
