@@ -118,7 +118,7 @@ try {
                                FROM telegram_messages m
                                JOIN telegram_sources s ON m.source_id = s.id
                                WHERE m.is_active=1 AND s.is_active=1
-                               ORDER BY m.posted_at DESC, m.id DESC
+                               ORDER BY m.id DESC
                                LIMIT ?");
         $stmt->bindValue(1, $limit, PDO::PARAM_INT);
     }

@@ -862,7 +862,7 @@ $__renderCtSection('health',         'صحة',           '#3b8a6e', '🏥', $hea
     $ytMsgs = [];
     try {
         $socialDb = getDB();
-        $tgMsgs = $socialDb->query("SELECT m.*, s.display_name, s.username, s.avatar_url FROM telegram_messages m JOIN telegram_sources s ON m.source_id = s.id WHERE m.is_active=1 AND s.is_active=1 ORDER BY m.posted_at DESC LIMIT 12")->fetchAll(PDO::FETCH_ASSOC);
+        $tgMsgs = $socialDb->query("SELECT m.*, s.display_name, s.username, s.avatar_url FROM telegram_messages m JOIN telegram_sources s ON m.source_id = s.id WHERE m.is_active=1 AND s.is_active=1 ORDER BY m.id DESC LIMIT 12")->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) { error_log('tg read: ' . $e->getMessage()); }
     try {
         $socialDb = $socialDb ?? getDB();
