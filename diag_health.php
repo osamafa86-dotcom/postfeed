@@ -185,6 +185,19 @@ if ($run === 'tgsync') {
         usleep(200000);
     }
     echo "   ── الخلاصة: ناجح=$okN  فاشل/محظور=$blockN" . ($blockN >= max(1,(int)(count($rows)/2)) ? "  → t.me يحظر/يقيّد الخادم (هذا سبب التأخّر المتكرر)" : "") . "\n";
+} elseif ($run === 'tgclamp') {
+    // One-time cleanup: pull any future-dated telegram messages back to a sane
+    // time so they stop pinning themselves to the top of the posted_at-DESC box.
+    try {
+        $before = (int)$db->query("SELECT COUNT(*) FROM telegram_messages WHERE posted_at > NOW() + INTERVAL 5 MINUTE")->fetchColumn();
+        $n = $db->exec("UPDATE telegram_messages SET posted_at = created_at WHERE posted_at > NOW() + INTERVAL 5 MINUTE");
+        $maxp = $db->query("SELECT MAX(posted_at) FROM telegram_messages WHERE is_active=1")->fetchColumn();
+        echo "   run=tgclamp          : future_before=$before  updated=" . var_export($n, true) . "\n";
+        echo "                          now=" . date('Y-m-d H:i:s') . "  max_posted_at_after=$maxp" . "\n";
+        echo "                          " . ($maxp && strtotime($maxp) <= time() + 120 ? "✅ لا تواريخ مستقبلية بعد الآن" : "⚠️ ما زال هناك تاريخ مستقبلي") . "\n";
+    } catch (Throwable $e) {
+        echo "   run=tgclamp          : ❌ ERROR " . $e->getMessage() . "\n";
+    }
 } elseif ($run === 'summaries') {
     // Force-trigger the summary crons via the HTTP key path (same as the
     // self-heal). Dispatches detached; regeneration finishes within ~1-2 min.
