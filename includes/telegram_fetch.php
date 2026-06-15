@@ -102,12 +102,20 @@ function tg_fetch_channel_ex($username, $limit = 20): array {
             }
             if (empty($text) && empty($image)) continue;
 
+            // Clamp impossible/future timestamps. Some channels publish
+            // *scheduled* posts whose t.me datetime is hours ahead; stored
+            // as-is they pin themselves to the top of the (posted_at DESC)
+            // box and bury genuinely newer messages — which looks like the
+            // feed isn't updating. A post can't be from the future, so cap it.
+            $pts = $datetime ? (int)strtotime($datetime) : time();
+            if ($pts <= 0 || $pts > time() + 120) $pts = time();
+
             $messages[] = [
                 'post_id'    => $postId,
                 'message_id' => (int)substr($postId, strrpos($postId, '/') + 1),
                 'text'       => $text,
                 'image_url'  => $image,
-                'posted_at'  => $datetime ? date('Y-m-d H:i:s', strtotime($datetime)) : date('Y-m-d H:i:s'),
+                'posted_at'  => date('Y-m-d H:i:s', $pts),
                 'url'        => 'https://t.me/' . $postId,
             ];
         }
