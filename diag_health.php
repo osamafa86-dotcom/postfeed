@@ -127,6 +127,28 @@ echo "   last_fetched (الأقدم): " . h_age($fetMin) . "\n";
 echo "   last_fetched (الأحدث): " . h_age($fetMax) . "\n";
 $lock = sys_get_temp_dir() . '/nf_tg_sync.lock';
 echo "   قفل السحب (tmp)      : " . (is_file($lock) ? h_age(@filemtime($lock)) . "  @ $lock" : "غير موجود @ $lock") . "\n";
+// Per-source health: which channels are erroring / blocked (last_error column
+// is added lazily by tg_sources_ensure_cols on the next sync).
+echo "   حالة كل قناة (آخر جلب / خطأ):\n";
+try {
+    $rows = $db->query("SELECT username,
+                               UNIX_TIMESTAMP(last_fetched_at) AS lf,
+                               (SELECT COUNT(*) FROM telegram_messages m WHERE m.source_id = s.id AND m.is_active=1) AS n
+                        FROM telegram_sources s WHERE is_active=1 ORDER BY last_fetched_at ASC")->fetchAll(PDO::FETCH_ASSOC);
+    $hasErrCol = false;
+    try { $db->query("SELECT last_error FROM telegram_sources LIMIT 1"); $hasErrCol = true; } catch (Throwable $e) {}
+    foreach ($rows as $r) {
+        $errTxt = '';
+        if ($hasErrCol) {
+            $e = $db->prepare("SELECT last_error, last_status FROM telegram_sources WHERE username=?");
+            $e->execute([$r['username']]); $er = $e->fetch(PDO::FETCH_ASSOC);
+            if (!empty($er['last_error'])) $errTxt = '  ⚠️ ' . $er['last_error'] . ' [' . ($er['last_status'] ?? '?') . ']';
+        }
+        $lfTxt = $r['lf'] ? round((time() - (int)$r['lf']) / 60, 1) . 'm' : 'never';
+        echo "     • @" . str_pad($r['username'], 20) . " آخر جلب=" . str_pad($lfTxt, 7) . " رسائل=" . (int)$r['n'] . $errTxt . "\n";
+    }
+    if (!$hasErrCol) echo "     (عمود last_error سيظهر بعد أول مزامنة بعد النشر)\n";
+} catch (Throwable $e) { echo "     (تعذّر قراءة حالة القنوات: " . $e->getMessage() . ")\n"; }
 echo "\n";
 
 /* ── 5) إجراءات حيّة ────────────────────────────────────────────────── */
@@ -140,6 +162,29 @@ if ($run === 'tgsync') {
     $sec = round(microtime(true) - $t0, 1);
     echo "   run=tgsync           : " . ($err === '' ? "✅ تم — جديد=$new — المدّة={$sec}s" : "❌ خطأ: $err — المدّة={$sec}s") . "\n";
     echo "                          (إن كان جديد>0 الآن، فالمشكلة ليست في السحب بل في تكرار تشغيله — كرون/زيارات)\n";
+} elseif ($run === 'tgprobe') {
+    // Live per-channel fetch — confirms whether t.me is blocking us. For each
+    // active channel: HTTP code, bytes, parsed message count, newest post.
+    require_once __DIR__ . '/includes/telegram_fetch.php';
+    $rows = $db->query("SELECT username FROM telegram_sources WHERE is_active=1 ORDER BY username")->fetchAll(PDO::FETCH_ASSOC);
+    $okN = 0; $blockN = 0;
+    echo "   run=tgprobe — جلب مباشر لكل قناة من t.me:\n";
+    foreach ($rows as $r) {
+        $u = $r['username'];
+        $t0 = microtime(true);
+        $res = tg_fetch_channel_ex($u, 5);
+        $ms = round((microtime(true) - $t0) * 1000);
+        if (!empty($res['ok'])) {
+            $okN++;
+            $newest = !empty($res['messages']) ? $res['messages'][count($res['messages'])-1]['posted_at'] : '—';
+            echo "     ✅ @" . str_pad($u, 20) . " http={$res['http']} bytes=" . str_pad((string)$res['bytes'],7) . " رسائل=" . count($res['messages']) . " أحدث={$newest} ({$ms}ms)\n";
+        } else {
+            $blockN++;
+            echo "     ❌ @" . str_pad($u, 20) . " http=" . ($res['http'] ?? 0) . " bytes=" . ($res['bytes'] ?? 0) . " خطأ=" . ($res['error'] ?? '?') . " ({$ms}ms)\n";
+        }
+        usleep(200000);
+    }
+    echo "   ── الخلاصة: ناجح=$okN  فاشل/محظور=$blockN" . ($blockN >= max(1,(int)(count($rows)/2)) ? "  → t.me يحظر/يقيّد الخادم (هذا سبب التأخّر المتكرر)" : "") . "\n";
 } elseif ($run === 'summaries') {
     // Force-trigger the summary crons via the HTTP key path (same as the
     // self-heal). Dispatches detached; regeneration finishes within ~1-2 min.
@@ -160,7 +205,7 @@ if ($run === 'tgsync') {
         echo "                          (SPAWN_OK يعني أن آلية إصلاح الملخصات الذاتية تستطيع إطلاق الكرونات)\n";
     }
 } else {
-    echo "   (?run=tgsync لسحب تلغرام • ?run=summaries لتوليد كل الملخصات • ?run=spawn لاختبار exec)\n";
+    echo "   (?run=tgprobe لفحص حظر t.me لكل قناة • ?run=tgsync لسحب • ?run=summaries للملخصات • ?run=spawn لـexec)\n";
 }
 echo "\n";
 echo "═══════════════════════════════════════════════════════════════\n";

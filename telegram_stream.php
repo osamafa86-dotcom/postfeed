@@ -88,7 +88,10 @@ function tg_stream_try_scrape(): bool {
     if (!flock($fp, LOCK_EX | LOCK_NB)) { fclose($fp); return false; }
     try {
         require_once __DIR__ . '/includes/telegram_fetch.php';
-        tg_sync_all_sources();
+        // Staggered (per-channel cooldown) so we never burst all channels at
+        // t.me and trip its rate-limit. (SSE is dormant on this host, but keep
+        // it polite in case a future host re-enables it.)
+        tg_sync_due_sources(6, 75);
         @ftruncate($fp, 0);
         @fwrite($fp, (string)$now);
         @touch($lockFile, $now);

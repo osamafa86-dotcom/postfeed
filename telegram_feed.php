@@ -46,8 +46,7 @@ try {
     tgf_json_exit(['ok' => false, 'error' => 'init: ' . $e->getMessage()]);
 }
 
-const SYNC_COOLDOWN_SECS   = 30;  // never real-sync more than once per this window
-const SYNC_IF_STALE_SECS   = 30;  // only sync when newest message is older than this
+const SYNC_COOLDOWN_SECS   = 10;  // global: attempt a staggered sync at most this often
 
 $sinceId = max(0, (int)($_GET['since_id'] ?? 0));
 $limit   = max(1, min(50, (int)($_GET['limit'] ?? 20)));
@@ -80,7 +79,9 @@ function tgf_try_sync(): array {
 
     try {
         require_once __DIR__ . '/includes/telegram_fetch.php';
-        $added = tg_sync_all_sources();
+        // Staggered: only the few most-overdue channels (per-channel cooldown),
+        // so traffic-driven polling never bursts all channels at t.me.
+        $added = tg_sync_due_sources(6, 75);
         @ftruncate($fp, 0);
         @fwrite($fp, (string)$now);
         @touch($lockFile, $now);
@@ -96,18 +97,13 @@ function tgf_try_sync(): array {
 try {
     $db = getDB();
 
-    // Decide whether we need to sync on-demand. We check the newest message
-    // age — if it's older than the staleness threshold AND the caller opted
-    // in, run tg_sync_all_sources() behind a file lock.
+    // When the caller opts in, attempt a staggered sync. We no longer gate on
+    // "newest message age" — that let one busy channel suppress syncs for all
+    // the quiet ones. Pacing is handled by the global lock cooldown here and
+    // the per-channel cooldown inside tg_sync_due_sources().
     $syncResult = null;
     if ($syncReq) {
-        $row = $db->query("SELECT UNIX_TIMESTAMP(MAX(COALESCE(posted_at, created_at))) AS ts FROM telegram_messages WHERE is_active=1")->fetch(PDO::FETCH_ASSOC);
-        $newestTs = (int)($row['ts'] ?? 0);
-        if ($newestTs === 0 || (time() - $newestTs) >= SYNC_IF_STALE_SECS) {
-            $syncResult = tgf_try_sync();
-        } else {
-            $syncResult = ['synced' => false, 'reason' => 'fresh', 'age' => time() - $newestTs];
-        }
+        $syncResult = tgf_try_sync();
     }
 
     // Fetch newest messages (optionally only newer than since_id)

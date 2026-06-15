@@ -77,8 +77,33 @@ function auto_trigger_summaries_if_stale(): void {
 
         if ($age < $thresholdSec) continue; // still fresh
 
+        // The morning briefing is a *scheduled* 09:00 (Asia/Amman = Jerusalem)
+        // surface, not "whenever it goes stale". Without this gate the traffic
+        // self-heal regenerated it at random hours (e.g. 02:20). Only fire it
+        // inside the 09:00–11:59 window so it lands as a morning briefing.
+        if ($key === 'sabah') {
+            $hr = (int)date('G'); // server TZ is Asia/Amman
+            if ($hr < 9 || $hr >= 12) continue;
+        }
+
         @touch($lockFile);
         nf_trigger_cron($cronFile);
+    }
+
+    // Telegram raw messages backbone: if the freshest stored message is more
+    // than ~6 min old, kick the full-sweep cron (detached) so the box stays
+    // warm even on pages without the homepage's inline scraper, and during
+    // brief traffic lulls. The per-channel cooldown keeps t.me load low.
+    $tgLock = sys_get_temp_dir() . '/postfeed_tgraw.lock';
+    if (!file_exists($tgLock) || (time() - filemtime($tgLock)) >= 300) {
+        try {
+            $db = getDB();
+            $ts = $db->query("SELECT UNIX_TIMESTAMP(MAX(COALESCE(posted_at, created_at))) FROM telegram_messages WHERE is_active=1")->fetchColumn();
+            if (!$ts || (time() - (int)$ts) >= 360) {
+                @touch($tgLock);
+                nf_trigger_cron('cron_telegram.php', 120);
+            }
+        } catch (Throwable $e) {}
     }
 
     // Weekly rewind: only worth firing on/after Saturday, since the

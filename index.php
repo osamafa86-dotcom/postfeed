@@ -1880,33 +1880,26 @@ function nfSubscribeNewsletter(e) {
 </body>
 </html>
 <?php
-// ── Keep the Telegram box fresh without relying on long-lived SSE ──────
-// Long-lived SSE connections get killed by shared-host process limits, so
-// the live scraper stopped being driven and freshness fell back to the slow
-// cron. Drive one scrape from ordinary homepage traffic instead: flush the
-// page to the user first, then (behind the same 45s file-lock used by the
-// stream/feed) run a single scrape if the newest message is stale. Bounded,
-// best-effort, and never adds latency to the response.
-nf_finish_request(); // PHP-FPM *or* LiteSpeed — detach the response, then scrape
+// ── Keep the Telegram box fresh from ordinary homepage traffic ─────────
+// Flush the page to the user first (LiteSpeed/FPM), then — behind the shared
+// sync lock — run a STAGGERED scrape: only the few most-overdue channels,
+// each at most once per cooldown, so we never burst all channels at t.me and
+// trigger its rate-limit/block (the cause of the recurring multi-hour lag).
+// Bounded, best-effort, never adds latency to the response.
+nf_finish_request();
 try {
-    if (!empty($tgMsgs)) {
-        $__tgLock = sys_get_temp_dir() . '/nf_tg_sync.lock';
-        $__tgNow  = time();
-        $__tgFresh = is_file($__tgLock) && ($__tgNow - (int)@filemtime($__tgLock)) < 45;
-        if (!$__tgFresh) {
-            $__tgRow = getDB()->query("SELECT UNIX_TIMESTAMP(MAX(COALESCE(posted_at, created_at))) AS ts FROM telegram_messages WHERE is_active=1")->fetch(PDO::FETCH_ASSOC);
-            $__tgNewest = (int)($__tgRow['ts'] ?? 0);
-            if ($__tgNewest === 0 || ($__tgNow - $__tgNewest) >= 60) {
-                $__tgFp = @fopen($__tgLock, 'c');
-                if ($__tgFp && flock($__tgFp, LOCK_EX | LOCK_NB)) {
-                    try {
-                        require_once __DIR__ . '/includes/telegram_fetch.php';
-                        tg_sync_all_sources();
-                        @ftruncate($__tgFp, 0); @fwrite($__tgFp, (string)$__tgNow); @touch($__tgLock, $__tgNow);
-                    } catch (Throwable $e) {}
-                    flock($__tgFp, LOCK_UN); fclose($__tgFp);
-                } elseif ($__tgFp) { fclose($__tgFp); }
-            }
-        }
+    $__tgLock = sys_get_temp_dir() . '/nf_tg_sync.lock';
+    $__tgNow  = time();
+    $__tgFresh = is_file($__tgLock) && ($__tgNow - (int)@filemtime($__tgLock)) < 10;
+    if (!$__tgFresh) {
+        $__tgFp = @fopen($__tgLock, 'c');
+        if ($__tgFp && flock($__tgFp, LOCK_EX | LOCK_NB)) {
+            try {
+                require_once __DIR__ . '/includes/telegram_fetch.php';
+                tg_sync_due_sources(6, 75);
+                @ftruncate($__tgFp, 0); @fwrite($__tgFp, (string)$__tgNow); @touch($__tgLock, $__tgNow);
+            } catch (Throwable $e) {}
+            flock($__tgFp, LOCK_UN); fclose($__tgFp);
+        } elseif ($__tgFp) { fclose($__tgFp); }
     }
 } catch (Throwable $e) {}
