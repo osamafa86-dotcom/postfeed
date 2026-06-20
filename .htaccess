@@ -13,10 +13,11 @@ DirectoryIndex index.php index.html
     RewriteCond %{HTTPS} off
     RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
-    # Protect sensitive files
+    # Protect sensitive files. (cron_rss.php used to be blocked here because it
+    # had no auth; it now has a cron_key guard like the other crons, so it can
+    # be reached over HTTP by the cPanel cron / self-heal.)
     RewriteRule ^includes/ - [F,L]
     RewriteRule ^database\.sql$ - [F,L]
-    RewriteRule ^cron_rss\.php$ - [F,L]
     RewriteRule ^deploy_log\.txt$ - [F,L]
     RewriteRule ^cron_log\.txt$ - [F,L]
     RewriteRule ^\.env$ - [F,L]

@@ -5,12 +5,25 @@
  */
 
 require_once __DIR__ . '/includes/config.php';
+require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/article_fetch.php';
 require_once __DIR__ . '/includes/article_cluster.php';
 require_once __DIR__ . '/includes/cache.php';
 require_once __DIR__ . '/includes/push.php';
 require_once __DIR__ . '/includes/evolving_stories.php';
 require_once __DIR__ . '/includes/content_classifier.php';
+
+// HTTP access is key-gated; CLI is always allowed. (Previously this file had
+// no guard, so it was firewalled in .htaccess — which also blocked the cron's
+// own curl and froze the RSS feed. Guarding it here lets the HTTP cron run.)
+if (PHP_SAPI !== 'cli') {
+    $expected = getSetting('cron_key', '');
+    if (!$expected || ($_GET['key'] ?? '') !== $expected) {
+        http_response_code(403);
+        exit('forbidden');
+    }
+    header('Content-Type: text/plain; charset=utf-8');
+}
 
 $db = getDB();
 $startTime = microtime(true);
