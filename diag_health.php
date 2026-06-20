@@ -217,9 +217,38 @@ if ($run === 'tgsync') {
         echo "   run=spawn            : exit=$code out=" . trim(implode(' ', $out)) . "\n";
         echo "                          (SPAWN_OK يعني أن آلية إصلاح الملخصات الذاتية تستطيع إطلاق الكرونات)\n";
     }
+} elseif ($run === 'rss') {
+    // Kick the RSS fetch cron (detached) — same path the cPanel cron uses.
+    $ok = function_exists('nf_trigger_cron') ? nf_trigger_cron('cron_rss.php', 180) : false;
+    echo "   run=rss              : cron_rss.php=" . ($ok ? 'dispatched ✅' : 'FAILED ❌') . "\n";
+    echo "                          (انتظر ~دقيقة ثم حدّث — راقب «أحدث مقال» في القسم 6)\n";
 } else {
-    echo "   (?run=tgprobe لفحص حظر t.me لكل قناة • ?run=tgsync لسحب • ?run=summaries للملخصات • ?run=spawn لـexec)\n";
+    echo "   (?run=rss لسحب الأخبار • ?run=tgprobe لفحص t.me • ?run=tgsync لسحب تلغرام • ?run=summaries للملخصات)\n";
 }
 echo "\n";
+
+/* ── 6) RSS / المقالات الرئيسية ─────────────────────────────────────── */
+echo "6) RSS / الأخبار الرئيسية\n";
+$artPub = h_maxts($db, "SELECT UNIX_TIMESTAMP(MAX(published_at)) FROM articles WHERE status='published'");
+echo "   أحدث مقال (published): " . h_age($artPub) . "\n";
+try {
+    $rsrcN = (int)($db->query("SELECT COUNT(*) FROM sources WHERE is_active=1")->fetchColumn() ?: 0);
+    $rfMin = h_maxts($db, "SELECT UNIX_TIMESTAMP(MIN(last_fetched_at)) FROM sources WHERE is_active=1");
+    $rfMax = h_maxts($db, "SELECT UNIX_TIMESTAMP(MAX(last_fetched_at)) FROM sources WHERE is_active=1");
+    echo "   مصادر RSS نشطة       : $rsrcN\n";
+    echo "   last_fetched (الأقدم): " . h_age($rfMin) . "\n";
+    echo "   last_fetched (الأحدث): " . h_age($rfMax) . "\n";
+    $errs = $db->query("SELECT name, last_error, last_new_count FROM sources
+                        WHERE is_active=1 AND last_error IS NOT NULL AND last_error <> ''
+                        ORDER BY last_fetched_at DESC LIMIT 15")->fetchAll(PDO::FETCH_ASSOC);
+    if ($errs) {
+        echo "   مصادر فيها أخطاء (" . count($errs) . "):\n";
+        foreach ($errs as $e2) echo "     ⚠️ " . str_pad($e2['name'], 26) . " " . mb_substr((string)$e2['last_error'], 0, 70) . "\n";
+    } else {
+        echo "   أخطاء المصادر        : لا يوجد ✅\n";
+    }
+} catch (Throwable $e) { echo "   (تعذّر قراءة حالة المصادر: " . $e->getMessage() . ")\n"; }
+echo "\n";
+
 echo "═══════════════════════════════════════════════════════════════\n";
 echo "انسخ كامل هذا الناتج وأرسله — منه أحدّد السبب الجذري بدقّة وأصلحه.\n";
